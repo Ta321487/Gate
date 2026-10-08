@@ -50,6 +50,34 @@ public final class AppPolicy {
     public static final int STOCK_WARN_BELOW = 10;
     /** 每消费一元赠送的积分 */
     public static final int POINTS_EARN_PER_YUAN = 1;
+    /** 预约开始前可免费取消的时限（小时）；0 表示不限制 */
+    public static final int CANCEL_FREE_HOURS = 0;
+    /** 预约改约次数上限；0 表示不限制 */
+    public static final int RESCHEDULE_MAX_TIMES = 0;
+    /** 预约开始前站内信提醒（分钟）；0 表示关闭 */
+    public static final int REMIND_AHEAD_MINUTES = 0;
+    /** 爽约次数上限；0 表示不限制 */
+    public static final int NO_SHOW_LIMIT = 0;
+    /** 签到迟到宽限（分钟） */
+    public static final int LATE_GRACE_MINUTES = 15;
+    /** 挂号退号截止（开诊前分钟）；0 表示不额外限制 */
+    public static final int HOSPITAL_CANCEL_CUTOFF_MINUTES = 0;
+    /** 同就诊人每日限号；0 表示不限制 */
+    public static final int HOSPITAL_ID_LIMIT_PER_DAY = 0;
+    /** 车位小时费率（元）；0 表示未启用时长计费 */
+    public static final int PARKING_HOURLY_YUAN = 0;
+    /** 车位超时加收默认金额（元）；0 表示未启用 */
+    public static final int PARKING_OVERTIME_YUAN = 0;
+    /** 会议室最低预约时长（分钟）；0 表示不限制 */
+    public static final int MEETING_MIN_DURATION_MINUTES = 0;
+    /** 美业改约手续费默认金额（元）；0 表示未启用 */
+    public static final int SALON_RESCHEDULE_FEE_YUAN = 0;
+    /** 客房延迟退房加收默认金额（元）；0 表示未启用 */
+    public static final int HOTEL_LATE_CHECKOUT_FEE_YUAN = 0;
+    /** 租车里程超支加收默认金额（元）；0 表示未启用 */
+    public static final int CARRENT_MILEAGE_OVER_FEE_YUAN = 0;
+    /** 仪器机时超时加收默认金额（元）；0 表示未启用 */
+    public static final int INSTRUMENT_OVERTIME_YUAN = 0;
 
     // ---------- 能力开关（按开题启用） ----------
     /** 档案软删除（标记删除，不物理抹掉） */
@@ -114,4 +142,24 @@ public final class AppPolicy {
     public static final boolean BALANCE_LEDGER_ENABLED = false;
     /** 审核通过时扣减余额 */
     public static final boolean BALANCE_LEDGER_DEBIT_ON_APPROVE = false;
+    /** 预约须填写备注 */
+    public static final boolean SLOT_REQUIRE_REMARK = false;
+    /** 预约须管理端确认 */
+    public static final boolean SLOT_REQUIRE_CONFIRM = false;
+    /** 办结后允许用户评价 */
+    public static final boolean SLOT_ALLOW_RATING = false;
+    /** 预约黑名单与申诉 */
+    public static final boolean RESERVE_BLACKLIST_ENABLED = false;
+    /** 号源满时可候补 */
+    public static final boolean HOSPITAL_WAITLIST_ENABLED = false;
+    /** 就诊人多档案 */
+    public static final boolean PATIENT_PROFILE_ENABLED = false;
+    /** 停车次卡 */
+    public static final boolean PARKING_PASS_ENABLED = false;
+    /** 会议结束后须上传纪要附件 */
+    public static final boolean MEETING_MINUTES_REQUIRED = false;
+    /** 客房预约须勾选入住须知 */
+    public static final boolean HOTEL_NOTICE_REQUIRED = false;
+    /** 仪器机时预约须勾选培训合格 */
+    public static final boolean INSTRUMENT_TRAINING_REQUIRED = false;
 }

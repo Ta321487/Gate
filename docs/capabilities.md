@@ -41,9 +41,13 @@
 | `temporal_field` | 日期控件精度（date/datetime），非 cap |
 | `opening_align` | 开题模块对账闸，只 `apply`，不开新 cap |
 | `borrow_thicken` | 借用/占用组加厚（字段/文案/校验 + 续借/预约/罚款等演示链），非独立 cap；落点见交付地图 §1.1 |
+| `borrow_structural` | 借用族结构表 DDL `ensure_*`（续借日志/罚款/文库等），非独立 cap；由 bake SQL 调用 |
 | `follow_thicken` | 跟进组加厚（字段/文案/校验 + 批量录用/周报催交/渠道饼图等演示链），非独立 cap；落点见交付地图 §1.2 |
 | `repair_thicken` | 报修/工单组加厚（用户催办链、结单原因/摘要、SLA 分列、浅台账），非独立 cap；落点见交付地图 §1.3 |
 | `apply_thicken` | 报名/申请组加厚（须知/驳回/站内信、批量审、候补、口令/费用/资格、面交确认、浏览计数、学院筛选等浅字段与规则），非独立 cap；落点见交付地图 §1.4 |
+| `approve_thicken` | 审批/填报组加厚（撤回/退回再提、抄送、转审、域皮字段等），非独立 cap；落点见交付地图 §1.5 |
+| `trade_thicken` | 交易组加厚（购物车/订单/选座壳通识与 SHOP/FOOD/CINEMA 域皮），非独立 cap；落点见交付地图 §1.6 与 [`trade-thicken-batch.md`](./trade-thicken-batch.md) |
+| `reserve_thicken` | 预约组加厚（时段占坑通识与 HOSPITAL…INSTRUMENT 域皮），非独立 cap；落点见交付地图 §1.7 与 [`reserve-thicken-batch.md`](./reserve-thicken-batch.md) |
 
 源码：`backend/app/bake/features/proposal_caps.py` → `HUB_BYPASS_MODULES`。
 

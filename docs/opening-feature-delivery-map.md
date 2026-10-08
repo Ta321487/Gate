@@ -2,7 +2,7 @@
 
 > **本文只负责**：开题常见功能 → 工厂落点与状态（已实现 / 扫词开 / 待补 / 不支持）。非 AI。  
 > **不负责**：cap 定义与挂载细则（[`capabilities.md`](./capabilities.md)）；DOM 分组与域默认能力组合（[`domains.md`](./domains.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；怎么审交付（[`delivery-audit-rules.md`](./delivery-audit-rules.md)）。  
-> **索引**：[README.md](./README.md) · **AI 轴**：[`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md) · **扩岛档案**（已收口）：[`capability-expansion-batch.md`](./capability-expansion-batch.md)。  
+> **索引**：[README.md](./README.md) · **AI 轴**：[`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md) · **扩岛档案**（已收口）：[`capability-expansion-batch.md`](./capability-expansion-batch.md) · **§1.6 交易加厚批次**（已收口）：[`trade-thicken-batch.md`](./trade-thicken-batch.md) · **§1.7 预约加厚批次**（已收口）：[`reserve-thicken-batch.md`](./reserve-thicken-batch.md)。  
 > **覆盖**：全 **68** 域。活表。  
 > **口径**：全国专本科 **Web 管理类毕设**通识可交付（能注册、走主流程、能答辩）。**不**依赖工厂样例库，**不**绑某一所学校课表；按开题常写模块建库存。禁止用「演示级」打发已实现能力。  
 > **库存原则**：工厂先列全「毕设常见且不超纲」功能；域壳仍可薄配置。开题命中才挂扫词项。挂载细节以 [`capabilities.md`](./capabilities.md) 为准；与本表冲突时只改一处并同步，禁止两套口径。  
@@ -843,7 +843,8 @@
 
 ### 1.6 交易
 
-组口径：`order_lines` 购物车/订单（影院为选座下单）。系统内支付=渠道+密码/余额；**不接**微信支付宝商户清算。横切券/积分/拼团等见 §0。
+组口径：`order_lines` 购物车/订单（影院为选座下单）。系统内支付=渠道+密码/余额；**不接**微信支付宝商户清算。横切券/积分/拼团等见 §0。  
+**清待补批次**：[`trade-thicken-batch.md`](./trade-thicken-batch.md)（T-00～T-11；一组一包 `trade_thicken`；三绿才迁行）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
@@ -855,92 +856,101 @@
 
 | 功能 | 建议落域 | 说明 |
 |------|----------|------|
-| 售后原因分类 + 简单占比图 | SHOP / FOOD | 工作台级；≠大数据 |
-| 收货地址「默认地址」一键 | SHOP / FOOD | 资料/地址簿字段 |
-| 购物车全选 / 失效商品清理 | SHOP / FOOD | 通识 UX |
-| 订单备注（用户下单留言给商家） | SHOP / FOOD | 已有字段则钉文案；缺则待补列 |
-| 影院退票截止规则（开场前 N 分钟） | CINEMA | schema+校验 |
-| 连座推荐（相邻空位提示，非算法锁座） | CINEMA | UI 提示；≠高并发锁 |
-| 订单完成自动邀评站内信 | 三域 | 挂 order_review 时 |
-| 销售日报简表（按日订单数/金额） | SHOP / FOOD | 工作台或导出；≠BI |
-| 缺货登记 / 到货通知（站内信） | SHOP | 轻表；≠采购 ERP |
-| 商品上下架定时（到点改状态） | SHOP / FOOD | 日期字段+任务或登录扫；浅 |
-| 满减叠加说明页（只读规则文案） | SHOP | 已有 spend_discount 可钉帮助 |
-| 发票抬头登记（订单备注级，非税控） | SHOP | 字段；≠电子发票平台 |
-| 堂食桌号 / 取餐号展示 | FOOD | 下单字段+小票文案 |
-| 口味备注（少辣/多冰）快捷选项 | FOOD | line_custom 扫词可顶；表内钉 |
-| 骑手接单超时自动回池 | FOOD | 状态规则；扫词挂骑手时 |
-| 场次售罄自动关售 | CINEMA | stage 同步 stock |
-| 取票码展示（订单号派生） | CINEMA | 字符串码；code_qr 可叠 |
-| 观影须知勾选 | CINEMA | 须知勾选变体 |
-| 退货物流单号回填 | SHOP | 售后字段 |
-| 会员日折扣说明（文案+member_tier） | SHOP | 扫词挂会员时 |
-| 订单超时未付自动取消 | SHOP / FOOD / CINEMA | 规则；通识高频 |
-| 下单锁库存 / 取消回补 | SHOP / FOOD | 与 stock 对齐钉口径 |
-| 售后仅退款 / 退货退款分流 | SHOP | 类型字段；浅 |
-| 优惠券核销码（订单展示） | SHOP | 字符串码；扫词挂券时 |
-| 档口营业时段外禁下单 | FOOD | 对照营业时间字段 |
-| 影院卖品加购（简易加价项） | CINEMA | 订单附加行；浅；≠独立卖品域 |
-| 评价晒图（图文评价） | SHOP / FOOD | order_review 附件槽 |
-| 确认收货超时自动完成 | SHOP | 规则；通识高频 |
-| 退款/售后原因必填 | SHOP / FOOD | 提交校验 |
-| 优惠券领取中心页 | SHOP | 扫词挂券时；列表领 |
-| 拼团进度条（已参团/待成团） | SHOP | group_buy 齐后加深 |
-| 物流轨迹演示节点（手填） | SHOP | 多行状态；≠快递100 |
-| 商品好评率展示 | SHOP / FOOD | 聚合计数；浅 |
-| 购物车改规格（有则换无则提示） | SHOP | UX；浅 |
-| 影院选座倒计时释放 | CINEMA | 占座超时；通识 |
-| 优惠券过期站内信提醒 | SHOP | 扫词挂券时 |
-| 订单分享口令（只读查单） | SHOP / FOOD | 字符串码；浅 |
-| 餐具/打包选项 | FOOD | 下单字段；通识 |
-| 满赠说明（买赠文案） | SHOP | 只读规则；浅 |
-| 发票申请状态（申请中/已开） | SHOP | 字段机；≠税控 |
-| 影院情侣座/残疾人座标记 | CINEMA | 座位属性；浅 |
-| 售后进度时间轴 | SHOP | 对齐报修时间轴；浅 |
-| 积分明细流水页 | SHOP | points 齐后加深 |
-| 收货后仅 N 天可申请售后 | SHOP | 规则；通识高频 |
-| 购物车凑单提示（差 N 元包邮） | SHOP | 文案；浅 |
-| 档口评分排序 | FOOD | 聚合；浅 |
-| 订单发票下载占位（PDF 演示） | SHOP | 固定模板；≠税控 |
-| 影院排片日历周视图 | CINEMA | UI；通识 |
-| 退款原路退回说明（系统内余额） | SHOP / FOOD | 文案口径；浅 |
-| 商品浏览足迹 | SHOP | 对齐内容浏览历史；浅 |
-| 商品规格库存分记（浅二维） | SHOP | 有限规格；≠完整 SKU 矩阵（完整仍不支持） |
-| 外卖配送费阶梯说明 | FOOD | 文案+规则；浅 |
-| 订单部分发货登记 | SHOP | 状态加深；通识偶见 |
-| 影院会员价说明 | CINEMA | member_tier 叠；浅 |
-| 购物车失效自动勾掉 | SHOP / FOOD | UX；浅 |
-| 售后换货流程（浅状态） | SHOP | 类型扩展；浅 |
-| 限时购倒计时展示 | SHOP | flash_price 齐后加深 |
-| 拼团失败自动退款说明 | SHOP | group_buy 齐后加深 |
-| 点餐必选品类校验（如必选主食） | FOOD | 规则；通识偶见 |
-| 影院退票手续费登记 | CINEMA | 金额；浅 |
-| 订单收货码核销 | SHOP / FOOD | code_qr 思路；浅 |
-| 商品评论追评 | SHOP / FOOD | order_review 加深 |
-| 包装费选项 | FOOD / SHOP | 下单字段；浅 |
-| 影院卖品库存扣减 | CINEMA | 加购齐后加深 |
-| 订单改地址（未发货） | SHOP | 规则；通识 |
-| 优惠券互斥说明页 | SHOP | 文案；浅 |
-| 盲盒中赏记录页 | SHOP | blind_box 齐后加深 |
-| 商品详情页问答（留言式） | SHOP | guestbook 深皮；浅 |
-| 外卖预计送达时间文案 | FOOD | 字段；≠调度 |
-| 影院特效厅标记（IMAX 文案） | CINEMA | 场次属性；浅 |
-| 订单小票浏览器打印 | SHOP / FOOD / CINEMA | print；通识 |
-| 积分商城兑换运费说明 | SHOP | points 叠；浅 |
-| 商品预售定金尾款说明 | SHOP | 文案+状态；浅 |
-| 点餐拼单（同桌合并） | FOOD | 浅合并；≠美团拼单 |
-| 影院积分兑票说明 | CINEMA | points 叠；浅 |
-| 售后仅换货不退款选项 | SHOP | 类型；浅 |
-| 商品到货订阅（再次） | SHOP | 缺货登记加深 |
+| 订单小票浏览器打印 | SHOP / FOOD / CINEMA | print；通识；打印≠已齐 |
 | 堂食排队取餐号叫号大屏 | — | **不支持**：桌号/取餐号顶；无硬件大屏 |
-| 影院连场套票说明 | CINEMA | 文案；浅 |
-| 订单延保登记 | SHOP | 字段；浅 |
 
-不支持：完整 SKU 多规格库存矩阵、微信/支付宝商户清算、原生小程序包、实时运单调度、直播带货。
+#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
+
+> 口径：已齐 = **管理能管 + 用户可产生数据**。本轮经 `trade_thicken` T-00～T-11 钉齐；骨架门禁钉 labels 与 Store，**不靠起包**。超时关单/确认收货超时/占座超时/骑手回池/上下架定时/券过期扫复用 `DemoScheduleJobs`，不另起状态机。售后加深原 `refund_*`，不另起状态机。物流进度为手填子表，≠快递 100。改规格=同名在售兄弟行，≠完整 SKU 矩阵。订单小票/发票演示为浏览器打印壳，**小票打印≠已齐**仍留待补（发票下载占位已齐）。连座为相邻空座提示，≠高并发锁座。点餐拼单为同码浅合并，≠美团拼单。发票≠税控。能力岛加深仅 cap 已挂时有入口。影院卖品为 `cinema_snack` 附加行，≠独立卖品域。HOTEL/CARRENT 不加厚。
+
+| 功能 | 落点 | 挂载 |
+|------|------|------|
+| 订单备注（用户下单留言给商家） | `remark` + labels.orderRemarkLabel / orderRemarkHint；Cart 下单写库、MyOrders / OrdersAdmin 展示 | **域默认** SHOP / FOOD |
+| 收货地址「默认地址」一键 | AddressStore.isDefault + labels.defaultAddressLabel / defaultAddressHint；Addresses 设默认、Cart 优先选用 | **域默认** SHOP / FOOD |
+| 口味备注（少辣/多冰）快捷选项 | `taste_note` + entities.order.tasteNoteChips；labels.tasteNoteLabel / tasteNotePlaceholder / tasteNoteHint；Cart chips 写库 | **域默认** FOOD |
+| 订单超时未付自动取消 | 复用 orderTimeoutMinutes + labels.orderTimeoutHint；三域默认 30 分钟（marketplace/demoPay 已有则保留）；DemoScheduleJobs | **域默认** SHOP / FOOD / CINEMA |
+| 取票码展示（订单号派生） | OrderStore.ensurePickupCode + labels.pickupCodeLabel / pickupCodeHint；SeatStore 下单签发；MyOrders 出示 / OrdersAdmin 列 | **域默认** CINEMA |
+| 购物车全选 / 失效商品清理 | OrderStore.clearInvalidCart + labels.cartSelectAllLabel / cartClearInvalidLabel / cartInvalidHint；Cart 勾选列与清理按钮；placeOrder 只结算勾选 itemIds | **域默认** SHOP / FOOD |
+| 购物车失效自动勾掉 | cartAutoUncheck + Cart.vue syncSelection；失效行禁勾选，下单跳过 invalid | **域默认** SHOP / FOOD |
+| 购物车改规格（有则换无则提示） | ArchiveStore.listAvailableByTitle + /api/cart/replace；labels.cartChangeSpecLabel / cartNoSpecHint；有则下拉换，无则提示 | **域默认** SHOP |
+| 购物车凑单提示（差 N 元包邮） | archive.freeShipYuan + labels.cartFreeShipHint / cartFreeShipOkHint；管理端档案门槛，购物车按勾选金额提示差额 | **域默认** SHOP |
+| 下单锁库存 / 取消回补 | useQuota + ArchiveStore.adjustStock；labels.stockLockHint；Cart / MyOrders 提示；超卖拒绝、取消回补 | **域默认** SHOP / FOOD |
+| 确认收货超时自动完成 | confirmReceiveTimeoutMinutes + labels.confirmReceiveTimeoutHint；DemoScheduleJobs → completeTimedOutUnreceived | **域默认** SHOP |
+| 订单完成自动邀评站内信 | 完成态 MessageStore；labels.inviteReviewTitle / inviteReviewBody；须 order_review | 挂评价时 |
+| 销售日报简表（按日订单数/金额） | chartStats.salesDailySeries + labels.salesDailyLabel / salesDailyHint；工作台表与导出；≠BI | **域默认** SHOP / FOOD |
+| 订单改地址（未发货） | PUT /api/orders/{id}/address + labels.changeAddressLabel / changeAddressHint；pending/confirmed 写库 | **域默认** SHOP |
+| 售后原因分类 + 简单占比图 | refundReasonOptions + chartStats.refundReasonSeries；labels.refundReasonChartLabel；工作台饼图与表 | **域默认** SHOP / FOOD |
+| 退款/售后原因必填 | requestRefund 校验 + MyOrders 分类选择/填写写库 | **域默认** SHOP / FOOD |
+| 售后仅退款 / 退货退款分流 | refund_type + labels.refundType*；用户申请时选择 | **域默认** SHOP |
+| 退货物流单号回填 | refund_tracking_no；PUT /api/orders/{id}/refund-tracking；买家或商家写 | **域默认** SHOP |
+| 收货后仅 N 天可申请售后 | afterSaleDays + labels.afterSaleDaysHint；completed_at 窗口 | **域默认** SHOP |
+| 售后进度时间轴 | GET /api/orders/{id}/refund-trace；OrderTraceDialog endpoint=refund-trace | **域默认** SHOP |
+| 售后换货 / 仅换货 | refund_type=exchange/exchange_only + labels.refundTypeExchange / refundTypeExchangeOnly；通过后不关单 | **域默认** SHOP |
+| 物流进度手填 | order_ship_node 子表 + labels.logisticsTraceLabel / shipNodeLabel；管理端登记、买家时间轴可见 | **域默认** SHOP |
+| 订单部分发货登记 | orders.partial_ship + labels.partialShipLabel；发货时可标、双端可见 | **域默认** SHOP |
+| 订单分享口令（只读查单） | orders.share_token + labels.orderShareLabel / orderShareHint；下单签发、登录页凭口令查单 | **域默认** SHOP / FOOD |
+| 订单收货码核销 | pickup_code + receive_verified_at；labels.receiveCodeLabel / receiveCodeVerifyLabel；商家核销写库 | **域默认** SHOP / FOOD |
+| 订单延保登记 | orders.warranty_until + labels.warrantyLabel / warrantyHint；日期选择器双端写 | **域默认** SHOP |
+| 影院退票截止（开场前 N 分钟） | ticketRefundCutoffMinutes + SeatStore.assertOrderRefundOpen；labels.ticketRefundCutoffHint / cinemaRefundLabel；待取票可申请 | **域默认** CINEMA |
+| 选座占座倒计时释放 | cinema_seat.hold_until + POST /api/seats/hold；DemoScheduleJobs.releaseExpiredHolds；labels.seatHoldTimeoutHint | **域默认** CINEMA |
+| 连座推荐（相邻空座提示） | getMap.adjacentHint；labels.adjacentSeatHintTitle / adjacentSeatHintEmpty；≠锁座 | **域默认** CINEMA |
+| 场次售罄关售 | cinema_show.status=sold_out ↔ stock；listOpenShows 不再开放；ArchiveAdmin 显示已售罄 | **域默认** CINEMA |
+| 观影须知勾选 | orders.notice_agreed + SeatMap 勾选写库；labels.cinemaNoticeLabel / cinemaNoticeBody；管理端可见已确认 | **域默认** CINEMA |
+| 影院情侣座/残疾人座标记 | cinema_seat.seat_attr + PUT /api/seats/shows/{id}/attrs；labels.seatAttrCoupleLabel / seatAttrAccessibleLabel / seatAttrLegendLabel / seatAttrEditLabel；ArchiveAdmin 编辑、SeatMap 图例 | **域默认** CINEMA |
+| 影院特效厅标记（IMAX 文案） | 场次 categoryName + labels.effectHallLabel / effectHallImax；SeatShows / SeatMap 徽章真读 | **域默认** CINEMA |
+| 影院退票手续费登记 | orders.refund_fee_yuan + PUT /api/orders/{id}/refund-fee；labels.refundFeeLabel / refundFeeHint；OrdersAdmin / MyOrders 双端 | **域默认** CINEMA |
+| 影院排片日历周视图 | SeatShows 列表↔周视图；labels.showWeekViewLabel / showWeekViewEmpty；按 startAt 分日 | **域默认** CINEMA |
+| 影院连场套票说明 | labels.cinemaComboLabel / cinemaComboBody；SeatShows / SeatMap 真读 | **域默认** CINEMA |
+| 堂食桌号 / 取餐号展示 | orders.table_no + pickup_code；labels.tableNoLabel / tableNoHint / pickupNoLabel / pickupNoHint；Cart 堂食必填、MyOrders / OrdersAdmin / 小票出示 | **域默认** FOOD |
+| 餐具/打包选项 | orders.utensil_opt / pack_opt；labels.utensilOptLabel / packOptLabel；Cart 下拉写库 | **域默认** FOOD |
+| 包装费选项 | orders.packaging_fee_yuan + packagingFeeYuan；labels.packagingFeeLabel / packagingFeeHint；选打包加收 | **域默认** FOOD |
+| 档口营业时段外禁下单 | archive.open_hours + labels.stallOpenHoursLabel / stallOpenHoursHint / stallClosedHint；时段外拒单 | **域默认** FOOD |
+| 骑手接单超时自动回池 | riderClaimTimeoutMinutes + OrderStore.claimRider / releaseTimedOutRiderClaims；labels.riderClaimLabel / riderClaimTimeoutHint；DemoScheduleJobs；扫词挂骑手时 | 扫词挂骑手时 |
+| 外卖配送费阶梯说明 | orders.delivery_fee_yuan + deliveryFeeBaseYuan / deliveryFeeFreeYuan；labels.deliveryFeeLabel / deliveryFeeLadderBody | **域默认** FOOD |
+| 外卖预计送达时间文案 | orders.eta_text + etaMinutes；labels.etaLabel / etaHint；≠调度 | **域默认** FOOD |
+| 点餐必选品类校验 | categories.required_pick；labels.requiredCategoryLabel / requiredCategoryHint / requiredCategoryMissingHint；CategoriesAdmin 开关、下单校验 | **域默认** FOOD |
+| 点餐拼单（同桌合并） | orders.merge_code；labels.mergeCodeLabel / mergeCodeHint；浅合并；≠美团拼单 | **域默认** FOOD |
+| 档口评分排序 | archive.stall_score；labels.stallScoreLabel / stallScoreHint；列表按分降序 | **域默认** FOOD |
+| 发票抬头登记 | orders.invoice_title；labels.invoiceTitleLabel / invoiceTitleHint；Cart 下单写库、MyOrders 申请 | **域默认** SHOP |
+| 发票申请状态 | orders.invoice_status（pending/issued）；labels.invoiceStatusLabel / invoiceStatusPending / invoiceStatusIssued / invoiceRequestLabel / invoiceIssueLabel；买家申请、商家标记已开 | **域默认** SHOP |
+| 订单发票下载占位 | labels.invoiceDownloadLabel / invoiceDownloadHint；orderInvoicePrint 浏览器演示壳；≠税控 | **域默认** SHOP |
+| 满减叠加说明页 | labels.spendDiscountHelpLabel / spendDiscountHelpBody；Cart 真读 | 挂满减时 |
+| 满赠说明 | labels.giftPromoLabel / giftPromoBody；Cart 真读 | **域默认** SHOP |
+| 优惠券互斥说明页 | labels.couponMutexLabel / couponMutexBody；Cart 真读 | 挂券时 |
+| 退款原路退回说明 | labels.refundOriginLabel / refundOriginHint；MyOrders 售后旁真读 | **域默认** SHOP / FOOD |
+| 会员日折扣说明 | labels.memberDayLabel / memberDayHint；Cart 真读 | 挂 `member_tier` 时 |
+| 缺货登记 / 到货通知（站内信） | stock_notify + StockNotifyStore；labels.stockNotifyLabel / stockNotifyHint / stockNotifyDoneLabel；补货站内信；ArchiveBrowse 订阅 | **域默认** SHOP |
+| 商品到货订阅（再次） | 同上 ON DUPLICATE 重置 notified_at；labels.stockNotifyAgainLabel | **域默认** SHOP |
+| 商品上下架定时 | archive.shelf_on / shelf_off；labels.shelf*；applyShelfSchedule；ArchiveAdmin 日期时间字段 | **域默认** SHOP / FOOD |
+| 商品好评率展示 | OrderReviewStore.pageByItem.goodRate；labels.goodRateLabel / goodRateEmpty；ArchiveBrowse | **域默认** SHOP / FOOD |
+| 评价晒图 | order_review.image_url；labels.reviewImageLabel / reviewImageHint；MyOrders 提交、详情展示 | 挂评价时 |
+| 商品评论追评 | order_review.follow_body / follow_at；POST /api/order-reviews/{id}/follow；MyOrderReviews | 挂评价时 |
+| 商品浏览足迹 | SHOP 域默认挂 browse_history；既有 BrowseHistory / touchBrowseHistory | **域默认** SHOP |
+| 商品规格库存分记（浅二维） | siblingSpecStock 同名兄弟行；labels.specStockLabel；≠完整 SKU 矩阵 | **域默认** SHOP |
+| 商品详情页问答 | sys_guestbook.item_id；labels.itemQa*；ArchiveBrowse 提问、后台留言回复 | **域默认** SHOP |
+| 商品预售定金尾款说明 | archive.presale_note；labels.presaleNoteLabel / presaleNoteHint；管理端维护、详情展示 | **域默认** SHOP |
+| 优惠券核销码（订单展示） | orders.coupon_code + labels.couponRedeemCodeLabel；MyOrders 真读 | 挂 `coupon` 时 |
+| 优惠券领取中心页 | MyCoupons + labels.couponClaimCenterTitle / Lead；既有领取 API | 挂 `coupon` 时 |
+| 优惠券过期站内信提醒 | CouponStore.expireSweep + MessageStore；DemoScheduleJobs | 挂 `coupon` 时 |
+| 拼团进度条（已参团/待成团） | GroupBuyStore.progressForOrder → order.groupBuy；MyOrders el-progress | 挂 `group_buy` 时 |
+| 拼团失败自动退款说明 | labels.groupBuyFailRefundHint；失败态真读 | 挂 `group_buy` 时 |
+| 限时购倒计时展示 | labels.flashCountdownLabel / Ended；ArchiveBrowse 真读 | 挂 `flash_price` 时 |
+| 盲盒中赏记录页 | BlindBoxStore.listMyDraws + /api/blind-boxes/draws；MyBlindDraws | 挂 `blind_box` 时 |
+| 积分明细流水页 | PointsLedger + /api/loyalty/ledger；菜单 points_ledger | 挂 `points` 时 |
+| 积分商城兑换运费说明 | labels.pointsFreightHint；Cart / 流水页真读 | 挂 `points` 时（SHOP） |
+| 影院积分兑票说明 | labels.cinemaPointsTicket*；SeatMap 真读 | 挂 `points` 时（CINEMA） |
+| 影院会员价说明 | labels.cinemaMemberPrice*；SeatMap 真读 | 挂 `member_tier` 时（CINEMA） |
+| 影院卖品加购（简易加价项） | cinema_snack + order_line.line_kind=snack；labels.cinemaSnack*；SeatMap 勾选加购、ArchiveAdmin 维护 | **域默认** CINEMA |
+| 影院卖品库存扣减 | SeatStore.adjustSnackStock；下单扣减、取消/售后回补；labels.cinemaSnackStockHint | **域默认** CINEMA |
+| 包装费选项 | orders.packaging_fee_yuan + packagingFeeYuan；labels.packagingFee*；Cart 勾选写库（FOOD 见上；SHOP 同列） | **域默认** SHOP |
+
+不支持：完整 SKU 多规格库存矩阵、微信/支付宝商户清算、原生小程序包、实时运单调度、直播带货、堂食叫号大屏、税控电子发票。
 
 ### 1.7 预约
 
 组口径：`slot_reserve` 时段占坑；酒店/租车可叠订单。改约/办结随壳。INSTRUMENT 为借+约单域（级联归本组）。
+
+**清待补批次**：[`reserve-thicken-batch.md`](./reserve-thicken-batch.md)（R-00～R-10；一组一包 `reserve_thicken`；三绿才迁行）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
@@ -956,95 +966,105 @@
 
 | 功能 | 建议落域 | 说明 |
 |------|----------|------|
-| 就诊/到店「报到签到」口令（复用 checkin 思路） | HOSPITAL / SALON | ≠人脸 |
-| 号源分时段余量展示（上午/下午） | HOSPITAL | 文案或 slot 分组；≠叫号大屏 |
-| 车位超时占用加收演示费 | PARKING | 规则+登记；≠地感线圈 |
-| 会议结束后必填纪要附件 | MEETING | requireAttach 变体 |
-| 会议签到表导出 | MEETING | CSV |
-| 预约开始前站内信提醒 | 本组通用 | 可先靠消息模板扫词；专用调度待补 |
-| 取消预约规则（开始前 N 小时可免费取消） | 本组通用 | schema+校验 |
-| 技师服务项目时长自动占坑 | SALON | 档案时长字段；已有则可钉 |
-| 客房续住延期（改离店日） | HOTEL | 改约变体 |
-| 机时超时自动计费登记 | INSTRUMENT | 规则+台账；≠实验室门禁 |
-| 医生/诊室排班展示（只读） | HOSPITAL | staff_roster 扫词可顶 |
-| 就诊人多档案（家属代约） | HOSPITAL | 资料扩展；通识高频 |
-| 车位套餐（包月次卡计数） | PARKING | 浅计数；≠道闸计费硬件 |
-| 会议冲突检测说明文案（已约人可见） | MEETING | 提示增强 |
-| 会议录屏链接字段（外链） | MEETING | URL 字段；≠会议云录制 |
-| 美业会员卡余次（对齐课时包） | SALON | lesson_pack 扫词可顶 |
-| 作品集展示（技师档案多图） | SALON | gallery |
-| 客房延迟退房加收说明+登记 | HOTEL | 费用备注；≠门锁 |
-| 入住人身份证号字段（脱敏展示） | HOTEL / 前台 | 字段+脱敏；≠公安网核验 |
-| 租车违章预留押（备注+金额） | CARRENT | rental_bond 扩展说明 |
-| 仪器培训合格才可约（材料勾选） | INSTRUMENT | material_check 或 LABSAFE 叠 |
-| 预约爽约次数限制再约 | 本组通用 | 对齐活动爽约；通识 |
-| 候诊/到店队列序号展示 | HOSPITAL / SALON | 序号字段；≠叫号硬件 |
-| 会议室按周重复预约（简单） | MEETING | 生成多条；浅；≠日历引擎 |
-| 酒店定金与尾款分列登记 | HOTEL | 金额字段；系统内支付 |
-| 租车取还车验车单勾选 | CARRENT | material_check；通识 |
-| 车位预约与访客车通行证提示 | PARKING / CARPASS | 文案交叉；浅 |
-| 机时预约冲突可视化 | INSTRUMENT | 对齐会议冲突提示 |
-| 改约次数上限 | 本组通用 | 规则；通识 |
-| 号源候补队列 | HOSPITAL | 对齐活动候补；浅 |
-| 会议室预约需审批开关 | MEETING | 状态机浅挂审 |
-| 酒店连住优惠说明（文案） | HOTEL | 只读规则；浅 |
-| 美业改约手续费登记 | SALON | 金额备注；浅 |
-| 租车里程套餐超支加收登记 | CARRENT | 规则+登记 |
-| 仪器预约须填实验目的 | INSTRUMENT | 必填字段；通识 |
-| 挂号科室介绍只读页 | HOSPITAL | content/档案扩展 |
-| 停车时长计费演示（进离场时间） | PARKING | 规则+金额；≠地感 |
-| 会议茶水/设备服务勾选 | MEETING | 附加服务字段；浅 |
-| 酒店早餐券张数登记 | HOTEL | 字段；浅 |
-| 美业储值卡余额 | SALON | 浅余额；对齐钱包思路 |
-| 租车取还点外链导航 | CARRENT | URL；≠自研地图 |
-| 号源停诊通知站内信 | HOSPITAL | 消息；浅 |
-| 场地预约黑名单 | MEETING | 对齐活动黑名单 |
-| 预约成功短信式站内信 | 本组通用 | 消息模板；通识 |
-| 挂号退号规则（开诊前 N 分钟） | HOSPITAL | schema；通识 |
-| 会议室门禁密码字段（手发） | MEETING | 字符串；≠门禁硬件 |
-| 酒店入住须知勾选 | HOTEL | 须知变体 |
-| 美业到店迟到宽限分钟 | SALON | 规则；浅 |
-| 租车保险套餐勾选（文案价） | CARRENT | 选项；≠保司对接 |
-| 仪器耗材领用关联登记 | INSTRUMENT | 浅台账；浅 |
-| 预约签到迟到标记 | 本组通用 | 字段；通识 |
-| 挂号初诊/复诊选项 | HOSPITAL | 字段；通识 |
-| 车位预约取消罚则说明 | PARKING | 文案；浅 |
-| 会议录制设备借用勾选 | MEETING | room_equipment 叠 |
-| 酒店加床登记 | HOTEL | 费用备注；浅 |
-| 美业项目禁忌备注 | SALON | 档案字段；浅 |
-| 租车驾驶员驾照有效期 | CARRENT | 字段；浅 |
-| 预约资源维护时段禁约 | 本组通用 | 日期窗口；通识 |
-| 挂号科室排队预估文案 | HOSPITAL | 只读文案；≠叫号 |
-| 会议室视频会议链接字段 | MEETING | URL；浅 |
-| 酒店钟点房时段类型 | HOTEL | 档案类型；浅 |
-| 美业卡项过期提醒 | SALON | 站内信；浅 |
-| 仪器预约须导师同意 | INSTRUMENT | 轻审；通识实验室题 |
-| 预约候补转正站内信 | 本组通用 | 对齐活动候补；浅 |
-| 挂号禁止黄牛：同证件限号 | HOSPITAL | 规则；浅 |
-| 车位共享时段拼单说明 | PARKING | 文案；浅 |
-| 会议签到二维码 | MEETING | code_qr；通识 |
-| 酒店钟点房超时转全日说明 | HOTEL | 规则文案；浅 |
-| 美业技师请假挡班 | SALON | roster 叠；浅 |
-| 租车违章回传附件 | CARRENT | 附件；浅 |
-| 预约资源容量日历着色 | 本组通用 | UI；通识 |
-| 挂号复诊优先号说明 | HOSPITAL | 文案；浅 |
-| 会议室最低预约时长 | MEETING | 规则；浅 |
-| 酒店入住人同住人数 | HOTEL | 字段；通识 |
-| 美业到店扫码签到 | SALON | checkin 叠；浅 |
-| 仪器机时费结算导出 | INSTRUMENT | CSV；浅 |
-| 预约资源管理员备注（对用户不可见） | 本组通用 | 字段；浅 |
-| 挂号科室停诊日历 | HOSPITAL | 日期；浅 |
-| 车位预约 overlapping 检测说明 | PARKING | 文案；浅 |
-| 会议召开中状态 | MEETING | stage；浅 |
-| 酒店退房查房清单 | HOTEL | material_check；通识 |
-| 美业会员到店次数统计 | SALON | 计数；浅 |
-| 预约黑名单申诉入口 | 本组通用 | 轻单；浅 |
-| 挂号检验检查预约分槽 | HOSPITAL | 类型字段；浅；≠HIS |
-| 会议室开门密码短信 | — | **不支持**：真短信；站内信顶 |
-| 酒店入住登记公安上传 | — | **不支持**：无公安网 |
-| 租车 ETC 通行费回传 | CARRENT | 金额登记；浅 |
+| 访客车通行证提示（CARPASS 侧交叉） | CARPASS | **邻组**：车位侧提示已齐；深化归 CARPASS 组，不占本组实现债 |
 
-不支持：医保、道闸、OTA 渠道、智能门锁、高并发锁座引擎、HIS 对接。
+本组实现债已清。不支持边界见下段（不开待补行）。
+
+#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
+
+> 口径：已齐 = **管理能管 + 用户可产生数据**。本轮经 `reserve_thicken` R-00～R-10 **已收口**；骨架门禁钉 labels 与 SlotStore，**不靠起包**。提前提醒复用 DemoScheduleJobs，不另起调度。黑名单为轻名单+申诉，≠风控。业务阈值进 AppPolicy，不进 thesis yml。R-02 仅 HOSPITAL；R-03 仅 PARKING（≠道闸）；R-04 仅 MEETING；R-05 仅 SALON（禁止域默认硬挂 wallet/gallery）；R-06 仅 HOTEL（查房浅字段，禁止硬挂 material_check）；R-07 仅 CARRENT（禁止域默认 rental_bond）；R-08 仅 INSTRUMENT（培训浅字段；导师轻审）；R-09 仅 cap 已挂时加深（staff_roster / lesson_pack / wallet / gallery / room_equipment）。
+
+| 功能 | 落点 | 挂载 |
+|------|------|------|
+| 取消预约规则（开始前 N 小时可免费取消） | cancelFreeHours + SlotStore.cancel；labels.cancelFreeHoursHint；MyReservations / SlotBook | **域默认** 七域 |
+| 改约次数上限 | rescheduleMaxTimes + reschedule_count；labels.rescheduleMaxHint；MyReservations | **域默认** 七域 |
+| 预约开始前站内信提醒 | remindAheadMinutes + remind_sent + DemoScheduleJobs.remindDueSweep；labels.remindAheadHint | **域默认** 七域 |
+| 预约爽约次数限制再约 | noShowLimit + no_show；labels.noShowLimitHint；管理端记爽约 | **域默认** 七域 |
+| 预约成功短信式站内信 | MessageStore 成功信；labels.reserveSuccessTitle / reserveSuccessBody | **域默认** 七域 |
+| 预约签到迟到标记 | checked_in_at / late_flag；labels.checkInLabel / lateFlagLabel / lateGraceHint；双端签到 | **域默认** 七域 |
+| 预约资源维护时段禁约 | archive.maintain_from/to；labels.maintainBlockHint；SlotStore 禁约 | **域默认** 七域 |
+| 预约候补转正站内信 | waitlisted→confirmed；labels.waitlistPromoteTitle | **域默认** 七域 |
+| 预约资源容量日历着色 | day-fill + slotFillTone；labels.slotCalendarLegendOk / slotCalendarLegendWarn / slotCalendarLegendFull；SlotBook | **域默认** 七域 |
+| 预约资源管理员备注（对用户不可见） | archive.admin_note；labels.adminNoteLabel / adminNoteHint；ArchiveBrowse 剥离 | **域默认** 七域 |
+| 预约黑名单申诉入口 | reserve_blacklist + appeal；labels.reserveBlacklistTitle / reserveBlacklistLead / reserveBlacklistDenyMessage / reserveBlacklistAppealTitle / reserveBlacklistAppealLead / reserveBlacklistAppealReasonLabel；管理/用户双端 | **域默认** 七域 |
+| 挂号报到签到口令 | archive.checkin_code；SlotStore.checkIn 核对；labels.checkinCodeLabel / checkinCodeHint / checkinCodeAdminHint；MyReservations / ArchiveAdmin | **域默认** HOSPITAL |
+| 号源分时段余量（上午/下午） | SlotBook periodGroups；labels.slotPeriodMorningLabel / slotPeriodAfternoonLabel / slotPeriodRemainHint | **域默认** HOSPITAL |
+| 就诊人多档案 | patient_profile + PatientProfileStore；labels.patientProfileMenuLabel / patientProfileTitle / patientProfileLead / patientProfileNameLabel / patientProfileRelationLabel / patientProfileIdHintLabel；PatientProfiles | **域默认** HOSPITAL |
+| 候诊队列序号 | reservation.queue_no；labels.queueNoLabel / queueNoHint；MyReservations / ReservationsAdmin | **域默认** HOSPITAL |
+| 号源候补队列 | allowWaitlist + waitlisted；labels.hospitalWaitlistHint；SlotStore 满号候补/转正 | **域默认** HOSPITAL |
+| 挂号退号规则（开诊前 N 分钟） | hospitalCancelCutoffMinutes；labels.hospitalCancelCutoffLabel / hospitalCancelCutoffHint；SlotStore.cancel | **域默认** HOSPITAL |
+| 挂号初诊/复诊选项 | visit_type；labels.visitTypeLabel / visitTypeHint；SlotBook | **域默认** HOSPITAL |
+| 挂号科室介绍只读 | archive.dept_intro；labels.deptIntroLabel / deptIntroHint；SlotBook / ArchiveAdmin | **域默认** HOSPITAL |
+| 号源停诊通知站内信 | maintain_* + notifyStopAndCancel；labels.hospitalStopNotifyTitle / hospitalStopNotifyBody；ArchiveAdmin 停诊退号 | **域默认** HOSPITAL |
+| 挂号科室停诊日历 | maintain_from/to + labels.hospitalStopCalendarHint；SlotBook 提示 | **域默认** HOSPITAL |
+| 挂号科室排队预估文案 | archive.queue_estimate_hint；labels.queueEstimateLabel / queueEstimateHint；SlotBook | **域默认** HOSPITAL |
+| 挂号同证件限号 | hospitalIdLimitPerDay；labels.hospitalIdLimitLabel / hospitalIdLimitHint；SlotStore | **域默认** HOSPITAL |
+| 挂号复诊优先号说明 | labels.revisitPriorityHint；SlotBook | **域默认** HOSPITAL |
+| 挂号检验检查分槽 | archive.slot_kind；labels.slotKindLabel / slotKindClinic / slotKindLab / slotKindHint；SlotBook / ArchiveAdmin | **域默认** HOSPITAL |
+| 车位超时占用加收 | overtime_fee_yuan + registerOvertimeFee；labels.parkingOvertimeLabel / parkingOvertimeHint；ReservationsAdmin | **域默认** PARKING |
+| 车位套餐次卡 | parking_pass + ParkingPassStore；labels.parkingPassMenuLabel / parkingPassTitle / parkingPassLead / parkingPassRemainHint / parkingPassPackLabel / parkingPassRemainLabel / parkingPassGrantLabel；ParkingPasses / ParkingPassAdmin | **域默认** PARKING |
+| 车位与访客车通行证提示 | archive.pass_hint；labels.parkingCarpassHint / passHintLabel / passHintAdminHint；SlotBook | **域默认** PARKING |
+| 停车时长计费（进离场） | entry_at / exit_at / duration_fee_yuan + markExit；labels.parkingDurationFeeLabel / parkingDurationFeeHint / parkingEntryLabel / parkingExitLabel / parkingHourlyLabel | **域默认** PARKING |
+| 车位取消罚则说明 | labels.parkingCancelPenaltyHint；SlotBook / MyReservations | **域默认** PARKING |
+| 车位共享时段拼单说明 | labels.parkingShareSlotHint；SlotBook | **域默认** PARKING |
+| 车位时段 overlapping 检测 | assertParkingOverlap；labels.parkingOverlapHint；SlotBook | **域默认** PARKING |
+| 会议结束后必填纪要附件 | minutes_attach + meetingMinutesRequired；labels.meetingMinutesLabel / meetingMinutesHint；MyReservations / SlotStore.complete | **域默认** MEETING |
+| 会议签到表导出 | ReservationsAdmin CSV；labels.meetingCheckinExportLabel / meetingCheckinExportHint | **域默认** MEETING |
+| 会议冲突检测说明文案（已约人可见） | labels.meetingConflictHint；SlotBook + listSlotOccupants | **域默认** MEETING |
+| 会议录屏链接字段（外链） | recording_url；labels.meetingRecordingLabel / meetingRecordingHint；SlotBook | **域默认** MEETING |
+| 会议室按周重复预约（简单） | generateWeeklySlots；labels.meetingWeeklyRepeatLabel / meetingWeeklyRepeatHint；ReservationsAdmin | **域默认** MEETING |
+| 会议室预约需审批开关 | requireConfirm；labels.meetingRequireConfirmHint；SlotBook | **域默认** MEETING |
+| 会议茶水/设备服务勾选 | service_tea / service_device；labels.meetingServiceTeaLabel / meetingServiceDeviceLabel / meetingServiceHint；SlotBook | **域默认** MEETING |
+| 场地预约黑名单 | 复用 R-01 reserve_blacklist；labels.meetingBlacklistHint；SlotBook | **域默认** MEETING |
+| 会议室门禁密码字段（手发） | door_code + patchMeeting；labels.meetingDoorCodeLabel / meetingDoorCodeHint；ReservationsAdmin / MyReservations | **域默认** MEETING |
+| 会议室视频会议链接字段 | video_url；labels.meetingVideoLabel / meetingVideoHint；SlotBook / MyReservations | **域默认** MEETING |
+| 会议签到二维码 | checkin_token；labels.meetingCheckinCodeLabel / meetingCheckinCodeHint；确认后签发；MyReservations | **域默认** MEETING |
+| 会议室最低预约时长 | archive.min_duration_minutes + assertMeetingMinDuration；labels.meetingMinDurationLabel / meetingMinDurationHint；SlotBook | **域默认** MEETING |
+| 会议召开中状态 | meeting_stage；labels.meetingStageLabel / meetingStageInProgress / meetingStageEnded / meetingStageHint；ReservationsAdmin / MyReservations | **域默认** MEETING |
+| 到店「报到签到」口令 | archive.checkin_code + SlotStore.checkIn；labels.checkinCodeLabel / checkinCodeHint / checkinCodeAdminHint；MyReservations / ArchiveAdmin | **域默认** SALON |
+| 技师服务项目时长自动占坑 | archive.service_minutes + generateDaySlots / assertSalonServiceDuration；labels.salonServiceMinutesLabel / salonServiceMinutesHint；SlotBook | **域默认** SALON |
+| 到店队列序号展示 | reservation.queue_no；labels.queueNoLabel / queueNoHint；MyReservations / ReservationsAdmin | **域默认** SALON |
+| 美业改约手续费登记 | reschedule_fee_yuan + registerRescheduleFee；labels.salonRescheduleFeeLabel / salonRescheduleFeeHint；ReservationsAdmin / MyReservations；默认金额 AppPolicy.SALON_RESCHEDULE_FEE_YUAN | **域默认** SALON |
+| 美业到店迟到宽限分钟 | lateGraceMinutes（AppPolicy.LATE_GRACE_MINUTES）+ labels.lateGraceHint / salonLateGraceHint；实例写 late_flag；MyReservations / SlotBook | **域默认** SALON |
+| 美业项目禁忌备注 | archive.taboo_note；labels.salonTabooLabel / salonTabooHint；SlotBook | **域默认** SALON |
+| 美业到店扫码签到 | checkin_token + CodeQrBlock；labels.salonCheckinScanLabel / salonCheckinScanHint；MyReservations | **域默认** SALON |
+| 美业会员到店次数统计 | SlotStore.visitCount；labels.salonVisitCountLabel / salonVisitCountHint；MyReservations | **域默认** SALON |
+| 客房续住延期（改离店日） | stay_to + extendStay；labels.hotelExtendStayLabel / hotelExtendStayHint；MyReservations / ReservationsAdmin | **域默认** HOTEL |
+| 客房延迟退房加收说明+登记 | late_checkout_fee_yuan + registerLateCheckoutFee；labels.hotelLateCheckoutLabel / hotelLateCheckoutHint；默认 AppPolicy.HOTEL_LATE_CHECKOUT_FEE_YUAN | **域默认** HOTEL |
+| 入住人身份证号字段（脱敏展示） | id_no + idNoMasked；labels.hotelIdNoLabel / hotelIdNoHint / hotelIdNoMaskedLabel；SlotBook / MyReservations | **域默认** HOTEL |
+| 酒店定金与尾款分列登记 | deposit_yuan / balance_yuan；labels.hotelDepositLabel / hotelBalanceLabel / hotelDepositBalanceHint；SlotBook | **域默认** HOTEL |
+| 酒店连住优惠说明（文案） | labels.hotelStayMultiNightHint；SlotBook | **域默认** HOTEL |
+| 酒店早餐券张数登记 | breakfast_vouchers；labels.hotelBreakfastLabel / hotelBreakfastHint；SlotBook | **域默认** HOTEL |
+| 酒店入住须知勾选 | notice_ack + hotelNoticeRequired；labels.hotelNoticeLabel / hotelNoticeText / hotelNoticeAckLabel；AppPolicy.HOTEL_NOTICE_REQUIRED | **域默认** HOTEL |
+| 酒店加床登记 | extra_bed；labels.hotelExtraBedLabel / hotelExtraBedHint；SlotBook | **域默认** HOTEL |
+| 酒店钟点房时段类型 | archive.room_kind；labels.hotelRoomKindLabel / hotelRoomKindFull / hotelRoomKindHourly / hotelRoomKindHint；SlotBook / ArchiveAdmin | **域默认** HOTEL |
+| 酒店钟点房超时转全日说明 | labels.hotelHourlyToFullHint；SlotBook | **域默认** HOTEL |
+| 酒店入住人同住人数 | guest_count + labels.hotelRoommateLabel / hotelRoommateHint；guestCountLabel=同住人数 | **域默认** HOTEL |
+| 酒店退房查房清单 | checkout_checklist（浅字段，**未**硬挂 material_check）；labels.hotelCheckoutChecklistLabel / hotelCheckoutChecklistHint；ReservationsAdmin | **域默认** HOTEL |
+| 租车违章预留押（备注+金额） | violation_hold_yuan / violation_hold_note；labels.carrentViolationHoldLabel / Hint；ReservationsAdmin | **域默认** CARRENT |
+| 租车取还车验车单勾选 | inspect_ack（浅字段，**未**硬挂 material_check）；labels.carrentInspectAckLabel / Hint；SlotBook | **域默认** CARRENT |
+| 租车里程套餐超支加收登记 | mileage_over_fee_yuan + registerMileageOverFee；AppPolicy.CARRENT_MILEAGE_OVER_FEE_YUAN；ReservationsAdmin | **域默认** CARRENT |
+| 租车取还点外链导航 | archive.pickup_nav_url / return_nav_url；labels.carrentPickupNavLabel / carrentReturnNavLabel / carrentNavHint；SlotBook | **域默认** CARRENT |
+| 租车保险套餐勾选（文案价） | insurance_pkg；labels.carrentInsurance*；SlotBook | **域默认** CARRENT |
+| 租车驾驶员驾照有效期 | license_expire_on；labels.carrentLicenseExpireLabel / Hint；SlotBook | **域默认** CARRENT |
+| 租车违章回传附件 | violation_attach；labels.carrentViolationAttachLabel / Hint；ReservationsAdmin | **域默认** CARRENT |
+| 租车 ETC 通行费登记 | etc_fee_yuan + registerEtcFee；labels.carrentEtcFeeLabel / Hint；ReservationsAdmin | **域默认** CARRENT |
+| 机时超时自动计费登记 | overtime_fee_yuan + registerOvertimeFee；AppPolicy.INSTRUMENT_OVERTIME_YUAN；labels.instrumentOvertimeLabel / Hint；ReservationsAdmin | **域默认** INSTRUMENT |
+| 仪器培训合格才可约 | training_ack（浅字段，**未**硬挂 material_check）；labels.instrumentTrainingAckLabel / Hint；SlotBook | **域默认** INSTRUMENT |
+| 机时预约冲突可视化 | labels.instrumentConflictHint；SlotBook（对齐会议冲突提示） | **域默认** INSTRUMENT |
+| 仪器预约须填实验目的 | requireRemark + remarkLabel=实验目的；labels.instrumentPurposeLabel / Hint；SlotBook | **域默认** INSTRUMENT |
+| 仪器耗材领用关联登记 | consumable_note + patchInstrument；labels.instrumentConsumableLabel / Hint；ReservationsAdmin | **域默认** INSTRUMENT |
+| 仪器预约须导师同意 | requireConfirm 轻审；labels.instrumentMentorConfirmHint；SlotBook / MyReservations | **域默认** INSTRUMENT |
+| 仪器机时费结算导出 | CSV exportInstrumentFeeCsv；labels.instrumentFeeExportLabel / Hint；ReservationsAdmin | **域默认** INSTRUMENT |
+| 医生/诊室排班展示（只读） | staff_roster + labels.hospitalRosterLabel / Hint；SlotBook 当班列表 | **扫词挂** staff_roster |
+| 美业会员卡余次（对齐课时包） | lesson_pack + labels.salonLessonRemain*；SlotBook 读 /api/lessons/mine | **扫词挂** lesson_pack |
+| 美业卡项过期提醒 | LessonStore.expireSoonNotify + DemoScheduleJobs；labels.salonLessonExpire* | **扫词挂** lesson_pack |
+| 美业储值卡余额 | wallet + labels.salonWallet*；SlotBook 读 /api/loyalty/me | **扫词挂** wallet |
+| 作品集展示（技师档案多图） | gallery + labels.salonGallery*；ArchiveBrowse 既有图集 | **扫词挂** gallery |
+| 美业技师请假挡班 | staff_roster 班次「请假/休息」+ StaffRosterStore.assertNotOnLeave；labels.salonLeaveBlock* | **扫词挂** staff_roster |
+| 会议录制设备借用勾选 | equip_borrow + labels.meetingEquipBorrow*；SlotBook / MyReservations | **扫词挂** room_equipment |
+
+不支持：医保、道闸、OTA 渠道、智能门锁、高并发锁座引擎、HIS 对接、会议室开门密码真短信、酒店入住公安网上传、保司对接、ETC 硬件回传、实验室门禁硬件。
 
 ### 1.8 内容 / 媒资 / 社区
 
@@ -1371,3 +1391,24 @@
 | 2026-10-05 | **§1.5 第十五批已齐**：申请附件覆盖留旧子表、证明领取二维码、真伪页加深、访客通行证打印、查寝楼长日报、评教院系汇总导出；`approve_thicken`+三套 Store/门禁；不新开附件槽 |
 | 2026-10-05 | **§1.5 第十六批已齐**：用印台账 CSV、综测证据材料清单、党员阶段材料清单模板、思想汇报/心得清单项；复用 material_check；不新开附件槽 |
 | 2026-10-05 | **§1.5 第十七批已齐**：四套公文套打（共用 print 壳）、报销影像张数提示、用车资质清单；PROCURE 入库迁地图（borrow_thicken 已有）；§1.5 待补清零 |
+| 2026-10-06 | **§1.6 批次立项**：待补分批规格见 [`trade-thicken-batch.md`](./trade-thicken-batch.md)（T-00～T-11）；尚未迁行 |
+| 2026-10-06 | **§1.6 T-00/T-01 已齐**：脚手架 `trade_thicken`；钉齐订单备注、默认地址、口味快捷、超时关单、影院取票码；三套 OrderStore/SeatStore + 门禁 |
+| 2026-10-06 | **§1.6 T-02 已齐**：购物车全选/清理失效、失效自动勾掉、同名换规格、凑单包邮；三套 OrderStore/ArchiveStore + Cart.vue；CINEMA 不挂购物车 UX |
+| 2026-10-06 | **§1.6 T-03 已齐**：锁库存回补、确认收货超时、邀评站内信、销售日报、发货前改地址；三套 OrderStore + DemoScheduleJobs；小票打印壳已挂但打印≠已齐 |
+| 2026-10-06 | **§1.6 T-04 已齐**：售后原因分类占比、原因必填、仅退款/退货分流、退货单号、收货后 N 天时限、售后进度时间轴；三套 OrderStore + 双端写库 |
+| 2026-10-06 | **§1.6 T-05 已齐**：换货/仅换货、物流进度手填子表、部分发货、分享口令、收货码核销、延保；三套 OrderStore + 双端写库 |
+| 2026-10-06 | **§1.6 T-06a 已齐**：退票截止、占座倒计时释放、连座提示、售罄关售、观影须知勾选；三套 SeatStore + DemoScheduleJobs |
+| 2026-10-06 | **§1.6 T-06b 已齐**：座属性/特效厅/退票手续费/周视图/连场说明；三套 SeatStore/OrderStore + 双端 |
+| 2026-10-07 | **§1.6 T-07 已齐**：桌号取餐号、餐具打包包装费、营业时段禁单、骑手回池、配送费与送达、必选品类、拼单、档口评分排序；`ensure_food_thicken_sql` + 三套 OrderStore/ArchiveStore + 双端；叫号大屏仍不支持 |
+| 2026-10-07 | **§1.6 T-08 已齐**：发票抬头/状态/演示下载；满减满赠互斥文案；原路退回说明；会员日说明；三套 OrderStore + 双端；≠税控 |
+| 2026-10-07 | **§1.6 T-09 已齐**：缺货到货订阅、上下架定时、好评率、晒图追评、SHOP 足迹默认、浅规格库存、详情问答、预售说明；`ensure_catalog_thicken_sql` + 三套 Store + 双端；≠完整 SKU 矩阵 |
+| 2026-10-07 | **§1.6 T-10 已齐**：券核销码/领券中心/过期站内信、拼团进度与失败退款说明、限时购倒计时、盲盒中赏记录、积分流水与运费/兑票、影院会员价；仅对应 cap 已挂时 |
+| 2026-10-07 | **§1.6 T-11 已齐并收口**：影院卖品加购+库存扣减（`cinema_snack`/`line_kind`）、SHOP 包装费；小票打印仍待补（打印≠已齐）；叫号大屏不支持；批次册改已收口档案 |
+| 2026-10-07 | **§1.7 R-00/R-01 已齐**：脚手架 `reserve_thicken`；钉齐取消时限/改约上限/提前提醒/爽约限制/成功信/签到迟到/维护禁约/候补转正信/日历着色/管理员备注/黑名单申诉；三套 SlotStore + DemoScheduleJobs |
+| 2026-10-07 | **§1.7 R-02 HOSPITAL 已齐**：报到口令/分时段余量/就诊人多档案/候诊号/候补/退号/初复诊/科室介绍/停诊通知与日历/排队预估/同证件限号/复诊优先说明/检验分槽；三套 SlotStore + PatientProfile |
+| 2026-10-07 | **§1.7 R-03 PARKING 已齐**：超时加收/次卡/通行证提示/时长计费进离场/取消罚则/拼单说明/overlapping；三套 SlotStore + ParkingPass；ETC 归 R-07 |
+| 2026-10-07 | **§1.7 R-04 MEETING 已齐**：纪要附件/签到导出/冲突文案/录屏与视频链接/周重复/需审批/茶水设备勾选/黑名单/门禁密码手发/签到码/最低时长/召开中；三套 SlotStore；录制设备→R-09；开门密码短信不支持 |
+| 2026-10-07 | **§1.7 R-05 SALON 已齐**：报到口令/时长占坑/队列号/改约手续费/迟到宽限/禁忌/扫码/到店次数；三套 SlotStore；储值/作品集/会员卡余次均扫词可顶（禁止域默认硬挂 wallet/gallery） |
+| 2026-10-08 | **§1.7 R-06～R-08 已齐**：HOTEL / CARRENT / INSTRUMENT 域皮；业务阈值进 AppPolicy；验车/查房/培训均为浅字段 |
+| 2026-10-08 | **§1.7 R-09 已齐**：能力岛加深（staff_roster / lesson_pack / wallet / gallery / room_equipment）；无订单壳开题写到储值仍可挂 wallet |
+| 2026-10-08 | **§1.7 R-10 收口**：本组实现债清零；待补仅留 CARPASS 邻组交叉；不支持（短信/公安网等）只留边界；批次册改已收口档案 |

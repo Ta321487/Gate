@@ -533,6 +533,12 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.approve_thicken import apply_approve_thicken_to_spec
 
     out = apply_approve_thicken_to_spec(out, body)
+    from app.bake.features.trade_thicken import apply_trade_thicken_to_spec
+
+    out = apply_trade_thicken_to_spec(out, body)
+    from app.bake.features.reserve_thicken import apply_reserve_thicken_to_spec
+
+    out = apply_reserve_thicken_to_spec(out, body)
 
     # 岗位随开题补挂（如 FOOD 骑手）；复用 attach_staff_posts，刷新 spec.roles
     from app.bake.domains import DOMAINS

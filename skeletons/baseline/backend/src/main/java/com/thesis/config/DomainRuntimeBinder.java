@@ -636,14 +636,53 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     private final boolean ticketPrintTicket = TicketPolicy.PRINT_TICKET;
 
-    @Value("${thesis.slot-require-remark:false}")
-    private boolean slotRequireRemark;
+    private final boolean slotRequireRemark = AppPolicy.SLOT_REQUIRE_REMARK;
 
-    @Value("${thesis.slot-require-confirm:false}")
-    private boolean slotRequireConfirm;
+    private final boolean slotRequireConfirm = AppPolicy.SLOT_REQUIRE_CONFIRM;
 
-    @Value("${thesis.slot-allow-rating:false}")
-    private boolean slotAllowRating;
+    private final boolean slotAllowRating = AppPolicy.SLOT_ALLOW_RATING;
+
+    private final int cancelFreeHours = AppPolicy.CANCEL_FREE_HOURS;
+
+    private final int rescheduleMaxTimes = AppPolicy.RESCHEDULE_MAX_TIMES;
+
+    private final int remindAheadMinutes = AppPolicy.REMIND_AHEAD_MINUTES;
+
+    private final int noShowLimit = AppPolicy.NO_SHOW_LIMIT;
+
+    private final int lateGraceMinutes = AppPolicy.LATE_GRACE_MINUTES;
+
+    private final boolean reserveBlacklistEnabled = AppPolicy.RESERVE_BLACKLIST_ENABLED;
+
+    private final int hospitalCancelCutoffMinutes = AppPolicy.HOSPITAL_CANCEL_CUTOFF_MINUTES;
+
+    private final int hospitalIdLimitPerDay = AppPolicy.HOSPITAL_ID_LIMIT_PER_DAY;
+
+    private final boolean hospitalWaitlistEnabled = AppPolicy.HOSPITAL_WAITLIST_ENABLED;
+
+    private final boolean patientProfileEnabled = AppPolicy.PATIENT_PROFILE_ENABLED;
+
+    private final int parkingHourlyYuan = AppPolicy.PARKING_HOURLY_YUAN;
+
+    private final int parkingOvertimeYuan = AppPolicy.PARKING_OVERTIME_YUAN;
+
+    private final boolean parkingPassEnabled = AppPolicy.PARKING_PASS_ENABLED;
+
+    private final int meetingMinDurationMinutes = AppPolicy.MEETING_MIN_DURATION_MINUTES;
+
+    private final boolean meetingMinutesRequired = AppPolicy.MEETING_MINUTES_REQUIRED;
+
+    private final int salonRescheduleFeeYuan = AppPolicy.SALON_RESCHEDULE_FEE_YUAN;
+
+    private final int hotelLateCheckoutFeeYuan = AppPolicy.HOTEL_LATE_CHECKOUT_FEE_YUAN;
+
+    private final boolean hotelNoticeRequired = AppPolicy.HOTEL_NOTICE_REQUIRED;
+
+    private final int carrentMileageOverFeeYuan = AppPolicy.CARRENT_MILEAGE_OVER_FEE_YUAN;
+
+    private final int instrumentOvertimeYuan = AppPolicy.INSTRUMENT_OVERTIME_YUAN;
+
+    private final boolean instrumentTrainingRequired = AppPolicy.INSTRUMENT_TRAINING_REQUIRED;
 
     private final boolean walletEnabled = AppPolicy.WALLET_ENABLED;
 
@@ -716,6 +755,27 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     @Value("${thesis.no-casual-refund:false}")
     private boolean noCasualRefund;
+
+    @Value("${thesis.after-sale-days:0}")
+    private int afterSaleDays;
+
+    @Value("${thesis.ticket-refund-cutoff-minutes:0}")
+    private int ticketRefundCutoffMinutes;
+
+    @Value("${thesis.seat-hold-timeout-minutes:0}")
+    private int seatHoldTimeoutMinutes;
+
+    @Value("${thesis.packaging-fee-yuan:0}")
+    private double packagingFeeYuan;
+
+    @Value("${thesis.delivery-fee-base-yuan:0}")
+    private double deliveryFeeBaseYuan;
+
+    @Value("${thesis.delivery-fee-free-yuan:0}")
+    private double deliveryFeeFreeYuan;
+
+    @Value("${thesis.eta-minutes:0}")
+    private int etaMinutes;
 
     private final boolean favoritesEnabled = AppPolicy.FAVORITES_ENABLED;
 
@@ -1222,6 +1282,8 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         }
         OrderReviewStore.configure(orderReviewEnabled);
         OrderStore.configureLineCustom(lineCustomEnabled, lineCustomPlaceConfirmed, noCasualRefund);
+        OrderStore.configureAfterSaleDays(afterSaleDays);
+        OrderStore.configureFoodFees(packagingFeeYuan, deliveryFeeBaseYuan, deliveryFeeFreeYuan, etaMinutes);
         LineCustomStore.configure(lineCustomEnabled);
         DeliveryWindowStore.configure(deliveryWindowEnabled);
         PurchaseGateStore.configure(purchaseGateEnabled);
@@ -1265,6 +1327,8 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         DoclibStore.configure(doclibEnabled);
         TimebankStore.configure(timebankEnabled, timebankRedeemOnApprove);
         SeatStore.configure(seatSelectEnabled);
+        SeatStore.configureHoldTimeoutMinutes(seatHoldTimeoutMinutes);
+        SeatStore.configureTicketRefundCutoffMinutes(ticketRefundCutoffMinutes);
         StockIoStore.configure(
                 stockIoEnabled,
                 stockScrapEnabled,
@@ -1285,8 +1349,29 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             SlotStore.configureRemark(slotRequireRemark);
             SlotStore.configureConfirm(slotRequireConfirm);
             SlotStore.configureRating(slotAllowRating);
+            SlotStore.configureThicken(
+                    cancelFreeHours,
+                    rescheduleMaxTimes,
+                    remindAheadMinutes,
+                    noShowLimit,
+                    lateGraceMinutes,
+                    reserveBlacklistEnabled);
+            SlotStore.configureHospital(
+                    hospitalCancelCutoffMinutes, hospitalIdLimitPerDay, hospitalWaitlistEnabled);
+            SlotStore.configureParking(parkingHourlyYuan, parkingOvertimeYuan, parkingPassEnabled);
+            SlotStore.configureMeeting(meetingMinDurationMinutes, meetingMinutesRequired);
+            SlotStore.configureSalon(salonRescheduleFeeYuan);
+            SlotStore.configureHotel(hotelLateCheckoutFeeYuan, hotelNoticeRequired);
+            SlotStore.configureCarrent(carrentMileageOverFeeYuan);
+            SlotStore.configureInstrument(instrumentOvertimeYuan, instrumentTrainingRequired);
+            com.thesis.service.ReserveBlacklistStore.configure(reserveBlacklistEnabled, null);
+            PatientProfileStore.configure(patientProfileEnabled);
+            com.thesis.service.ParkingPassStore.configure(parkingPassEnabled);
         } else {
             SlotStore.unbind();
+            com.thesis.service.ReserveBlacklistStore.configure(false, null);
+            com.thesis.service.PatientProfileStore.configure(false);
+            com.thesis.service.ParkingPassStore.configure(false);
         }
         PasswordHashes.bind(passwordHash);
         TicketLookupStore.bind(

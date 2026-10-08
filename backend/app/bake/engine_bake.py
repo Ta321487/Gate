@@ -370,7 +370,6 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     if enable_ticket is None:
         enable_ticket = "ticket_flow" in caps
 
-    resv_ent = ((spec.get("schema") or {}).get("entities") or {}).get("reservation") or {}
     guest_on = portal_guest_browse_enabled(domain, DOMAINS.get(domain) or {})
     ph = str(spec.get("password_hash") or "none")
 
@@ -513,6 +512,59 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
         timeout = 0
     if timeout > 0:
         lines.append(f"  order-timeout-minutes: {timeout}")
+    recv_timeout = 0
+    try:
+        recv_timeout = int((spec.get("schema") or {}).get("confirmReceiveTimeoutMinutes") or 0)
+    except (TypeError, ValueError):
+        recv_timeout = 0
+    if recv_timeout > 0:
+        lines.append(f"  confirm-receive-timeout-minutes: {recv_timeout}")
+    after_sale_days = 0
+    try:
+        after_sale_days = int((spec.get("schema") or {}).get("afterSaleDays") or 0)
+    except (TypeError, ValueError):
+        after_sale_days = 0
+    if after_sale_days > 0:
+        lines.append(f"  after-sale-days: {after_sale_days}")
+    refund_cut = 0
+    try:
+        refund_cut = int((spec.get("schema") or {}).get("ticketRefundCutoffMinutes") or 0)
+    except (TypeError, ValueError):
+        refund_cut = 0
+    if refund_cut > 0:
+        lines.append(f"  ticket-refund-cutoff-minutes: {refund_cut}")
+    hold_min = 0
+    try:
+        hold_min = int((spec.get("schema") or {}).get("seatHoldTimeoutMinutes") or 0)
+    except (TypeError, ValueError):
+        hold_min = 0
+    if hold_min > 0:
+        lines.append(f"  seat-hold-timeout-minutes: {hold_min}")
+    rider_claim = 0
+    try:
+        rider_claim = int((spec.get("schema") or {}).get("riderClaimTimeoutMinutes") or 0)
+    except (TypeError, ValueError):
+        rider_claim = 0
+    if rider_claim > 0:
+        lines.append(f"  rider-claim-timeout-minutes: {rider_claim}")
+    sch = spec.get("schema") or {}
+    for key, yml_key in (
+        ("packagingFeeYuan", "packaging-fee-yuan"),
+        ("deliveryFeeBaseYuan", "delivery-fee-base-yuan"),
+        ("deliveryFeeFreeYuan", "delivery-fee-free-yuan"),
+    ):
+        try:
+            fee = float(sch.get(key) or 0)
+        except (TypeError, ValueError):
+            fee = 0.0
+        if fee > 0:
+            lines.append(f"  {yml_key}: {fee:g}")
+    try:
+        eta_m = int(sch.get("etaMinutes") or 0)
+    except (TypeError, ValueError):
+        eta_m = 0
+    if eta_m > 0:
+        lines.append(f"  eta-minutes: {eta_m}")
     # favorites / dm-shop-cs / content-report / post-mute / parcel-shelf → AppPolicy
     if "post_like" in caps:
         lines.append("  post-like-enabled: true")
@@ -621,14 +673,7 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
             if opts.get("requireDiffReason"):
                 lines.append("  stock-require-diff-reason: true")
 
-    if "slot_reserve" in caps:
-        # slot-table / reservation-table → AppPolicy；预约侧开关仍写 yml
-        if resv_ent.get("requireRemark"):
-            lines.append("  slot-require-remark: true")
-        if resv_ent.get("requireConfirm"):
-            lines.append("  slot-require-confirm: true")
-        if resv_ent.get("allowRating"):
-            lines.append("  slot-allow-rating: true")
+    # slot_reserve 表位 / 预约侧开关与阈值 → AppPolicy（runtime_policy），禁止写 thesis yml
 
     block = "\n".join(lines) + "\n"
     if re.search(r"(?m)^thesis:\s*$", text):

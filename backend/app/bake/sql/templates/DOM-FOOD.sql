@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS sys_user (
 );
 CREATE TABLE IF NOT EXISTS category (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE
+  name VARCHAR(64) NOT NULL UNIQUE,
+  required_pick TINYINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS dish (
@@ -32,6 +33,8 @@ CREATE TABLE IF NOT EXISTS dish (
   cover_url VARCHAR(255),
   spicy_level VARCHAR(16) DEFAULT '不辣',
   is_vegetarian TINYINT DEFAULT 0,
+  open_hours VARCHAR(32) DEFAULT '',
+  stall_score DECIMAL(3,1) NOT NULL DEFAULT 5.0,
   deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -70,6 +73,15 @@ CREATE TABLE IF NOT EXISTS biz_order (
   taste_note VARCHAR(255) DEFAULT '',
   tracking_no VARCHAR(64) DEFAULT '',
   pickup_code VARCHAR(32) DEFAULT '',
+  table_no VARCHAR(32) DEFAULT '',
+  utensil_opt VARCHAR(32) DEFAULT '',
+  pack_opt VARCHAR(32) DEFAULT '',
+  packaging_fee_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  delivery_fee_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
+  eta_text VARCHAR(64) DEFAULT '',
+  merge_code VARCHAR(16) DEFAULT '',
+  rider_username VARCHAR(64) DEFAULT '',
+  rider_claimed_at DATETIME NULL,
   shipped_at DATETIME NULL,
   reservation_id BIGINT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -113,12 +125,12 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
-INSERT IGNORE INTO category (id, name) VALUES (1, '套餐'), (2, '面食'), (3, '饮品');
-INSERT IGNORE INTO dish (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '红烧肉套餐', '18.00', '总店', 1, 79, 'available'),
-(2, '番茄鸡蛋面', '12.00', '总店', 2, 60, 'available'),
-(3, '豆浆油条', '8.00', '早市档', 1, 100, 'available'),
-(4, '柠檬茶', '6.00', '饮品吧', 3, 120, 'available');
+INSERT IGNORE INTO category (id, name, required_pick) VALUES (1, '套餐', 1), (2, '面食', 0), (3, '饮品', 0);
+INSERT IGNORE INTO dish (id, title, author, isbn, category_id, stock, status, open_hours, stall_score) VALUES
+(1, '红烧肉套餐', '18.00', '总店', 1, 79, 'available', '10:00-21:00', 4.8),
+(2, '番茄鸡蛋面', '12.00', '总店', 2, 60, 'available', '10:00-21:00', 4.6),
+(3, '豆浆油条', '8.00', '早市档', 1, 100, 'available', '07:00-10:30', 4.5),
+(4, '柠檬茶', '6.00', '饮品吧', 3, 120, 'available', '10:00-22:00', 4.7);
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '李女士', '13800000002', '示例小区 5 号楼 302', '家', 1),

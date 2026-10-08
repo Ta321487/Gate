@@ -613,6 +613,9 @@ function withBorrowThickenRoutes(baseRoutes) {
     if (getSchema().applyBlacklist) {
       addAdmin('apply/blacklist', () => import('../views/admin/ApplyBlacklistAdmin.vue'))
     }
+    if (getSchema().reserveBlacklist) {
+      addAdmin('reserve/blacklist', () => import('../views/admin/ReserveBlacklistAdmin.vue'))
+    }
   }
   return routes
 }
@@ -923,11 +926,43 @@ function withExtraBizRoutes(baseRoutes, { order = false, slot = false } = {}) {
         component: () => import('../views/user/MyReservations.vue'),
       })
     }
+    if (getSchema().patientProfile && !has(userKids, 'patient-profiles')) {
+      userKids.push({
+        path: 'patient-profiles',
+        component: () => import('../views/user/PatientProfiles.vue'),
+      })
+    }
+    if (getSchema().parkingPass && !has(userKids, 'parking-passes')) {
+      userKids.push({
+        path: 'parking-passes',
+        component: () => import('../views/user/ParkingPasses.vue'),
+      })
+    }
+    if (getSchema().parkingPass && !has(adminKids, 'parking-passes')) {
+      adminKids.push({
+        path: 'parking-passes',
+        component: () => import('../views/admin/ParkingPassAdmin.vue'),
+      })
+    }
     if (!has(adminKids, 'reservations')) {
       adminKids.splice(4, 0, {
         path: 'reservations',
         component: () => import('../views/admin/ReservationsAdmin.vue'),
       })
+    }
+    if (getSchema().reserveBlacklist) {
+      if (!has(userKids, 'reserve/blacklist-appeal')) {
+        userKids.push({
+          path: 'reserve/blacklist-appeal',
+          component: () => import('../views/user/ReserveBlacklistAppeal.vue'),
+        })
+      }
+      if (!has(adminKids, 'reserve/blacklist')) {
+        adminKids.push({
+          path: 'reserve/blacklist',
+          component: () => import('../views/admin/ReserveBlacklistAdmin.vue'),
+        })
+      }
     }
   }
   if (order) {
@@ -1078,6 +1113,7 @@ const slotRoutes = [
       { path: 'archive', component: () => import('../views/user/ArchiveBrowse.vue') },
       { path: 'slots', component: () => import('../views/user/SlotBook.vue') },
       { path: 'reservations', component: () => import('../views/user/MyReservations.vue') },
+      { path: 'reserve/blacklist-appeal', component: () => import('../views/user/ReserveBlacklistAppeal.vue') },
       { path: 'orders', component: () => import('../views/user/MyOrders.vue') },
       { path: 'notices', component: Notices },
       { path: 'notices/:id', component: NoticeDetail },
@@ -1094,6 +1130,7 @@ const slotRoutes = [
       { path: 'archive', component: () => import('../views/admin/ArchiveAdmin.vue') },
       { path: 'categories', component: () => import('../views/admin/CategoriesAdmin.vue') },
       { path: 'reservations', component: () => import('../views/admin/ReservationsAdmin.vue') },
+      { path: 'reserve/blacklist', component: () => import('../views/admin/ReserveBlacklistAdmin.vue') },
       { path: 'orders', component: () => import('../views/admin/OrdersAdmin.vue') },
       { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
@@ -1195,6 +1232,7 @@ function pickRoutes() {
     withPurchaseGateRoutes,
     withGroupBuyRoutes,
     withBlindBoxRoutes,
+    withPointsLedgerRoutes,
     withLineSpecRoutes,
     withConsignRoutes,
     withWeighRoutes,
@@ -1340,9 +1378,33 @@ function withLineSpecRoutes(baseRoutes) {
 function withBlindBoxRoutes(baseRoutes) {
   if (!hasCap('blind_box')) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
+  const kids = routes.find((r) => r.path === '/')?.children
+  if (kids && !kids.some((c) => c.path === 'blind-draws')) {
+    const ordIdx = kids.findIndex((c) => c.path === 'orders')
+    const at = ordIdx >= 0 ? ordIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'blind-draws',
+      component: () => import('../views/user/MyBlindDraws.vue'),
+    })
+  }
   const adminKids = routes.find((r) => r.path === '/admin')?.children
   if (adminKids && !adminKids.some((c) => c.path === 'blind-boxes')) {
     adminKids.push({ path: 'blind-boxes', component: () => import('../views/admin/BlindPoolsAdmin.vue') })
+  }
+  return routes
+}
+
+function withPointsLedgerRoutes(baseRoutes) {
+  if (!hasCap('points')) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const kids = routes.find((r) => r.path === '/')?.children
+  if (kids && !kids.some((c) => c.path === 'points-ledger')) {
+    const profileIdx = kids.findIndex((c) => c.path === 'profile')
+    const at = profileIdx >= 0 ? profileIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'points-ledger',
+      component: () => import('../views/user/PointsLedger.vue'),
+    })
   }
   return routes
 }

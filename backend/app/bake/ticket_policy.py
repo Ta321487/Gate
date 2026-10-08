@@ -812,11 +812,21 @@ def render(values: dict[str, Any] | None = None) -> str:
 
 
 def write_policy(dest: Path | str, domain: str, spec: dict[str, Any]) -> Path | None:
-    """把本项目的单据策略写成 Java 类；骨架缺目录时跳过（非 Java 交付）。"""
-    path = Path(dest) / POLICY_REL
-    if not path.parent.is_dir():
+    """把本项目的单据策略写成 Java 类；骨架缺目录时跳过（非 Java 交付）。
+
+    路径跟当前学生包根走（remap 后的 ``com.campus.*``），禁止写死 thesis 导致填岛同步空写。
+    """
+    from app.bake.java_package import java_package_of_file, resolve_student_config_java
+
+    dest_p = Path(dest)
+    path = resolve_student_config_java(dest_p, POLICY_CLASS)
+    if path is None:
         return None
-    path.write_text(render(collect(domain, spec)), encoding="utf-8")
+    pkg = java_package_of_file(dest_p, path)
+    text = render(collect(domain, spec))
+    if pkg != POLICY_PACKAGE:
+        text = text.replace(f"package {POLICY_PACKAGE};", f"package {pkg};", 1)
+    path.write_text(text, encoding="utf-8")
     return path
 
 

@@ -11,8 +11,8 @@ alwaysApply: false
 ## 一轮 = 一组
 
 - 组 = 地图 `### 1.x`（§1.1~§1.10）；一组一个 `backend/app/bake/features/<组>_thicken.py`。
-  现有范本：`backend/app/bake/features/borrow_thicken.py` · `follow_thicken.py` · `repair_thicken.py`。
-- 新组模块**必须**在 `backend/app/bake/domain_schema.py` 注册：`from app.bake.features.<组>_thicken import apply_<组>_thicken_to_spec` + `out = apply_<组>_thicken_to_spec(out, body)`（同文件 521-529 行三组即范本）。**漏注册 = 死代码 = 未交付。**
+  已有：`borrow_thicken` · `follow_thicken` · `repair_thicken` · `apply_thicken` · `approve_thicken` · `trade_thicken` · `reserve_thicken`（均须在 `HUB_BYPASS_MODULES` + `docs/capabilities.md` 例外表登记）。
+- 新组模块**必须**在 `backend/app/bake/domain_schema.py` 注册：`from app.bake.features.<组>_thicken import apply_<组>_thicken_to_spec` + `out = apply_<组>_thicken_to_spec(out, body)`（同文件既有 thicken 注册即范本）。**漏注册 = 死代码 = 未交付。**
 - 一组清完：同节「#### 本组待补」清空，行迁到「#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）」，列保持 `功能 / 落点 / 挂载`。
 
 ## 一条待补 = 四件套（缺一不算已齐）

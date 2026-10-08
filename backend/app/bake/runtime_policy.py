@@ -55,6 +55,62 @@ FIELDS: tuple[tuple[str, str, str, str, str, str], ...] = (
     # ---------- 数值阈值 ----------
     ("stock-warn-below", "STOCK_WARN_BELOW", "int", "10", "stockWarnBelow", "numeric"),
     ("points-earn-per-yuan", "POINTS_EARN_PER_YUAN", "int", "1", "pointsEarnPerYuan", "numeric"),
+    ("cancel-free-hours", "CANCEL_FREE_HOURS", "int", "0", "cancelFreeHours", "numeric"),
+    ("reschedule-max-times", "RESCHEDULE_MAX_TIMES", "int", "0", "rescheduleMaxTimes", "numeric"),
+    ("remind-ahead-minutes", "REMIND_AHEAD_MINUTES", "int", "0", "remindAheadMinutes", "numeric"),
+    ("no-show-limit", "NO_SHOW_LIMIT", "int", "0", "noShowLimit", "numeric"),
+    ("late-grace-minutes", "LATE_GRACE_MINUTES", "int", "15", "lateGraceMinutes", "numeric"),
+    (
+        "hospital-cancel-cutoff-minutes",
+        "HOSPITAL_CANCEL_CUTOFF_MINUTES",
+        "int",
+        "0",
+        "hospitalCancelCutoffMinutes",
+        "numeric",
+    ),
+    (
+        "hospital-id-limit-per-day",
+        "HOSPITAL_ID_LIMIT_PER_DAY",
+        "int",
+        "0",
+        "hospitalIdLimitPerDay",
+        "numeric",
+    ),
+    ("parking-hourly-yuan", "PARKING_HOURLY_YUAN", "int", "0", "parkingHourlyYuan", "numeric"),
+    ("parking-overtime-yuan", "PARKING_OVERTIME_YUAN", "int", "0", "parkingOvertimeYuan", "numeric"),
+    (
+        "meeting-min-duration-minutes",
+        "MEETING_MIN_DURATION_MINUTES",
+        "int",
+        "0",
+        "meetingMinDurationMinutes",
+        "numeric",
+    ),
+    ("salon-reschedule-fee-yuan", "SALON_RESCHEDULE_FEE_YUAN", "int", "0", "salonRescheduleFeeYuan", "numeric"),
+    (
+        "hotel-late-checkout-fee-yuan",
+        "HOTEL_LATE_CHECKOUT_FEE_YUAN",
+        "int",
+        "0",
+        "hotelLateCheckoutFeeYuan",
+        "numeric",
+    ),
+    (
+        "carrent-mileage-over-fee-yuan",
+        "CARRENT_MILEAGE_OVER_FEE_YUAN",
+        "int",
+        "0",
+        "carrentMileageOverFeeYuan",
+        "numeric",
+    ),
+    (
+        "instrument-overtime-yuan",
+        "INSTRUMENT_OVERTIME_YUAN",
+        "int",
+        "0",
+        "instrumentOvertimeYuan",
+        "numeric",
+    ),
 )
 
 #: 能力开关：(yml 键, Java 常量)。类型固定 boolean、默认 false；
@@ -91,6 +147,16 @@ FLAG_KEYS: tuple[tuple[str, str], ...] = (
     ("grade-scores-enabled", "GRADE_SCORES_ENABLED"),
     ("balance-ledger-enabled", "BALANCE_LEDGER_ENABLED"),
     ("balance-ledger-debit-on-approve", "BALANCE_LEDGER_DEBIT_ON_APPROVE"),
+    ("slot-require-remark", "SLOT_REQUIRE_REMARK"),
+    ("slot-require-confirm", "SLOT_REQUIRE_CONFIRM"),
+    ("slot-allow-rating", "SLOT_ALLOW_RATING"),
+    ("reserve-blacklist-enabled", "RESERVE_BLACKLIST_ENABLED"),
+    ("hospital-waitlist-enabled", "HOSPITAL_WAITLIST_ENABLED"),
+    ("patient-profile-enabled", "PATIENT_PROFILE_ENABLED"),
+    ("parking-pass-enabled", "PARKING_PASS_ENABLED"),
+    ("meeting-minutes-required", "MEETING_MINUTES_REQUIRED"),
+    ("hotel-notice-required", "HOTEL_NOTICE_REQUIRED"),
+    ("instrument-training-required", "INSTRUMENT_TRAINING_REQUIRED"),
 )
 
 
@@ -220,6 +286,9 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
         shop_cs = bool(schema.get("dmShopCs"))
         if not shop_cs and str(schema.get("dmPeerMode") or "").strip().lower() == "merchant":
             shop_cs = True
+        # 与 menu_utils：多店有 dm 即收窄店铺客服，避免文案已是「联系商家」而 Java 仍 false
+        if not shop_cs and schema.get("shopMarketplace"):
+            shop_cs = True
         out["DM_SHOP_CS"] = bool(shop_cs)
     if "content_report" in caps:
         out["CONTENT_REPORT_ENABLED"] = True
@@ -260,10 +329,52 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
     if "lost_clue" in caps:
         out["LOST_CLUE_ENABLED"] = True
 
-    # ---- 时段预约表位 ----
+    # ---- 时段预约表位 + 预约侧开关/阈值（一律 AppPolicy，不进 yml）----
+    resv_ent = (schema.get("entities") or {}).get("reservation") or {}
+    if not isinstance(resv_ent, dict):
+        resv_ent = {}
     if "slot_reserve" in caps:
         out["SLOT_TABLE"] = str(runtime.get("slot_table") or "resource_slot")
         out["RESERVATION_TABLE"] = str(runtime.get("reservation_table") or "reservation")
+        if resv_ent.get("requireRemark"):
+            out["SLOT_REQUIRE_REMARK"] = True
+        if resv_ent.get("requireConfirm"):
+            out["SLOT_REQUIRE_CONFIRM"] = True
+        if resv_ent.get("allowRating"):
+            out["SLOT_ALLOW_RATING"] = True
+        for schema_key, const in (
+            ("cancelFreeHours", "CANCEL_FREE_HOURS"),
+            ("rescheduleMaxTimes", "RESCHEDULE_MAX_TIMES"),
+            ("remindAheadMinutes", "REMIND_AHEAD_MINUTES"),
+            ("noShowLimit", "NO_SHOW_LIMIT"),
+            ("lateGraceMinutes", "LATE_GRACE_MINUTES"),
+            ("hospitalCancelCutoffMinutes", "HOSPITAL_CANCEL_CUTOFF_MINUTES"),
+            ("hospitalIdLimitPerDay", "HOSPITAL_ID_LIMIT_PER_DAY"),
+            ("parkingHourlyYuan", "PARKING_HOURLY_YUAN"),
+            ("parkingOvertimeYuan", "PARKING_OVERTIME_YUAN"),
+            ("meetingMinDurationMinutes", "MEETING_MIN_DURATION_MINUTES"),
+            ("salonRescheduleFeeYuan", "SALON_RESCHEDULE_FEE_YUAN"),
+            ("hotelLateCheckoutFeeYuan", "HOTEL_LATE_CHECKOUT_FEE_YUAN"),
+            ("carrentMileageOverFeeYuan", "CARRENT_MILEAGE_OVER_FEE_YUAN"),
+            ("instrumentOvertimeYuan", "INSTRUMENT_OVERTIME_YUAN"),
+        ):
+            n = _int_or(schema.get(schema_key), 0)
+            if n > 0:
+                out[const] = n
+        if schema.get("reserveBlacklist"):
+            out["RESERVE_BLACKLIST_ENABLED"] = True
+        if schema.get("hospitalWaitlist") or resv_ent.get("allowWaitlist"):
+            out["HOSPITAL_WAITLIST_ENABLED"] = True
+        if schema.get("patientProfile"):
+            out["PATIENT_PROFILE_ENABLED"] = True
+        if schema.get("parkingPass"):
+            out["PARKING_PASS_ENABLED"] = True
+        if schema.get("meetingMinutesRequired") or resv_ent.get("meetingMinutesRequired"):
+            out["MEETING_MINUTES_REQUIRED"] = True
+        if schema.get("hotelNoticeRequired") or resv_ent.get("hotelNoticeRequired"):
+            out["HOTEL_NOTICE_REQUIRED"] = True
+        if schema.get("instrumentTrainingRequired"):
+            out["INSTRUMENT_TRAINING_REQUIRED"] = True
 
     return out
 
@@ -288,6 +399,31 @@ COMMENTS: dict[str, str] = {
     "LOOKUP_TYPE_LABEL": "类型列展示名",
     "STOCK_WARN_BELOW": "库存预警阈值（件）",
     "POINTS_EARN_PER_YUAN": "每消费一元赠送的积分",
+    "CANCEL_FREE_HOURS": "预约开始前可免费取消的时限（小时）；0 表示不限制",
+    "RESCHEDULE_MAX_TIMES": "预约改约次数上限；0 表示不限制",
+    "REMIND_AHEAD_MINUTES": "预约开始前站内信提醒（分钟）；0 表示关闭",
+    "NO_SHOW_LIMIT": "爽约次数上限；0 表示不限制",
+    "LATE_GRACE_MINUTES": "签到迟到宽限（分钟）",
+    "HOSPITAL_CANCEL_CUTOFF_MINUTES": "挂号退号截止（开诊前分钟）；0 表示不额外限制",
+    "HOSPITAL_ID_LIMIT_PER_DAY": "同就诊人每日限号；0 表示不限制",
+    "PARKING_HOURLY_YUAN": "车位小时费率（元）；0 表示未启用时长计费",
+    "PARKING_OVERTIME_YUAN": "车位超时加收默认金额（元）；0 表示未启用",
+    "MEETING_MIN_DURATION_MINUTES": "会议室最低预约时长（分钟）；0 表示不限制",
+    "SALON_RESCHEDULE_FEE_YUAN": "美业改约手续费默认金额（元）；0 表示未启用",
+    "HOTEL_LATE_CHECKOUT_FEE_YUAN": "客房延迟退房加收默认金额（元）；0 表示未启用",
+    "CARRENT_MILEAGE_OVER_FEE_YUAN": "租车里程超支加收默认金额（元）；0 表示未启用",
+    "INSTRUMENT_OVERTIME_YUAN": "仪器机时超时加收默认金额（元）；0 表示未启用",
+    "SLOT_REQUIRE_REMARK": "预约须填写备注",
+    "SLOT_REQUIRE_CONFIRM": "预约须管理端确认",
+    "SLOT_ALLOW_RATING": "办结后允许用户评价",
+    "RESERVE_BLACKLIST_ENABLED": "预约黑名单与申诉",
+    "HOSPITAL_WAITLIST_ENABLED": "号源满时可候补",
+    "PATIENT_PROFILE_ENABLED": "就诊人多档案",
+    "PARKING_PASS_ENABLED": "停车次卡",
+    "MEETING_MINUTES_REQUIRED": "会议结束后须上传纪要附件",
+    "HOTEL_NOTICE_REQUIRED": "客房预约须勾选入住须知",
+    "INSTRUMENT_TRAINING_REQUIRED": "仪器机时预约须勾选培训合格",
+
     "ARCHIVE_SOFT_DELETE": "档案软删除（标记删除，不物理抹掉）",
     "ARCHIVE_USER_PUBLISH": "允许用户自行发布档案内容",
     "ARCHIVE_PUBLISH_REVIEW": "用户发布需审核后上架",
@@ -387,11 +523,21 @@ def render(values: dict[str, Any] | None = None) -> str:
 
 
 def write_policy(dest: Path | str, domain: str, spec: dict[str, Any]) -> Path | None:
-    """把本项目的非单据策略写成 Java 类；骨架缺目录时跳过（非 Java 交付）。"""
-    path = Path(dest) / POLICY_REL
-    if not path.parent.is_dir():
+    """把本项目的非单据策略写成 Java 类；骨架缺目录时跳过（非 Java 交付）。
+
+    路径跟当前学生包根走（remap 后的 ``com.campus.*``），禁止写死 thesis 导致填岛同步空写。
+    """
+    from app.bake.java_package import java_package_of_file, resolve_student_config_java
+
+    dest_p = Path(dest)
+    path = resolve_student_config_java(dest_p, POLICY_CLASS)
+    if path is None:
         return None
-    path.write_text(render(collect(domain, spec)), encoding="utf-8")
+    pkg = java_package_of_file(dest_p, path)
+    text = render(collect(domain, spec))
+    if pkg != POLICY_PACKAGE:
+        text = text.replace(f"package {POLICY_PACKAGE};", f"package {pkg};", 1)
+    path.write_text(text, encoding="utf-8")
     return path
 
 

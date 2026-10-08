@@ -12,10 +12,11 @@ JAVA_ROOTS = (
     ROOT / "skeletons/overlays/persistence-mybatis/backend/src/main/java",
 )
 
-# 声明后经 if 再赋（成团 status 翻车同类）
+# 声明后经 if 再赋（成团 status / 抽查 by.length() 翻车同类）
+# 条件允许一层嵌套括号，否则 by.length()>64 这类永远扫不到
 _REASSIGN_IF = re.compile(
     r"(?:^|\n)\s*(?:String|int|long|double|boolean)\s+(\w+)\s*=[^\n]+;\s*\n"
-    r"\s*if\s*\([^)]+\)\s*\1\s*=",
+    r"\s*if\s*\((?:[^()]|\([^()]*\))*\)\s*\1\s*=",
     re.MULTILINE,
 )
 
@@ -70,17 +71,22 @@ def test_no_if_reassign_then_capture_in_con_lambda() -> None:
             rel = str(path.relative_to(ROOT)).replace("\\", "/")
             for m in _REASSIGN_IF.finditer(text):
                 name = m.group(1)
-                after = text[m.end() : m.end() + 2500]
+                # TicketGuardOps 抽查任务：再赋与 lambda 之间隔一整段名单循环，2500 不够
+                after = text[m.end() : m.end() + 8000]
                 lam = re.search(r"con\s*->\s*\{", after)
                 if not lam:
                     continue
-                body = after[lam.end() : lam.end() + 1200]
+                body = after[lam.end() : lam.end() + 2000]
                 body_stripped = re.sub(r'"(?:\\.|[^"\\])*"', '""', body)
                 if re.search(rf"(?<![\w]){name}(?![\w])", body_stripped) and not re.search(
                     rf"\b(?:String|int|long|double|boolean)\s+{name}\b", body_stripped
                 ):
                     prefix = after[: lam.start()]
-                    if re.search(rf"\bfinal\s+\w+\s+\w+\s*=\s*{name}\b", prefix):
+                    # final String x = name 或 String xFinal = name（未再改即 effectively final）
+                    if re.search(
+                        rf"\b(?:final\s+)?(?:String|int|long|double|boolean)\s+\w+\s*=\s*{name}\b",
+                        prefix,
+                    ):
                         continue
                     bad.append(f"{rel}: {name}")
     assert not bad, "if 再赋后被 con->lambda 捕获:\n" + "\n".join(sorted(set(bad)))

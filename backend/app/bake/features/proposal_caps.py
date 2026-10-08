@@ -12,9 +12,13 @@ HUB_BYPASS_MODULES: frozenset[str] = frozenset(
         "temporal_field",  # 日期控件精度（date/datetime），非 cap
         "opening_align",  # 开题对账闸，只 apply，不开新 cap
         "borrow_thicken",  # 借用组浅加厚（字段/文案/校验），非独立 cap
+        "borrow_structural",  # 借用族结构表 DDL ensure，非独立 cap
         "follow_thicken",  # 跟进组浅加厚（字段/文案/校验），非独立 cap
         "repair_thicken",  # 报修组浅加厚（催办/结单/SLA），非独立 cap
         "apply_thicken",  # 报名/申请组浅加厚（须知/驳回/站内信/浅字段），非独立 cap
+        "approve_thicken",  # 审批/填报组加厚，非独立 cap；落点见交付地图 §1.5
+        "trade_thicken",  # 交易组加厚，非独立 cap；落点见交付地图 §1.6
+        "reserve_thicken",  # 预约组加厚，非独立 cap；落点见交付地图 §1.7
     }
 )
 

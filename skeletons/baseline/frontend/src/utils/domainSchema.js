@@ -75,7 +75,8 @@ export function schemaMenus(side = 'admin') {
   const keys = new Set(list.map((m) => m.key))
   const caps = new Set(getSchema().capabilities || [])
   const labs = schemaLabels()
-  const shopCs = !!(getSchema().dmShopCs || getSchema().shopMarketplace)
+  // 仅认 dmShopCs：多店市集≠店铺客服选人；文案与 AppPolicy.DM_SHOP_CS 同真源
+  const shopCs = !!getSchema().dmShopCs
 
   function insertBefore(key, item, befores) {
     if (keys.has(key)) return
@@ -172,6 +173,8 @@ export function superOnlyAdminPaths() {
     occupy_admin: '/admin/occupy',
     material_checklist: '/admin/material/checklist',
     apply_blacklist: '/admin/apply/blacklist',
+    reserve_blacklist: '/admin/reserve/blacklist',
+    reserve_blacklist_appeal: '/reserve/blacklist-appeal',
     e_sign_admin: '/admin/e-sign',
     tb_ledger_admin: '/admin/tb/ledger',
     lookup_site: '/admin/sites',

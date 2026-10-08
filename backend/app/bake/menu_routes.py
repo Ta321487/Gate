@@ -99,6 +99,8 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "occupy_admin": "/admin/occupy",
     "material_checklist": "/admin/material/checklist",
     "apply_blacklist": "/admin/apply/blacklist",
+    "reserve_blacklist": "/admin/reserve/blacklist",
+    "reserve_blacklist_appeal": "/reserve/blacklist-appeal",
     "lost_clues": "/admin/lost/clues",
     "e_sign_admin": "/admin/e-sign",
     "grade_scores_admin": "/admin/grade/scores",

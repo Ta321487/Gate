@@ -31,6 +31,10 @@ RESERVATION_COLUMNS_BY_DOMAIN: dict[str, list[tuple[str, str]]] = {
     "DOM-PARKING": [
         ("plate_no", "VARCHAR(16) DEFAULT ''"),
         ("entry_at", "DATETIME NULL"),
+        ("exit_at", "DATETIME NULL"),
+        ("overtime_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("duration_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("parking_pass_used", "TINYINT NOT NULL DEFAULT 0"),
     ],
     "DOM-HOSPITAL": [
         ("patient_name", "VARCHAR(32) DEFAULT ''"),
@@ -41,18 +45,50 @@ RESERVATION_COLUMNS_BY_DOMAIN: dict[str, list[tuple[str, str]]] = {
     "DOM-MEETING": [
         ("subject", "VARCHAR(128) DEFAULT ''"),
         ("party_size", "INT DEFAULT 0"),
+        ("recording_url", "VARCHAR(255) NOT NULL DEFAULT ''"),
+        ("video_url", "VARCHAR(255) NOT NULL DEFAULT ''"),
+        ("door_code", "VARCHAR(32) NOT NULL DEFAULT ''"),
+        ("service_tea", "TINYINT NOT NULL DEFAULT 0"),
+        ("service_device", "TINYINT NOT NULL DEFAULT 0"),
+        ("equip_borrow", "TINYINT NOT NULL DEFAULT 0"),
+        ("minutes_attach", "VARCHAR(512) NOT NULL DEFAULT ''"),
+        ("meeting_stage", "VARCHAR(16) NOT NULL DEFAULT ''"),
+        ("checkin_token", "VARCHAR(32) NOT NULL DEFAULT ''"),
     ],
     "DOM-HOTEL": [
         ("guest_name", "VARCHAR(32) DEFAULT ''"),
         ("guest_count", "INT DEFAULT 0"),
+        ("stay_from", "DATE NULL"),
+        ("stay_to", "DATE NULL"),
+        ("id_no", "VARCHAR(32) NOT NULL DEFAULT ''"),
+        ("deposit_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("breakfast_vouchers", "INT NOT NULL DEFAULT 0"),
+        ("notice_ack", "TINYINT NOT NULL DEFAULT 0"),
+        ("extra_bed", "TINYINT NOT NULL DEFAULT 0"),
+        ("late_checkout_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("checkout_checklist", "VARCHAR(512) NOT NULL DEFAULT ''"),
     ],
     "DOM-CARRENT": [
         ("guest_name", "VARCHAR(32) DEFAULT ''"),
         ("guest_count", "INT DEFAULT 0"),
+        ("violation_hold_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("violation_hold_note", "VARCHAR(255) NOT NULL DEFAULT ''"),
+        ("inspect_ack", "TINYINT NOT NULL DEFAULT 0"),
+        ("mileage_over_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("insurance_pkg", "VARCHAR(32) NOT NULL DEFAULT ''"),
+        ("license_expire_on", "DATE NULL"),
+        ("violation_attach", "VARCHAR(512) NOT NULL DEFAULT ''"),
+        ("etc_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
     ],
     "DOM-SALON": [
         ("preferred_stylist", "VARCHAR(32) DEFAULT ''"),
         ("queue_no", "INT DEFAULT 0"),
+    ],
+    "DOM-INSTRUMENT": [
+        ("overtime_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+        ("training_ack", "TINYINT NOT NULL DEFAULT 0"),
+        ("consumable_note", "VARCHAR(512) NOT NULL DEFAULT ''"),
     ],
 }
 
@@ -113,6 +149,20 @@ ORDER_REFUND_COLUMNS: list[tuple[str, str]] = [
     ("refund_status", "VARCHAR(16) DEFAULT ''"),
     ("refund_reason", "VARCHAR(255) DEFAULT ''"),
     ("refund_at", "DATETIME NULL"),
+    ("refund_type", "VARCHAR(32) DEFAULT ''"),
+    ("refund_tracking_no", "VARCHAR(64) DEFAULT ''"),
+    ("refund_requested_at", "DATETIME NULL"),
+    ("completed_at", "DATETIME NULL"),
+]
+
+ORDER_TRADE_EXTRA_COLUMNS: list[tuple[str, str]] = [
+    ("share_token", "VARCHAR(16) DEFAULT ''"),
+    ("warranty_until", "DATE NULL"),
+    ("partial_ship", "TINYINT NOT NULL DEFAULT 0"),
+    ("receive_verified_at", "DATETIME NULL"),
+    ("invoice_title", "VARCHAR(128) DEFAULT ''"),
+    ("invoice_status", "VARCHAR(16) DEFAULT ''"),
+    ("packaging_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
 ]
 
 _USER_LEDGER_DDL = """
@@ -134,6 +184,8 @@ CREATE TABLE IF NOT EXISTS user_ledger (
 _SYS_USER_LOYALTY_NAMES = {n.lower() for n, _ in SYS_USER_LOYALTY_COLUMNS}
 
 _ORDER_LOYALTY_NAMES = {n.lower() for n, _ in ORDER_LOYALTY_COLUMNS}
+
+_ORDER_TRADE_EXTRA_NAMES = {n.lower() for n, _ in ORDER_TRADE_EXTRA_COLUMNS}
 
 def order_fulfill_columns_for(
     domain: str,
@@ -192,6 +244,9 @@ def ensure_shared_sql_columns(
     order_allow = {n.lower() for n, _ in order_fulfill} | {
         n.lower() for n, _ in ORDER_REFUND_COLUMNS
     }
+    extra_trade = (domain or "") in ("DOM-SHOP", "DOM-FOOD")
+    if extra_trade:
+        order_allow |= _ORDER_TRADE_EXTRA_NAMES
     if loyalty:
         order_allow |= _ORDER_LOYALTY_NAMES
 
@@ -208,13 +263,17 @@ def ensure_shared_sql_columns(
             body = _prune_columns(
                 body,
                 allow=order_allow,
-                known=_ORDER_FULFILL_NAMES | _ORDER_LOYALTY_NAMES,
+                known=_ORDER_FULFILL_NAMES | _ORDER_LOYALTY_NAMES | _ORDER_TRADE_EXTRA_NAMES,
             )
             cols = list(order_fulfill) + list(ORDER_REFUND_COLUMNS)
+            if extra_trade:
+                cols = cols + list(ORDER_TRADE_EXTRA_COLUMNS)
             if loyalty:
                 cols = list(order_fulfill) + list(ORDER_LOYALTY_COLUMNS) + list(
                     ORDER_REFUND_COLUMNS
                 )
+                if extra_trade:
+                    cols = cols + list(ORDER_TRADE_EXTRA_COLUMNS)
             body = _inject_missing_columns(body, cols)
         elif t == "sys_user":
             if not loyalty:

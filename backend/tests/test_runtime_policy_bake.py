@@ -47,7 +47,18 @@ def test_thesis_yml_no_longer_emits_sunk_keys():
     from app.bake.domains import DOMAIN_CAPABILITIES
 
     text = "thesis:\n  title: demo\n"
-    for dom in ("DOM-LIBRARY", "DOM-SHOP", "DOM-EXAM", "DOM-CINEMA", "DOM-GRADE"):
+    for dom in (
+        "DOM-LIBRARY",
+        "DOM-SHOP",
+        "DOM-EXAM",
+        "DOM-CINEMA",
+        "DOM-GRADE",
+        "DOM-HOSPITAL",
+        "DOM-PARKING",
+        "DOM-MEETING",
+        "DOM-SALON",
+        "DOM-HOTEL",
+    ):
         out = _patch_thesis_yml(
             text,
             dom,
@@ -81,3 +92,20 @@ def test_library_archive_tables_land_in_app_policy():
     java = render(policy)
     assert 'ARCHIVE_CATEGORY_TABLE = "category"' in java
     assert "class AppPolicy" in java
+
+
+def test_marketplace_dm_forces_dm_shop_cs_even_without_flag():
+    """多店 + dm：即使 schema 漏落 dmShopCs，AppPolicy 也须收窄店铺客服。"""
+    policy = collect(
+        "DOM-SHOP",
+        {
+            "capabilities": ["archive", "order_lines", "dm"],
+            "runtime": {
+                "archive_category_table": "category",
+                "archive_item_table": "product",
+            },
+            "schema": {"shopMarketplace": True, "entities": {"archive": {}}},
+        },
+    )
+    assert policy.get("DM_SHOP_CS") is True
+    assert policy.get("SHOP_MARKETPLACE") is True

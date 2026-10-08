@@ -23,6 +23,8 @@
 | [delivery-audit-rules.md](./delivery-audit-rules.md) | **怎么审**交付：主链路、红灯、老板小卡 |
 | [domain-skin-gap-analysis.md](./domain-skin-gap-analysis.md) | 换皮 **ID 册**与进度（M/S/P/C）；不论功能库存 |
 | [opening-feature-delivery-map.md](./opening-feature-delivery-map.md) | 开题密功能 → 落点（已实现/扫词开/**待补**/不支持） |
+| [trade-thicken-batch.md](./trade-thicken-batch.md) | **§1.6 交易组加厚**已收口档案（T-00～T-11） |
+| [reserve-thicken-batch.md](./reserve-thicken-batch.md) | **§1.7 预约组加厚**已收口档案（R-00～R-10） |
 | [ai-opening-delivery-map.md](./ai-opening-delivery-map.md) | 开题 AI 表述 → 助手岛产出 |
 | [capability-expansion-batch.md](./capability-expansion-batch.md) | **已收口档案**：E-01～E-14 扩岛批次（勿当当前主线） |
 

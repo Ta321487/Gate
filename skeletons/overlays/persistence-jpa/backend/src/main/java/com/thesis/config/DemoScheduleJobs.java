@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** 演示定时任务：券过期扫标 + 订单超时自动取消 + 过开场/出发下架。 */
+/** 演示定时任务：券过期扫标 + 订单超时自动取消 + 确认收货超时办结 + 过开场/出发下架。 */
 @Component
 public class DemoScheduleJobs {
 
@@ -18,6 +18,12 @@ public class DemoScheduleJobs {
 
     @Value("${thesis.order-timeout-minutes:0}")
     private int orderTimeoutMinutes;
+
+    @Value("${thesis.confirm-receive-timeout-minutes:0}")
+    private int confirmReceiveTimeoutMinutes;
+
+    @Value("${thesis.rider-claim-timeout-minutes:0}")
+    private int riderClaimTimeoutMinutes;
 
     @Scheduled(fixedDelayString = "${thesis.schedule-delay-ms:60000}")
     public void tick() {
@@ -38,9 +44,28 @@ public class DemoScheduleJobs {
             log.debug("order timeout cancel: {}", e.getMessage());
         }
         try {
+            if (confirmReceiveTimeoutMinutes > 0 && OrderStore.enabled()) {
+                int n = OrderStore.completeTimedOutUnreceived(confirmReceiveTimeoutMinutes);
+                if (n > 0) log.info("auto-completed {} unreceived orders", n);
+            }
+        } catch (Exception e) {
+            log.debug("confirm-receive timeout: {}", e.getMessage());
+        }
+        try {
+            if (riderClaimTimeoutMinutes > 0 && OrderStore.enabled()) {
+                int n = OrderStore.releaseTimedOutRiderClaims(riderClaimTimeoutMinutes);
+                if (n > 0) log.info("released {} timed-out rider claims", n);
+            }
+        } catch (Exception e) {
+            log.debug("rider claim timeout: {}", e.getMessage());
+        }
+        try {
             if (SeatStore.enabled()) {
                 int n = SeatStore.expirePastShows();
                 if (n > 0) log.info("auto-closed {} past-start cinema shows", n);
+                int h = SeatStore.releaseExpiredHolds();
+                if (h > 0) log.info("released {} expired cinema holds", h);
+                SeatStore.syncSoldOutShows();
             }
         } catch (Exception e) {
             log.debug("cinema show expire: {}", e.getMessage());
@@ -62,6 +87,23 @@ public class DemoScheduleJobs {
             if (n > 0) log.info("archive expire-soon notified {} items", n);
         } catch (Exception e) {
             log.debug("archive expire-soon notify: {}", e.getMessage());
+        }
+        try {
+            if (com.thesis.capability.SlotStore.enabled()
+                    && com.thesis.capability.SlotStore.remindAheadMinutes() > 0) {
+                int n = com.thesis.capability.SlotStore.remindDueSweep();
+                if (n > 0) log.info("reservation remind sent {}", n);
+            }
+        } catch (Exception e) {
+            log.debug("reservation remind: {}", e.getMessage());
+        }
+        try {
+            if (com.thesis.capability.LessonStore.enabled()) {
+                int n = com.thesis.capability.LessonStore.expireSoonNotify();
+                if (n > 0) log.info("lesson expire-soon notified {}", n);
+            }
+        } catch (Exception e) {
+            log.debug("lesson expire-soon notify: {}", e.getMessage());
         }
     }
 }

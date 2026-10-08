@@ -15,9 +15,15 @@ class WalletDefaultTests(unittest.TestCase):
         caps = merge_loyalty_capabilities(["archive", "order_lines", "quota"], "")
         self.assertIn("wallet", caps)
 
-    def test_no_order_lines_strips_wallet(self) -> None:
-        caps = merge_loyalty_capabilities(["archive", "wallet", "ticket_flow"], "余额充值")
+    def test_no_order_lines_strips_erroneous_wallet(self) -> None:
+        """无订单壳且开题未写储值 → 剥掉误带的 wallet。"""
+        caps = merge_loyalty_capabilities(["archive", "wallet", "ticket_flow"], "")
         self.assertNotIn("wallet", caps)
+
+    def test_no_order_lines_scan_keeps_wallet(self) -> None:
+        """无订单壳但开题写到储值/余额 → 可挂 wallet（美业等）。"""
+        caps = merge_loyalty_capabilities(["archive", "ticket_flow"], "储值卡余额充值")
+        self.assertIn("wallet", caps)
 
     def test_scan_still_adds_points(self) -> None:
         caps = merge_loyalty_capabilities(

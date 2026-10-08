@@ -119,6 +119,34 @@ def find_java_package_root(workspace: Path) -> Path:
     return java / "com" / "thesis"
 
 
+def resolve_student_config_java(workspace: Path, class_name: str) -> Path | None:
+    """定位交付包内 ``config/{Class}.java``（兼容包名 remap 前后）。
+
+    bake 先写 ``com.thesis``，remap 后落到 ``com.campus.*``；填岛 / sync yml
+    若仍写死 thesis 路径会静默跳过，造成 schema 开关与 AppPolicy 分叉。
+    """
+    workspace = Path(workspace)
+    java_root = workspace / "backend" / "src" / "main" / "java"
+    if not java_root.is_dir():
+        return None
+    name = class_name if class_name.endswith(".java") else f"{class_name}.java"
+    root = find_java_package_root(workspace)
+    candidate = root / "config" / name
+    if candidate.parent.is_dir():
+        return candidate
+    thesis = java_root / "com" / "thesis" / "config" / name
+    if thesis.parent.is_dir():
+        return thesis
+    return None
+
+
+def java_package_of_file(workspace: Path, java_file: Path) -> str:
+    """由 ``…/java/com/foo/bar/Baz.java`` 反推 ``com.foo.bar``。"""
+    java_root = Path(workspace) / "backend" / "src" / "main" / "java"
+    rel = Path(java_file).resolve().parent.relative_to(java_root.resolve())
+    return rel.as_posix().replace("/", ".")
+
+
 def rewrite_gate_file_paths(files: list[str], new_package: str) -> list[str]:
     """把契约里的 com/thesis 路径改成新包路径。"""
     old_slash = _OLD_PKG.replace(".", "/")

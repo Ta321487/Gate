@@ -119,7 +119,12 @@ _DOMAIN_TRAITS: dict[str, dict[str, bool]] = {
     "DOM-ETHIC": {"followUp": True},
     "DOM-PARTY": {"followUp": True},
     "DOM-CONTRACT": {"followUp": True},
-    "DOM-INSTRUMENT": {"followUp": True, "loanFine": True, "slotPrimary": True},
+    "DOM-INSTRUMENT": {
+        "followUp": True,
+        "loanFine": True,
+        "slotPrimary": True,
+        "slotInstrument": True,
+    },
     "DOM-EXAM": {"exam": True},
     "DOM-SURVEY": {"survey": True},
     "DOM-VOTE": {"vote": True},

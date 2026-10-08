@@ -664,6 +664,39 @@ def domain_sql(
         domain=domain or "",
         item_table=resolved_item,
     )
+    from app.bake.features.trade_thicken import (
+        ensure_catalog_thicken_sql,
+        ensure_cinema_thicken_sql,
+        ensure_food_thicken_sql,
+        ensure_order_ship_node_sql,
+        ensure_trade_archive_columns,
+    )
+
+    text = ensure_trade_archive_columns(
+        text,
+        domain=domain or "",
+        item_table=resolved_item,
+    )
+    text = ensure_order_ship_node_sql(text, domain=domain or "")
+    text = ensure_cinema_thicken_sql(
+        text,
+        domain=domain or "",
+        order_table=runtime.get("order_table") or "biz_order",
+    )
+    text = ensure_food_thicken_sql(
+        text,
+        domain=domain or "",
+        order_table=runtime.get("order_table") or "biz_order",
+        item_table=resolved_item,
+    )
+    from app.bake.features.reserve_thicken import ensure_reserve_thicken_sql
+
+    text = ensure_reserve_thicken_sql(
+        text,
+        domain=domain or "",
+        reservation_table=runtime.get("reservation_table") or "reservation",
+        item_table=resolved_item,
+    )
     try:
         ci = int(flags.get("creditInitial") or 100)
     except (TypeError, ValueError):
@@ -1061,6 +1094,12 @@ def domain_sql(
     text = ensure_order_review_sql(
         text,
         enabled=ORDER_REVIEW_CAP in caps,
+    )
+    # T-09：须在 guestbook / order_review DDL 落表之后再补列与 stock_notify
+    text = ensure_catalog_thicken_sql(
+        text,
+        domain=domain or "",
+        item_table=resolved_item,
     )
     text = ensure_stock_io_sql(
         text,
