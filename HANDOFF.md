@@ -17,7 +17,9 @@
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
-开题密功能 / 待补 → [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md)。
+开题密功能 / 待补 → [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md)。  
+§1.6 交易加厚（已收口）→ [`docs/trade-thicken-batch.md`](./docs/trade-thicken-batch.md)。  
+§1.7 预约加厚（已收口）→ [`docs/reserve-thicken-batch.md`](./docs/reserve-thicken-batch.md)。
 
 ---
 
@@ -64,6 +66,8 @@
 | 怎么审交付 | [`docs/delivery-audit-rules.md`](./docs/delivery-audit-rules.md) |
 | 换皮 ID 册 | [`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md) |
 | 开题功能对照 | [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md) |
+| §1.6 交易加厚批次（已收口） | [`docs/trade-thicken-batch.md`](./docs/trade-thicken-batch.md) |
+| §1.7 预约加厚批次（已收口） | [`docs/reserve-thicken-batch.md`](./docs/reserve-thicken-batch.md) |
 | AI 开题对照 | [`docs/ai-opening-delivery-map.md`](./docs/ai-opening-delivery-map.md) |
 | 全索引 | [`docs/README.md`](./docs/README.md) |
 
