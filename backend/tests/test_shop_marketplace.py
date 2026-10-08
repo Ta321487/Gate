@@ -273,6 +273,70 @@ class ShopMarketplaceContractTests(unittest.TestCase):
             (spec.get("schema") or {}).get("labels", {}).get("dmNewTitle"),
             "联系商家客服",
         )
+        from app.bake.runtime_policy import collect
+
+        self.assertTrue(
+            collect("DOM-SHOP", spec).get("DM_SHOP_CS"),
+            "schema 店铺客服文案开启时 AppPolicy.DM_SHOP_CS 必须为 true",
+        )
+
+    def test_write_policy_updates_remapped_app_policy(self) -> None:
+        """remap 后填岛同步必须改到 campus 包下的 AppPolicy，不能静默写死 thesis。"""
+        import tempfile
+        from pathlib import Path
+
+        from app.bake.java_package import resolve_student_config_java
+        from app.bake.runtime_policy import write_policy as write_app_policy
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            cfg = (
+                ws
+                / "backend"
+                / "src"
+                / "main"
+                / "java"
+                / "com"
+                / "campus"
+                / "agri_mall"
+                / "config"
+            )
+            cfg.mkdir(parents=True)
+            # 模拟 remap 后：无 com.thesis，仅有 campus 包
+            (cfg / "AppPolicy.java").write_text(
+                'package com.campus.agri_mall.config;\n'
+                "public final class AppPolicy {\n"
+                "    public static final boolean DM_SHOP_CS = false;\n"
+                "}\n",
+                encoding="utf-8",
+            )
+            (cfg.parent / "controller").mkdir()
+            spec = {
+                "domain": "DOM-SHOP",
+                "capabilities": ["archive", "order_lines", "dm"],
+                "schema": {
+                    "shopMarketplace": True,
+                    "dmShopCs": True,
+                    "labels": {"dmNewTitle": "联系商家客服"},
+                },
+                "runtime": {
+                    "archive_category_table": "category",
+                    "archive_item_table": "product",
+                },
+            }
+            path = write_app_policy(ws, "DOM-SHOP", spec)
+            self.assertIsNotNone(path)
+            self.assertEqual(
+                path,
+                resolve_student_config_java(ws, "AppPolicy"),
+            )
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("package com.campus.agri_mall.config;", text)
+            self.assertIn("DM_SHOP_CS = true", text)
+            self.assertFalse(
+                (ws / "backend/src/main/java/com/thesis/config").exists(),
+                "不得回写已消失的 thesis 目录",
+            )
 
     def test_marketplace_seed_has_shippable_and_optional_pending(self) -> None:
         sql = domain_sql(

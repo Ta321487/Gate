@@ -3,6 +3,7 @@ package com.thesis.capability;
 import com.thesis.config.JdbcSupport;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -114,6 +115,38 @@ public final class BlindBoxStore {
         m.put("hiddenGot", got);
         m.put("text", pityLine(draws, pityNeed, got));
         return m;
+    }
+
+    /** T-10：买家中赏记录（扫订单明细 draw_title）。 */
+    public static List<Map<String, Object>> listMyDraws(String username, int limit) {
+        requireOn();
+        String u = username == null ? "" : username.trim();
+        if (u.isBlank()) return List.of();
+        if (limit < 1) limit = 20;
+        if (limit > 100) limit = 100;
+        try {
+            return db().query(
+                    "SELECT o.id AS order_id, o.created_at, l.item_id, l.title AS box_title, "
+                            + "l.draw_title, l.draw_hidden "
+                            + "FROM " + lineTable() + " l "
+                            + "JOIN " + orderTable() + " o ON o.id=l.order_id "
+                            + "WHERE o.username=? AND l.draw_title IS NOT NULL AND TRIM(l.draw_title)<>'' "
+                            + "ORDER BY o.id DESC, l.id DESC LIMIT ?",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("orderId", rs.getLong("order_id"));
+                        Timestamp ca = rs.getTimestamp("created_at");
+                        m.put("createdAt", ca == null ? null : ca.toLocalDateTime().toString().replace('T', ' '));
+                        m.put("boxId", rs.getLong("item_id"));
+                        m.put("boxTitle", rs.getString("box_title") == null ? "" : rs.getString("box_title"));
+                        m.put("drawTitle", rs.getString("draw_title"));
+                        m.put("hidden", rs.getInt("draw_hidden") == 1);
+                        return m;
+                    },
+                    u, limit);
+        } catch (Exception e) {
+            return List.of();
+        }
     }
 
     public static List<Map<String, Object>> listAll() {

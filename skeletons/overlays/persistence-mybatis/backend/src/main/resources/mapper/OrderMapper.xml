@@ -70,12 +70,28 @@
         WHERE status='pending' AND created_at &lt; DATE_SUB(NOW(), INTERVAL #{minutes} MINUTE)
     </select>
 
+    <select id="selectTimedOutUnreceivedIds" resultType="long">
+        SELECT id FROM `${orderTable}`
+        WHERE status IN ('shipped','in_transit','signed')
+          AND shipped_at IS NOT NULL
+          AND shipped_at &lt; DATE_SUB(NOW(), INTERVAL #{minutes} MINUTE)
+    </select>
+
     <update id="updateOrderShip">
         UPDATE `${orderTable}` SET status=#{status}
         <if test="trackingNo != null">, tracking_no=#{trackingNo}</if>
         <if test="pickupCode != null">, pickup_code=#{pickupCode}</if>
         <if test="shippedAt != null">, shipped_at=#{shippedAt}</if>
+        <if test="partialShip != null">, partial_ship=#{partialShip}</if>
         , updated_at=#{updatedAt}
+        WHERE id=#{id}
+    </update>
+
+    <update id="updateOrderAddress">
+        UPDATE `${orderTable}` SET updated_at=#{updatedAt}
+        <if test="receiverName != null">, receiver_name=#{receiverName}</if>
+        <if test="receiverPhone != null">, receiver_phone=#{receiverPhone}</if>
+        <if test="addressLine != null">, address_line=#{addressLine}</if>
         WHERE id=#{id}
     </update>
 
@@ -101,6 +117,35 @@
         GROUP BY l.title ORDER BY value DESC LIMIT 8
     </select>
 
+    <select id="selectSalesDailySeries" resultType="map">
+        SELECT DATE_FORMAT(created_at,'%Y-%m-%d') AS day,
+               COUNT(*) AS orderCount,
+               COALESCE(SUM(CASE WHEN status='completed' THEN total_yuan ELSE 0 END),0) AS amountYuan
+        FROM `${orderTable}`
+        WHERE created_at &gt;= DATE_SUB(CURDATE(), INTERVAL 13 DAY)
+        GROUP BY DATE_FORMAT(created_at,'%Y-%m-%d') ORDER BY day
+    </select>
+
+    <select id="selectRefundReasonSeries" resultType="map">
+        SELECT refund_reason AS name, COUNT(*) AS value FROM `${orderTable}`
+        WHERE refund_reason IS NOT NULL AND TRIM(refund_reason)&lt;&gt;''
+          AND refund_status IN ('pending','approved','rejected')
+        GROUP BY refund_reason ORDER BY value DESC LIMIT 12
+    </select>
+
+    <select id="selectOrderByShareToken" resultType="map">
+        SELECT * FROM `${orderTable}` WHERE share_token=#{token}
+    </select>
+
+    <select id="selectShipNodes" resultType="map">
+        SELECT happened_at, title, detail FROM order_ship_node WHERE order_id=#{orderId} ORDER BY id
+    </select>
+
+    <insert id="insertShipNode">
+        INSERT INTO order_ship_node (order_id, happened_at, title, detail)
+        VALUES (#{orderId}, #{happenedAt}, #{title}, #{detail})
+    </insert>
+
     <update id="applyLoyaltyWithCoupon">
         UPDATE `${orderTable}`
         SET total_yuan=#{totalYuan}, discount_yuan=#{discountYuan}, pay_balance_yuan=#{payBalanceYuan},
@@ -114,4 +159,10 @@
             updated_at=#{updatedAt}
         WHERE id=#{id}
     </update>
+
+  <update id="updateInvoice">
+    UPDATE ${table}
+    SET invoice_title=#{invoiceTitle}, invoice_status=#{invoiceStatus}, updated_at=#{updatedAt}
+    WHERE id=#{id}
+  </update>
 </mapper>

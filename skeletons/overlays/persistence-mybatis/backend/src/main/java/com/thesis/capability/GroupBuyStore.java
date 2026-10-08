@@ -1,9 +1,8 @@
 package com.thesis.capability;
 
-import com.thesis.config.MybatisSupport;
-import com.thesis.mapper.GroupBuyMapper;
+import com.thesis.config.JdbcSupport;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -11,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 拼团。规则与 jdbc 相同，只换数据访问。
+ * 拼团。下单和订单列表仍走 OrderStore，这里只做开团、参团和过期扫描。
  */
 public final class GroupBuyStore {
 
@@ -32,29 +31,39 @@ public final class GroupBuyStore {
         if (!enabled) return;
         List<Map<String, Object>> rows;
         try {
-            rows = db().openCampaigns();
+            rows = db().query(
+                    "SELECT id, target_size, deadline, status FROM group_campaign WHERE status='open'",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", rs.getLong("id"));
+                        m.put("target", rs.getInt("target_size"));
+                        m.put("deadline", rs.getTimestamp("deadline"));
+                        return m;
+                    });
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置拼团表", e);
         }
-        if (rows == null) return;
         LocalDateTime now = LocalDateTime.now();
         for (Map<String, Object> row : rows) {
-            long id = lng(row.get("id"));
-            int target = num(first(row, "targetSize", "target_size"));
-            int joined = count(id);
+            long id = ((Number) row.get("id")).longValue();
+            int target = ((Number) row.get("target")).intValue();
+            int joined = countMembers(id);
             if (joined >= target) {
                 form(id);
                 continue;
             }
-            LocalDateTime deadline = toTime(row.get("deadline"));
-            if (deadline != null && !deadline.isAfter(now)) fail(id);
+            Object dl = row.get("deadline");
+            LocalDateTime deadline = dl instanceof java.sql.Timestamp ts ? ts.toLocalDateTime() : null;
+            if (deadline != null && !deadline.isAfter(now)) {
+                fail(id);
+            }
         }
     }
 
     public static void assertJoin(long campaignId, String username, List<Long> itemIds) {
         if (!enabled) throw new IllegalStateException("拼团未开启");
         Map<String, Object> camp = loadOpen(campaignId);
-        long itemId = lng(first(camp, "itemId", "item_id"));
+        long itemId = ((Number) camp.get("itemId")).longValue();
         boolean hit = false;
         if (itemIds != null) {
             for (Long id : itemIds) {
@@ -62,31 +71,78 @@ public final class GroupBuyStore {
             }
         }
         if (!hit) throw new IllegalArgumentException("购物车里没有这个团的商品");
-        Integer mine = db().countMine(campaignId, username);
+        Integer mine = db().queryForObject(
+                "SELECT COUNT(*) FROM group_member WHERE campaign_id=? AND username=?",
+                Integer.class, campaignId, username);
         if (mine != null && mine > 0) throw new IllegalArgumentException("你已经在这个团里");
     }
 
     public static void join(String username, long orderId, long campaignId) {
         if (!enabled) return;
-        db().insertMember(campaignId, orderId, username);
+        db().update(
+                "INSERT INTO group_member (campaign_id, order_id, username) VALUES (?,?,?)",
+                campaignId, orderId, username);
         Map<String, Object> camp = loadOpen(campaignId);
-        if (count(campaignId) >= num(first(camp, "targetSize", "target_size"))) form(campaignId);
+        int target = ((Number) camp.get("target")).intValue();
+        if (countMembers(campaignId) >= target) form(campaignId);
     }
 
     public static List<Map<String, Object>> listOpen() {
         requireOn();
         sweep();
-        return withVerb(db().listOpen(itemTable()));
+        String item = itemTable();
+        return db().query(
+                "SELECT c.id, c.item_id, c.target_size, c.deadline, c.status, i.title, "
+                        + "(SELECT COUNT(*) FROM group_member m WHERE m.campaign_id=c.id) AS joined "
+                        + "FROM group_campaign c LEFT JOIN " + item + " i ON i.id=c.item_id "
+                        + "WHERE c.status='open' AND c.deadline>NOW() ORDER BY c.deadline, c.id",
+                (rs, i) -> mapOpen(rs));
+    }
+
+    /** T-10：按订单查拼团进度（已参 / 目标 / 状态）。 */
+    public static Map<String, Object> progressForOrder(long orderId) {
+        if (!enabled || orderId <= 0) return null;
+        try {
+            List<Map<String, Object>> rows = db().query(
+                    "SELECT c.id, c.target_size, c.status, "
+                            + "(SELECT COUNT(*) FROM group_member m2 WHERE m2.campaign_id=c.id) AS joined "
+                            + "FROM group_member m JOIN group_campaign c ON c.id=m.campaign_id "
+                            + "WHERE m.order_id=? LIMIT 1",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("campaignId", rs.getLong("id"));
+                        m.put("targetSize", rs.getInt("target_size"));
+                        m.put("joined", rs.getInt("joined"));
+                        m.put("status", rs.getString("status"));
+                        return m;
+                    },
+                    orderId);
+            return rows == null || rows.isEmpty() ? null : rows.get(0);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static List<Map<String, Object>> listAll() {
         requireOn();
-        return withVerb(db().listAll(itemTable()));
+        String item = itemTable();
+        return db().query(
+                "SELECT c.id, c.item_id, c.target_size, c.deadline, c.status, i.title, "
+                        + "(SELECT COUNT(*) FROM group_member m WHERE m.campaign_id=c.id) AS joined "
+                        + "FROM group_campaign c LEFT JOIN " + item + " i ON i.id=c.item_id ORDER BY c.id DESC",
+                (rs, i) -> mapOpen(rs));
     }
 
     public static List<Map<String, Object>> products() {
         requireOn();
-        return db().products(itemTable());
+        return db().query(
+                "SELECT id, title FROM " + itemTable() + " ORDER BY id",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getLong("id"));
+                    m.put("title", rs.getString("title"));
+                    return m;
+                });
     }
 
     public static Map<String, Object> save(Map<String, Object> body) {
@@ -98,79 +154,116 @@ public final class GroupBuyStore {
         if (itemId <= 0) throw new IllegalArgumentException("请选择商品");
         if (target < 2) throw new IllegalArgumentException("成团人数至少 2");
         if (deadline == null) throw new IllegalArgumentException("请选择截止时间");
-        Map<String, Object> row = new LinkedHashMap<>();
-        row.put("itemId", itemId);
-        row.put("targetSize", target);
-        row.put("deadline", Timestamp.valueOf(deadline));
         long id = lng(body.get("id"));
         if (id > 0) {
-            row.put("id", id);
-            if (db().updateCampaign(row) <= 0) throw new IllegalArgumentException("只能修改仍开放的团");
+            int n = db().update(
+                    "UPDATE group_campaign SET item_id=?, target_size=?, deadline=? WHERE id=? AND status='open'",
+                    itemId, target, java.sql.Timestamp.valueOf(deadline), id);
+            if (n <= 0) throw new IllegalArgumentException("只能修改仍开放的团");
         } else {
-            db().insertCampaign(row);
+            db().update(
+                    "INSERT INTO group_campaign (item_id, target_size, deadline, status) VALUES (?,?,?, 'open')",
+                    itemId, target, java.sql.Timestamp.valueOf(deadline));
         }
         sweep();
         return Map.of("ok", true);
     }
 
     private static void form(long campaignId) {
-        db().markFormed(campaignId);
+        db().update("UPDATE group_campaign SET status='formed' WHERE id=? AND status='open'", campaignId);
         String order = orderTable();
-        List<Long> ids = db().memberOrders(campaignId);
-        if (ids == null) return;
+        List<Long> ids = memberOrders(campaignId);
         for (Long orderId : ids) {
-            if (orderId != null) db().confirmOrder(order, orderId);
+            db().update(
+                    "UPDATE " + order + " SET status='confirmed', updated_at=NOW() WHERE id=? AND status='grouping'",
+                    orderId);
         }
     }
 
     private static void fail(long campaignId) {
-        db().markFailed(campaignId);
-        List<Map<String, Object>> rows = db().groupingOrders(orderTable(), campaignId);
-        if (rows == null) return;
+        db().update("UPDATE group_campaign SET status='failed' WHERE id=? AND status='open'", campaignId);
+        String order = orderTable();
+        List<Map<String, Object>> rows = db().query(
+                "SELECT m.order_id, m.username, o.total_yuan FROM group_member m JOIN " + order
+                        + " o ON o.id=m.order_id WHERE m.campaign_id=? AND o.status='grouping'",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("orderId", rs.getLong("order_id"));
+                    m.put("username", rs.getString("username"));
+                    m.put("paid", rs.getDouble("total_yuan"));
+                    return m;
+                },
+                campaignId);
         for (Map<String, Object> row : rows) {
-            long orderId = lng(first(row, "orderId", "order_id"));
-            db().cancelOrder(orderTable(), orderId);
+            long orderId = ((Number) row.get("orderId")).longValue();
+            db().update(
+                    "UPDATE " + order + " SET status='cancelled', updated_at=NOW() WHERE id=? AND status='grouping'",
+                    orderId);
             double paid = row.get("paid") instanceof Number n ? n.doubleValue() : 0;
-            if (paid > 0) LoyaltyStore.refundOrderPay(str(row.get("username")), orderId, paid);
+            if (paid > 0) {
+                LoyaltyStore.refundOrderPay(String.valueOf(row.get("username")), orderId, paid);
+            }
         }
     }
 
     private static Map<String, Object> loadOpen(long campaignId) {
-        Map<String, Object> camp;
-        try {
-            camp = db().campaign(campaignId);
-        } catch (Exception e) {
-            throw new IllegalStateException("系统未配置拼团表", e);
-        }
-        if (camp == null || camp.isEmpty()) throw new IllegalArgumentException("拼团不存在");
-        if (!"open".equals(str(camp.get("status")))) throw new IllegalArgumentException("这个团已结束");
-        LocalDateTime deadline = toTime(camp.get("deadline"));
+        List<Map<String, Object>> rows = db().query(
+                "SELECT id, item_id, target_size, deadline, status FROM group_campaign WHERE id=?",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("itemId", rs.getLong("item_id"));
+                    m.put("target", rs.getInt("target_size"));
+                    m.put("status", rs.getString("status"));
+                    java.sql.Timestamp dl = rs.getTimestamp("deadline");
+                    m.put("deadline", dl == null ? null : dl.toLocalDateTime());
+                    return m;
+                },
+                campaignId);
+        if (rows == null || rows.isEmpty()) throw new IllegalArgumentException("拼团不存在");
+        Map<String, Object> camp = rows.get(0);
+        if (!"open".equals(camp.get("status"))) throw new IllegalArgumentException("这个团已结束");
+        LocalDateTime deadline = (LocalDateTime) camp.get("deadline");
         if (deadline == null || !deadline.isAfter(LocalDateTime.now())) {
             throw new IllegalArgumentException("这个团已过截止时间");
         }
         return camp;
     }
 
-    private static int count(long id) {
-        Integer n = db().countMembers(id);
+    private static int countMembers(long campaignId) {
+        Integer n = db().queryForObject(
+                "SELECT COUNT(*) FROM group_member WHERE campaign_id=?", Integer.class, campaignId);
         return n == null ? 0 : n;
     }
 
-    private static List<Map<String, Object>> withVerb(List<Map<String, Object>> rows) {
-        if (rows == null) return List.of();
-        for (Map<String, Object> row : rows) {
-            int joined = num(row.get("joined"));
-            row.put("verb", joined <= 0 ? "开团" : "参团");
-        }
-        return rows;
+    private static List<Long> memberOrders(long campaignId) {
+        List<Long> ids = db().query(
+                "SELECT order_id FROM group_member WHERE campaign_id=?",
+                (rs, i) -> rs.getLong("order_id"),
+                campaignId);
+        return ids == null ? List.of() : ids;
+    }
+
+    private static Map<String, Object> mapOpen(java.sql.ResultSet rs) throws java.sql.SQLException {
+        Map<String, Object> m = new LinkedHashMap<>();
+        int joined = rs.getInt("joined");
+        int target = rs.getInt("target_size");
+        m.put("id", rs.getLong("id"));
+        m.put("itemId", rs.getLong("item_id"));
+        m.put("title", rs.getString("title"));
+        m.put("targetSize", target);
+        m.put("joined", joined);
+        m.put("deadline", rs.getString("deadline"));
+        m.put("status", rs.getString("status"));
+        m.put("verb", joined <= 0 ? "开团" : "参团");
+        return m;
     }
 
     private static void requireOn() {
         if (!enabled) throw new IllegalStateException("拼团未开启");
     }
 
-    private static GroupBuyMapper db() {
-        return MybatisSupport.mapper(GroupBuyMapper.class);
+    private static JdbcTemplate db() {
+        return JdbcSupport.jdbc();
     }
 
     private static String itemTable() {
@@ -187,19 +280,6 @@ public final class GroupBuyStore {
         return t;
     }
 
-    private static Object first(Map<String, Object> row, String a, String b) {
-        if (row == null) return null;
-        if (row.get(a) != null) return row.get(a);
-        return row.get(b);
-    }
-
-    private static LocalDateTime toTime(Object raw) {
-        if (raw instanceof Timestamp ts) return ts.toLocalDateTime();
-        if (raw instanceof LocalDateTime dt) return dt;
-        if (raw instanceof java.util.Date d) return new Timestamp(d.getTime()).toLocalDateTime();
-        return parseTs(str(raw));
-    }
-
     private static String str(Object o) {
         return o == null ? "" : String.valueOf(o).trim();
     }
@@ -207,11 +287,7 @@ public final class GroupBuyStore {
     private static int num(Object o) {
         if (o instanceof Number n) return n.intValue();
         if (o == null || String.valueOf(o).isBlank()) return 0;
-        try {
-            return Integer.parseInt(String.valueOf(o).trim());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
+        return Integer.parseInt(String.valueOf(o).trim());
     }
 
     private static long lng(Object o) {
@@ -227,7 +303,6 @@ public final class GroupBuyStore {
     private static LocalDateTime parseTs(String raw) {
         if (raw == null || raw.isBlank()) return null;
         String s = raw.trim().replace('T', ' ');
-        if (s.length() > 19) s = s.substring(0, 19);
         if (s.length() == 16) s = s + ":00";
         try {
             return LocalDateTime.parse(s, TS);

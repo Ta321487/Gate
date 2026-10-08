@@ -288,11 +288,27 @@ public final class CouponStore {
         }
     }
 
-    /** 定时：未用且模板已过期 → expired */
+    /** 定时：未用且模板已过期 → expired；并对受影响用户发站内信（T-10）。 */
     public static int expireSweep() {
         if (!enabled) return 0;
         try {
-            return mapper().expireSweep();
+            List<String> users = mapper().listUsernamesToExpire();
+            int n = mapper().expireSweep();
+            if (n > 0 && users != null) {
+                for (String u : users) {
+                    if (u == null || u.isBlank()) continue;
+                    try {
+                        com.thesis.service.MessageStore.send(
+                                u,
+                                "优惠券已过期",
+                                "您有优惠券已过期未使用，可到领券中心查看是否有新券。",
+                                "coupon",
+                                null);
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            return n;
         } catch (Exception e) {
             return 0;
         }

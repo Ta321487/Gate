@@ -24,7 +24,12 @@ const hint = computed(() => {
   const complete = orderVerbs.value.complete || '完成'
   // 毕设骑手端：配送单列表 + 出餐/配送/送达（精简，无地图）
   if (post === 'rider') {
-    return `配送单作业：查看待配送${orderNoun.value}，按序「${confirm}→${ship}→${complete}」推进到送达`
+    const claim = getSchema()?.labels?.riderClaimLabel || '接单配送'
+    const pool = getSchema()?.tradeThicken?.riderPool
+    const timeoutHint = getSchema()?.labels?.riderClaimTimeoutHint || ''
+    return pool
+      ? `配送单作业：先「${claim}」，再按序「${ship}→${complete}」送达。${timeoutHint || '超时未推进会回到待接池'}`
+      : `配送单作业：查看待配送${orderNoun.value}，按序「${confirm}→${ship}→${complete}」推进到送达`
   }
   // 毕设拣货：待拣列表 + 确认出库
   if (post === 'picker') {

@@ -367,14 +367,33 @@ public final class CouponStore {
         }
     }
 
-    /** 定时：未用且模板已过期 → expired */
+    /** 定时：未用且模板已过期 → expired；并对受影响用户发站内信（T-10）。 */
     public static int expireSweep() {
         if (!enabled) return 0;
         try {
-            return db().update(
+            List<String> users = db().query(
+                    "SELECT DISTINCT u.username FROM " + MINE + " u JOIN " + PROMO + " p ON p.id=u.coupon_id "
+                            + "WHERE u.status='unused' AND p.expire_at IS NOT NULL AND p.expire_at < NOW()",
+                    (rs, i) -> rs.getString(1));
+            int n = db().update(
                     "UPDATE " + MINE + " u JOIN " + PROMO + " p ON p.id=u.coupon_id "
                             + "SET u.status='expired' "
                             + "WHERE u.status='unused' AND p.expire_at IS NOT NULL AND p.expire_at < NOW()");
+            if (n > 0 && users != null) {
+                for (String u : users) {
+                    if (u == null || u.isBlank()) continue;
+                    try {
+                        com.thesis.service.MessageStore.send(
+                                u,
+                                "优惠券已过期",
+                                "您有优惠券已过期未使用，可到领券中心查看是否有新券。",
+                                "coupon",
+                                null);
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            return n;
         } catch (Exception e) {
             return 0;
         }

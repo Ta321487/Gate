@@ -53,6 +53,19 @@ public class BlindBoxController {
         }
     }
 
+    @GetMapping("/draws")
+    public R<?> myDraws(
+            @RequestParam(defaultValue = "50") int limit,
+            HttpSession session) {
+        require();
+        String username = AdminAuth.requireLogin(session);
+        try {
+            return R.ok(BlindBoxStore.listMyDraws(username, limit));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @GetMapping
     public R<?> list(HttpSession session) {
         require();

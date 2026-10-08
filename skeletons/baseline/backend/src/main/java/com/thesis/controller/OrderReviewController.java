@@ -63,8 +63,22 @@ public class OrderReviewController {
         long orderId = Long.parseLong(String.valueOf(body.get("orderId")));
         int rating = Integer.parseInt(String.valueOf(body.get("rating")));
         String text = body.get("body") == null ? "" : String.valueOf(body.get("body"));
+        String imageUrl = body.get("imageUrl") == null ? "" : String.valueOf(body.get("imageUrl"));
         try {
-            return R.ok(OrderReviewStore.submit(uid, orderId, rating, text));
+            return R.ok(OrderReviewStore.submit(uid, orderId, rating, text, imageUrl));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/follow")
+    public R<?> follow(@PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        require();
+        String uid = AdminAuth.requireLogin(session);
+        String text = body == null || body.get("followBody") == null
+                ? "" : String.valueOf(body.get("followBody"));
+        try {
+            return R.ok(OrderReviewStore.follow(uid, id, text));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }

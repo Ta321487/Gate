@@ -5,6 +5,7 @@ import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.LoyaltyStore;
 import com.thesis.capability.OrderStore;
 import com.thesis.common.AdminAuth;
+import com.thesis.service.SeatStore;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
@@ -38,6 +39,25 @@ public class OrderController {
     @PostMapping("/api/cart/remove")
     public R<Void> removeCart(@RequestBody Map<String, Object> body, HttpSession session) {
         return doRemoveCart(toLong(body.get("itemId")), session);
+    }
+
+    @PostMapping("/api/cart/clear-invalid")
+    public R<?> clearInvalidCart(HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        int n = OrderStore.clearInvalidCart(uid);
+        return R.ok(Map.of("removed", n));
+    }
+
+    @PostMapping("/api/cart/replace")
+    public R<?> replaceCartItem(@RequestBody Map<String, Object> body, HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        try {
+            return R.ok(OrderStore.replaceCartItem(uid, toLong(body.get("fromItemId")), toLong(body.get("toItemId"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     private R<?> doUpsertCart(long itemId, int qty, HttpSession session) {
@@ -139,6 +159,16 @@ public class OrderController {
         }
         try {
             LoyaltyStore.beginOffset(offsetPts);
+            OrderStore.beginCartItemFilter(itemIdsOf(b.get("itemIds")));
+            java.util.LinkedHashMap<String, Object> placeX = new java.util.LinkedHashMap<>();
+            placeX.put("tableNo", str(b.get("tableNo")));
+            placeX.put("utensilOpt", str(b.get("utensilOpt")));
+            placeX.put("packOpt", str(b.get("packOpt")));
+            placeX.put("mergeCode", str(b.get("mergeCode")));
+            placeX.put("packagingFee", b.get("packagingFee"));
+            placeX.put("wantPackaging", b.get("wantPackaging"));
+            placeX.put("invoiceTitle", str(b.get("invoiceTitle")));
+            OrderStore.beginPlaceExtras(placeX);
             return R.ok(OrderStore.placeOrder(
                     uid,
                     remark,
@@ -158,6 +188,8 @@ public class OrderController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         } finally {
+            OrderStore.endPlaceExtras();
+            OrderStore.endCartItemFilter();
             LoyaltyStore.endOffset();
         }
     }
@@ -202,8 +234,170 @@ public class OrderController {
                 boolean pass = bool(b.get("pass"), true);
                 return R.ok(OrderStore.decideRefund(id, pass, str(b.get("note"))));
             }
-            return R.ok(OrderStore.requestRefund(id, uid, str(b.get("reason"))));
+            return R.ok(OrderStore.requestRefund(id, uid, str(b.get("reason")), str(b.get("refundType"))));
         } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PutMapping("/api/orders/{id}/refund-tracking")
+    public R<?> refundTracking(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        Map<String, Object> m = OrderStore.getOrder(id);
+        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "订单不存在");
+        if (admin) requireMerchantOrderAccess(session, uid, id);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        try {
+            return R.ok(OrderStore.updateRefundTracking(id, uid, admin, str(b.get("trackingNo"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/api/orders/{id}/refund-trace")
+    public R<?> refundTrace(@PathVariable long id, HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        Map<String, Object> m = OrderStore.getOrder(id);
+        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "订单不存在");
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        if (!admin && !uid.equals(String.valueOf(m.get("username")))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权查看");
+        }
+        if (admin) requireMerchantOrderAccess(session, uid, id);
+        try {
+            return R.ok(OrderStore.refundTrace(id));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/api/order-share/{token}")
+    public R<?> orderShare(@PathVariable String token) {
+        requireOrder();
+        try {
+            return R.ok(OrderStore.getOrderByShareToken(token));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/api/orders/{id}/ship-nodes")
+    public R<?> addShipNode(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        requireMerchantOrderAccess(session, uid, id);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        try {
+            return R.ok(OrderStore.addShipNode(id, str(b.get("title")), str(b.get("detail")), str(b.get("happenedAt"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/api/orders/{id}/verify-receive")
+    public R<?> verifyReceive(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        requireMerchantOrderAccess(session, uid, id);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        try {
+            return R.ok(OrderStore.verifyReceiveCode(id, str(b.get("code"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PutMapping("/api/orders/{id}/warranty")
+    public R<?> warranty(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        Map<String, Object> m = OrderStore.getOrder(id);
+        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "订单不存在");
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        if (!admin && !uid.equals(String.valueOf(m.get("username")))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权操作");
+        }
+        if (admin) requireMerchantOrderAccess(session, uid, id);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        try {
+            return R.ok(OrderStore.updateWarranty(id, str(b.get("warrantyUntil"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PutMapping("/api/orders/{id}/invoice")
+    public R<?> invoice(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        Map<String, Object> m = OrderStore.getOrder(id);
+        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "订单不存在");
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        if (!admin && !uid.equals(String.valueOf(m.get("username")))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权操作");
+        }
+        if (admin) requireMerchantOrderAccess(session, uid, id);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        try {
+            return R.ok(OrderStore.updateInvoice(id, str(b.get("invoiceTitle")), str(b.get("invoiceStatus")), admin));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PutMapping("/api/orders/{id}/refund-fee")
+    public R<?> refundFee(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        Map<String, Object> m = OrderStore.getOrder(id);
+        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "订单不存在");
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        if (!admin && !uid.equals(String.valueOf(m.get("username")))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "无权操作");
+        }
+        if (admin) requireMerchantOrderAccess(session, uid, id);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        try {
+            Object fee = b.get("refundFeeYuan");
+            if (fee == null) fee = b.get("fee");
+            return R.ok(OrderStore.updateRefundFee(id, fee));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/api/orders/{id}/claim")
+    public R<?> claimRider(@PathVariable long id, HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        try {
+            return R.ok(OrderStore.claimRider(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
     }
@@ -237,6 +431,31 @@ public class OrderController {
         return R.ok(m);
     }
 
+    @PutMapping("/api/orders/{id}/address")
+    public R<?> changeOrderAddress(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireOrder();
+        String uid = AdminAuth.requireLogin(session);
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        Map<String, Object> m = OrderStore.getOrder(id);
+        if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "订单不存在");
+        if (admin) requireMerchantOrderAccess(session, uid, id);
+        Map<String, Object> b = body == null ? Map.of() : body;
+        try {
+            return R.ok(OrderStore.updateShippingAddress(
+                    id,
+                    uid,
+                    admin,
+                    str(b.get("receiverName")),
+                    str(b.get("receiverPhone")),
+                    str(b.get("addressLine"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @PostMapping("/api/orders/{id}/{action}")
     public R<?> advance(
             @PathVariable long id,
@@ -253,6 +472,13 @@ public class OrderController {
                 throw new BizException(ErrorCode.FORBIDDEN, "无权取消");
             }
             if (admin) requireMerchantOrderAccess(session, uid, id);
+            if (!admin && SeatStore.enabled()) {
+                try {
+                    SeatStore.assertOrderRefundOpen(id);
+                } catch (IllegalStateException e) {
+                    throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+                }
+            }
         } else if (ArchiveStore.shopMarketplaceEnabled()
                 && ("sign".equalsIgnoreCase(action) || "receive".equalsIgnoreCase(action))) {
             // 买家确认收货：签收 → 办结（状态机保留「已签收」再「已完成」）
@@ -300,6 +526,16 @@ public class OrderController {
             if (o instanceof Map<?, ?> map) {
                 out.add((Map<String, Object>) map);
             }
+        }
+        return out;
+    }
+
+    private static List<Long> itemIdsOf(Object raw) {
+        if (!(raw instanceof List<?> list)) return List.of();
+        List<Long> out = new ArrayList<>();
+        for (Object o : list) {
+            long id = toLong(o);
+            if (id > 0) out.add(id);
         }
         return out;
     }

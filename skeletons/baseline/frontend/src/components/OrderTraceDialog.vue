@@ -28,8 +28,10 @@ import http from '../api/http'
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   orderId: { type: [Number, String], default: null },
-  title: { type: String, default: '物流轨迹' },
+  title: { type: String, default: '物流进度' },
   emptyText: { type: String, default: '暂无轨迹记录' },
+  /** 默认物流轨迹；售后进度传 refund-trace */
+  endpoint: { type: String, default: 'trace' },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -37,15 +39,16 @@ const emit = defineEmits(['update:modelValue'])
 const list = ref([])
 
 watch(
-  () => [props.modelValue, props.orderId],
-  async ([open, id]) => {
+  () => [props.modelValue, props.orderId, props.endpoint],
+  async ([open, id, ep]) => {
     if (!open || !id) {
       list.value = []
       return
     }
     list.value = []
+    const path = ep === 'refund-trace' ? 'refund-trace' : 'trace'
     try {
-      const res = await http.get(`/api/orders/${id}/trace`)
+      const res = await http.get(`/api/orders/${id}/${path}`)
       list.value = res.data || []
     } catch {
       list.value = []

@@ -12,6 +12,19 @@
         <el-rate :model-value="row.rating" disabled />
       </div>
       <p class="body">{{ row.body || '（无文字）' }}</p>
+      <el-image
+        v-if="row.imageUrl"
+        :src="row.imageUrl"
+        fit="cover"
+        style="width:72px;height:72px;border-radius:6px;margin:6px 0"
+        :preview-src-list="[row.imageUrl]"
+      />
+      <p v-if="row.followBody" class="follow">追评：{{ row.followBody }}</p>
+      <el-button
+        v-if="reviewFollowOn && !row.followBody"
+        size="small"
+        @click="submitFollow(row)"
+      >{{ followLabel }}</el-button>
       <p class="sub" :title="row.createdAt || ''">{{ formatRelative(row.createdAt) }}</p>
       <div v-if="row.reply" class="reply-bubble">
         <span class="reply-tag">商家回复</span>
@@ -36,16 +49,19 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import EmptyHint from '../../components/EmptyHint.vue'
 import { formatRelative } from '../../utils/dates.js'
-import { schemaLabels } from '../../utils/domainSchema.js'
+import { getSchema, schemaLabels } from '../../utils/domainSchema.js'
 
 const labels = computed(() => schemaLabels())
 const pageTitle = computed(() => labels.value.orderReviewPageTitle || '我的评价')
 const pageLead = computed(
   () => labels.value.orderReviewPageLead || '对已完成订单进行星级与文字评价。',
 )
+const reviewFollowOn = computed(() => !!getSchema()?.tradeThicken?.reviewFollow)
+const followLabel = computed(() => labels.value.reviewFollowLabel || '追评')
 
 const list = ref([])
 const total = ref(0)
@@ -58,6 +74,23 @@ async function load() {
   })
   list.value = res.data?.list || []
   total.value = res.data?.total || 0
+}
+
+async function submitFollow(row) {
+  const hint = labels.value.reviewFollowHint || '补充一次追评'
+  const { value } = await ElMessageBox.prompt(hint, followLabel.value, {
+    inputPlaceholder: '用后感受…',
+    inputValue: '',
+  }).catch(() => ({ value: null }))
+  if (value == null) return
+  const text = String(value || '').trim()
+  if (!text) {
+    ElMessage.warning('请填写追评')
+    return
+  }
+  await http.post(`/api/order-reviews/${row.id}/follow`, { followBody: text })
+  ElMessage.success('追评已提交')
+  load()
 }
 
 onMounted(load)
@@ -77,6 +110,7 @@ onMounted(load)
 }
 .hd { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .body { margin: 8px 0; color: var(--portal-ink, #334155); font-size: 14px; white-space: pre-wrap; }
+.follow { margin: 6px 0; color: var(--portal-muted, #64748b); font-size: 13px; white-space: pre-wrap; }
 .sub { margin: 0; color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .reply-bubble {
   margin: 10px 0 0;

@@ -3,7 +3,7 @@
     <section class="hero">
       <div>
         <h1>{{ pageTitle }}</h1>
-        <p>管理收货地址；下单时优先使用默认地址。</p>
+        <p>{{ defaultAddressHint }}</p>
       </div>
       <div class="tools">
         <el-button @click="load">刷新</el-button>
@@ -22,7 +22,7 @@
       <el-table-column prop="addressLine" label="详细地址" min-width="200" show-overflow-tooltip />
       <el-table-column label="默认" width="90">
         <template #default="{ row }">
-          <el-tag v-if="row.isDefault" size="small" type="success" effect="plain">默认</el-tag>
+          <el-tag v-if="row.isDefault" size="small" type="success" effect="plain">{{ defaultAddressLabel }}</el-tag>
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
@@ -34,7 +34,7 @@
             link
             type="success"
             @click="setDefault(row)"
-          >设为默认</el-button>
+          >{{ defaultAddressLabel }}</el-button>
           <el-button link type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -66,7 +66,7 @@
           <el-input v-model="form.addressLine" type="textarea" :rows="2" maxlength="200" />
         </el-form-item>
         <el-form-item>
-          <el-checkbox v-model="form.isDefault">设为默认地址</el-checkbox>
+          <el-checkbox v-model="form.isDefault">{{ defaultAddressLabel }}</el-checkbox>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -81,10 +81,14 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { menuLabel } from '../../utils/domainSchema.js'
+import { getSchema, menuLabel } from '../../utils/domainSchema.js'
 import { addressTagOptions, normalizeAddressTag } from '../../utils/addressTags.js'
 
 const pageTitle = computed(() => menuLabel('user', 'addresses', '收货地址'))
+const defaultAddressLabel = computed(() => getSchema()?.labels?.defaultAddressLabel || '设为默认')
+const defaultAddressHint = computed(
+  () => getSchema()?.labels?.defaultAddressHint || '管理收货地址；下单时优先使用默认地址。',
+)
 const tagOptions = computed(() => addressTagOptions())
 const list = ref([])
 const visible = ref(false)

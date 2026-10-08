@@ -99,6 +99,30 @@ public final class GroupBuyStore {
                 (rs, i) -> mapOpen(rs));
     }
 
+    /** T-10：按订单查拼团进度（已参 / 目标 / 状态）。 */
+    public static Map<String, Object> progressForOrder(long orderId) {
+        if (!enabled || orderId <= 0) return null;
+        try {
+            List<Map<String, Object>> rows = db().query(
+                    "SELECT c.id, c.target_size, c.status, "
+                            + "(SELECT COUNT(*) FROM group_member m2 WHERE m2.campaign_id=c.id) AS joined "
+                            + "FROM group_member m JOIN group_campaign c ON c.id=m.campaign_id "
+                            + "WHERE m.order_id=? LIMIT 1",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("campaignId", rs.getLong("id"));
+                        m.put("targetSize", rs.getInt("target_size"));
+                        m.put("joined", rs.getInt("joined"));
+                        m.put("status", rs.getString("status"));
+                        return m;
+                    },
+                    orderId);
+            return rows == null || rows.isEmpty() ? null : rows.get(0);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public static List<Map<String, Object>> listAll() {
         requireOn();
         String item = itemTable();

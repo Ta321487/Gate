@@ -1,8 +1,9 @@
 package com.thesis.capability;
 
-import com.thesis.config.MybatisSupport;
-import com.thesis.mapper.BlindBoxMapper;
+import com.thesis.config.JdbcSupport;
+import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,7 +11,8 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 盲盒。规则与 jdbc 相同，只换数据访问。
+ * 盲盒。下单仍走 OrderStore：买的是盒子，抽中之后才由调用方扣奖品库存。
+ * 保底次数在盒子商品上，不写死。权重为 0 或库存为 0 的奖品跳过；池子抽空则下单失败。
  */
 public final class BlindBoxStore {
 
@@ -29,13 +31,19 @@ public final class BlindBoxStore {
     public static boolean isBox(long boxId) {
         if (!enabled || boxId <= 0) return false;
         try {
-            Integer n = db().countBox(boxId);
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM blind_pool WHERE box_id=? AND enabled=1",
+                    Integer.class, boxId);
             return n != null && n > 0;
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置盲盒奖池", e);
         }
     }
 
+    /**
+     * 按该盒子当前奖池抽 qty 次，把结果记到订单明细，并累加保底计数。
+     * 返回抽中的奖品，库存由 OrderStore 在成功后扣减。
+     */
     public static List<Map<String, Object>> drawAll(String username, long orderId, long boxId, int qty) {
         if (!enabled || qty <= 0) return List.of();
         int pityNeed = pityN(boxId);
@@ -60,10 +68,10 @@ public final class BlindBoxStore {
             prize.put("stock", num(prize.get("stock")) - 1);
             picked.add(prize);
             if (titles.length() > 0) titles.append('；');
-            String title = str(first(prize, "title"));
-            if (title.isBlank()) title = "奖品" + lng(first(prize, "prizeId", "prize_id"));
+            String title = str(prize.get("title"));
+            if (title.isBlank()) title = "奖品" + lng(prize.get("prizeId"));
             titles.append(title);
-            if (flag(first(prize, "hidden"))) {
+            if (flag(prize.get("hidden"))) {
                 anyHidden = 1;
                 hiddenGot = 1;
             }
@@ -76,7 +84,7 @@ public final class BlindBoxStore {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> prize : picked) {
             Map<String, Object> one = new LinkedHashMap<>();
-            one.put("itemId", lng(first(prize, "prizeId", "prize_id")));
+            one.put("itemId", lng(prize.get("prizeId")));
             out.add(one);
         }
         return out;
@@ -85,7 +93,9 @@ public final class BlindBoxStore {
     public static String pityText(long orderId, long boxId) {
         if (!enabled || orderId <= 0 || boxId <= 0) return "";
         try {
-            String user = db().orderUser(orderTable(), orderId);
+            String user = db().queryForObject(
+                    "SELECT username FROM " + orderTable() + " WHERE id=?",
+                    String.class, orderId);
             if (user == null || user.isBlank()) return "";
             return str(progress(user, boxId).get("text"));
         } catch (RuntimeException e) {
@@ -98,7 +108,7 @@ public final class BlindBoxStore {
         int pityNeed = pityN(boxId);
         Map<String, Object> pity = loadPity(username, boxId);
         int draws = num(pity.get("draws"));
-        boolean got = flag(first(pity, "hiddenGot", "hidden_got"));
+        boolean got = flag(pity.get("hiddenGot"));
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("draws", draws);
         m.put("pityN", pityNeed);
@@ -107,19 +117,63 @@ public final class BlindBoxStore {
         return m;
     }
 
+    /** T-10：买家中赏记录（扫订单明细 draw_title）。 */
+    public static List<Map<String, Object>> listMyDraws(String username, int limit) {
+        requireOn();
+        String u = username == null ? "" : username.trim();
+        if (u.isBlank()) return List.of();
+        if (limit < 1) limit = 20;
+        if (limit > 100) limit = 100;
+        try {
+            return db().query(
+                    "SELECT o.id AS order_id, o.created_at, l.item_id, l.title AS box_title, "
+                            + "l.draw_title, l.draw_hidden "
+                            + "FROM " + lineTable() + " l "
+                            + "JOIN " + orderTable() + " o ON o.id=l.order_id "
+                            + "WHERE o.username=? AND l.draw_title IS NOT NULL AND TRIM(l.draw_title)<>'' "
+                            + "ORDER BY o.id DESC, l.id DESC LIMIT ?",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("orderId", rs.getLong("order_id"));
+                        Timestamp ca = rs.getTimestamp("created_at");
+                        m.put("createdAt", ca == null ? null : ca.toLocalDateTime().toString().replace('T', ' '));
+                        m.put("boxId", rs.getLong("item_id"));
+                        m.put("boxTitle", rs.getString("box_title") == null ? "" : rs.getString("box_title"));
+                        m.put("drawTitle", rs.getString("draw_title"));
+                        m.put("hidden", rs.getInt("draw_hidden") == 1);
+                        return m;
+                    },
+                    u, limit);
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
     public static List<Map<String, Object>> listAll() {
         requireOn();
+        String item = itemTable();
         try {
-            List<Map<String, Object>> rows = db().listAll(itemTable());
-            if (rows == null) return List.of();
-            for (Map<String, Object> row : rows) {
-                row.put("hidden", flag(row.get("hidden")));
-                row.put("enabled", flag(row.get("enabled")));
-                row.put("weight", num(row.get("weight")));
-                row.put("pityN", num(first(row, "pityN", "pity_n")));
-                row.put("prizeStock", num(first(row, "prizeStock", "prize_stock", "stock")));
-            }
-            return rows;
+            return db().query(
+                    "SELECT p.id, p.box_id, b.title AS box_title, p.prize_id, i.title AS prize_title, "
+                            + "p.weight, p.hidden, p.enabled, b.pity_n, i.stock "
+                            + "FROM blind_pool p "
+                            + "LEFT JOIN " + item + " b ON b.id=p.box_id "
+                            + "LEFT JOIN " + item + " i ON i.id=p.prize_id "
+                            + "ORDER BY p.box_id, p.id",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", rs.getLong("id"));
+                        m.put("boxId", rs.getLong("box_id"));
+                        m.put("boxTitle", rs.getString("box_title") == null ? "" : rs.getString("box_title"));
+                        m.put("prizeId", rs.getLong("prize_id"));
+                        m.put("prizeTitle", rs.getString("prize_title") == null ? "" : rs.getString("prize_title"));
+                        m.put("weight", rs.getInt("weight"));
+                        m.put("hidden", rs.getInt("hidden") != 0);
+                        m.put("enabled", rs.getInt("enabled") != 0);
+                        m.put("pityN", rs.getInt("pity_n"));
+                        m.put("prizeStock", rs.getInt("stock"));
+                        return m;
+                    });
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置盲盒奖池", e);
         }
@@ -128,12 +182,15 @@ public final class BlindBoxStore {
     public static List<Map<String, Object>> products() {
         requireOn();
         try {
-            List<Map<String, Object>> rows = db().products(itemTable());
-            if (rows == null) return List.of();
-            for (Map<String, Object> row : rows) {
-                row.put("pityN", num(first(row, "pityN", "pity_n")));
-            }
-            return rows;
+            return db().query(
+                    "SELECT id, title, pity_n FROM " + itemTable() + " ORDER BY id",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", rs.getLong("id"));
+                        m.put("title", rs.getString("title") == null ? "" : rs.getString("title"));
+                        m.put("pityN", rs.getInt("pity_n"));
+                        return m;
+                    });
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置保底次数", e);
         }
@@ -141,34 +198,35 @@ public final class BlindBoxStore {
 
     public static List<Map<String, Object>> boxes(String username) {
         requireOn();
+        String item = itemTable();
+        String user = username == null ? "" : username;
         try {
-            List<Map<String, Object>> rows = db().boxes(itemTable(), username == null ? "" : username);
-            if (rows == null) return List.of();
-            List<Map<String, Object>> out = new ArrayList<>();
-            for (Map<String, Object> row : rows) {
-                int pityNeed = num(first(row, "pityN", "pity_n"));
-                int draws = num(first(row, "draws"));
-                boolean got = flag(first(row, "hiddenGot", "hidden_got"));
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("id", lng(first(row, "id", "boxId", "box_id")));
-                m.put("title", str(first(row, "title")));
-                m.put("pityN", pityNeed);
-                m.put("draws", draws);
-                m.put("hiddenGot", got);
-                m.put("text", pityLine(draws, pityNeed, got));
-                out.add(m);
-            }
-            return out;
+            return db().query(
+                    "SELECT p.box_id, MAX(i.title) AS title, MAX(i.pity_n) AS pity_n, "
+                            + "MAX(IFNULL(y.draws,0)) AS draws, MAX(IFNULL(y.hidden_got,0)) AS hidden_got "
+                            + "FROM blind_pool p "
+                            + "LEFT JOIN " + item + " i ON i.id=p.box_id "
+                            + "LEFT JOIN blind_pity y ON y.box_id=p.box_id AND y.username=? "
+                            + "WHERE p.enabled=1 GROUP BY p.box_id ORDER BY p.box_id",
+                    (rs, i) -> mapBox(rs),
+                    user);
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置盲盒奖池", e);
         }
     }
 
+    /** 只在奖池里、本身不是盒子的商品。用户不能直接买。 */
     public static List<Map<String, Object>> prizeOnly() {
         requireOn();
         try {
-            List<Map<String, Object>> rows = db().prizeOnly();
-            return rows == null ? List.of() : rows;
+            return db().query(
+                    "SELECT DISTINCT prize_id FROM blind_pool WHERE enabled=1 "
+                            + "AND prize_id NOT IN (SELECT box_id FROM blind_pool WHERE enabled=1)",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", rs.getLong("prize_id"));
+                        return m;
+                    });
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置盲盒奖池", e);
         }
@@ -177,9 +235,13 @@ public final class BlindBoxStore {
     public static void assertPurchasable(long itemId) {
         if (!enabled || itemId <= 0) return;
         try {
-            Integer asPrize = db().countPrize(itemId);
+            Integer asPrize = db().queryForObject(
+                    "SELECT COUNT(*) FROM blind_pool WHERE prize_id=? AND enabled=1",
+                    Integer.class, itemId);
             if (asPrize == null || asPrize <= 0) return;
-            Integer asBox = db().countBox(itemId);
+            Integer asBox = db().queryForObject(
+                    "SELECT COUNT(*) FROM blind_pool WHERE box_id=? AND enabled=1",
+                    Integer.class, itemId);
             if (asBox != null && asBox > 0) return;
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置盲盒奖池", e);
@@ -205,11 +267,20 @@ public final class BlindBoxStore {
             throw new IllegalArgumentException("商品不存在");
         }
         try {
-            Integer dup = db().countDup(boxId, prizeId, id);
+            Integer dup = db().queryForObject(
+                    "SELECT COUNT(*) FROM blind_pool WHERE box_id=? AND prize_id=? AND id<>?",
+                    Integer.class, boxId, prizeId, id);
             if (dup != null && dup > 0) throw new IllegalArgumentException("这个奖品已经在这个盒子里");
-            if (id > 0) db().updatePool(id, boxId, prizeId, weight, hidden, on);
-            else db().insertPool(boxId, prizeId, weight, hidden, on);
-            db().updatePity(itemTable(), boxId, pityNeed);
+            if (id > 0) {
+                db().update(
+                        "UPDATE blind_pool SET box_id=?, prize_id=?, weight=?, hidden=?, enabled=? WHERE id=?",
+                        boxId, prizeId, weight, hidden, on, id);
+            } else {
+                db().update(
+                        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled) VALUES (?,?,?,?,?)",
+                        boxId, prizeId, weight, hidden, on);
+            }
+            db().update("UPDATE " + itemTable() + " SET pity_n=? WHERE id=?", pityNeed, boxId);
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
@@ -224,7 +295,9 @@ public final class BlindBoxStore {
 
     private static void stamp(long orderId, long boxId, String text, int hidden) {
         try {
-            int updated = db().stamp(lineTable(), orderId, boxId, text, hidden);
+            int updated = db().update(
+                    "UPDATE " + lineTable() + " SET draw_title=?, draw_hidden=? WHERE order_id=? AND item_id=?",
+                    text, hidden, orderId, boxId);
             if (updated <= 0) throw new IllegalStateException("抽奖结果未能记到订单");
         } catch (IllegalStateException e) {
             throw e;
@@ -235,7 +308,10 @@ public final class BlindBoxStore {
 
     private static void savePity(String username, long boxId, int draws, int hiddenGot) {
         try {
-            db().upsertPity(username, boxId, draws, hiddenGot);
+            db().update(
+                    "INSERT INTO blind_pity (username, box_id, draws, hidden_got) VALUES (?,?,?,?) "
+                            + "ON DUPLICATE KEY UPDATE draws=?, hidden_got=?",
+                    username, boxId, draws, hiddenGot, draws, hiddenGot);
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置盲盒保底表", e);
         }
@@ -243,7 +319,9 @@ public final class BlindBoxStore {
 
     private static int pityN(long boxId) {
         try {
-            Integer n = db().pityN(itemTable(), boxId);
+            Integer n = db().queryForObject(
+                    "SELECT pity_n FROM " + itemTable() + " WHERE id=?",
+                    Integer.class, boxId);
             return n == null ? 0 : n;
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置保底次数", e);
@@ -252,8 +330,16 @@ public final class BlindBoxStore {
 
     private static Map<String, Object> loadPity(String username, long boxId) {
         try {
-            Map<String, Object> row = db().pity(username, boxId);
-            if (row != null && !row.isEmpty()) return row;
+            List<Map<String, Object>> rows = db().query(
+                    "SELECT draws, hidden_got FROM blind_pity WHERE username=? AND box_id=?",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("draws", rs.getInt("draws"));
+                        m.put("hiddenGot", rs.getInt("hidden_got"));
+                        return m;
+                    },
+                    username, boxId);
+            if (!rows.isEmpty()) return rows.get(0);
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置盲盒保底表", e);
         }
@@ -265,8 +351,20 @@ public final class BlindBoxStore {
 
     private static List<Map<String, Object>> loadPool(long boxId) {
         try {
-            List<Map<String, Object>> rows = db().pool(itemTable(), boxId);
-            return rows == null ? List.of() : rows;
+            return db().query(
+                    "SELECT p.prize_id, p.weight, p.hidden, i.title, i.stock FROM blind_pool p "
+                            + "LEFT JOIN " + itemTable() + " i ON i.id=p.prize_id "
+                            + "WHERE p.box_id=? AND p.enabled=1 ORDER BY p.id",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("prizeId", rs.getLong("prize_id"));
+                        m.put("weight", rs.getInt("weight"));
+                        m.put("hidden", rs.getInt("hidden"));
+                        m.put("title", rs.getString("title") == null ? "" : rs.getString("title"));
+                        m.put("stock", rs.getInt("stock"));
+                        return m;
+                    },
+                    boxId);
         } catch (Exception e) {
             throw new IllegalStateException("系统未配置盲盒奖池", e);
         }
@@ -276,7 +374,7 @@ public final class BlindBoxStore {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> row : pool) {
             if (num(row.get("weight")) <= 0) continue;
-            if (num(first(row, "stock")) <= 0) continue;
+            if (num(row.get("stock")) <= 0) continue;
             out.add(row);
         }
         return out;
@@ -295,26 +393,32 @@ public final class BlindBoxStore {
         return cands.get(cands.size() - 1);
     }
 
+    private static Map<String, Object> mapBox(java.sql.ResultSet rs) throws java.sql.SQLException {
+        int pityNeed = rs.getInt("pity_n");
+        int draws = rs.getInt("draws");
+        boolean got = rs.getInt("hidden_got") != 0;
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", rs.getLong("box_id"));
+        m.put("title", rs.getString("title") == null ? "" : rs.getString("title"));
+        m.put("pityN", pityNeed);
+        m.put("draws", draws);
+        m.put("hiddenGot", got);
+        m.put("text", pityLine(draws, pityNeed, got));
+        return m;
+    }
+
     private static String pityLine(int draws, int pityNeed, boolean got) {
         if (pityNeed <= 0) return "已抽 " + draws + " 次，未设保底";
         if (got) return "已抽 " + draws + " 次，保底 " + pityNeed + " 次，已出隐藏款";
         return "已抽 " + draws + " 次，保底 " + pityNeed + " 次，尚未出隐藏款";
     }
 
-    private static Object first(Map<String, Object> row, String... keys) {
-        if (row == null) return null;
-        for (String key : keys) {
-            if (row.containsKey(key) && row.get(key) != null) return row.get(key);
-        }
-        return null;
-    }
-
     private static void requireOn() {
         if (!enabled) throw new IllegalStateException("盲盒未开启");
     }
 
-    private static BlindBoxMapper db() {
-        return MybatisSupport.mapper(BlindBoxMapper.class);
+    private static JdbcTemplate db() {
+        return JdbcSupport.jdbc();
     }
 
     private static String itemTable() {

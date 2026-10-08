@@ -104,4 +104,8 @@ public interface CouponMapper {
             + "SET u.status='expired' "
             + "WHERE u.status='unused' AND p.expire_at IS NOT NULL AND p.expire_at < NOW()")
     int expireSweep();
+
+    @Select("SELECT DISTINCT u.username FROM user_coupon u JOIN promo_coupon p ON p.id=u.coupon_id "
+            + "WHERE u.status='unused' AND p.expire_at IS NOT NULL AND p.expire_at < NOW()")
+    List<String> listUsernamesToExpire();
 }

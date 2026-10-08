@@ -84,9 +84,14 @@ import {
 
 const { nowMs } = useNowTick()
 const labels = computed(() => schemaLabels())
-const pageTitle = computed(() => labels.value.couponsPageTitle || '优惠券')
+const pageTitle = computed(
+  () => labels.value.couponClaimCenterTitle || labels.value.couponsPageTitle || '领券中心',
+)
 const pageLead = computed(
-  () => labels.value.couponsPageLead || '领取可用券，下单时选用券码抵扣。',
+  () =>
+    labels.value.couponClaimCenterLead
+    || labels.value.couponsPageLead
+    || '领取可用券，下单时选用券码抵扣。',
 )
 
 const tab = ref('claim')

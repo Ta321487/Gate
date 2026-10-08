@@ -1,10 +1,10 @@
 package com.thesis.capability;
 
 import com.thesis.config.DomainResourceJson;
-import com.thesis.config.JpaSupport;
-import com.thesis.config.JpaDb;
-import com.thesis.config.GeneratedKeyHolder;
-import com.thesis.config.KeyHolder;
+import com.thesis.config.JdbcSupport;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -43,8 +43,8 @@ public final class CouponStore {
         return enabled;
     }
 
-    private static JpaDb db() {
-        return JpaSupport.db();
+    private static JdbcTemplate db() {
+        return JdbcSupport.jdbc();
     }
 
     private static void ensureTables() {
@@ -297,6 +297,7 @@ public final class CouponStore {
         if (mine != null && !mine.isEmpty()) {
             return applyPromoHit(out, mine.get(0), amountYuan);
         }
+        // 模板存在但未领取：提示领取，禁止未领核销
         Integer tpl = db().queryForObject(
                 "SELECT COUNT(*) FROM " + PROMO + " WHERE status='active' AND UPPER(code)=?",
                 Integer.class, want);
@@ -366,14 +367,33 @@ public final class CouponStore {
         }
     }
 
-    /** 定时：未用且模板已过期 → expired */
+    /** 定时：未用且模板已过期 → expired；并对受影响用户发站内信（T-10）。 */
     public static int expireSweep() {
         if (!enabled) return 0;
         try {
-            return db().update(
+            List<String> users = db().query(
+                    "SELECT DISTINCT u.username FROM " + MINE + " u JOIN " + PROMO + " p ON p.id=u.coupon_id "
+                            + "WHERE u.status='unused' AND p.expire_at IS NOT NULL AND p.expire_at < NOW()",
+                    (rs, i) -> rs.getString(1));
+            int n = db().update(
                     "UPDATE " + MINE + " u JOIN " + PROMO + " p ON p.id=u.coupon_id "
                             + "SET u.status='expired' "
                             + "WHERE u.status='unused' AND p.expire_at IS NOT NULL AND p.expire_at < NOW()");
+            if (n > 0 && users != null) {
+                for (String u : users) {
+                    if (u == null || u.isBlank()) continue;
+                    try {
+                        com.thesis.service.MessageStore.send(
+                                u,
+                                "优惠券已过期",
+                                "您有优惠券已过期未使用，可到领券中心查看是否有新券。",
+                                "coupon",
+                                null);
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            return n;
         } catch (Exception e) {
             return 0;
         }

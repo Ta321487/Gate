@@ -11,9 +11,9 @@ from typing import Any
 
 LOYALTY_CAPS = ("wallet", "points", "spend_discount", "member_tier", "coupon")
 
-# 开题关键词 → 能力（仅在已有 order_lines 时附加；wallet 另见默认挂载）
+# 开题关键词 → 能力（多数仅在已有 order_lines 时附加；wallet 另见默认挂载 / 美业储值例外）
 _LOYALTY_SIGNALS: list[tuple[str, list[str]]] = [
-    (r"余额|充值|校园卡|一卡通|电子钱包|预存|钱包", ["wallet"]),
+    (r"余额|充值|校园卡|一卡通|电子钱包|预存|钱包|储值", ["wallet"]),
     (r"积分(?!登录)|会员积分|签到积分|消费积分|积分兑换", ["points"]),
     (r"满减|满\s*\d+\s*减|优惠门槛|满额优惠", ["spend_discount"]),
     (r"会员等级|会员成长|成长值|银卡|金卡|会员折扣|会员价", ["member_tier"]),
@@ -86,19 +86,25 @@ def merge_loyalty_capabilities(
 ) -> list[str]:
     """
     在已有 order_lines 时：默认挂 wallet；再按开题附加其它忠诚度能力。
-    无 order_lines 则剥掉误带的忠诚度能力。
+    无 order_lines：剥掉误带的忠诚度；开题写到的 wallet（储值/余额等）仍可挂，
+    供美业预约等无订单壳场景（§1.7 R-09），≠域默认硬挂。
     """
     out = list(caps or [])
     has_order = "order_lines" in out
+    scanned = scan_loyalty_caps(proposal_text)
+    force_list = list(force or [])
     if not has_order:
-        return [c for c in out if c not in LOYALTY_CAPS]
+        out = [c for c in out if c not in LOYALTY_CAPS]
+        if "wallet" in scanned or "wallet" in force_list:
+            out.append("wallet")
+        return out
 
     # 有下单付钱 → 默认账户余额（模拟充值），不单靠开题扫到「钱包」才开
     if "wallet" not in out:
         out.append("wallet")
 
-    add = list(force or [])
-    add.extend(scan_loyalty_caps(proposal_text))
+    add = list(force_list)
+    add.extend(scanned)
     for c in add:
         if c in LOYALTY_CAPS and c not in out:
             out.append(c)
