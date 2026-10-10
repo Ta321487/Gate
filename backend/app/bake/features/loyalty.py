@@ -95,8 +95,11 @@ def merge_loyalty_capabilities(
     force_list = list(force or [])
     if not has_order:
         out = [c for c in out if c not in LOYALTY_CAPS]
+        # 内容壳等无订单：开题写到的储值/积分仍可挂（C-08 文库扣点、论坛签到涨分）；≠域默认硬挂
         if "wallet" in scanned or "wallet" in force_list:
             out.append("wallet")
+        if "points" in scanned or "points" in force_list:
+            out.append("points")
         return out
 
     # 有下单付钱 → 默认账户余额（模拟充值），不单靠开题扫到「钱包」才开

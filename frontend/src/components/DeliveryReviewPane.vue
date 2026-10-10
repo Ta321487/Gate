@@ -128,11 +128,11 @@
     <div class="diag-grid">
       <div class="review-panel boss-card-panel">
         <div class="parse-sec-hd row-between" style="align-items:center">
-          <span>老板小卡 · 感觉不对时对着勾</span>
+          <span>老板小卡 · 12 主项 + 理解偏差</span>
           <n-button text size="tiny" :disabled="disabled" @click="resetBossChecks">清空勾选</n-button>
         </div>
         <p class="small muted" style="margin:6px 0 8px">
-          勾选仅保存在本机浏览器，对照右侧毒区 / 验圈 / 质量摘要。机器全绿仍可能理解错——对着开题核。
+          勾选仅保存在本机浏览器，对照右侧毒区 / 验圈 / 质量摘要。机器全绿仍可能理解错——对着开题核。口径见 docs/delivery-audit-rules.md §3.1。
           <router-link to="/help#help-card-四痛点">帮助 · 四痛点</router-link>
         </p>
         <div class="boss-check-list">
@@ -307,17 +307,17 @@ const localRegressions = ref([])
 const showDoneNotes = ref(false)
 
 const BOSS_ITEMS = [
-  { key: 'shell', label: '1. 有没有空壳（宣称有、缺表/API/状态机）？' },
-  { key: 'regress', label: '2. 旧题（图书/宿舍/实习等）回归红了吗？' },
+  { key: 'shell', label: '1. 有没有空壳（缺表/API/状态机/写库）？已齐是否「管理能管+用户可产生数据」？' },
+  { key: 'regress', label: '2. 旧题回归红了吗？图书/宿舍/实习 + 本轮邻域' },
   { key: 'fsm', label: '3. 状态机对且准吗（集合/转移/角色/文案）？' },
   { key: 'fields', label: '4. 字段可见含义像本题吗（有无壳字段穿帮）？' },
-  { key: 'flow', label: '5. 客户会不会看错主流程（「我的」/种子/按钮诱导）？' },
+  { key: 'flow', label: '5. 会不会看错主流程（「我的」/种子/按钮诱导，或交易/内容串味）？' },
   { key: 'steal', label: '6. 新域有没有抢走旧题匹配？' },
-  { key: 'demo', label: '7. 学生可见面有没有「演示」字样？' },
+  { key: 'demo', label: '7. 学生可见面有没有「演示」、工厂腔，或硬件否定句进页面？' },
   { key: 'rewrite', label: '8. 开题有没有被改来迁就工厂？' },
   { key: 'reject', label: '9. 该 reject 的硬边界还拒不拒？' },
-  { key: 'thesis', label: '10. 论文图（ER/模块/用例）跟实包一致吗？' },
-  { key: 'skin', label: '11. 皮肤/布局选项进包生效了吗？' },
+  { key: 'thesis', label: '10. 论文/材料图跟实包一致吗（本轮动到的八张都要对）？' },
+  { key: 'skin', label: '11. 视觉轴进包生效了吗（theme/chrome/layout/typeface/门户构图）？' },
   { key: 'scene', label: '12. 登录氛围与门户轮播分套、身份跟场景吗？' },
   { key: 'understand_gap', label: '理解偏差：老师已确认的主路径/域，工厂写对了吗？（禁止甩锅开题套话）' },
 ]

@@ -76,6 +76,46 @@ FIELDS: tuple[tuple[str, str, str, str, str, str], ...] = (
         "hospitalIdLimitPerDay",
         "numeric",
     ),
+    (
+        "forum-daily-post-limit",
+        "FORUM_DAILY_POST_LIMIT",
+        "int",
+        "0",
+        "forumDailyPostLimit",
+        "numeric",
+    ),
+    (
+        "doclib-daily-download-limit",
+        "DOCLIB_DAILY_DOWNLOAD_LIMIT",
+        "int",
+        "0",
+        "dailyDownloadLimit",
+        "numeric",
+    ),
+    (
+        "essence-points-reward",
+        "ESSENCE_POINTS_REWARD",
+        "int",
+        "0",
+        "essencePointsReward",
+        "numeric",
+    ),
+    (
+        "points-checkin-amount",
+        "POINTS_CHECK_IN_AMOUNT",
+        "int",
+        "10",
+        "pointsCheckInAmount",
+        "numeric",
+    ),
+    (
+        "report-handle-days",
+        "REPORT_HANDLE_DAYS",
+        "int",
+        "0",
+        "reportHandleDays",
+        "numeric",
+    ),
     ("parking-hourly-yuan", "PARKING_HOURLY_YUAN", "int", "0", "parkingHourlyYuan", "numeric"),
     ("parking-overtime-yuan", "PARKING_OVERTIME_YUAN", "int", "0", "parkingOvertimeYuan", "numeric"),
     (
@@ -136,6 +176,26 @@ FLAG_KEYS: tuple[tuple[str, str], ...] = (
     ("lost-clue-enabled", "LOST_CLUE_ENABLED"),
     ("post-mute-enabled", "POST_MUTE_ENABLED"),
     ("content-report-enabled", "CONTENT_REPORT_ENABLED"),
+    ("content-sensitive-filter", "CONTENT_SENSITIVE_FILTER"),
+    ("content-mention-notify", "CONTENT_MENTION_NOTIFY"),
+    ("content-category-follow", "CONTENT_CATEGORY_FOLLOW"),
+    ("content-comment-author-notify", "CONTENT_COMMENT_AUTHOR_NOTIFY"),
+    ("content-friend-links", "CONTENT_FRIEND_LINKS"),
+    ("content-play-progress", "CONTENT_PLAY_PROGRESS"),
+    ("content-media-episode", "CONTENT_MEDIA_EPISODE"),
+    ("content-share-code", "CONTENT_SHARE_CODE"),
+    ("content-favorite-group", "CONTENT_FAVORITE_GROUP"),
+    ("content-doclib-chapter", "CONTENT_DOCLIB_CHAPTER"),
+    ("content-doclib-feedback", "CONTENT_DOCLIB_FEEDBACK"),
+    ("content-doclib-tag-cloud", "CONTENT_DOCLIB_TAG_CLOUD"),
+    ("content-doclib-download-gate", "CONTENT_DOCLIB_DOWNLOAD_GATE"),
+    ("content-doclib-points-download", "CONTENT_DOCLIB_POINTS_DOWNLOAD"),
+    ("content-essence-points-reward", "CONTENT_ESSENCE_POINTS_REWARD"),
+    ("points-checkin-enabled", "POINTS_CHECK_IN_ENABLED"),
+    ("content-report-reason-dict", "CONTENT_REPORT_REASON_DICT"),
+    ("content-comment-report", "CONTENT_COMMENT_REPORT"),
+    ("content-followers-only-comment", "CONTENT_FOLLOWERS_ONLY_COMMENT"),
+    ("content-publish-approve-notify", "CONTENT_PUBLISH_APPROVE_NOTIFY"),
     ("dm-shop-cs", "DM_SHOP_CS"),
     ("e-sign-enabled", "E_SIGN_ENABLED"),
     ("exam-enabled", "EXAM_ENABLED"),
@@ -229,6 +289,70 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
             out["ARCHIVE_USER_PUBLISH"] = True
         if archive_ent.get("publishReview"):
             out["ARCHIVE_PUBLISH_REVIEW"] = True
+        n_forum = _int_or(schema.get("forumDailyPostLimit"), 0)
+        if n_forum > 0:
+            out["FORUM_DAILY_POST_LIMIT"] = n_forum
+        thicken = schema.get("contentThicken") if isinstance(schema.get("contentThicken"), dict) else {}
+        if thicken.get("sensitiveWords"):
+            out["CONTENT_SENSITIVE_FILTER"] = True
+        if thicken.get("mentionNotify"):
+            out["CONTENT_MENTION_NOTIFY"] = True
+        if thicken.get("categoryFollow"):
+            out["CONTENT_CATEGORY_FOLLOW"] = True
+        if thicken.get("commentAuthorNotify"):
+            out["CONTENT_COMMENT_AUTHOR_NOTIFY"] = True
+        if thicken.get("friendLinks"):
+            out["CONTENT_FRIEND_LINKS"] = True
+        if thicken.get("playProgress"):
+            out["CONTENT_PLAY_PROGRESS"] = True
+        if thicken.get("episodeList"):
+            out["CONTENT_MEDIA_EPISODE"] = True
+        if thicken.get("shareCode"):
+            out["CONTENT_SHARE_CODE"] = True
+        if thicken.get("favoriteGroup") or thicken.get("playlistVisibility"):
+            out["CONTENT_FAVORITE_GROUP"] = True
+        if thicken.get("docChapter") or thicken.get("docVersion"):
+            out["CONTENT_DOCLIB_CHAPTER"] = True
+        if thicken.get("docFeedback"):
+            out["CONTENT_DOCLIB_FEEDBACK"] = True
+        if thicken.get("docTagCloud"):
+            out["CONTENT_DOCLIB_TAG_CLOUD"] = True
+        if (
+            thicken.get("downloadQuota")
+            or thicken.get("downloadAudit")
+            or thicken.get("downloadRoles")
+            or thicken.get("docPreview")
+            or thicken.get("watermark")
+            or thicken.get("trialRead")
+            or thicken.get("downloadLog")
+        ):
+            out["CONTENT_DOCLIB_DOWNLOAD_GATE"] = True
+        n_dl = _int_or(schema.get("dailyDownloadLimit"), 0)
+        if n_dl > 0:
+            out["DOCLIB_DAILY_DOWNLOAD_LIMIT"] = n_dl
+        if thicken.get("docPointsDownload") or thicken.get("docPaidDownload"):
+            out["CONTENT_DOCLIB_POINTS_DOWNLOAD"] = True
+        if thicken.get("essencePointsReward"):
+            out["CONTENT_ESSENCE_POINTS_REWARD"] = True
+            n_ess = _int_or(schema.get("essencePointsReward"), 0)
+            if n_ess > 0:
+                out["ESSENCE_POINTS_REWARD"] = n_ess
+        if thicken.get("pointsCheckIn") or schema.get("pointsCheckInEnabled"):
+            out["POINTS_CHECK_IN_ENABLED"] = True
+            n_ci = _int_or(schema.get("pointsCheckInAmount"), 0)
+            if n_ci > 0:
+                out["POINTS_CHECK_IN_AMOUNT"] = n_ci
+        if thicken.get("reportReasonDict"):
+            out["CONTENT_REPORT_REASON_DICT"] = True
+        if thicken.get("commentReport"):
+            out["CONTENT_COMMENT_REPORT"] = True
+        if thicken.get("followersOnlyComment"):
+            out["CONTENT_FOLLOWERS_ONLY_COMMENT"] = True
+        if thicken.get("publishApproveNotify"):
+            out["CONTENT_PUBLISH_APPROVE_NOTIFY"] = True
+        n_report = _int_or(schema.get("reportHandleDays"), 0)
+        if n_report > 0:
+            out["REPORT_HANDLE_DAYS"] = n_report
         if schema.get("shopMarketplace"):
             out["SHOP_MARKETPLACE"] = True
         if schema.get("stockWarnNotify"):
@@ -406,6 +530,10 @@ COMMENTS: dict[str, str] = {
     "LATE_GRACE_MINUTES": "签到迟到宽限（分钟）",
     "HOSPITAL_CANCEL_CUTOFF_MINUTES": "挂号退号截止（开诊前分钟）；0 表示不额外限制",
     "HOSPITAL_ID_LIMIT_PER_DAY": "同就诊人每日限号；0 表示不限制",
+    "FORUM_DAILY_POST_LIMIT": "论坛每日发帖上限；0 表示不限制",
+    "REPORT_HANDLE_DAYS": "内容举报处理时限（天）；0 表示不设时限",
+    "CONTENT_SENSITIVE_FILTER": "发帖/跟帖本地敏感词拦截",
+    "CONTENT_MENTION_NOTIFY": "跟帖 @登录名 站内信提醒",
     "PARKING_HOURLY_YUAN": "车位小时费率（元）；0 表示未启用时长计费",
     "PARKING_OVERTIME_YUAN": "车位超时加收默认金额（元）；0 表示未启用",
     "MEETING_MIN_DURATION_MINUTES": "会议室最低预约时长（分钟）；0 表示不限制",
@@ -444,6 +572,28 @@ COMMENTS: dict[str, str] = {
     "LOST_CLUE_ENABLED": "失物线索",
     "POST_MUTE_ENABLED": "帖子禁言",
     "CONTENT_REPORT_ENABLED": "内容举报",
+    "CONTENT_SENSITIVE_FILTER": "发帖/跟帖本地敏感词拦截",
+    "CONTENT_MENTION_NOTIFY": "跟帖 @登录名 站内信提醒",
+    "CONTENT_CATEGORY_FOLLOW": "专栏/分类订阅与更新站内信",
+    "CONTENT_COMMENT_AUTHOR_NOTIFY": "博客新评论通知作者",
+    "CONTENT_FRIEND_LINKS": "博客友情链接栏",
+    "CONTENT_PLAY_PROGRESS": "影音播放进度与完播标记",
+    "CONTENT_MEDIA_EPISODE": "影音选集分集列表",
+    "CONTENT_SHARE_CODE": "片单只读分享码",
+    "CONTENT_DOCLIB_CHAPTER": "文库章节目录与版本记录",
+    "CONTENT_DOCLIB_FEEDBACK": "文库纠错与侵权投诉",
+    "CONTENT_DOCLIB_TAG_CLOUD": "文库热门标签云",
+    "CONTENT_DOCLIB_DOWNLOAD_GATE": "文库预览/权限/限额/审核/水印",
+    "CONTENT_DOCLIB_POINTS_DOWNLOAD": "文库下载扣积分/点券",
+    "CONTENT_ESSENCE_POINTS_REWARD": "精华帖奖励积分",
+    "POINTS_CHECK_IN_ENABLED": "每日登录奖励积分",
+    "CONTENT_REPORT_REASON_DICT": "内容举报原因字典",
+    "CONTENT_COMMENT_REPORT": "评论举报",
+    "CONTENT_FOLLOWERS_ONLY_COMMENT": "评论仅粉丝可见",
+    "CONTENT_PUBLISH_APPROVE_NOTIFY": "投稿审过站内信通知",
+    "DOCLIB_DAILY_DOWNLOAD_LIMIT": "文库每日下载上限；0 表示不限制",
+    "ESSENCE_POINTS_REWARD": "标精华时奖励作者的积分；0 表示不奖",
+    "POINTS_CHECK_IN_AMOUNT": "每日登录奖励积分数",
     "DM_SHOP_CS": "私信走店铺客服（买家只能选商家）",
     "E_SIGN_ENABLED": "本地签章",
     "EXAM_ENABLED": "在线考试",

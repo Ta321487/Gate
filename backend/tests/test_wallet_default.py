@@ -25,6 +25,12 @@ class WalletDefaultTests(unittest.TestCase):
         caps = merge_loyalty_capabilities(["archive", "ticket_flow"], "储值卡余额充值")
         self.assertIn("wallet", caps)
 
+    def test_no_order_lines_scan_keeps_points(self) -> None:
+        """无订单壳但开题写到积分 → 可挂 points（内容域 C-08）。"""
+        caps = merge_loyalty_capabilities(["archive", "ticket_flow"], "会员积分与签到积分")
+        self.assertIn("points", caps)
+        self.assertNotIn("wallet", caps)
+
     def test_scan_still_adds_points(self) -> None:
         caps = merge_loyalty_capabilities(
             ["archive", "order_lines"],

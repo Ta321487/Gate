@@ -11,7 +11,7 @@ alwaysApply: false
 ## 一轮 = 一组
 
 - 组 = 地图 `### 1.x`（§1.1~§1.10）；一组一个 `backend/app/bake/features/<组>_thicken.py`。
-  已有：`borrow_thicken` · `follow_thicken` · `repair_thicken` · `apply_thicken` · `approve_thicken` · `trade_thicken` · `reserve_thicken`（均须在 `HUB_BYPASS_MODULES` + `docs/capabilities.md` 例外表登记）。
+  已有：`borrow_thicken` · `follow_thicken` · `repair_thicken` · `apply_thicken` · `approve_thicken` · `trade_thicken` · `reserve_thicken` · `content_thicken`（均须在 `HUB_BYPASS_MODULES` + `docs/capabilities.md` 例外表登记）。
 - 新组模块**必须**在 `backend/app/bake/domain_schema.py` 注册：`from app.bake.features.<组>_thicken import apply_<组>_thicken_to_spec` + `out = apply_<组>_thicken_to_spec(out, body)`（同文件既有 thicken 注册即范本）。**漏注册 = 死代码 = 未交付。**
 - 一组清完：同节「#### 本组待补」清空，行迁到「#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）」，列保持 `功能 / 落点 / 挂载`。
 
@@ -67,6 +67,17 @@ alwaysApply: false
 3. 受影响材料的 `backend/tests/test_schema_*.py`
 
 任一红 → 行留在「本组待补」，**不许先迁行**，不许靠改地图文字变绿。
+
+### 动了 Java 骨架再加跑（真编，本机要有 mvn）
+
+工厂出包页**不用开关**——`build_verify` 已自动 `mvn compile`。下面是给加厚/改骨架的开发验收，避免靠随机起包才撞 javac 红：
+
+```text
+python -m pytest backend/tests/test_skeleton_java_compile_smells.py backend/tests/test_runtime_policy_bake.py backend/tests/test_skeleton_unreachable_catch.py -q
+python -m pytest backend/tests/test_skeleton_mvn_compile.py backend/tests/test_bake_mvn_compile_probe.py -q -m slow
+```
+
+默认全量 pytest 会跳过 `slow`；`-m slow` / `--run-slow` 才真编。无 mvn 时 slow 用例 skip 不红；有 mvn 则 **baseline 骨架真编** + **一条 DOM-ATTEND jdbc bake 探针**必须编过。mybatis/jpa overlay 不是完整工程、叠层洁净另案，不绑进本 slow 门禁。
 
 ## DON'T
 

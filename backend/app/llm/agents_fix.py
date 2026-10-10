@@ -72,6 +72,8 @@ def _mvn_compile(workspace: Path) -> tuple[bool, str]:
             cwd=str(be),
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=180,
             shell=use_shell,
         )

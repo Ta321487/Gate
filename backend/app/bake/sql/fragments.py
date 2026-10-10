@@ -732,6 +732,7 @@ CREATE TABLE IF NOT EXISTS content_report (
   handle_note VARCHAR(512) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   handled_at DATETIME NULL,
+  handle_deadline_at DATETIME NULL,
   KEY idx_creport_status (status, id),
   KEY idx_creport_target (target_type, target_id)
 );
@@ -3729,7 +3730,7 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("asset_code")
     if f.get("allowRemoteUrl"):
         names.append("remote_url")
-    if f.get("allowTicketMerge"):
+    if f.get("allowTicketMerge") or f.get("allowNestedReply"):
         names.append("parent_ticket_id")
     if f.get("allowKnowledgeDeposit"):
         names.append("knowledge_deposit")

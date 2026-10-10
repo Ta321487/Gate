@@ -30,7 +30,14 @@ public class ItemCommentController {
         }
         int p = GuestTeaser.clampPage(session, page);
         int s = GuestTeaser.clampSize(session, size);
-        return R.ok(ItemCommentStore.pageByItem(itemId, p, s));
+        String viewer = null;
+        try {
+            viewer = AdminAuth.requireLogin(session);
+        } catch (Exception ignored) {
+            Object u = session.getAttribute("username");
+            if (u != null) viewer = String.valueOf(u);
+        }
+        return R.ok(ItemCommentStore.pageByItem(itemId, p, s, viewer));
     }
 
     @GetMapping
@@ -69,9 +76,41 @@ public class ItemCommentController {
         if (text.isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "评论内容不能为空");
         }
-        Map<String, Object> row = ItemCommentStore.add(itemId, p.username, p.nickname, text);
-        if (row == null) throw new BizException(ErrorCode.BAD_REQUEST, "评论失败");
-        return R.ok(row);
+        Long parentId = null;
+        if (body != null && body.get("parentId") != null && !String.valueOf(body.get("parentId")).isBlank()) {
+            try {
+                parentId = Long.parseLong(String.valueOf(body.get("parentId")).trim());
+            } catch (NumberFormatException e) {
+                parentId = null;
+            }
+        }
+        boolean followersOnly = false;
+        if (body != null && body.get("followersOnly") != null) {
+            String fo = String.valueOf(body.get("followersOnly")).trim();
+            followersOnly = "1".equals(fo) || "true".equalsIgnoreCase(fo) || "yes".equalsIgnoreCase(fo);
+        }
+        try {
+            Map<String, Object> row =
+                    ItemCommentStore.add(itemId, p.username, p.nickname, text, parentId, followersOnly);
+            if (row == null) throw new BizException(ErrorCode.BAD_REQUEST, "评论失败");
+            return R.ok(row);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/like")
+    public R<Map<String, Object>> like(@PathVariable long id, HttpSession session) {
+        if (!ItemCommentStore.ready()) {
+            throw new BizException(ErrorCode.NOT_FOUND, "未开通评论功能");
+        }
+        String uid = AdminAuth.requireLogin(session);
+        try {
+            boolean liked = ItemCommentStore.toggleLike(uid, id);
+            return R.ok(Map.of("liked", liked, "id", id));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")

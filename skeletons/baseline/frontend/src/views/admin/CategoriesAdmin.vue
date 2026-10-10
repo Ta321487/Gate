@@ -11,6 +11,12 @@
       <el-table-column v-if="requiredCategoryOn" :label="requiredCategoryLabel" width="110">
         <template #default="{ row }">{{ row.requiredPick ? '必选' : '—' }}</template>
       </el-table-column>
+      <el-table-column v-if="sectionNoticeOn" :label="sectionNoticeLabel" min-width="160" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.sectionNotice || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="followerCountOn" :label="followerCountLabel" width="100">
+        <template #default="{ row }">{{ followerCounts[row.id] ?? '—' }}</template>
+      </el-table-column>
       <el-table-column prop="itemCount" :label="`${label}数`" width="100" />
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
@@ -34,6 +40,16 @@
           <el-switch v-model="form.requiredPick" />
           <p v-if="requiredCategoryHint" class="tip muted">{{ requiredCategoryHint }}</p>
         </el-form-item>
+        <el-form-item v-if="sectionNoticeOn" :label="sectionNoticeLabel">
+          <el-input
+            v-model="form.sectionNotice"
+            type="textarea"
+            :rows="3"
+            maxlength="512"
+            show-word-limit
+            :placeholder="sectionNoticeHint || '进入该版块时展示的须知'"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -55,14 +71,20 @@ const multiCategory = computed(() => !!archive.multiCategory || hasCap('multi_ca
 const requiredCategoryOn = computed(() => !!getSchema()?.tradeThicken?.requiredCategory)
 const requiredCategoryLabel = computed(() => getSchema()?.labels?.requiredCategoryLabel || '必选品类')
 const requiredCategoryHint = computed(() => getSchema()?.labels?.requiredCategoryHint || '')
+const sectionNoticeOn = computed(() => !!getSchema()?.contentThicken?.sectionNotice)
+const sectionNoticeLabel = computed(() => getSchema()?.labels?.sectionNoticeLabel || '版块公告')
+const sectionNoticeHint = computed(() => getSchema()?.labels?.sectionNoticeHint || '')
+const followerCountOn = computed(() => !!getSchema()?.contentThicken?.categoryFollowerCount)
+const followerCountLabel = computed(() => getSchema()?.labels?.categoryFollowerCountLabel || '订阅数')
 const catLabel = computed(() => {
   const f = (archive.fields || []).find((x) => x && (x.key === 'category' || x.key === 'categoryIds'))
   return f?.label || '分类'
 })
 
 const list = ref([])
+const followerCounts = reactive({})
 const visible = ref(false)
-const form = reactive({ id: null, name: '', dimension: '', requiredPick: false })
+const form = reactive({ id: null, name: '', dimension: '', requiredPick: false, sectionNotice: '' })
 const dimensionOptions = computed(() => {
   const set = new Set()
   for (const row of list.value || []) {
@@ -73,9 +95,25 @@ const dimensionOptions = computed(() => {
   return [...set]
 })
 
+async function loadFollowerCounts(rows) {
+  Object.keys(followerCounts).forEach((k) => delete followerCounts[k])
+  if (!followerCountOn.value) return
+  await Promise.all(
+    (rows || []).map(async (row) => {
+      try {
+        const res = await http.get(`/api/category-follow/count/${row.id}`)
+        followerCounts[row.id] = Number(res.data?.count) || 0
+      } catch {
+        followerCounts[row.id] = 0
+      }
+    }),
+  )
+}
+
 async function load() {
   const res = await http.get('/api/categories')
   list.value = res.data || res || []
+  await loadFollowerCounts(list.value)
 }
 
 function openEdit(row) {
@@ -85,6 +123,7 @@ function openEdit(row) {
       name: row.name,
       dimension: row.dimension || '',
       requiredPick: !!row.requiredPick,
+      sectionNotice: row.sectionNotice || '',
     })
   } else {
     Object.assign(form, {
@@ -92,6 +131,7 @@ function openEdit(row) {
       name: '',
       dimension: dimensionOptions.value[0] || '品类',
       requiredPick: false,
+      sectionNotice: '',
     })
   }
   visible.value = true
@@ -109,6 +149,7 @@ async function save() {
   const body = { name: form.name }
   if (multiCategory.value) body.dimension = form.dimension
   if (requiredCategoryOn.value) body.requiredPick = !!form.requiredPick
+  if (sectionNoticeOn.value) body.sectionNotice = form.sectionNotice || ''
   if (form.id) await http.put(`/api/categories/${form.id}`, body)
   else await http.post('/api/categories', body)
   ElMessage.success('已保存')

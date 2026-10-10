@@ -48,6 +48,7 @@
 | `approve_thicken` | 审批/填报组加厚（撤回/退回再提、抄送、转审、域皮字段等），非独立 cap；落点见交付地图 §1.5 |
 | `trade_thicken` | 交易组加厚（购物车/订单/选座壳通识与 SHOP/FOOD/CINEMA 域皮），非独立 cap；落点见交付地图 §1.6 与 [`trade-thicken-batch.md`](./trade-thicken-batch.md) |
 | `reserve_thicken` | 预约组加厚（时段占坑通识与 HOSPITAL…INSTRUMENT 域皮），非独立 cap；落点见交付地图 §1.7 与 [`reserve-thicken-batch.md`](./reserve-thicken-batch.md) |
+| `content_thicken` | 内容组加厚（archive 浏览通识与 MEDIA/MUSIC/FORUM/BLOG/DOCLIB 域皮），非独立 cap；落点见交付地图 §1.8 与 [`content-thicken-batch.md`](./content-thicken-batch.md) |
 
 源码：`backend/app/bake/features/proposal_caps.py` → `HUB_BYPASS_MODULES`。
 

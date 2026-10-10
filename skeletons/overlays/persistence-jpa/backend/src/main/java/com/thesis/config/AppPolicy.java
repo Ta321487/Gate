@@ -64,6 +64,10 @@ public final class AppPolicy {
     public static final int HOSPITAL_CANCEL_CUTOFF_MINUTES = 0;
     /** 同就诊人每日限号；0 表示不限制 */
     public static final int HOSPITAL_ID_LIMIT_PER_DAY = 0;
+    /** 论坛每日发帖上限；0 表示不限制 */
+    public static final int FORUM_DAILY_POST_LIMIT = 0;
+    /** 内容举报处理时限（天）；0 表示不设时限 */
+    public static final int REPORT_HANDLE_DAYS = 0;
     /** 车位小时费率（元）；0 表示未启用时长计费 */
     public static final int PARKING_HOURLY_YUAN = 0;
     /** 车位超时加收默认金额（元）；0 表示未启用 */
@@ -120,6 +124,51 @@ public final class AppPolicy {
     public static final boolean POST_MUTE_ENABLED = false;
     /** 内容举报 */
     public static final boolean CONTENT_REPORT_ENABLED = false;
+    /** 发帖/跟帖本地敏感词拦截 */
+    public static final boolean CONTENT_SENSITIVE_FILTER = false;
+    /** 跟帖 @登录名 站内信提醒 */
+    public static final boolean CONTENT_MENTION_NOTIFY = false;
+    /** 专栏/分类订阅与更新站内信 */
+    public static final boolean CONTENT_CATEGORY_FOLLOW = false;
+    /** 博客新评论通知作者 */
+    public static final boolean CONTENT_COMMENT_AUTHOR_NOTIFY = false;
+    /** 博客友情链接栏 */
+    public static final boolean CONTENT_FRIEND_LINKS = false;
+    /** 影音播放进度与完播标记 */
+    public static final boolean CONTENT_PLAY_PROGRESS = false;
+    /** 影音选集分集列表 */
+    public static final boolean CONTENT_MEDIA_EPISODE = false;
+    /** 片单只读分享码 */
+    public static final boolean CONTENT_SHARE_CODE = false;
+    public static final boolean CONTENT_FAVORITE_GROUP = false;
+    /** 文库章节目录与版本记录 */
+    public static final boolean CONTENT_DOCLIB_CHAPTER = false;
+    /** 文库纠错与侵权投诉 */
+    public static final boolean CONTENT_DOCLIB_FEEDBACK = false;
+    /** 文库热门标签云 */
+    public static final boolean CONTENT_DOCLIB_TAG_CLOUD = false;
+    /** 文库预览/权限/限额/审核/水印 */
+    public static final boolean CONTENT_DOCLIB_DOWNLOAD_GATE = false;
+    /** 文库下载扣积分/点券 */
+    public static final boolean CONTENT_DOCLIB_POINTS_DOWNLOAD = false;
+    /** 精华帖奖励积分 */
+    public static final boolean CONTENT_ESSENCE_POINTS_REWARD = false;
+    /** 标精华时奖励作者的积分；0 表示不奖 */
+    public static final int ESSENCE_POINTS_REWARD = 0;
+    /** 每日登录奖励积分 */
+    public static final boolean POINTS_CHECK_IN_ENABLED = false;
+    /** 每日登录奖励积分数 */
+    public static final int POINTS_CHECK_IN_AMOUNT = 10;
+    /** 内容举报原因字典 */
+    public static final boolean CONTENT_REPORT_REASON_DICT = false;
+    /** 评论举报 */
+    public static final boolean CONTENT_COMMENT_REPORT = false;
+    /** 评论仅粉丝可见 */
+    public static final boolean CONTENT_FOLLOWERS_ONLY_COMMENT = false;
+    /** 投稿审过站内信通知 */
+    public static final boolean CONTENT_PUBLISH_APPROVE_NOTIFY = false;
+    /** 文库每日下载上限；0 表示不限制 */
+    public static final int DOCLIB_DAILY_DOWNLOAD_LIMIT = 0;
     /** 私信走店铺客服（买家只能选商家） */
     public static final boolean DM_SHOP_CS = false;
     /** 本地签章 */

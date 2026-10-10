@@ -39,6 +39,9 @@ _tmp_codebin/
 # playwright-mcp
 .playwright-mcp
 
+# local student-pack browser verify (npm cache / probes; not product)
+.dsh-verify/
+
 # local sqlite sidecars / browser-review screenshots
 data/factory.db-shm
 data/factory.db-wal

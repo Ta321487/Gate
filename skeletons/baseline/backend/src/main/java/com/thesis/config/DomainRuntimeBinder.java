@@ -657,6 +657,28 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     private final int hospitalCancelCutoffMinutes = AppPolicy.HOSPITAL_CANCEL_CUTOFF_MINUTES;
 
     private final int hospitalIdLimitPerDay = AppPolicy.HOSPITAL_ID_LIMIT_PER_DAY;
+    private final int forumDailyPostLimit = AppPolicy.FORUM_DAILY_POST_LIMIT;
+    private final int reportHandleDays = AppPolicy.REPORT_HANDLE_DAYS;
+    private final boolean contentSensitiveFilter = AppPolicy.CONTENT_SENSITIVE_FILTER;
+    private final boolean contentMentionNotify = AppPolicy.CONTENT_MENTION_NOTIFY;
+    private final boolean contentCategoryFollow = AppPolicy.CONTENT_CATEGORY_FOLLOW;
+    private final boolean contentCommentAuthorNotify = AppPolicy.CONTENT_COMMENT_AUTHOR_NOTIFY;
+    private final boolean contentFriendLinks = AppPolicy.CONTENT_FRIEND_LINKS;
+    private final boolean contentPlayProgress = AppPolicy.CONTENT_PLAY_PROGRESS;
+    private final boolean contentMediaEpisode = AppPolicy.CONTENT_MEDIA_EPISODE;
+    private final boolean contentFavoriteGroup = AppPolicy.CONTENT_FAVORITE_GROUP;
+    private final boolean contentDoclibChapter = AppPolicy.CONTENT_DOCLIB_CHAPTER;
+    private final boolean contentDoclibFeedback = AppPolicy.CONTENT_DOCLIB_FEEDBACK;
+    private final boolean contentDoclibTagCloud = AppPolicy.CONTENT_DOCLIB_TAG_CLOUD;
+    private final boolean contentDoclibDownloadGate = AppPolicy.CONTENT_DOCLIB_DOWNLOAD_GATE;
+    private final int doclibDailyDownloadLimit = AppPolicy.DOCLIB_DAILY_DOWNLOAD_LIMIT;
+    private final boolean contentDoclibPointsDownload = AppPolicy.CONTENT_DOCLIB_POINTS_DOWNLOAD;
+    private final boolean contentEssencePointsReward = AppPolicy.CONTENT_ESSENCE_POINTS_REWARD;
+    private final int essencePointsReward = AppPolicy.ESSENCE_POINTS_REWARD;
+    private final boolean contentReportReasonDict = AppPolicy.CONTENT_REPORT_REASON_DICT;
+    private final boolean contentCommentReport = AppPolicy.CONTENT_COMMENT_REPORT;
+    private final boolean contentFollowersOnlyComment = AppPolicy.CONTENT_FOLLOWERS_ONLY_COMMENT;
+    private final boolean contentPublishApproveNotify = AppPolicy.CONTENT_PUBLISH_APPROVE_NOTIFY;
 
     private final boolean hospitalWaitlistEnabled = AppPolicy.HOSPITAL_WAITLIST_ENABLED;
 
@@ -921,11 +943,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.points-offset-enabled:false}")
     private boolean pointsOffsetEnabled;
 
+    /** C-08：可由 bake 钉 AppPolicy；也可 YAML 叠开 */
     @Value("${thesis.points-checkin-enabled:false}")
-    private boolean pointsCheckInEnabled;
+    private boolean pointsCheckInEnabledYaml;
 
     @Value("${thesis.points-checkin-amount:10}")
-    private int pointsCheckInAmount;
+    private int pointsCheckInAmountYaml;
 
     @Value("${thesis.points-expire-enabled:false}")
     private boolean pointsExpireEnabled;
@@ -951,6 +974,16 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         ArchiveStore.configureSoftDelete(archiveSoftDelete);
         ArchiveStore.configureUserPublish(archiveUserPublish);
         ArchiveStore.configurePublishReview(archivePublishReview);
+        ArchiveStore.configureForumDailyPostLimit(forumDailyPostLimit);
+        FavoriteStore.configureReportHandleDays(reportHandleDays);
+        com.thesis.service.SensitiveWordGate.configure(contentSensitiveFilter);
+        com.thesis.service.MentionNotify.configure(contentMentionNotify);
+        com.thesis.service.CategoryFollowStore.configure(contentCategoryFollow);
+        com.thesis.service.ItemCommentStore.configureAuthorNotify(contentCommentAuthorNotify);
+        com.thesis.service.BlogFriendLinkStore.configure(contentFriendLinks);
+        com.thesis.service.MediaPlayProgressStore.configure(contentPlayProgress);
+        com.thesis.service.MediaEpisodeStore.configure(contentMediaEpisode);
+        FavoriteStore.configureGroups(contentFavoriteGroup);
         ArchiveStore.configureGallery(galleryEnabled);
         ArchiveStore.configureStockWarn(stockWarnNotify, stockWarnBelow);
         ArchiveStore.configureDetailAttrs(detailAttrsEnabled, detailAttrKeys);
@@ -1265,6 +1298,11 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 pointsEarnPerYuan,
                 spendDiscountThresholdYuan,
                 spendDiscountOffYuan);
+        boolean pointsCheckInEnabled =
+                AppPolicy.POINTS_CHECK_IN_ENABLED || pointsCheckInEnabledYaml;
+        int pointsCheckInAmount = AppPolicy.POINTS_CHECK_IN_ENABLED
+                ? Math.max(1, AppPolicy.POINTS_CHECK_IN_AMOUNT)
+                : pointsCheckInAmountYaml;
         LoyaltyStore.configurePointsModes(
                 pointsPayEnabled,
                 pointsOffsetEnabled,
@@ -1274,6 +1312,14 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 pointsExpirePeriod,
                 pointsExpireScope,
                 memberTierBasis);
+        com.thesis.capability.ArchiveStore.configureContentIslands(
+                contentEssencePointsReward,
+                essencePointsReward,
+                contentPublishApproveNotify);
+        DoclibStore.configurePointsDownload(contentDoclibPointsDownload);
+        com.thesis.capability.FavoriteStore.configureCommentReport(contentCommentReport);
+        com.thesis.service.ItemCommentStore.configureFollowersOnly(contentFollowersOnlyComment);
+        com.thesis.service.UserFollowStore.configure(contentFollowersOnlyComment);
         CouponStore.configure(couponEnabled);
         if (orderCartTable != null && !orderCartTable.isBlank()) {
             OrderStore.bind(orderCartTable, orderTable, orderLineTable, useQuota);
@@ -1325,6 +1371,12 @@ public class DomainRuntimeBinder implements ApplicationRunner {
         SurveyStore.configure(surveyEnabled);
         VoteStore.configure(voteEnabled);
         DoclibStore.configure(doclibEnabled);
+        DoclibStore.configureThicken(
+                contentDoclibChapter,
+                contentDoclibFeedback,
+                contentDoclibTagCloud,
+                contentDoclibDownloadGate,
+                doclibDailyDownloadLimit);
         TimebankStore.configure(timebankEnabled, timebankRedeemOnApprove);
         SeatStore.configure(seatSelectEnabled);
         SeatStore.configureHoldTimeoutMinutes(seatHoldTimeoutMinutes);
@@ -1365,7 +1417,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
             SlotStore.configureCarrent(carrentMileageOverFeeYuan);
             SlotStore.configureInstrument(instrumentOvertimeYuan, instrumentTrainingRequired);
             com.thesis.service.ReserveBlacklistStore.configure(reserveBlacklistEnabled, null);
-            PatientProfileStore.configure(patientProfileEnabled);
+            com.thesis.service.PatientProfileStore.configure(patientProfileEnabled);
             com.thesis.service.ParkingPassStore.configure(parkingPassEnabled);
         } else {
             SlotStore.unbind();

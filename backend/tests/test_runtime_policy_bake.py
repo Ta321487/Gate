@@ -41,6 +41,29 @@ def test_binder_reads_app_policy_not_yml():
         assert "TicketPolicy." in text, tag
 
 
+def test_binder_app_policy_refs_subset_of_renderer():
+    """binder 引用的 AppPolicy.X 必须都在 FIELDS/FLAG_KEYS 里，否则 bake 一写 AppPolicy 就 javac 红。"""
+    import re
+
+    from app.bake.runtime_policy import all_fields
+
+    repo = Path(__file__).resolve().parents[2]
+    known = {f[1] for f in all_fields()}
+    rel = "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java"
+    bad: list[str] = []
+    for tag, tree in (
+        ("baseline", "skeletons/baseline"),
+        ("mybatis", "skeletons/overlays/persistence-mybatis"),
+        ("jpa", "skeletons/overlays/persistence-jpa"),
+    ):
+        text = (repo / tree / rel).read_text(encoding="utf-8")
+        refs = set(re.findall(r"AppPolicy\.(\w+)", text))
+        miss = sorted(refs - known)
+        if miss:
+            bad.append(f"{tag}: {', '.join(miss)}")
+    assert not bad, "binder 引用了渲染器没有的 AppPolicy 常量:\n" + "\n".join(bad)
+
+
 def test_thesis_yml_no_longer_emits_sunk_keys():
     """下沉键不得再出现在 application.yml thesis 段。"""
     from app.bake.catalog import DOMAINS

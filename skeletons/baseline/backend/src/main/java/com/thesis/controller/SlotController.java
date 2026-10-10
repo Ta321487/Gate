@@ -167,10 +167,10 @@ public class SlotController {
                 yuan = new java.math.BigDecimal(String.valueOf(body.get("yuan")));
             }
             return R.ok(SlotStore.registerOvertimeFee(id, yuan));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "金额格式不正确");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
     }
 
@@ -206,10 +206,10 @@ public class SlotController {
                 yuan = new java.math.BigDecimal(String.valueOf(body.get("yuan")));
             }
             return R.ok(SlotStore.registerLateCheckoutFee(id, yuan));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "金额格式不正确");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
     }
 
@@ -242,10 +242,10 @@ public class SlotController {
                 yuan = new java.math.BigDecimal(String.valueOf(body.get("yuan")));
             }
             return R.ok(SlotStore.registerMileageOverFee(id, yuan));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "金额格式不正确");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
     }
 
@@ -263,10 +263,10 @@ public class SlotController {
                 yuan = new java.math.BigDecimal(String.valueOf(body.get("yuan")));
             }
             return R.ok(SlotStore.registerEtcFee(id, yuan));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         } catch (NumberFormatException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, "金额格式不正确");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
     }
 

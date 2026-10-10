@@ -39,8 +39,13 @@ public class CategoryController {
             @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
         try {
+            String notice = body.containsKey("sectionNotice") ? str(body.get("sectionNotice")) : null;
             return R.ok(ArchiveStore.updateCategory(
-                    id, str(body.get("name")), str(body.get("dimension")), boolOrNull(body.get("requiredPick"))));
+                    id,
+                    str(body.get("name")),
+                    str(body.get("dimension")),
+                    boolOrNull(body.get("requiredPick")),
+                    notice));
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {

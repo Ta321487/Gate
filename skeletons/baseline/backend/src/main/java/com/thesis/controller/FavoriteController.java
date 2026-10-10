@@ -30,10 +30,54 @@ public class FavoriteController {
     public R<?> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String groupName,
             HttpSession session) {
         requireFav();
         String uid = AdminAuth.requireLogin(session);
-        return R.ok(FavoriteStore.page(uid, page, size));
+        return R.ok(FavoriteStore.page(uid, page, size, groupName));
+    }
+
+    @PatchMapping("/api/favorites/{itemId}")
+    public R<?> updateMeta(
+            @PathVariable long itemId,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireFav();
+        if (!FavoriteStore.groupsEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "收藏分组功能暂不可用");
+        }
+        String uid = AdminAuth.requireLogin(session);
+        try {
+            String groupName = body.get("groupName") == null ? null : String.valueOf(body.get("groupName"));
+            Boolean isPublic = null;
+            if (body.containsKey("isPublic")) {
+                Object raw = body.get("isPublic");
+                if (raw instanceof Boolean b) isPublic = b;
+                else if (raw != null) {
+                    String s = String.valueOf(raw).trim();
+                    isPublic = "1".equals(s) || "true".equalsIgnoreCase(s);
+                }
+            }
+            return R.ok(FavoriteStore.updateMeta(uid, itemId, groupName, isPublic));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/api/favorites/public")
+    public R<?> pagePublic(
+            @RequestParam String username,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        requireFav();
+        if (!FavoriteStore.groupsEnabled()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "收藏分组功能暂不可用");
+        }
+        try {
+            return R.ok(FavoriteStore.pagePublic(username, page, size));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @GetMapping("/api/favorites/ids")

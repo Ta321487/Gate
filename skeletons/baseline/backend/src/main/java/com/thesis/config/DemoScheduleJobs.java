@@ -105,5 +105,11 @@ public class DemoScheduleJobs {
         } catch (Exception e) {
             log.debug("lesson expire-soon notify: {}", e.getMessage());
         }
+        try {
+            int n = com.thesis.service.UserStore.clearExpiredPostMutes();
+            if (n > 0) log.info("cleared {} expired post mutes", n);
+        } catch (Exception e) {
+            log.debug("post mute expire: {}", e.getMessage());
+        }
     }
 }

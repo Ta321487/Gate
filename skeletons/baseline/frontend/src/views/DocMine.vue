@@ -12,7 +12,12 @@
       </el-table-column>
       <el-table-column prop="downloadedAt" label="下载时间" min-width="160" />
     </el-table>
-    <EmptyHint v-if="!list.length" title="暂无下载记录" desc="在资料库下载后会出现在这里。" mark="档" />
+    <EmptyHint
+      v-if="!list.length"
+      :title="emptyTitle"
+      desc="在资料库下载后会出现在这里。"
+      mark="档"
+    />
   </div>
 </template>
 
@@ -24,7 +29,9 @@ import { getSchema } from '../utils/domainSchema'
 import { fileTypeMark } from '../utils/statusTone.js'
 
 const list = ref([])
-const title = computed(() => (getSchema().labels || {}).docMineTitle || '我的下载')
+const labels = computed(() => (getSchema() || {}).labels || {})
+const title = computed(() => labels.value.docMineTitle || labels.value.downloadLogLabel || '我的下载')
+const emptyTitle = computed(() => labels.value.downloadLogEmpty || '还没有下载记录')
 
 async function load() {
   const res = await http.get('/api/doclib/mine', { params: { page: 1, size: 50 } })

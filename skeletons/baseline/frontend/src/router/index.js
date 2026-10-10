@@ -374,6 +374,23 @@ function withContentReportRoutes(baseRoutes) {
   return routes
 }
 
+/** 博客友情链接管理：contentThicken.friendLinks */
+function withBlogFriendLinkRoutes(baseRoutes) {
+  if (!getSchema()?.contentThicken?.friendLinks) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'blog-friend-links')) {
+    const catIdx = adminKids.findIndex((c) => c.path === 'categories')
+    const at = catIdx >= 0 ? catIdx + 1 : adminKids.length
+    adminKids.splice(at, 0, {
+      path: 'blog-friend-links',
+      component: () => import('../views/admin/BlogFriendLinksAdmin.vue'),
+    })
+  }
+  return routes
+}
+
 /** AI 助手：对话页 + 管理端知识库 */
 function withAiAssistantRoutes(baseRoutes) {
   if (!hasCap('ai_assistant')) return baseRoutes
@@ -1208,6 +1225,7 @@ function pickRoutes() {
     withBookSuggestRoutes,
     withParcelExtraRoutes,
     withContentReportRoutes,
+    withBlogFriendLinkRoutes,
     withAiAssistantRoutes,
     withGradeScoreRoutes,
     withFundIslandRoutes,
@@ -1404,6 +1422,14 @@ function withPointsLedgerRoutes(baseRoutes) {
     kids.splice(at, 0, {
       path: 'points-ledger',
       component: () => import('../views/user/PointsLedger.vue'),
+    })
+  }
+  if (getSchema()?.contentThicken?.pointsRulesPage && kids && !kids.some((c) => c.path === 'points-rules')) {
+    const ledgerIdx = kids.findIndex((c) => c.path === 'points-ledger')
+    const at = ledgerIdx >= 0 ? ledgerIdx + 1 : kids.length
+    kids.splice(at, 0, {
+      path: 'points-rules',
+      component: () => import('../views/user/PointsRules.vue'),
     })
   }
   return routes

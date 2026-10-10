@@ -2,10 +2,11 @@
 
 > **本文只负责**：开题常见功能 → 工厂落点与状态（已实现 / 扫词开 / 待补 / 不支持）。非 AI。  
 > **不负责**：cap 定义与挂载细则（[`capabilities.md`](./capabilities.md)）；DOM 分组与域默认能力组合（[`domains.md`](./domains.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；怎么审交付（[`delivery-audit-rules.md`](./delivery-audit-rules.md)）。  
-> **索引**：[README.md](./README.md) · **AI 轴**：[`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md) · **扩岛档案**（已收口）：[`capability-expansion-batch.md`](./capability-expansion-batch.md) · **§1.6 交易加厚批次**（已收口）：[`trade-thicken-batch.md`](./trade-thicken-batch.md) · **§1.7 预约加厚批次**（已收口）：[`reserve-thicken-batch.md`](./reserve-thicken-batch.md)。  
+> **索引**：[README.md](./README.md) · **AI 轴**：[`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md) · **扩岛档案**（已收口）：[`capability-expansion-batch.md`](./capability-expansion-batch.md) · **§1.1～§1.5 加厚复盘**（已收口）：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) · **§1.6 交易加厚**（已收口）：[`trade-thicken-batch.md`](./trade-thicken-batch.md) · **§1.7 预约加厚**（已收口）：[`reserve-thicken-batch.md`](./reserve-thicken-batch.md) · **§1.8 内容加厚**（进行中）：[`content-thicken-batch.md`](./content-thicken-batch.md) · **域组 UI 表面**（加厚后做）：[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)。  
 > **覆盖**：全 **68** 域。活表。  
 > **口径**：全国专本科 **Web 管理类毕设**通识可交付（能注册、走主流程、能答辩）。**不**依赖工厂样例库，**不**绑某一所学校课表；按开题常写模块建库存。禁止用「演示级」打发已实现能力。  
-> **库存原则**：工厂先列全「毕设常见且不超纲」功能；域壳仍可薄配置。开题命中才挂扫词项。挂载细节以 [`capabilities.md`](./capabilities.md) 为准；与本表冲突时只改一处并同步，禁止两套口径。  
+> **库存原则**：工厂先列全「毕设常见且不超纲」功能；域仍用**薄壳架构**（不另起厚包），**薄壳≠功能稀薄**——齐度看本节待补与各组 thicken。开题命中才挂扫词项。挂载细节以 [`capabilities.md`](./capabilities.md) 为准；与本表冲突时只改一处并同步，禁止两套口径。  
+> **UI 表面**：列表/主路径构图选型不进本表待补行；见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md)，须该组加厚收口后再开实现 plan。菜单入口须保全（毕设截图）。  
 > **齐度**：有「待补」=实现未齐，≠库存未列。超纲进「不支持」，不进待补装齐。压力测见下节。
 > **已齐硬口径（老板原话）**：**管理端能管，且用户端可产生数据（写库）**；答辩能讲、论文能写。只读文案 / 纯 Hint / 仅打印导出 / 仅前端字面量真读 → **不算已齐**，进待补。
 > **骨架门禁（代替起包）**：在硬口径之上再钉：① 列/API/SQL；② 管理端有管控件 + 用户端有写入控件；③ `test_opening_map_skeleton_gate.py` 绿。不靠逐题起包。
@@ -302,7 +303,8 @@
 
 ### 1.1 借用 / 占用
 
-组口径：档案 + 单据 + 名额/库存；图书/设备带到期催办与续借。借阅+座位真交叉可降 GENERIC（见 domains 组 H）。
+组口径：档案 + 单据 + 名额/库存；图书/设备带到期催办与续借。借阅+座位真交叉可降 GENERIC（见 domains 组 H）。  
+**复盘档案**：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) §1（`borrow_thicken`；待补已清）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
@@ -403,7 +405,8 @@
 
 ### 1.2 跟进
 
-组口径：档案 + 跟进/申请单；多为自建档自跟或学工台账。横切留言/审计/消息模板可扫。
+组口径：档案 + 跟进/申请单；多为自建档自跟或学工台账。横切留言/审计/消息模板可扫。  
+**复盘档案**：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) §2（`follow_thicken`；待补已清）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
@@ -515,7 +518,8 @@
 
 ### 1.3 报修 / 工单
 
-组口径：**处理时限/催办（deadline）域默认**。催办=站内时限提醒，非短信。三域同壳换皮。
+组口径：**处理时限/催办（deadline）域默认**。催办=站内时限提醒，非短信。三域同壳换皮。  
+**复盘档案**：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) §3（`repair_thicken`；主链待补已清）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
@@ -595,7 +599,8 @@
 
 ### 1.4 报名 / 申请
 
-组口径：**候补** ACTIVITY/COURSE 域默认、TOUR/LOST 扫词开；**单据星级评价**（`allowRating`，≠ `order_review`）ACTIVITY/LOST/TOUR 域默认；COURSE 无单据评价（评教走 DOM-EVAL）。报名+投票 → ACTIVITY 扫词挂 `vote`（C-11）。组内**不接**真支付商户 / 闸机 / 地图 / OTA / 短信。
+组口径：**候补** ACTIVITY/COURSE 域默认、TOUR/LOST 扫词开；**单据星级评价**（`allowRating`，≠ `order_review`）ACTIVITY/LOST/TOUR 域默认；COURSE 无单据评价（评教走 DOM-EVAL）。报名+投票 → ACTIVITY 扫词挂 `vote`（C-11）。组内**不接**真支付商户 / 闸机 / 地图 / OTA / 短信。  
+**复盘档案**：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) §4（`apply_thicken`；待补已清）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
@@ -695,7 +700,8 @@
 
 ### 1.5 审批 / 填报
 
-组口径：事项/类型档案 + 申请单；常见挂材料清单 / 额度台账 / 占用时段 / 多级审（见 capabilities）。证明/合同类勿冒充法定 CA。
+组口径：事项/类型档案 + 申请单；常见挂材料清单 / 额度台账 / 占用时段 / 多级审（见 capabilities）。证明/合同类勿冒充法定 CA。  
+**复盘档案**：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) §5（`approve_thicken`；待补已清）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
@@ -1069,6 +1075,7 @@
 ### 1.8 内容 / 媒资 / 社区
 
 组口径：archive 浏览为主；论坛跟帖走 ticket。留言默认（论坛除外）。条下评论/投稿/点赞等扫词见 §0。
+**清待补批次**：[`content-thicken-batch.md`](./content-thicken-batch.md)（C-00～C-09；一组一包 `content_thicken`；三绿才迁行）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
@@ -1080,87 +1087,91 @@
 
 #### 本组待补
 
-| 功能 | 建议落域 | 说明 |
-|------|----------|------|
-| 精华帖 / 置顶（管理标记+列表优先） | FORUM | 字段+排序；≠推荐引擎 |
-| 帖子搜索（标题关键词） | FORUM / BLOG | 基线检索加深 |
-| 下载次数展示与个人下载记录 | DOCLIB | 台账已有可加深展示 |
-| 资料预览（图片/PDF 新窗口，非转码） | DOCLIB | 浏览器打开；≠永中预览云 |
-| 播放进度记住（本地/按用户一条） | MEDIA / MUSIC | 毕设级；≠多端云同步 |
-| 专栏/分类订阅（收藏分类） | BLOG / MEDIA | 可复用 favorites 变体 |
-| 热门排行（按浏览/下载计数） | 内容组通用 | 计数+排序；≠协同过滤 |
-| 草稿箱（发帖/发文先存后发） | FORUM / BLOG | 状态 draft；通识高频 |
-| @提醒站内信（跟帖提到某人） | FORUM | 解析 @ + 消息；浅 |
-| 版块公告（分类级须知） | FORUM | 分类扩展字段 |
-| 专栏订阅更新站内信 | BLOG | 新文通知；浅 |
-| 文章定时发布 | BLOG / MEDIA | 日期字段 |
-| 片单/歌单分享码（只读链接口令） | MEDIA / MUSIC | 字符串码 |
-| 文库积分下载（扣点后下） | DOCLIB | 须 points/wallet；扫词叠 |
-| 敏感词拦截提示（本地词表） | FORUM / BLOG | 浅词表；≠云审核 |
-| 举报处理结果通知举报人 | FORUM | 消息模板 |
-| 二级回复（楼中楼，一层） | FORUM / BLOG | 父评论 id；浅；≠无限嵌套 |
-| 个人浏览历史 | MEDIA / MUSIC / BLOG | 最近 N 条；通识 |
-| 帖子/文章阅读数展示 | 内容组通用 | 计数；已有可钉 |
-| 禁言到期自动解除 | FORUM | 日期字段；扫词挂禁言时 |
-| 文库下载权限按角色 | DOCLIB | 角色勾选；浅 |
-| 投稿审过自动上架通知 | MEDIA / BLOG | 站内信；userPublish 时 |
-| 评论点赞计数 | FORUM / BLOG | 浅计数；通识 |
-| 内容举报原因字典 | FORUM / BLOG | 字典；扫词挂举报时 |
-| 转载/原创声明勾选 | BLOG | 发布字段；浅 |
-| 文库章节目录（锚点列表） | DOCLIB | 多行目录；≠全文检索引擎 |
-| 影音选集/分集列表 | MEDIA | 子项列表；浅 |
-| 歌单公开/私密开关 | MUSIC | 收藏夹可见性；浅 |
-| 帖子移动版块 | FORUM | 管理操作；浅 |
-| 作者主页（TA 的文章/帖子） | BLOG / FORUM | 用户维度列表；通识 |
-| 文库资料版本历史（备注级） | DOCLIB | 版本号+说明；浅 |
-| 精华帖奖励积分登记 | FORUM | 须 points；扫词叠 |
-| 评论举报 | FORUM / BLOG | 举报扫词齐后加深到评论 |
-| 影音海报墙分类浏览 | MEDIA | 列表皮；浅 |
-| 曲库按歌手/专辑筛选 | MUSIC | 筛选字段；通识 |
-| 下载审核（文库敏感类） | DOCLIB | 浅审；通识偶见 |
-| 帖子锁定（禁止再回） | FORUM | 管理标记；通识 |
-| 博客归档按年月 | BLOG | 筛选；通识 |
-| 媒资下架原因登记 | MEDIA / MUSIC | 字段；浅 |
-| 文库热门标签云（计数） | DOCLIB | 标签计数；≠推荐 |
-| 评论折叠（楼中楼过长） | FORUM / BLOG | UI；浅 |
-| 收藏夹分组命名 | MEDIA / MUSIC | favorites 加深 |
-| 帖子精华/置顶操作日志 | FORUM | 审计叠；浅 |
-| 博客系列文（上一篇下一篇） | BLOG | 链表字段；浅 |
-| 文库预览页水印（姓名） | DOCLIB | 浅水印；通识偶见 |
-| 媒资播放次数排行 | MEDIA / MUSIC | 计数榜；浅 |
-| 论坛每日发帖上限 | FORUM | 规则；防刷 |
-| 评论仅粉丝可见（互关） | BLOG / FORUM | 浅规则；婚恋/社区偶见 |
-| 发帖需审后可见开关 | FORUM | schema；通识 |
-| 博客评论邮件式站内信通知 | BLOG | 消息；浅 |
-| 文库下载次数个人限额 | DOCLIB | 规则；浅 |
-| 影音选集完播标记 | MEDIA | 进度加深；浅 |
-| 曲库歌词文本字段 | MUSIC | 字段；浅 |
-| 论坛用户等级积分规则页 | FORUM | 文案+points 叠；浅 |
-| 博客定时撤回（到点下架） | BLOG | 日期；浅 |
-| 文库章节试读前 N 页说明 | DOCLIB | 文案；≠DRM |
-| 影音片单协作（多人编辑） | MEDIA | **不支持**：协作编辑；个人片单顶 |
-| 曲库音质切换（文案假切换） | MUSIC | UI；浅 |
-| 帖子草稿自动保存 | FORUM / BLOG | 草稿加深；浅 |
-| 论坛版主任命 | FORUM | 岗/角色；通识 |
-| 博客文章密码访问 | BLOG | 口令；浅 |
-| 文库纠错反馈单 | DOCLIB | 轻单；浅 |
-| 影音分集更新站内信 | MEDIA | 消息；浅 |
-| 曲库翻唱标记 | MUSIC | 字段；浅 |
-| 论坛举报表处理时效 | FORUM | deadline 思路；浅 |
-| 博客专栏订阅数展示 | BLOG | 计数；浅 |
-| 文库付费下载（系统内点券） | DOCLIB | points/wallet；浅 |
-| 影音会员真支付 | — | **不支持**：组末已有；系统内会员顶 |
-| 曲库版权结算 | — | **不支持**：组末已有；表内钉 |
-| 论坛每日签到涨积分 | FORUM | points 窄扫叠；浅 |
-| 博客友情链接栏 | BLOG | 字段列表；浅 |
-| 文库侵权投诉单 | DOCLIB | 轻单；浅 |
-| 影音弹幕 | — | **不支持**：组末已有；表内钉 |
+（本组待补已清。）
 
-不支持：转码 CDN、弹幕、协同过滤推荐、RAG 知识库问答冒充文库、短视频算法推荐。
+不支持边界（不开待补行）：转码 CDN、弹幕、协同过滤推荐、RAG 知识库问答冒充文库、短视频算法推荐、影音片单多人协作编辑、影音会员真支付、曲库版权结算。
+
+#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
+
+> 口径：已齐 = **管理能管 + 用户可产生数据**。本轮经 `content_thicken` C-00～C-09 **已收口**；骨架门禁钉 labels 与 Store，**不靠起包**。热门=计数排序，≠协同过滤/`recommend`。足迹复用 `browse_history`。精华/置顶≠推荐引擎；楼中楼仅一层；敏感词≠云审核；禁言到期复用 `post_mute`。专栏订阅≠推荐引擎；定时发撤走 `DemoScheduleJobs`/`applyPublishSchedule`；密码访问≠付费墙。播放进度≠多端云同步；分享码只读链≠片单协作；音质切换≠真转码。文库预览≠转码云；水印为预览层文案，≠ PDF 引擎水印。积分/点券下载与签到奖分须扫词挂 `points`/`wallet`，禁止域默认硬挂。
+
+| 功能 | 落点 | 挂载 |
+|------|------|------|
+| 帖子/文章阅读数展示 | archive.view_count + bumpViewCount；labels.viewCountLabel；ArchiveBrowse / ArchiveAdmin | **域默认** 五域 |
+| 热门排行（按浏览/下载计数） | ArchiveStore.pageHot + GET /api/archive/hot；labels.hotRankPageTitle / hotRankPageLead / hotRankToggleLabel / hotRankBackLabel；双端「看热门」；DOCLIB 叠 download_count + labels.downloadCountLabel | **域默认** 五域 |
+| 个人浏览历史 | browse_history + BrowseHistoryStore；labels.browseHistoryPageTitle / browseHistoryPageLead；BrowseHistory | **域默认** MEDIA/MUSIC/BLOG |
+| 帖子搜索（标题关键词） | search.suggestEnabled + suggestTitles；labels.titleSearchPlaceholder / searchSuggestHint；ArchiveBrowse 标题联想 | **域默认** 五域（FORUM/BLOG 为主） |
+| 精华帖 / 置顶（管理标记+列表优先） | archive.pin_top / essence + catalogOrderBy；labels.pinTopLabel / essenceLabel；ArchiveAdmin 运营列 + ArchiveBrowse 标签 | **域默认** FORUM |
+| 帖子锁定（禁止再回） | archive.locked + TicketApplyOps.assertNotLocked；labels.lockedLabel / lockedReplyBlocked；双端禁用回帖 | **域默认** FORUM |
+| 草稿箱（发帖/发文先存后发） | status=draft；saveUserDraft / publishDraft；GET /mine?status=draft；POST /publish-draft；MyArchive 草稿筛；BLOG 叠 draftBox + userPublish | **域默认** FORUM；**域默认** BLOG（C-04） |
+| 帖子移动版块 | updateItem.categoryId；管理端改分类 | **域默认** FORUM |
+| 论坛每日发帖上限 | schema.forumDailyPostLimit → AppPolicy.FORUM_DAILY_POST_LIMIT；当日计数闸 | **域默认** FORUM |
+| 发帖需审后可见开关 | archive.publishReview + pending_review；labels.publishTip | **域默认** FORUM |
+| 版块公告（分类级须知） | category.section_notice；CategoriesAdmin 编辑；ArchiveBrowse 选版展示 | **域默认** FORUM |
+| 二级回复（楼中楼，一层） | ticket.parent_ticket_id + allowNestedReply；TicketPatchOps 一层闸；ArchiveBrowse 楼中楼 | **域默认** FORUM；BLOG 有 item_comment 时叠 |
+| @提醒站内信（跟帖提到某人） | MentionNotify + MessageStore；labels.mentionNotifyHint | **域默认** FORUM |
+| 禁言到期自动解除 | UserStore.clearExpiredPostMutes + assertNotPostMuted 清列；DemoScheduleJobs | 有 post_mute |
+| 举报处理结果通知举报人 | FavoriteStore.resolveReport → MessageStore | 有 content_report |
+| 评论点赞计数 | item_comment.like_count + toggleLike；ticket.like_count 列 | **域默认** FORUM/BLOG（有评论时） |
+| 敏感词拦截提示（本地词表） | SensitiveWordGate + schema.sensitiveWords；发帖/跟帖/评论闸 | **域默认** FORUM/BLOG |
+| 论坛版主任命 | staff_post=moderator；labels.moderatorAppointLabel | **域默认** FORUM |
+| 评论折叠（楼中楼过长） | schema.commentFoldAfter + ArchiveBrowse 展开 | **域默认** FORUM/BLOG |
+| 帖子精华/置顶操作日志 | ArchiveController archive_pin_essence → AuditLogStore | **域默认** FORUM |
+| 论坛举报表处理时效 | content_report.handle_deadline_at + reportHandleDays；overdue 标记 | **域默认** FORUM |
+| 专栏/分类订阅（收藏分类） | category_follow + CategoryFollowStore.toggle；labels.categoryFollowLabel / categoryUnfollowLabel / categoryFollowHint；ArchiveBrowse 订阅钮 | **域默认** BLOG；**域默认** MEDIA（C-05） |
+| 专栏订阅更新站内信 | CategoryFollowStore.notifyFollowers + 发文/上架/新分集触发 | **域默认** BLOG；MEDIA 分集叠 |
+| 博客专栏订阅数展示 | GET /api/category-follow/count|status；labels.categoryFollowerCountLabel；CategoriesAdmin 订阅数列 | **域默认** BLOG；MEDIA 同机制 |
+| 文章定时发布 | archive.publish_at + applyPublishSchedule；labels.publishAtLabel / publishAtHint；ArchiveAdmin 字段 | **域默认** BLOG；**域默认** MEDIA（C-05） |
+| 博客定时撤回（到点下架） | archive.unpublish_at + applyPublishSchedule；labels.unpublishAtLabel / unpublishAtHint | **域默认** BLOG；MEDIA 定时下架同列 |
+| 博客归档按年月 | pageByYearMonth + year/month 查询；labels.archiveYearMonthLabel / archiveYearMonthAllLabel；ArchiveBrowse 年月筛 | **域默认** BLOG |
+| 博客系列文（上一篇下一篇） | series_id/series_ord + seriesNeighbors；labels.seriesPrevLabel / seriesNextLabel / seriesHint；ArchiveBrowse 上下篇 | **域默认** BLOG |
+| 转载/原创声明勾选 | origin_kind 字段；labels.originKindLabel / originOriginalLabel / originReprintLabel；发布/管理端勾选 | **域默认** BLOG |
+| 作者主页（TA 的文章/帖子） | GET /api/archive/by-author；labels.authorPageTitle / authorPageEntryLabel；ArchiveBrowse 作者筛 | **域默认** BLOG（FORUM 可叠） |
+| 博客评论邮件式站内信通知 | ItemCommentStore.configureAuthorNotify；labels.commentAuthorNotifyHint；评论区提示 | **域默认** BLOG |
+| 博客文章密码访问 | access_password + unlock 会话；labels.accessPasswordLabel / accessPasswordPrompt / accessPasswordUnlockLabel；contentLocked 遮正文 | **域默认** BLOG |
+| 博客友情链接栏 | blog_friend_link + BlogFriendLinksAdmin；labels.friendLinkPageTitle / friendLinkAdminTitle；门户友链条 | **域默认** BLOG |
+| 播放进度记住（本地/按用户一条） | media_play_progress + MediaPlayProgressStore；labels.playProgressHint / playProgressSaveLabel；ArchiveBrowse 记下进度 | **域默认** MEDIA；**域默认** MUSIC（C-06） |
+| 影音选集/分集列表 | media_episode + MediaEpisodeStore；labels.episodeListTitle / episodeListEmpty / episodeAdminTitle；双端分集 | **域默认** MEDIA |
+| 影音选集完播标记 | progress.completed；labels.episodeCompletedLabel / episodeContinueLabel | **域默认** MEDIA |
+| 影音海报墙分类浏览 | contentThicken.posterWall + gallery；labels.posterWallTitle / posterWallLead；ArchiveBrowse 海报网格 | **域默认** MEDIA |
+| 媒资播放次数排行 | play_count + pageHot(sortBy=playCount)；labels.playCountLabel；双端「看热门」 | **域默认** MEDIA；**域默认** MUSIC（C-06） |
+| 媒资下架原因登记 | off_shelf_reason；labels.offShelfReasonLabel / offShelfReasonHint；下架写库 | **域默认** MEDIA；**域默认** MUSIC（C-06） |
+| 影音分集更新站内信 | 新分集 → CategoryFollowStore.notifyFollowers；labels.episodeUpdateNotifyHint | **域默认** MEDIA |
+| 片单/歌单分享码（只读链接口令） | share_code + GET /by-share-code；labels.shareCodeLabel / shareCodePrompt / shareCodeEntryLabel | **域默认** MEDIA；**域默认** MUSIC（C-06） |
+| 曲库按歌手/专辑筛选 | artist/album + pageItems(artist,album)；labels.artistFilterPlaceholder / albumFilterPlaceholder；ArchiveBrowse 筛 | **域默认** MUSIC |
+| 曲库歌词文本字段 | lyrics；labels.lyricsLabel / lyricsEmpty；ArchiveBrowse 详情 | **域默认** MUSIC |
+| 曲库翻唱标记 | is_cover；labels.coverMarkLabel；列表/详情标 | **域默认** MUSIC |
+| 曲库音质切换（文案假切换） | contentThicken.audioQualitySwitch；labels.audioQualityLabel / audioQualityHint / audioQualityOptions；仅 UI | **域默认** MUSIC |
+| 歌单公开/私密开关 | user_favorite.is_public + FavoriteStore.updateMeta/pagePublic；labels.playlistPublicLabel / playlistPrivateLabel / playlistVisibilityHint；MyFavorites | **域默认** MUSIC（MEDIA 同机制） |
+| 收藏夹分组命名 | user_favorite.group_name；labels.favoriteGroupLabel / favoriteGroupPlaceholder；MyFavorites 分组 | **域默认** MUSIC；**域默认** MEDIA（C-06） |
+| 下载次数展示与个人下载记录 | download_log + DocMine；labels.downloadLogLabel / downloadLogEmpty | **域默认** DOCLIB |
+| 资料预览（图片/PDF 新窗口，非转码） | preview_url + DocBrowse 预览对话框；labels.previewLabel / previewHint / previewEmpty；≠转码云 | **域默认** DOCLIB |
+| 文库下载权限按角色 | download_roles；labels.downloadRolesLabel / downloadRolesHint / downloadDenied | **域默认** DOCLIB |
+| 文库章节目录（锚点列表） | doc_chapter + DoclibStore；labels.chapterLabel / chapterEmpty；管理端可维护 | **域默认** DOCLIB |
+| 文库资料版本历史（备注级） | doc_version；labels.versionLabel / versionEmpty | **域默认** DOCLIB |
+| 文库下载次数个人限额 | dailyDownloadLimit + DOCLIB_DAILY_DOWNLOAD_LIMIT；labels.downloadQuotaExceeded | **域默认** DOCLIB |
+| 下载审核（文库敏感类） | doc_download_request + needs_download_audit；DocLogsAdmin 审核页 | **域默认** DOCLIB |
+| 文库预览页水印（姓名） | watermark_on + 预览层叠加；labels.watermarkLabel / watermarkHint；≠ PDF 引擎 | **域默认** DOCLIB |
+| 文库热门标签云（计数） | doc_tag / doc_item_tag + GET /tags/cloud；labels.tagCloudLabel | **域默认** DOCLIB |
+| 文库章节试读前 N 页说明 | trial_read_note；labels.trialReadLabel / trialReadEmpty | **域默认** DOCLIB |
+| 文库纠错反馈单 | doc_feedback(kind=correction)；DocBrowse 提交 + DocLogsAdmin 处理 | **域默认** DOCLIB |
+| 文库侵权投诉单 | doc_feedback(kind=infringement)；同上 | **域默认** DOCLIB |
+| 文库积分下载（扣点后下） | download_cost_points + DoclibStore.spendPoints；labels.downloadCostPointsLabel / downloadPointsShortage / downloadPointsDebited；DocBrowse / DocFilesAdmin | 扫词挂 points/wallet（C-08） |
+| 文库付费下载（系统内点券） | 同上 downloadCostPoints；≠商户支付 | 扫词挂 points/wallet（C-08） |
+| 精华帖奖励积分登记 | ArchiveStore.configureContentIslands + LoyaltyStore.awardPoints；labels.essencePointsRewardLabel | 扫词挂 points（C-08） |
+| 论坛每日签到涨积分 | LoyaltyStore.checkInOnLogin + POINTS_CHECK_IN_*；labels.pointsCheckInLabel | 扫词挂 points（C-08） |
+| 论坛用户等级积分规则页 | PointsRules.vue + menus.points_rules；labels.pointsRulesPageTitle / pointsRulesBody | 扫词挂 points（C-08） |
+| 内容举报原因字典 | schema.reportReasons + ArchiveBrowse el-select；labels.reportReasonLabel / reportReasonRequired | 有 content_report（C-08） |
+| 评论举报 | FavoriteStore.configureCommentReport(target_type=comment)；labels.commentReportLabel | 有 content_report（C-08） |
+| 评论仅粉丝可见（互关） | user_follow + ItemCommentStore.followers_only；labels.followersOnlyCommentLabel；ArchiveBrowse | 有 item_comment（C-08） |
+| 投稿审过自动上架通知 | approveMarketplaceItem → MessageStore；labels.publishApproveNotifyTitle | 有 userPublish（C-08） |
+| 作者主页（论坛侧叠） | contentThicken.authorPage + GET /api/archive/by-author；labels.authorPageTitle / authorPageEntryLabel；ArchiveBrowse | **域默认** FORUM（叠 C-04 API） |
+| 帖子草稿自动保存 | updateUserDraft + publish id；labels.draftAutoSaveHint / draftAutoSavedLabel；ArchiveBrowse 防抖写库 | **域默认** FORUM/BLOG（有草稿箱时） |
 
 ### 1.9 互动 / 匹配
 
 组口径：双选/考试/问卷/投票/拼车/时间银行/婚恋等；多数无商城订单主路径。
+**清待补批次**：[`interact-thicken-batch.md`](./interact-thicken-batch.md)（I-00～I-12；一组一包 `interact_thicken`；三绿才迁行）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
@@ -1273,15 +1284,17 @@
 | 双选确认超时自动婉拒 | MUTUAL-* | 规则；通识偶见 |
 | 拼车行程重复发布检测 | CARPOOL | 校验；浅 |
 | 时间银行时长清零规则说明 | TIMEBANK | 文案；浅 |
-| 婚恋匹配推荐算法 | — | **不支持**：协同过滤；筛选+私信顶 |
 | 考试试卷难度标签 | EXAM | 字段；浅 |
 | 问卷回收率工作台卡片 | SURVEY | 计数；通识 |
-| 投票刷票检测中台 | — | **不支持**：浅 IP/实名提示顶 |
 | 双选学生端志愿锁定倒计时 | MUTUAL-* | UI；浅 |
 | 拼车费用AA计算器 | CARPOOL | 前端算；浅；≠支付 |
 | 时间银行星级信誉 | TIMEBANK | allowRating 叠；浅 |
 
-不支持：协同过滤匹配、真地图导航拼车、人脸监考、实时 IM SDK、恋爱社交推荐算法。
+不支持边界（不开待补行）：协同过滤匹配 / 恋爱社交推荐算法、真地图导航拼车、人脸监考、实时 IM SDK、投票刷票检测中台。
+
+#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
+
+（尚未迁行；待 `interact_thicken` I-00 起三绿后写入。）
 
 ### 1.10 兜底
 
@@ -1412,3 +1425,16 @@
 | 2026-10-08 | **§1.7 R-06～R-08 已齐**：HOTEL / CARRENT / INSTRUMENT 域皮；业务阈值进 AppPolicy；验车/查房/培训均为浅字段 |
 | 2026-10-08 | **§1.7 R-09 已齐**：能力岛加深（staff_roster / lesson_pack / wallet / gallery / room_equipment）；无订单壳开题写到储值仍可挂 wallet |
 | 2026-10-08 | **§1.7 R-10 收口**：本组实现债清零；待补仅留 CARPASS 邻组交叉；不支持（短信/公安网等）只留边界；批次册改已收口档案 |
+| 2026-10-09 | **§1.8 批次立项**：待补分批规格见 [`content-thicken-batch.md`](./content-thicken-batch.md)（C-00～C-09）；尚未迁行 |
+| 2026-10-09 | **§1.8 C-00 已齐**：脚手架 `content_thicken`（`CONTENT_DOMAINS` + `domain_schema` / `engine_sql` / `HUB_BYPASS` + 特征测）；待补尚未迁行 |
+| 2026-10-09 | **§1.8 C-01 已齐**：阅读数 / 热门排行 / 个人足迹 / 标题搜索；三套 ArchiveStore.pageHot + 双端控件；四条待补迁已齐 |
+| 2026-10-09 | **§1.8 C-02 已齐**：FORUM 精华置顶/锁定/草稿/移版/发帖上限/审后可见/版块公告；三套 Store + 双端；七条待补迁已齐 |
+| 2026-10-09 | **§1.8 C-03 已齐**：楼中楼/@/禁言到期/举报通知与时效/评论赞/敏感词/版主/折叠/精华置顶审计；十条待补迁已齐 |
+| 2026-10-10 | **§1.8 C-04 已齐**：BLOG 订阅/定时发撤/归档/系列/声明/作者页/评论信/口令/友链/订阅数/草稿叠；十二条待补迁已齐；MEDIA 叠项留 C-05 |
+| 2026-10-10 | **§1.8 C-05 已齐**：MEDIA 进度/分集完播/海报墙/播放榜/下架原因/分集信/分享码/定时与订阅叠；十条待补迁已齐；MUSIC 叠项留 C-06 |
+| 2026-10-10 | **§1.8 C-06 已齐**：MUSIC 歌手专辑筛/歌词/翻唱/音质文案/歌单公开私密/收藏分组，叠进度/播放榜/下架/分享码；MEDIA 叠收藏分组；八条待补迁已齐 |
+| 2026-10-10 | **§1.8 C-07 已齐**：DOCLIB 下载记录/预览/角色权限/章节/版本/限额/审核/水印/标签云/试读/纠错/侵权；三套 DoclibStore + 双端；十二条待补迁已齐；积分下载留 C-08 |
+| 2026-10-10 | **§1.8 C-08 已齐**：能力岛（积分下载/点券、精华奖分、签到、规则页、举报字典、评论举报、粉丝可见、投稿通知）；无订单壳扫词可挂 points；三套 Store + 双端；八条待补迁已齐 |
+| 2026-10-10 | **§1.8 C-09 收口**：作者主页 FORUM 叠、草稿自动保存；不支持项只留边界；本组待补清零；`content_thicken` 批次改已收口档案 |
+| 2026-10-10 | **§1.9 批次立项**：待补分批规格见 [`interact-thicken-batch.md`](./interact-thicken-batch.md)（I-00～I-12）；表内 2 条不支持迁边界；尚未迁行 |
+| 2026-10-10 | **§1.1～§1.5 复盘档案**：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md)；domains A–H ↔ §1.x 对照写入 [`domains.md`](./domains.md) |

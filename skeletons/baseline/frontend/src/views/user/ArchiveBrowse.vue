@@ -11,9 +11,13 @@
         {{ shelfAnnounceHint }}
         <template v-if="favOn">可将新书/新物资点「收藏」登记意向。</template>
       </p>
+      <p v-if="hotMode && hotRankOn" class="page-hint">
+        {{ hotRankPageTitle }}：{{ hotRankPageLead }}
+      </p>
+      <p v-if="activeSectionNotice" class="page-hint section-notice">{{ activeSectionNotice }}</p>
       <div class="search">
         <el-autocomplete
-          v-if="searchAssist"
+          v-if="titleSuggestOn"
           v-model="keyword"
           size="large"
           clearable
@@ -91,13 +95,110 @@
         >
           <el-option v-for="c in collegeOptions" :key="c" :label="c" :value="c" />
         </el-select>
+        <el-input
+          v-if="artistAlbumFilterOn"
+          v-model="artistFilter"
+          size="large"
+          clearable
+          :placeholder="artistFilterPlaceholder"
+          style="max-width:140px"
+          @keyup.enter="load"
+        />
+        <el-input
+          v-if="artistAlbumFilterOn"
+          v-model="albumFilter"
+          size="large"
+          clearable
+          :placeholder="albumFilterPlaceholder"
+          style="max-width:140px"
+          @keyup.enter="load"
+        />
         <el-button type="primary" size="large" @click="load">搜索</el-button>
+        <el-button
+          v-if="hotRankOn"
+          size="large"
+          :type="hotMode ? 'warning' : 'default'"
+          @click="toggleHotMode"
+        >{{ hotMode ? hotRankBackLabel : hotRankToggleLabel }}</el-button>
         <el-button
           v-if="userPublish && !isGuest"
           size="large"
           @click="openPublish"
         >{{ publishCtaLabel }}</el-button>
       </div>
+      <div v-if="archiveYearMonthOn" class="search ym-row">
+        <el-select
+          v-model="archiveYear"
+          clearable
+          :placeholder="archiveYearMonthLabel"
+          size="large"
+          class="search-cat"
+          @change="onYearMonthChange"
+        >
+          <el-option
+            v-for="y in archiveYearOptions"
+            :key="y"
+            :label="`${y} 年`"
+            :value="y"
+          />
+        </el-select>
+        <el-select
+          v-model="archiveMonth"
+          clearable
+          :placeholder="archiveYearMonthAllLabel"
+          size="large"
+          class="search-cat"
+          :disabled="!archiveYear"
+          @change="load"
+        >
+          <el-option
+            v-for="m in 12"
+            :key="m"
+            :label="`${m} 月`"
+            :value="m"
+          />
+        </el-select>
+      </div>
+      <div v-if="categoryFollowOn && activeFollowCategoryId" class="follow-bar">
+        <el-button
+          v-if="!isGuest"
+          size="small"
+          :type="categoryFollowing ? 'warning' : 'default'"
+          :loading="followLoading"
+          @click="toggleCategoryFollow"
+        >{{ categoryFollowing ? categoryUnfollowLabel : categoryFollowLabel }}</el-button>
+        <span v-if="categoryFollowerCountOn" class="muted">
+          {{ categoryFollowerCountLabel }} {{ categoryFollowerCount }}
+        </span>
+        <span v-if="categoryFollowHint" class="muted follow-hint">{{ categoryFollowHint }}</span>
+      </div>
+      <div v-if="friendLinksOn && friendLinks.length" class="friend-links">
+        <span class="friend-lab">{{ friendLinkPageTitle }}</span>
+        <a
+          v-for="fl in friendLinks"
+          :key="fl.id"
+          class="friend-chip"
+          :href="fl.url"
+          target="_blank"
+          rel="noopener noreferrer"
+        >{{ fl.title }}</a>
+      </div>
+      <div v-if="authorPageOn && authorFilter" class="page-hint">
+        {{ authorPageTitle }}：{{ authorFilter }}
+        <el-button link type="primary" @click="clearAuthorFilter">全部文章</el-button>
+      </div>
+      <div v-if="shareCodeOn" class="share-bar">
+        <el-input
+          v-model="shareCodeInput"
+          size="large"
+          clearable
+          :placeholder="shareCodePrompt"
+          style="max-width:220px"
+          @keyup.enter="openByShareCode"
+        />
+        <el-button size="large" @click="openByShareCode">{{ shareCodeEntryLabel }}</el-button>
+      </div>
+      <p v-if="posterWallOn" class="page-hint">{{ posterWallTitle }}：{{ posterWallLead }}</p>
       <div v-if="searchAssist && hotKeywords.length" class="hot">
         <span class="hot-lab">热搜</span>
         <button
@@ -122,19 +223,25 @@
       <h2>{{ plural }}列表</h2>
       <span class="list-hd-hint">检索与筛选结果</span>
     </div>
-    <div class="grid">
+    <div class="grid" :class="{ 'poster-wall': posterWallOn }">
       <article
         v-for="row in list"
         :key="row.id"
         class="card imm-lift"
-        :class="{ 'reported-dim': reportedIds.has(row.id) }"
+        :class="{ 'reported-dim': reportedIds.has(row.id), 'poster-card': posterWallOn }"
       >
         <div class="cover">
           <img v-if="row.coverUrl" :src="row.coverUrl" alt="" />
           <template v-else>{{ (row.title || '?').slice(0, 1) }}</template>
         </div>
         <div class="meta">
-          <h3>{{ row.title }}</h3>
+          <h3>
+            {{ row.title }}
+            <el-tag v-if="coverMarkOn && Number(row.isCover) === 1" size="small" type="warning" class="cover-tag">{{ coverMarkLabel }}</el-tag>
+          </h3>
+          <p v-if="artistAlbumFilterOn && (row.artist || row.album)" class="sub">
+            {{ [row.artist, row.album].filter(Boolean).join(' · ') }}
+          </p>
           <p v-if="isBlindBox(row)" class="sub">盲盒 · {{ blindBoxLine(row) }}</p>
           <p v-if="purchaseGateOn && Number(row.needPermit) === 1" class="sub">需审核后才能购买</p>
           <p v-if="purchaseGateOn && Number(row.monthLimit) > 0" class="sub">每人每月限购 {{ row.monthLimit }} 件</p>
@@ -197,7 +304,19 @@
               size="small"
               type="warning"
               effect="plain"
-            >置顶</el-tag>
+            >{{ pinTopLabel }}</el-tag>
+            <el-tag
+              v-if="essenceOn && Number(row.essence) === 1"
+              size="small"
+              type="success"
+              effect="plain"
+            >{{ essenceLabel }}</el-tag>
+            <el-tag
+              v-if="lockedOn && Number(row.locked) === 1"
+              size="small"
+              type="info"
+              effect="plain"
+            >{{ lockedLabel }}</el-tag>
             <el-tag
               v-if="stockDisplay !== 'hidden'"
               :type="stockOk(row) ? (stockTight(row) ? 'warning' : 'success') : 'info'"
@@ -232,9 +351,13 @@
               class="sched muted"
             >{{ row.lostCategory }}</span>
             <span
-              v-if="Number(row.viewCount) > 0"
+              v-if="viewCountOn || Number(row.viewCount) > 0"
               class="sched muted"
-            >浏览 {{ row.viewCount }}</span>
+            >{{ viewCountLabel }} {{ Number(row.viewCount) || 0 }}</span>
+            <span
+              v-if="downloadCountOn && Number(row.downloadCount) > 0"
+              class="sched muted"
+            >{{ downloadCountLabel }} {{ row.downloadCount }}</span>
             <a
               v-if="row.planUrl"
               class="sched"
@@ -333,14 +456,96 @@
           preview-teleported
         />
         <p class="sub">
-          {{ formatAuthor(detail.author) }} ·
+          <template v-if="authorPageOn && authorKey(detail)">
+            <el-button link type="primary" @click="openAuthorPage(detail)">
+              {{ formatAuthor(detail.author) || authorKey(detail) }} · {{ authorPageEntryLabel }}
+            </el-button>
+          </template>
+          <template v-else>{{ formatAuthor(detail.author) }}</template>
+          ·
           {{
             (detail.categoryNames?.length ? detail.categoryNames.join(' · ') : detail.categoryName)
               || '未分类'
           }}
         </p>
-        <el-tag v-if="Number(detail.pinTop) === 1" size="small" type="warning" effect="plain" style="margin-bottom:8px">加急置顶</el-tag>
+        <el-tag v-if="Number(detail.pinTop) === 1" size="small" type="warning" effect="plain" style="margin-bottom:8px">{{ pinTopLabel }}</el-tag>
+        <el-tag v-if="essenceOn && Number(detail.essence) === 1" size="small" type="success" effect="plain" style="margin:0 0 8px 6px">{{ essenceLabel }}</el-tag>
+        <el-tag v-if="lockedOn && Number(detail.locked) === 1" size="small" type="info" effect="plain" style="margin:0 0 8px 6px">{{ lockedLabel }}</el-tag>
+        <el-tag
+          v-if="originKindOn && detail.originKind"
+          size="small"
+          effect="plain"
+          style="margin:0 0 8px 6px"
+        >{{ originKindText(detail.originKind) }}</el-tag>
         <p v-if="pinTopHint && Number(detail.pinTop) === 1" class="detail-line muted">{{ pinTopHint }}</p>
+        <p v-if="essenceHint && Number(detail.essence) === 1" class="detail-line muted">{{ essenceHint }}</p>
+        <p v-if="lockedHint && Number(detail.locked) === 1" class="detail-line muted">{{ lockedHint }}</p>
+        <div v-if="accessPasswordOn && detail.contentLocked" class="pw-box">
+          <p class="detail-line">{{ accessPasswordPrompt }}</p>
+          <p v-if="accessPasswordHint" class="muted">{{ accessPasswordHint }}</p>
+          <div class="pw-row">
+            <el-input
+              v-model="unlockPassword"
+              type="password"
+              show-password
+              maxlength="64"
+              :placeholder="accessPasswordLabel"
+              style="flex:1"
+              @keyup.enter="unlockDetail"
+            />
+            <el-button type="primary" :loading="unlockLoading" @click="unlockDetail">{{ accessPasswordUnlockLabel }}</el-button>
+          </div>
+        </div>
+        <div v-if="seriesNavOn && (seriesPrev || seriesNext)" class="series-nav">
+          <el-button v-if="seriesPrev" link type="primary" @click="openDetail(seriesPrev)">{{ seriesPrevLabel }}：{{ seriesPrev.title }}</el-button>
+          <el-button v-if="seriesNext" link type="primary" @click="openDetail(seriesNext)">{{ seriesNextLabel }}：{{ seriesNext.title }}</el-button>
+          <p v-if="seriesHint" class="muted">{{ seriesHint }}</p>
+        </div>
+        <section v-if="episodeListOn && detail.id" class="episode-box">
+          <h4>{{ episodeListTitle }}</h4>
+          <p v-if="!episodes.length" class="muted">{{ episodeListEmpty }}</p>
+          <ul v-else class="episode-list">
+            <li
+              v-for="ep in episodes"
+              :key="ep.id"
+              :class="{ active: Number(activeEpisodeId) === Number(ep.id) }"
+            >
+              <button type="button" class="ep-btn" @click="selectEpisode(ep)">
+                {{ ep.title }}
+                <span v-if="epProgress(ep)?.completed" class="ep-done">{{ episodeCompletedLabel }}</span>
+              </button>
+            </li>
+          </ul>
+          <div v-if="playProgressOn && !isGuest" class="progress-row">
+            <p v-if="playProgressHint" class="muted">{{ playProgressHint }}</p>
+            <el-input-number v-model="progressSec" :min="0" :max="999999" controls-position="right" />
+            <el-button size="small" :loading="progressSaving" @click="saveProgress(false)">{{ playProgressSaveLabel }}</el-button>
+            <el-button size="small" type="success" :loading="progressSaving" @click="saveProgress(true)">{{ episodeCompletedLabel }}</el-button>
+            <span v-if="currentProgress?.positionSec" class="muted">{{ episodeContinueLabel }} {{ currentProgress.positionSec }}s</span>
+          </div>
+        </section>
+        <div v-if="playProgressOn && !episodeListOn && !isGuest && detail.id" class="progress-row">
+          <p v-if="playProgressHint" class="muted">{{ playProgressHint }}</p>
+          <el-input-number v-model="progressSec" :min="0" :max="999999" controls-position="right" />
+          <el-button size="small" :loading="progressSaving" @click="saveProgress(false)">{{ playProgressSaveLabel }}</el-button>
+          <el-button size="small" type="success" :loading="progressSaving" @click="saveProgress(true)">{{ episodeCompletedLabel }}</el-button>
+          <span v-if="currentProgress?.positionSec" class="muted">{{ episodeContinueLabel }} {{ currentProgress.positionSec }}s</span>
+        </div>
+        <div v-if="audioQualityOn" class="audio-quality">
+          <span class="aq-lab">{{ audioQualityLabel }}</span>
+          <el-radio-group v-model="audioQualityPick" size="small">
+            <el-radio-button v-for="opt in audioQualityOptions" :key="opt" :value="opt">{{ opt }}</el-radio-button>
+          </el-radio-group>
+          <p v-if="audioQualityHint" class="muted">{{ audioQualityHint }}</p>
+        </div>
+        <section v-if="lyricsOn && detail.id" class="lyrics-box">
+          <h4>{{ lyricsLabel }}</h4>
+          <pre v-if="detail.lyrics" class="lyrics-text">{{ detail.lyrics }}</pre>
+          <p v-else class="muted">{{ lyricsEmpty }}</p>
+        </section>
+        <p v-if="coverMarkOn && Number(detail.isCover) === 1" class="detail-line">{{ coverMarkLabel }}</p>
+        <p v-if="shareCodeOn && detail.shareCode" class="detail-line">{{ shareCodeLabel }}：{{ detail.shareCode }}</p>
+        <p v-if="playCountOn && detail.playCount != null" class="detail-line">{{ playCountLabel }}：{{ detail.playCount }}</p>
         <CodeQrBlock
           v-if="codeQrOn && detail.checkinCode"
           :code="detail.checkinCode"
@@ -402,7 +607,7 @@
             {{ n }}
           </el-tag>
         </div>
-        <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
+        <RichTextView v-if="bodyRich && !detail.contentLocked" :html="detail.isbn || ''" />
         <div v-if="lostClueOn" class="thread">
           <h4 class="thread-title">线索留言</h4>
           <el-form label-position="top" class="alog-form" @submit.prevent>
@@ -438,12 +643,20 @@
         </div>
         <div v-if="showThread" class="thread">
           <h4 class="thread-title">{{ threadTitle }}</h4>
+          <p v-if="nestedReplyOn && mentionNotifyHint" class="muted" style="font-size:12px;margin:0 0 8px">{{ mentionNotifyHint }}</p>
           <div v-if="threadLoading" class="thread-empty muted">加载中…</div>
-          <div v-else-if="!threadList.length" class="thread-empty muted">暂无回复</div>
-          <article v-for="r in threadList" :key="r.id" class="thread-item">
+          <div v-else-if="!threadRoots.length" class="thread-empty muted">暂无回复</div>
+          <article v-for="r in visibleThreadRoots" :key="r.id" class="thread-item">
             <p class="thread-meta">
               <span>{{ r.username || '用户' }}</span>
               <span class="muted">{{ r.approveAt || r.applyAt || '' }}</span>
+              <el-button
+                v-if="nestedReplyOn && !isGuest && !r.parentTicketId"
+                link
+                type="primary"
+                size="small"
+                @click="openNestedReply(r)"
+              >{{ nestedReplyLabel }}</el-button>
               <el-button
                 v-if="reportOn && !isGuest"
                 link
@@ -454,7 +667,28 @@
             </p>
             <RichTextView v-if="r.remark" :html="r.remark" />
             <p v-else class="muted">（无内容）</p>
+            <div v-if="childrenOf(r.id).length" class="thread-children">
+              <article v-for="c in childrenOf(r.id)" :key="c.id" class="thread-item nested">
+                <p class="thread-meta">
+                  <span>{{ c.username || '用户' }}</span>
+                  <span class="muted">{{ c.approveAt || c.applyAt || '' }}</span>
+                </p>
+                <RichTextView v-if="c.remark" :html="c.remark" />
+                <p v-else class="muted">（无内容）</p>
+              </article>
+            </div>
           </article>
+          <el-button
+            v-if="commentFoldOn && threadRoots.length > commentFoldAfter && !threadExpanded"
+            link
+            type="primary"
+            @click="threadExpanded = true"
+          >{{ commentFoldMoreLabel }}（{{ threadRoots.length - commentFoldAfter }}）</el-button>
+          <el-button
+            v-else-if="commentFoldOn && threadExpanded && threadRoots.length > commentFoldAfter"
+            link
+            @click="threadExpanded = false"
+          >{{ commentFoldLessLabel }}</el-button>
         </div>
         <div v-if="logOn && !isGuest" class="alog">
           <h4 class="thread-title">{{ logSectionTitle }}</h4>
@@ -578,6 +812,7 @@
             <p v-if="q.reply" class="rv-reply">回复：{{ q.reply }}</p>
           </article>
         </section>
+        <p v-if="commentAuthorNotifyOn && commentAuthorNotifyHint" class="detail-line muted">{{ commentAuthorNotifyHint }}</p>
         <section v-if="itemCommentOn && detail.id" class="item-comments">
           <h4>{{ itemCommentTitle }}</h4>
           <div v-if="!isGuest" class="ic-compose">
@@ -589,6 +824,11 @@
               show-word-limit
               placeholder="写下你的评论…"
             />
+            <el-checkbox
+              v-if="followersOnlyCommentOn"
+              v-model="itemCommentFollowersOnly"
+              style="margin: 6px 0"
+            >{{ browseLabels.followersOnlyCommentLabel || '仅粉丝可见' }}</el-checkbox>
             <el-button
               type="primary"
               size="small"
@@ -602,8 +842,23 @@
           <article v-for="c in itemComments" :key="c.id" class="ic">
             <p class="ic-meta">
               <span>{{ c.nickname || c.username || '用户' }} · {{ c.createdAt }}</span>
+              <el-button
+                v-if="followersOnlyCommentOn && c.username && !isGuest"
+                link
+                type="primary"
+                size="small"
+                @click="toggleFollowUser(c.username)"
+              >{{ followBtnLabel(c.username) }}</el-button>
+              <el-button
+                v-if="commentReportOn && !isGuest"
+                link
+                type="danger"
+                size="small"
+                @click="openReport(c, 'comment')"
+              >{{ browseLabels.commentReportLabel || '举报评论' }}</el-button>
             </p>
             <p>{{ c.body || '（无文字）' }}</p>
+            <p v-if="c.followersOnly" class="muted">{{ browseLabels.followersOnlyCommentLabel || '仅粉丝可见' }}</p>
           </article>
         </section>
       </template>
@@ -611,14 +866,28 @@
 
     <el-dialog v-model="reportVisible" :title="reportVerb" width="440px" destroy-on-close>
       <p class="apply-tip">举报「{{ reportTargetLabel }}」</p>
-      <el-input
-        v-model="reportReason"
-        type="textarea"
-        :rows="4"
-        maxlength="512"
-        show-word-limit
-        placeholder="请填写举报理由"
-      />
+      <el-form label-position="top">
+        <el-form-item v-if="reportReasonDictOn" :label="browseLabels.reportReasonLabel || '举报原因'" required>
+          <el-select v-model="reportReasonCode" style="width: 100%" placeholder="请选择举报原因">
+            <el-option
+              v-for="opt in reportReasonOptions"
+              :key="opt.value || opt"
+              :label="opt.label || opt"
+              :value="opt.label || opt.value || opt"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="reportReasonDictOn ? (browseLabels.reportReasonOtherPlaceholder || '补充说明（选填）') : '举报理由'">
+          <el-input
+            v-model="reportReason"
+            type="textarea"
+            :rows="4"
+            maxlength="512"
+            show-word-limit
+            :placeholder="reportReasonDictOn ? (browseLabels.reportReasonOtherPlaceholder || '补充说明（选填）') : '请填写举报理由'"
+          />
+        </el-form-item>
+      </el-form>
       <template #footer>
         <el-button @click="reportVisible = false">取消</el-button>
         <el-button type="primary" :loading="reportSubmitting" @click="submitReport">提交</el-button>
@@ -799,18 +1068,36 @@
             :placeholder="publishIsbnPlaceholder"
           />
         </el-form-item>
+        <el-form-item v-if="originKindOn" :label="originKindLabel">
+          <el-radio-group v-model="publishOriginKind">
+            <el-radio value="original">{{ originOriginalLabel }}</el-radio>
+            <el-radio value="reprint">{{ originReprintLabel }}</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="accessPasswordOn" :label="accessPasswordLabel">
+          <el-input v-model="publishAccessPassword" maxlength="64" show-password :placeholder="accessPasswordHint || '选填'" />
+        </el-form-item>
       </el-form>
       <p class="apply-tip muted">{{ publishTip }}</p>
+      <p v-if="draftBoxOn && dailyPostLimitHint" class="apply-tip muted">{{ dailyPostLimitHint }}</p>
+      <p v-if="draftAutoSaveOn" class="apply-tip muted">{{ draftAutoSaveHint }}</p>
+      <p v-if="draftAutoSaveOn && draftAutoSavedAt" class="apply-tip muted">{{ draftAutoSavedLabel }} · {{ draftAutoSavedAt }}</p>
+      <p v-if="sensitiveWordHint" class="apply-tip muted">{{ sensitiveWordHint }}</p>
       <template #footer>
         <el-button @click="publishVisible = false">取消</el-button>
-        <el-button type="primary" :loading="publishLoading" @click="submitPublish">{{ publishSubmitLabel }}</el-button>
+        <el-button
+          v-if="draftBoxOn"
+          :loading="publishLoading"
+          @click="submitPublish(true)"
+        >{{ saveDraftLabel }}</el-button>
+        <el-button type="primary" :loading="publishLoading" @click="submitPublish(false)">{{ publishSubmitLabel }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
@@ -1099,13 +1386,26 @@ const cardDetailFields = computed(() => {
 const cardPreviewFields = computed(() => cardDetailFields.value.slice(0, 4))
 
 const searchPlaceholder = computed(() => {
+  if (titleSearchOn.value && titleSearchPlaceholder.value) {
+    return titleSearchPlaceholder.value
+  }
   const parts = [fieldLabel('title', '名称'), fieldLabel('author', '型号')]
   const isbnF = fields.value.find((x) => x.key === 'isbn')
   if (isbnF && isbnF.type !== 'richtext' && isbnF.type !== 'hidden' && playUrlField.value !== 'isbn') {
     parts.push(isbnF.label || '编号')
   }
-  return `搜索${parts.join(' / ')}`
+  const base = `搜索${parts.join(' / ')}`
+  if (titleSuggestOn.value && searchSuggestHint.value) {
+    return `${base}（${searchSuggestHint.value}）`
+  }
+  return base
 })
+
+function toggleHotMode() {
+  hotMode.value = !hotMode.value
+  page.value = 1
+  load()
+}
 
 const ruleHint = computed(() => {
   const parts = []
@@ -1199,6 +1499,7 @@ const reportVisible = ref(false)
 const reportRow = ref(null)
 const reportTargetType = ref('archive')
 const reportReason = ref('')
+const reportReasonCode = ref('')
 const reportSubmitting = ref(false)
 const reportTargetLabel = computed(() => {
   const row = reportRow.value
@@ -1206,10 +1507,372 @@ const reportTargetLabel = computed(() => {
   if (reportTargetType.value === 'ticket') {
     return `回复 #${row.id}${row.username ? ' · ' + row.username : ''}`
   }
+  if (reportTargetType.value === 'comment') {
+    const who = row.nickname || row.username || ''
+    return `评论 #${row.id}${who ? ' · ' + who : ''}`
+  }
   return row.title || `#${row.id}`
 })
+const contentThicken = computed(() => getSchema()?.contentThicken || {})
+const reportReasonDictOn = computed(() => !!contentThicken.value.reportReasonDict)
+const commentReportOn = computed(() => !!contentThicken.value.commentReport)
+const followersOnlyCommentOn = computed(() => !!contentThicken.value.followersOnlyComment)
+const reportReasonOptions = computed(() => {
+  const raw = getSchema()?.reportReasons
+  return Array.isArray(raw) ? raw : []
+})
+const itemCommentFollowersOnly = ref(false)
+const followingUsers = ref(new Set())
+const viewCountOn = computed(() => !!contentThicken.value.viewCount)
+const viewCountLabel = computed(() => browseLabels.value.viewCountLabel || '阅读数')
+const downloadCountOn = computed(() => !!contentThicken.value.hotByDownload)
+const downloadCountLabel = computed(() => browseLabels.value.downloadCountLabel || '下载次数')
+const hotRankOn = computed(() => !!contentThicken.value.hotRank)
+const hotRankPageTitle = computed(() => browseLabels.value.hotRankPageTitle || '热门排行')
+const hotRankPageLead = computed(() => browseLabels.value.hotRankPageLead || '按阅读次数从高到低排列。')
+const hotRankToggleLabel = computed(() => browseLabels.value.hotRankToggleLabel || '看热门')
+const hotRankBackLabel = computed(() => browseLabels.value.hotRankBackLabel || '全部')
+const titleSearchOn = computed(() => !!contentThicken.value.titleSearch)
+const titleSearchPlaceholder = computed(() => browseLabels.value.titleSearchPlaceholder || '')
+const searchSuggestHint = computed(() => browseLabels.value.searchSuggestHint || '')
+const draftBoxOn = computed(() => !!contentThicken.value.draftBox)
+const draftAutoSaveOn = computed(() => !!contentThicken.value.draftAutoSave && draftBoxOn.value)
+const draftAutoSaveHint = computed(
+  () => browseLabels.value.draftAutoSaveHint || '编辑时会自动保存草稿，可稍后在「我的」里继续。',
+)
+const draftAutoSavedLabel = computed(() => browseLabels.value.draftAutoSavedLabel || '草稿已自动保存')
+const essenceOn = computed(() => !!contentThicken.value.essence)
+const lockedOn = computed(() => !!contentThicken.value.locked)
+const sectionNoticeOn = computed(() => !!contentThicken.value.sectionNotice)
+const nestedReplyOn = computed(() => !!contentThicken.value.nestedReply)
+const commentFoldOn = computed(() => !!contentThicken.value.commentFold)
+const commentFoldAfter = computed(() => Math.max(1, Number(getSchema()?.commentFoldAfter) || 3))
+const nestedReplyLabel = computed(() => browseLabels.value.nestedReplyLabel || '回复楼中楼')
+const mentionNotifyHint = computed(() => browseLabels.value.mentionNotifyHint || '')
+const commentFoldMoreLabel = computed(() => browseLabels.value.commentFoldMoreLabel || '展开更多回复')
+const commentFoldLessLabel = computed(() => browseLabels.value.commentFoldLessLabel || '收起')
+const sensitiveWordHint = computed(() => browseLabels.value.sensitiveWordHint || '')
+const categoryFollowOn = computed(() => !!contentThicken.value.categoryFollow)
+const categoryFollowerCountOn = computed(() => !!contentThicken.value.categoryFollowerCount)
+const categoryFollowLabel = computed(() => browseLabels.value.categoryFollowLabel || '订阅专栏')
+const categoryUnfollowLabel = computed(() => browseLabels.value.categoryUnfollowLabel || '取消订阅')
+const categoryFollowHint = computed(() => browseLabels.value.categoryFollowHint || '')
+const categoryFollowerCountLabel = computed(() => browseLabels.value.categoryFollowerCountLabel || '订阅数')
+const archiveYearMonthOn = computed(() => !!contentThicken.value.archiveYearMonth)
+const archiveYearMonthLabel = computed(() => browseLabels.value.archiveYearMonthLabel || '按年月归档')
+const archiveYearMonthAllLabel = computed(() => browseLabels.value.archiveYearMonthAllLabel || '全部月份')
+const seriesNavOn = computed(() => !!contentThicken.value.seriesNav)
+const seriesPrevLabel = computed(() => browseLabels.value.seriesPrevLabel || '上一篇')
+const seriesNextLabel = computed(() => browseLabels.value.seriesNextLabel || '下一篇')
+const seriesHint = computed(() => browseLabels.value.seriesHint || '')
+const originKindOn = computed(() => !!contentThicken.value.originKind)
+const originKindLabel = computed(() => browseLabels.value.originKindLabel || '原创声明')
+const originOriginalLabel = computed(() => browseLabels.value.originOriginalLabel || '原创')
+const originReprintLabel = computed(() => browseLabels.value.originReprintLabel || '转载')
+const authorPageOn = computed(() => !!contentThicken.value.authorPage)
+const authorPageTitle = computed(() => browseLabels.value.authorPageTitle || '作者主页')
+const accessPasswordOn = computed(() => !!contentThicken.value.accessPassword)
+const accessPasswordLabel = computed(() => browseLabels.value.accessPasswordLabel || '访问口令')
+const accessPasswordHint = computed(() => browseLabels.value.accessPasswordHint || '')
+const accessPasswordPrompt = computed(() => browseLabels.value.accessPasswordPrompt || '请输入访问口令')
+const accessPasswordUnlockLabel = computed(() => browseLabels.value.accessPasswordUnlockLabel || '解锁')
+const friendLinksOn = computed(() => !!contentThicken.value.friendLinks)
+const friendLinkPageTitle = computed(() => browseLabels.value.friendLinkPageTitle || '友情链接')
+const commentAuthorNotifyOn = computed(() => !!contentThicken.value.commentAuthorNotify)
+const commentAuthorNotifyHint = computed(() => browseLabels.value.commentAuthorNotifyHint || '')
+const authorPageEntryLabel = computed(() => browseLabels.value.authorPageEntryLabel || '看作者')
+const playProgressOn = computed(() => !!contentThicken.value.playProgress)
+const playProgressHint = computed(() => browseLabels.value.playProgressHint || '')
+const playProgressSaveLabel = computed(() => browseLabels.value.playProgressSaveLabel || '记下进度')
+const episodeCompletedLabel = computed(() => browseLabels.value.episodeCompletedLabel || '已看完')
+const episodeContinueLabel = computed(() => browseLabels.value.episodeContinueLabel || '继续看')
+const episodeListOn = computed(() => !!contentThicken.value.episodeList)
+const episodeListTitle = computed(() => browseLabels.value.episodeListTitle || '选集')
+const episodeListEmpty = computed(() => browseLabels.value.episodeListEmpty || '暂无分集')
+const posterWallOn = computed(() => !!contentThicken.value.posterWall)
+const posterWallTitle = computed(() => browseLabels.value.posterWallTitle || '海报墙')
+const posterWallLead = computed(() => browseLabels.value.posterWallLead || '')
+const hotByPlayOn = computed(() => !!contentThicken.value.hotByPlay)
+const playCountOn = computed(() => !!contentThicken.value.hotByPlay || !!contentThicken.value.playProgress)
+const playCountLabel = computed(() => browseLabels.value.playCountLabel || '播放次数')
+const shareCodeOn = computed(() => !!contentThicken.value.shareCode)
+const shareCodeLabel = computed(() => browseLabels.value.shareCodeLabel || '分享码')
+const shareCodeEntryLabel = computed(() => browseLabels.value.shareCodeEntryLabel || '凭码打开')
+const shareCodePrompt = computed(() => browseLabels.value.shareCodePrompt || '请输入分享码')
+const shareCodeInput = ref('')
+const artistAlbumFilterOn = computed(() => !!contentThicken.value.artistAlbumFilter)
+const artistFilterPlaceholder = computed(() => browseLabels.value.artistFilterPlaceholder || '按歌手筛选')
+const albumFilterPlaceholder = computed(() => browseLabels.value.albumFilterPlaceholder || '按专辑筛选')
+const lyricsOn = computed(() => !!contentThicken.value.lyrics)
+const lyricsLabel = computed(() => browseLabels.value.lyricsLabel || '歌词')
+const lyricsEmpty = computed(() => browseLabels.value.lyricsEmpty || '暂无歌词')
+const coverMarkOn = computed(() => !!contentThicken.value.coverMark)
+const coverMarkLabel = computed(() => browseLabels.value.coverMarkLabel || '翻唱')
+const audioQualityOn = computed(() => !!contentThicken.value.audioQualitySwitch)
+const audioQualityLabel = computed(() => browseLabels.value.audioQualityLabel || '音质')
+const audioQualityHint = computed(() => browseLabels.value.audioQualityHint || '')
+const audioQualityOptions = computed(() => {
+  const raw = browseLabels.value.audioQualityOptions || '标准,较高,无损'
+  return String(raw).split(/[,，]/).map((s) => s.trim()).filter(Boolean)
+})
+const audioQualityPick = ref('')
+const artistFilter = ref('')
+const albumFilter = ref('')
+const episodes = ref([])
+const episodeProgressMap = ref({})
+const activeEpisodeId = ref(0)
+const progressSec = ref(0)
+const progressSaving = ref(false)
+const currentProgress = computed(() => epProgress({ id: activeEpisodeId.value }))
+function epProgress(ep) {
+  const id = Number(ep?.id) || 0
+  return episodeProgressMap.value[id] || null
+}
+async function loadTrackProgress(itemId) {
+  if (!playProgressOn.value || isGuest.value || !itemId) return
+  try {
+    const pr = await http.get('/api/media-progress', { params: { itemId, episodeId: 0 } })
+    episodeProgressMap.value = { ...episodeProgressMap.value, 0: pr.data || pr }
+    progressSec.value = Number(pr.data?.positionSec || pr?.positionSec) || 0
+  } catch { /* ignore */ }
+}
+async function loadEpisodes(itemId) {
+  episodes.value = []
+  episodeProgressMap.value = {}
+  activeEpisodeId.value = 0
+  if (!itemId) return
+  if (!episodeListOn.value) {
+    await loadTrackProgress(itemId)
+    return
+  }
+  try {
+    const res = await http.get(`/api/media-episodes/by-item/${itemId}`)
+    episodes.value = res.data || res || []
+    if (episodes.value.length) {
+      activeEpisodeId.value = episodes.value[0].id
+      if (playProgressOn.value && !isGuest.value) {
+        for (const ep of episodes.value) {
+          try {
+            const pr = await http.get('/api/media-progress', { params: { itemId, episodeId: ep.id } })
+            episodeProgressMap.value = { ...episodeProgressMap.value, [ep.id]: pr.data || pr }
+          } catch { /* ignore */ }
+        }
+        const cur = epProgress({ id: activeEpisodeId.value })
+        progressSec.value = Number(cur?.positionSec) || 0
+      }
+    } else if (playProgressOn.value && !isGuest.value) {
+      await loadTrackProgress(itemId)
+    }
+  } catch {
+    episodes.value = []
+  }
+}
+function selectEpisode(ep) {
+  activeEpisodeId.value = ep.id
+  const cur = epProgress(ep)
+  progressSec.value = Number(cur?.positionSec) || 0
+}
+async function saveProgress(completed) {
+  if (!requireLogin(router) || !detail.value?.id) return
+  progressSaving.value = true
+  try {
+    const res = await http.post('/api/media-progress', {
+      itemId: detail.value.id,
+      episodeId: activeEpisodeId.value || 0,
+      positionSec: Number(progressSec.value) || 0,
+      completed: !!completed,
+    })
+    const data = res.data || res
+    episodeProgressMap.value = { ...episodeProgressMap.value, [activeEpisodeId.value || 0]: data }
+    if (detail.value.playCount != null) detail.value.playCount = Number(detail.value.playCount || 0) + 1
+    ElMessage.success(completed ? episodeCompletedLabel.value : '已记下进度')
+  } finally {
+    progressSaving.value = false
+  }
+}
+async function openByShareCode() {
+  const code = (shareCodeInput.value || '').trim()
+  if (!code) {
+    ElMessage.warning(shareCodePrompt.value)
+    return
+  }
+  try {
+    const res = await http.get('/api/archive/by-share-code', { params: { code } })
+    if (res.data) await openDetail(res.data)
+    else ElMessage.warning(browseLabels.value.shareCodeBlocked || '分享码无效')
+  } catch {
+    ElMessage.warning(browseLabels.value.shareCodeBlocked || '分享码无效')
+  }
+}
+const archiveYear = ref(null)
+const archiveMonth = ref(null)
+const archiveYearOptions = computed(() => {
+  const y = new Date().getFullYear()
+  return [y, y - 1, y - 2, y - 3, y - 4]
+})
+const categoryFollowing = ref(false)
+const categoryFollowerCount = ref(0)
+const followLoading = ref(false)
+const friendLinks = ref([])
+const authorFilter = ref('')
+const seriesPrev = ref(null)
+const seriesNext = ref(null)
+const unlockPassword = ref('')
+const unlockLoading = ref(false)
+const publishOriginKind = ref('original')
+const publishAccessPassword = ref('')
+const activeFollowCategoryId = computed(() => {
+  if (!categoryFollowOn.value) return null
+  if (multiCategory.value) {
+    return categoryIds.value?.length === 1 ? categoryIds.value[0] : null
+  }
+  return categoryId.value || null
+})
+function originKindText(v) {
+  if (v === 'reprint') return originReprintLabel.value
+  if (v === 'original') return originOriginalLabel.value
+  return String(v || '')
+}
+function authorKey(row) {
+  return String(row?.ownerUsername || row?.author || '').trim()
+}
+function onYearMonthChange() {
+  if (!archiveYear.value) archiveMonth.value = null
+  page.value = 1
+  load()
+}
+async function refreshFollowStatus() {
+  const cid = activeFollowCategoryId.value
+  if (!categoryFollowOn.value || !cid) {
+    categoryFollowing.value = false
+    categoryFollowerCount.value = 0
+    return
+  }
+  try {
+    const res = await http.get(`/api/category-follow/status/${cid}`)
+    categoryFollowing.value = !!res.data?.following
+    categoryFollowerCount.value = Number(res.data?.count) || 0
+  } catch {
+    categoryFollowing.value = false
+    categoryFollowerCount.value = 0
+  }
+}
+async function toggleCategoryFollow() {
+  if (!requireLogin(router)) return
+  const cid = activeFollowCategoryId.value
+  if (!cid) return
+  followLoading.value = true
+  try {
+    const res = await http.post(`/api/category-follow/${cid}/toggle`)
+    categoryFollowing.value = !!res.data?.following
+    categoryFollowerCount.value = Number(res.data?.count) || 0
+    ElMessage.success(categoryFollowing.value ? '已订阅' : '已取消订阅')
+  } finally {
+    followLoading.value = false
+  }
+}
+async function loadFriendLinks() {
+  if (!friendLinksOn.value) {
+    friendLinks.value = []
+    return
+  }
+  try {
+    const res = await http.get('/api/blog-friend-links')
+    friendLinks.value = res.data || res || []
+  } catch {
+    friendLinks.value = []
+  }
+}
+function openAuthorPage(row) {
+  const u = authorKey(row)
+  if (!u) return
+  authorFilter.value = u
+  detailVisible.value = false
+  page.value = 1
+  load()
+}
+function clearAuthorFilter() {
+  authorFilter.value = ''
+  page.value = 1
+  load()
+}
+async function loadSeriesNeighbors(id) {
+  seriesPrev.value = null
+  seriesNext.value = null
+  if (!seriesNavOn.value || !id) return
+  try {
+    const res = await http.get(`/api/archive/${id}/series-neighbors`)
+    seriesPrev.value = res.data?.prev || null
+    seriesNext.value = res.data?.next || null
+  } catch {
+    seriesPrev.value = null
+    seriesNext.value = null
+  }
+}
+async function unlockDetail() {
+  if (!detail.value?.id) return
+  const pw = (unlockPassword.value || '').trim()
+  if (!pw) {
+    ElMessage.warning(accessPasswordPrompt.value)
+    return
+  }
+  unlockLoading.value = true
+  try {
+    const res = await http.post(`/api/archive/${detail.value.id}/unlock`, { password: pw })
+    if (res.data) detail.value = { ...detail.value, ...res.data, contentLocked: false }
+    unlockPassword.value = ''
+    ElMessage.success('已解锁')
+  } catch (e) {
+    const msg = String(e?.message || e?.response?.data?.message || browseLabels.value.accessPasswordBlocked || '口令不正确')
+    ElMessage.warning(msg)
+  } finally {
+    unlockLoading.value = false
+  }
+}
+const applyParentTicketId = ref(null)
+const threadExpanded = ref(false)
+const threadRoots = computed(() =>
+  (threadList.value || []).filter((r) => !Number(r.parentTicketId)),
+)
+const visibleThreadRoots = computed(() => {
+  if (!commentFoldOn.value || threadExpanded.value) return threadRoots.value
+  return threadRoots.value.slice(0, commentFoldAfter.value)
+})
+function childrenOf(parentId) {
+  return (threadList.value || []).filter((r) => Number(r.parentTicketId) === Number(parentId))
+}
+function openNestedReply(parent) {
+  if (!detail.value) return
+  if (Number(parent?.parentTicketId) > 0) {
+    ElMessage.warning(browseLabels.value.nestedReplyBlocked || '该回复下不能再盖楼')
+    return
+  }
+  applyParentTicketId.value = parent.id
+  apply(detail.value)
+}
+function clearNestedParent() {
+  applyParentTicketId.value = null
+}
+const pinTopLabel = computed(() => browseLabels.value.pinTopLabel || '置顶')
+const essenceLabel = computed(() => browseLabels.value.essenceLabel || '精华')
+const lockedLabel = computed(() => browseLabels.value.lockedLabel || '锁定')
+const essenceHint = computed(() => browseLabels.value.essenceHint || '')
+const lockedHint = computed(() => browseLabels.value.lockedHint || '')
+const saveDraftLabel = computed(() => browseLabels.value.saveDraftLabel || '存草稿')
+const dailyPostLimitHint = computed(() => browseLabels.value.dailyPostLimitHint || '')
+const activeSectionNotice = computed(() => {
+  if (!sectionNoticeOn.value) return ''
+  const id = multiCategory.value
+    ? (categoryIds.value?.length === 1 ? categoryIds.value[0] : null)
+    : categoryId.value
+  if (!id) return ''
+  const cat = (categories.value || []).find((c) => Number(c.id) === Number(id))
+  return String(cat?.sectionNotice || '').trim()
+})
 const searchAssist = computed(() => isSearchAssistEnabled())
+const titleSuggestOn = computed(() => searchAssist.value || titleSearchOn.value)
 const hotKeywords = computed(() => searchHotKeywords())
+const hotMode = ref(false)
 const galleryOn = computed(() => isGalleryEnabled())
 const roomEquipOn = computed(() => hasCap('room_equipment'))
 const equipSectionTitle = computed(
@@ -1606,6 +2269,7 @@ function onCategoryChange() {
   }
   page.value = 1
   load()
+  refreshFollowStatus()
 }
 function onMultiCategoryChange() {
   if (isGuest.value) {
@@ -1615,6 +2279,7 @@ function onMultiCategoryChange() {
   }
   page.value = 1
   load()
+  refreshFollowStatus()
 }
 function onTagFilterChange() {
   if (isGuest.value) {
@@ -1648,6 +2313,10 @@ const publishStock = ref(2)
 const publishStartAt = ref('')
 const publishCategoryId = ref(null)
 const publishLoading = ref(false)
+const publishDraftId = ref(null)
+const draftAutoSavedAt = ref('')
+let draftAutoSaveTimer = null
+let draftAutoSaving = false
 const threadList = ref([])
 const threadLoading = ref(false)
 const showThread = computed(() => richRemark.value && !!detail.value?.id)
@@ -1689,12 +2358,17 @@ async function openDetail(row) {
   clueForm.guestContact = ''
   clueForm.type = 'clue'
   clueForm.content = ''
+  unlockPassword.value = ''
+  seriesPrev.value = null
+  seriesNext.value = null
   resetLogForm()
   if (!row?.id) return
   try {
     const res = await http.get(`/api/archive/${row.id}`)
     if (res.data) detail.value = { ...row, ...res.data }
   } catch { /* keep list row */ }
+  await loadSeriesNeighbors(row.id)
+  await loadEpisodes(row.id)
   await loadLotteryResult(row.id)
   await loadThread(row.id)
   if (logOn.value && isLoggedIn()) await loadLogs(row.id)
@@ -1847,14 +2521,48 @@ async function submitItemComment() {
   }
   itemCommentSubmitting.value = true
   try {
-    await http.post('/api/item-comments', { itemId: detail.value.id, body: text })
+    await http.post('/api/item-comments', {
+      itemId: detail.value.id,
+      body: text,
+      followersOnly: followersOnlyCommentOn.value ? !!itemCommentFollowersOnly.value : false,
+    })
     itemCommentDraft.value = ''
+    itemCommentFollowersOnly.value = false
     ElMessage.success('已发表')
     await loadItemComments(detail.value.id)
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '发表失败')
   } finally {
     itemCommentSubmitting.value = false
+  }
+}
+
+function followBtnLabel(username) {
+  if (followingUsers.value.has(username)) {
+    return browseLabels.value.unfollowUserLabel || '取消关注'
+  }
+  return browseLabels.value.followUserLabel || '关注作者'
+}
+
+async function toggleFollowUser(followee) {
+  if (!requireLogin(router) || !followee) return
+  const on = followingUsers.value.has(followee)
+  try {
+    if (on) {
+      await http.delete('/api/user-follow', { params: { followee } })
+      const next = new Set(followingUsers.value)
+      next.delete(followee)
+      followingUsers.value = next
+      ElMessage.success(browseLabels.value.unfollowUserLabel || '已取消关注')
+    } else {
+      await http.post('/api/user-follow', { followee })
+      const next = new Set(followingUsers.value)
+      next.add(followee)
+      followingUsers.value = next
+      ElMessage.success(browseLabels.value.followUserLabel || '已关注')
+    }
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
   }
 }
 
@@ -1908,19 +2616,41 @@ async function loadTags() {
 
 async function load() {
   const pageSize = isGuest.value ? guestTeaserLimit() : size.value
-  const res = await http.get('/api/archive', {
-    params: {
+  let url = '/api/archive'
+  let params = {
+    page: isGuest.value ? 1 : page.value,
+    size: pageSize,
+    keyword: keyword.value || undefined,
+    categoryId: multiCategory.value ? undefined : (categoryId.value || undefined),
+    categoryIds:
+      multiCategory.value && categoryIds.value?.length
+        ? categoryIds.value.join(',')
+        : undefined,
+    tagIds: tagIds.value?.length ? tagIds.value.join(',') : undefined,
+    artist: artistAlbumFilterOn.value ? (artistFilter.value || undefined) : undefined,
+    album: artistAlbumFilterOn.value ? (albumFilter.value || undefined) : undefined,
+  }
+  if (hotMode.value && hotRankOn.value) {
+    url = '/api/archive/hot'
+    params = {
       page: isGuest.value ? 1 : page.value,
       size: pageSize,
-      keyword: keyword.value || undefined,
-      categoryId: multiCategory.value ? undefined : (categoryId.value || undefined),
-      categoryIds:
-        multiCategory.value && categoryIds.value?.length
-          ? categoryIds.value.join(',')
-          : undefined,
-      tagIds: tagIds.value?.length ? tagIds.value.join(',') : undefined,
-    },
-  })
+      sortBy: downloadCountOn.value
+        ? 'downloadCount'
+        : (hotByPlayOn.value ? 'playCount' : undefined),
+    }
+  } else if (authorPageOn.value && (authorFilter.value || '').trim()) {
+    url = '/api/archive/by-author'
+    params = {
+      page: isGuest.value ? 1 : page.value,
+      size: pageSize,
+      username: authorFilter.value.trim(),
+    }
+  } else if (archiveYearMonthOn.value && archiveYear.value) {
+    params.year = archiveYear.value
+    if (archiveMonth.value) params.month = archiveMonth.value
+  }
+  const res = await http.get(url, { params })
   let rows = res.data.list || []
   // 本人件/本人课：登录后按手机/学号软筛（访客仍看 teaser 全量）
   if (filterByOwnerToken.value && !isGuest.value) {
@@ -2009,14 +2739,25 @@ async function toggleLike(row) {
 function openReport(row, targetType = 'archive') {
   if (!requireLogin(router)) return
   reportRow.value = row
-  reportTargetType.value = targetType === 'ticket' ? 'ticket' : 'archive'
+  if (targetType === 'ticket') reportTargetType.value = 'ticket'
+  else if (targetType === 'comment') reportTargetType.value = 'comment'
+  else reportTargetType.value = 'archive'
   reportReason.value = ''
+  reportReasonCode.value = ''
   reportVisible.value = true
 }
 
 async function submitReport() {
-  const reason = reportReason.value.trim()
-  if (!reason) {
+  const detailNote = reportReason.value.trim()
+  const code = String(reportReasonCode.value || '').trim()
+  let reason = detailNote
+  if (reportReasonDictOn.value) {
+    if (!code) {
+      ElMessage.warning(browseLabels.value.reportReasonRequired || '请选择举报原因')
+      return
+    }
+    reason = detailNote ? `${code}：${detailNote}` : code
+  } else if (!reason) {
     ElMessage.warning('请填写举报理由')
     return
   }
@@ -2027,7 +2768,11 @@ async function submitReport() {
       targetId: reportRow.value?.id,
       reason,
     })
-    ElMessage.success('已提交举报，等待处理')
+    ElMessage.success(
+      reportTargetType.value === 'comment'
+        ? (browseLabels.value.commentReportDone || '已提交评论举报')
+        : '已提交举报，等待处理',
+    )
     if (reportTargetType.value === 'archive' && reportRow.value?.id != null) {
       const next = new Set(reportedIds.value)
       next.add(Number(reportRow.value.id))
@@ -2057,6 +2802,7 @@ async function toggleFav(row) {
 }
 
 async function onPrimary(row) {
+  applyParentTicketId.value = null
   if (!requireLogin(router)) return
   if (isSeatSelectMode.value) {
     router.push(`/seats/map/${row.id}`)
@@ -2109,24 +2855,91 @@ async function onRecommendApply(row) {
   await onPrimary(row)
 }
 
+function clearDraftAutoSaveTimer() {
+  if (draftAutoSaveTimer) {
+    clearTimeout(draftAutoSaveTimer)
+    draftAutoSaveTimer = null
+  }
+}
+
 function openPublish() {
   if (!requireLogin(router)) return
+  clearDraftAutoSaveTimer()
   publishTitle.value = ''
   publishAuthor.value = ''
   publishBody.value = ''
   publishStock.value = publishShowStock.value ? 2 : 1
   publishStartAt.value = ''
   publishCategoryId.value = categories.value[0]?.id || null
+  publishOriginKind.value = 'original'
+  publishAccessPassword.value = ''
+  publishDraftId.value = null
+  draftAutoSavedAt.value = ''
   publishVisible.value = true
 }
 
-async function submitPublish() {
+function scheduleDraftAutoSave() {
+  if (!draftAutoSaveOn.value || !publishVisible.value) return
+  clearDraftAutoSaveTimer()
+  draftAutoSaveTimer = setTimeout(() => {
+    silentAutoSaveDraft()
+  }, 2000)
+}
+
+async function silentAutoSaveDraft() {
+  if (!draftAutoSaveOn.value || !publishVisible.value || draftAutoSaving || publishLoading.value) return
+  const title = publishTitle.value.trim()
+  if (!title || !publishCategoryId.value) return
+  let isbn = ''
+  if (publishUsesRichBody.value) {
+    isbn = sanitizeHtml(publishBody.value || '')
+  } else {
+    isbn = (publishBody.value || '').trim()
+  }
+  draftAutoSaving = true
+  try {
+    const body = {
+      title,
+      categoryId: publishCategoryId.value,
+      isbn,
+      draft: true,
+    }
+    if (publishDraftId.value) body.id = publishDraftId.value
+    if (originKindOn.value) body.originKind = publishOriginKind.value
+    if (accessPasswordOn.value && (publishAccessPassword.value || '').trim()) {
+      body.accessPassword = publishAccessPassword.value.trim()
+    }
+    const res = await http.post('/api/archive/publish', body)
+    const data = res.data?.data || res.data || {}
+    if (data.id) publishDraftId.value = data.id
+    const now = new Date()
+    draftAutoSavedAt.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  } catch {
+    /* 自动保存失败不打扰；用户仍可手点存草稿 */
+  } finally {
+    draftAutoSaving = false
+  }
+}
+
+watch(
+  [publishTitle, publishBody, publishCategoryId, publishVisible],
+  () => {
+    if (publishVisible.value) scheduleDraftAutoSave()
+    else clearDraftAutoSaveTimer()
+  },
+)
+
+onUnmounted(() => {
+  clearDraftAutoSaveTimer()
+})
+
+async function submitPublish(asDraft = false) {
   const title = publishTitle.value.trim()
   if (!title) {
     ElMessage.warning(`请填写${fieldLabel('title', '名称')}`)
     return
   }
-  if (publishShowAuthor.value && !publishAuthor.value.trim()) {
+  if (!asDraft && publishShowAuthor.value && !publishAuthor.value.trim()) {
     ElMessage.warning(`请填写${fieldLabel('author', '联系人')}`)
     return
   }
@@ -2134,31 +2947,32 @@ async function submitPublish() {
     ElMessage.warning(`请选择${fieldLabel('category', '分类')}`)
     return
   }
-  if (publishShowStock.value) {
+  if (!asDraft && publishShowStock.value) {
     const n = Number(publishStock.value) || 0
     if (n < 1) {
       ElMessage.warning(`${fieldLabel('stock', '余座')}至少为 1`)
       return
     }
   }
-  if (publishShowStartAt.value && !String(publishStartAt.value || '').trim()) {
+  if (!asDraft && publishShowStartAt.value && !String(publishStartAt.value || '').trim()) {
     ElMessage.warning(`请填写${fieldLabel('startAt', '出发时间')}`)
     return
   }
   let isbn = ''
   if (publishUsesRichBody.value) {
     isbn = sanitizeHtml(publishBody.value || '')
-    if (!plainFromHtml(isbn).trim()) {
+    if (!asDraft && !plainFromHtml(isbn).trim()) {
       ElMessage.warning(`请填写${fieldLabel('isbn', '正文')}`)
       return
     }
   } else {
     isbn = (publishBody.value || '').trim()
-    if (!isbn) {
+    if (!asDraft && !isbn) {
       ElMessage.warning(`请填写${fieldLabel('isbn', '备注')}`)
       return
     }
   }
+  clearDraftAutoSaveTimer()
   publishLoading.value = true
   try {
     const body = {
@@ -2166,25 +2980,42 @@ async function submitPublish() {
       categoryId: publishCategoryId.value,
       isbn,
     }
+    if (asDraft) {
+      body.draft = true
+      if (publishDraftId.value) body.id = publishDraftId.value
+    }
     if (publishShowAuthor.value) body.author = publishAuthor.value.trim()
-    if (publishShowStock.value) body.stock = Number(publishStock.value) || 1
-    if (publishShowStartAt.value) body.startAt = String(publishStartAt.value).trim()
-    await http.post('/api/archive/publish', body)
-    const review = !!archive.publishReview
-    ElMessage.success(
-      review
-        ? '已提交审核，通过后公开展示'
-        : publishUsesRichBody.value || publishShowStock.value
-          ? '已发布'
-          : '已登记',
-    )
+    if (!asDraft && publishShowStock.value) body.stock = Number(publishStock.value) || 1
+    if (!asDraft && publishShowStartAt.value) body.startAt = String(publishStartAt.value).trim()
+    if (originKindOn.value) body.originKind = publishOriginKind.value
+    if (accessPasswordOn.value && (publishAccessPassword.value || '').trim()) {
+      body.accessPassword = publishAccessPassword.value.trim()
+    }
+    const res = await http.post('/api/archive/publish', body)
+    const data = res.data?.data || res.data || {}
+    if (asDraft) {
+      if (data.id) publishDraftId.value = data.id
+      ElMessage.success('已存草稿，可在「我的」里发布')
+    } else {
+      const review = !!archive.publishReview
+      ElMessage.success(
+        review
+          ? '已提交审核，通过后公开展示'
+          : publishUsesRichBody.value || publishShowStock.value
+            ? '已发布'
+            : '已登记',
+      )
+    }
     publishVisible.value = false
+    publishDraftId.value = null
+    draftAutoSavedAt.value = ''
     await load()
     recRef.value?.reload?.()
   } catch (e) {
     const msg = String(e?.message || e?.response?.data?.message || '')
-    if (/禁言/.test(msg)) {
-      /* http 拦截器已提示「禁言至…」 */
+    if (/禁言|发帖已达上限/.test(msg)) {
+      /* http 已提示或下方兜底 */
+      if (/发帖已达上限/.test(msg)) ElMessage.warning(msg)
     } else if (msg && !e?.code) {
       ElMessage.error(msg)
     }
@@ -2194,6 +3025,10 @@ async function submitPublish() {
 }
 
 async function apply(row) {
+  if (lockedOn.value && Number(row?.locked) === 1) {
+    ElMessage.warning(browseLabels.value.lockedReplyBlocked || '该帖已锁定，暂时不能回复')
+    return
+  }
   if (matchProfileRoom.value) {
     try {
       const me = await http.get('/api/profile')
@@ -2332,6 +3167,7 @@ async function submitApply() {
       remark,
       attachUrl: applyAttachUrl.value || undefined,
     }
+    if (applyParentTicketId.value) body.parentTicketId = applyParentTicketId.value
     if (requireMaterial.value && matRef.value) body.materials = matRef.value.payload()
     if (allowQty.value) body.qty = Number(applyQty.value) || 1
     if (pickLoanPeriod.value) body.dueAt = applyDueAt.value
@@ -2366,7 +3202,8 @@ async function submitApply() {
     }
     ElMessage.success(okMsg)
     applyVisible.value = false
-    if (autoApprove.value && detailVisible.value && applyRow.value?.id) {
+    applyParentTicketId.value = null
+    if (detailVisible.value && applyRow.value?.id) {
       await loadThread(applyRow.value.id)
     }
     if (!richRemark.value) detailVisible.value = false
@@ -2388,10 +3225,16 @@ onMounted(async () => {
     const n = Number(qCat)
     categoryId.value = Number.isFinite(n) ? n : qCat
   }
+  const qAuthor = route.query?.author
+  if (qAuthor != null && String(qAuthor).trim() !== '') {
+    authorFilter.value = String(qAuthor).trim()
+  }
   await loadBlindBoxes()
   await loadCats()
   await loadTags()
+  await loadFriendLinks()
   await load()
+  await refreshFollowStatus()
   await loadMySchedule()
   await loadFavIds()
   await loadLikeIds()
@@ -2427,6 +3270,41 @@ async function openHighlightFromRoute() {
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .page-hint { margin: 0 0 10px; color: var(--portal-muted, #64748b); font-size: 13px; line-height: 1.45; }
+.ym-row { margin-top: 10px; }
+.follow-bar { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; }
+.follow-hint { font-size: 12px; }
+.friend-links { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.friend-lab { font-size: 12px; color: var(--portal-muted, #94a3b8); }
+.friend-chip {
+  border: 1px solid var(--portal-line, #e2e8f0);
+  background: var(--portal-surface, #fff);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: var(--el-color-primary);
+  text-decoration: none;
+}
+.pw-box { margin: 10px 0; padding: 10px; border: 1px dashed var(--portal-line, #e2e8f0); border-radius: 8px; }
+.pw-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.series-nav { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin: 8px 0 4px; }
+.share-bar { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.poster-wall { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; }
+.poster-card { flex-direction: column; }
+.poster-card .cover { width: 100%; height: 180px; border-radius: 8px; }
+.episode-box { margin: 12px 0; }
+.episode-box h4 { margin: 0 0 8px; font-size: 14px; }
+.episode-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.ep-btn {
+  border: 1px solid var(--portal-line, #e2e8f0);
+  background: var(--portal-surface, #fff);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.episode-list li.active .ep-btn { border-color: var(--el-color-primary); color: var(--el-color-primary); }
+.ep-done { margin-left: 6px; color: #059669; }
+.progress-row { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .search { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .search-cat { width: min(180px, 100%); min-width: 120px; flex: 0 1 160px; }
 .search :deep(.el-input),

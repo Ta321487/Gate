@@ -31,14 +31,32 @@ public class UserStore {
         return postMuteEnabled;
     }
 
-    /** 禁言期内不可发帖/回复（能力关闭时直接放行）。 */
+    /** 禁言期内不可发帖/回复（能力关闭时直接放行；到期自动清列）。 */
     public static void assertNotPostMuted(String username) {
         if (!postMuteEnabled) return;
         String until = postMuteUntilOf(username);
         if (until == null || until.isBlank()) return;
         LocalDateTime end = parseMuteUntil(until);
-        if (end != null && LocalDateTime.now().isBefore(end)) {
+        if (end == null) return;
+        if (LocalDateTime.now().isBefore(end)) {
             throw new IllegalStateException("您已被禁言至 " + until + "，期间不可发帖或回复");
+        }
+        // 已到期：清列，允许发言
+        try {
+            db().update("UPDATE sys_user SET post_mute_until=NULL WHERE username=?", username.trim());
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 定时扫：清除已到期禁言。 */
+    public static int clearExpiredPostMutes() {
+        if (!postMuteEnabled) return 0;
+        try {
+            return db().update(
+                    "UPDATE sys_user SET post_mute_until=NULL "
+                            + "WHERE post_mute_until IS NOT NULL AND post_mute_until < NOW()");
+        } catch (Exception e) {
+            return 0;
         }
     }
 

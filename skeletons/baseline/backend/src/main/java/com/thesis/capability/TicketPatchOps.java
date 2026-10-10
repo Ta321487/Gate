@@ -900,6 +900,20 @@ final class TicketPatchOps {
         if (body.containsKey("parentTicketId") && TicketStore.hasColumn("parent_ticket_id")) {
             long pid = TicketSql.toLong(body.get("parentTicketId"));
             if (pid > 0) {
+                Map<String, Object> parent = TicketStore.get(pid);
+                if (parent == null) throw new IllegalArgumentException("回复对象不存在");
+                Object grand = parent.get("parentTicketId");
+                if (grand instanceof Number n && n.longValue() > 0) {
+                    throw new IllegalStateException("该回复下不能再盖楼");
+                }
+                Map<String, Object> child = TicketStore.get(ticketId);
+                if (child != null) {
+                    long pItem = TicketSql.toLong(parent.get("itemId") != null ? parent.get("itemId") : parent.get("bookId"));
+                    long cItem = TicketSql.toLong(child.get("itemId") != null ? child.get("itemId") : child.get("bookId"));
+                    if (pItem > 0 && cItem > 0 && pItem != cItem) {
+                        throw new IllegalStateException("只能回复同一帖下的内容");
+                    }
+                }
                 TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET parent_ticket_id=? WHERE id=?", pid, ticketId);
             }
         }

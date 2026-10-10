@@ -112,3 +112,64 @@ def test_order_store_has_single_has_line_column() -> None:
             )
         )
         assert n == 1, f"{path}: hasLineColumn 定义数={n}，须恰好 1"
+
+
+def test_patient_profile_store_refs_are_resolvable() -> None:
+    """DomainRuntimeBinder 里 PatientProfileStore 须 import 或 FQN，裸名 → 找不到符号。"""
+    bad: list[str] = []
+    for root in JAVA_ROOTS:
+        path = root / "com/thesis/config/DomainRuntimeBinder.java"
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "PatientProfileStore" not in text:
+            continue
+        has_import = "import com.thesis.service.PatientProfileStore;" in text
+        bare = re.findall(r"(?<![\w.])PatientProfileStore\.", text)
+        if bare and not has_import:
+            bad.append(str(path.relative_to(ROOT)).replace("\\", "/"))
+    assert not bad, "PatientProfileStore 裸用且无 import:\n" + "\n".join(bad)
+
+
+def test_catch_number_format_before_illegal_argument() -> None:
+    """NumberFormatException 是 IllegalArgumentException 子类，后捕 → javac「已捕获到异常」。"""
+    bad: list[str] = []
+    for path in _java_files():
+        text = path.read_text(encoding="utf-8")
+        # 同一 try 块内：先捕 IAE/ISE 再捕 NFE
+        for m in re.finditer(
+            r"catch\s*\(\s*IllegalArgumentException(?:\s*\|\s*IllegalStateException)?\s+\w+\s*\)"
+            r"\s*\{[^}]*\}"
+            r"(?:\s*catch\s*\(\s*IllegalStateException\s+\w+\s*\)\s*\{[^}]*\})?"
+            r"\s*catch\s*\(\s*NumberFormatException\s+\w+\s*\)",
+            text,
+            re.S,
+        ):
+            bad.append(str(path.relative_to(ROOT)).replace("\\", "/"))
+            break
+    assert not bad, "NFE 写在 IAE 之后（javac 必红）:\n" + "\n".join(bad)
+
+
+def test_slot_store_reserve_does_not_redeclare_note() -> None:
+    """reserve() 里已有 final String note，再 String note= 会 javac「已在方法中定义了变量」。"""
+    bad: list[str] = []
+    for root in JAVA_ROOTS:
+        path = root / "com/thesis/capability/SlotStore.java"
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        # 粗口径：reserve 方法体到下一个 public static 之前，不得再声明 String note
+        m = re.search(
+            r"public static (?:long|Map<[^>]+>) reserve\s*\([^)]*\)\s*\{",
+            text,
+        )
+        if not m:
+            continue
+        start = m.end()
+        nxt = re.search(r"\n    public static ", text[start:])
+        body = text[start : start + (nxt.start() if nxt else len(text))]
+        if re.search(r"\bfinal\s+String\s+note\b", body) and re.search(
+            r"(?<!final )\bString\s+note\s*=", body
+        ):
+            bad.append(str(path.relative_to(ROOT)).replace("\\", "/"))
+    assert not bad, "SlotStore.reserve 重复声明 note:\n" + "\n".join(bad)

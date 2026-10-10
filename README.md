@@ -118,6 +118,7 @@ npm run dev
 | 库表预算 / 角色不变式 | [`docs/invariants.md`](./docs/invariants.md) |
 | 换皮 ID 册 | [`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md) |
 | 专题全索引 | [`docs/README.md`](./docs/README.md) |
+| **系统架构图**（分层 / 六步流水线 / 前端与预览） | [`ARCHITECTURE.md`](./ARCHITECTURE.md) · 网页版 [`architecture.html`](./architecture.html) |
 | 新对话交接 | [`HANDOFF.md`](./HANDOFF.md) |
 
 接题边界：专科/本科·课设演示级；硕博 / 真实全流程 / 未就绪交叉 → reject。  
@@ -170,7 +171,7 @@ npm run dev
 backend/                 运营 API（bake / gates / llm / jobs）
   app/bake/              工厂核心
     domains.py           原型词桶 / 能力表；具名域目录见 domains_catalog/
-    domains_catalog/     薄域条目（borrow / ticket / apply / trade / reserve / content / fallback）
+    domains_catalog/     具名域条目（薄壳分组：borrow / ticket / apply / trade / reserve / content / fallback；≠功能稀薄）
     proposal_packs.py    选题包加载器；正文 proposal_packs_data/*.json
     engine*.py           bake 入口 + sql / bake / resources / islands 分册
     scene_scan.py        开题场景 / 资料页身份（唯一真源）
@@ -188,8 +189,10 @@ data/
   uploads/ · workspace/  上传落盘 · 每题工作区与 ZIP
 scripts/                 Windows 启停；说明见 scripts/README.md
 prototype/               运营端原型（见 prototype/README.md）
+architecture.html        系统架构图（网页版，浏览器直接打开）
 docker-compose.yml       可选 MySQL（无本机库时用）
 HANDOFF.md               新对话交接（主线 / 边界摘要 / 开场白）
+ARCHITECTURE.md          系统架构图（源文档：分层 / 流程 / 前端 / 预览 / 数据）
 docs/                    专题文档（一文一事；见 docs/README.md）
 ```
 

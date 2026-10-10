@@ -698,6 +698,30 @@ public final class LoyaltyStore {
         return getAccount(username);
     }
 
+
+    /** C-08：业务扣积分（文库下载等）；不足则抛错。 */
+    public static Map<String, Object> spendPoints(
+            String username, int amount, String reason, String refType, Long refId) {
+        if (!pointsEnabled) throw new IllegalStateException("未开启积分");
+        if (username == null || username.isBlank()) throw new IllegalArgumentException("用户无效");
+        if (amount <= 0) throw new IllegalArgumentException("扣减积分须大于 0");
+        ensureSchema();
+        Map<String, Object> acc = getAccount(username);
+        int before = ((Number) acc.get("points")).intValue();
+        if (before < amount) throw new IllegalStateException("积分不足，无法下载");
+        debitPoints(username, amount, reason == null || reason.isBlank() ? ("扣减 " + amount) : reason, refType, refId);
+        return getAccount(username);
+    }
+
+    /** C-08：业务奖积分（精华奖励等）。 */
+    public static Map<String, Object> awardPoints(
+            String username, int amount, String reason, String refType, Long refId) {
+        if (!pointsEnabled || amount <= 0) return getAccount(username == null ? "" : username);
+        if (username == null || username.isBlank()) return Map.of();
+        creditPoints(username, amount, reason == null || reason.isBlank() ? ("奖励 +" + amount) : reason, refType, refId);
+        return getAccount(username);
+    }
+
     /** 当天首次登录入账。原因含具体分值。 */
     public static void checkInOnLogin(String username) {
         if (!pointsEnabled || !pointsCheckInEnabled) return;

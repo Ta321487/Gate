@@ -11,6 +11,11 @@
         @change="load"
       />
       <el-button type="primary" @click="load">查询</el-button>
+      <el-button
+        v-if="hotRankOn"
+        :type="hotMode ? 'warning' : 'default'"
+        @click="toggleHotMode"
+      >{{ hotMode ? hotRankBackLabel : hotRankToggleLabel }}</el-button>
       <el-button type="success" @click="openEdit()">新增{{ label }}</el-button>
       <el-button v-if="cinemaSnackOn && hasSeatLayout" @click="openSnackAdmin">{{ cinemaSnackLabel }}</el-button>
       <el-button @click="exportCsv">导出 CSV</el-button>
@@ -24,12 +29,27 @@
       </el-upload>
     </div>
     <SchemaLabelHints :keys="archiveAdminHintKeys" />
+    <p v-if="hotMode && hotRankOn" class="tip muted">{{ hotRankPageTitle }}：{{ hotRankPageLead }}</p>
     <p v-if="stallScoreSortOn && stallScoreHint" class="tip muted">{{ stallScoreLabel }}：{{ stallScoreHint }}</p>
     <p v-if="lastImportError" class="import-err">{{ lastImportError }}</p>
     <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="title" :label="fieldLabel('title', '名称')" min-width="120" show-overflow-tooltip />
+      <el-table-column v-if="viewCountOn" :label="viewCountLabel" width="90">
+        <template #default="{ row }">{{ Number(row.viewCount) || 0 }}</template>
+      </el-table-column>
+      <el-table-column v-if="forumOpsOn" label="运营" width="150">
+        <template #default="{ row }">
+          <el-tag v-if="Number(row.pinTop) === 1" size="small" type="warning" effect="plain">{{ pinTopLabel }}</el-tag>
+          <el-tag v-if="Number(row.essence) === 1" size="small" type="success" effect="plain">{{ essenceLabel }}</el-tag>
+          <el-tag v-if="Number(row.locked) === 1" size="small" type="info" effect="plain">{{ lockedLabel }}</el-tag>
+          <span v-if="!Number(row.pinTop) && !Number(row.essence) && !Number(row.locked)">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column v-if="downloadCountOn" :label="downloadCountLabel" width="100">
+        <template #default="{ row }">{{ Number(row.downloadCount) || 0 }}</template>
+      </el-table-column>
       <el-table-column :label="fieldLabel('author', '型号')" width="140">
         <template #default="{ row }">{{ formatAuthorCell(row.author) }}</template>
       </el-table-column>
@@ -222,6 +242,22 @@
             :inactive-text="shelfSwitchOff"
           />
         </el-form-item>
+        <p v-if="scheduledPublishOn && publishAtHint" class="form-hint">{{ publishAtLabel }}：{{ publishAtHint }}</p>
+        <p v-if="scheduledUnpublishOn && unpublishAtHint" class="form-hint">{{ unpublishAtLabel }}：{{ unpublishAtHint }}</p>
+        <p v-if="offShelfReasonOn && offShelfReasonHint" class="form-hint">{{ offShelfReasonLabel }}：{{ offShelfReasonHint }}</p>
+        <p v-if="shareCodeOn && shareCodeHint" class="form-hint">{{ shareCodeLabel }}：{{ shareCodeHint }}</p>
+        <div v-if="episodeListOn && form.id" class="episode-admin">
+          <p class="form-hint">{{ episodeAdminTitle }}</p>
+          <el-button size="small" @click="loadEpisodes">刷新分集</el-button>
+          <el-button size="small" type="primary" @click="openEpisodeEdit()">{{ episodeAddLabel }}</el-button>
+          <ul class="ep-admin-list">
+            <li v-for="ep in episodeRows" :key="ep.id">
+              {{ ep.sortOrd }}. {{ ep.title }}
+              <el-button link type="primary" @click="openEpisodeEdit(ep)">编辑</el-button>
+              <el-button link type="danger" @click="removeEpisode(ep)">删除</el-button>
+            </li>
+          </ul>
+        </div>
         <p v-else-if="softDelete && canReviewPublish && isPendingReview(form)" class="form-hint">
           待审核条目请用列表上的「审核上架」，不要用上下架开关。
         </p>
@@ -418,6 +454,98 @@ const stockWarnBelow = computed(() => {
 const archiveAdminHintKeys = ARCHIVE_ADMIN_HINT_KEYS
 const adminLabels = computed(() => getSchema()?.labels || {})
 const thicken = computed(() => getSchema()?.tradeThicken || {})
+const contentThicken = computed(() => getSchema()?.contentThicken || {})
+const viewCountOn = computed(() => !!contentThicken.value.viewCount)
+const viewCountLabel = computed(() => adminLabels.value.viewCountLabel || '阅读数')
+const downloadCountOn = computed(() => !!contentThicken.value.hotByDownload)
+const downloadCountLabel = computed(() => adminLabels.value.downloadCountLabel || '下载次数')
+const hotRankOn = computed(() => !!contentThicken.value.hotRank)
+const hotRankPageTitle = computed(() => adminLabels.value.hotRankPageTitle || '热门排行')
+const hotRankPageLead = computed(() => adminLabels.value.hotRankPageLead || '按阅读次数从高到低排列。')
+const hotRankToggleLabel = computed(() => adminLabels.value.hotRankToggleLabel || '看热门')
+const hotRankBackLabel = computed(() => adminLabels.value.hotRankBackLabel || '全部')
+const forumOpsOn = computed(
+  () => !!(contentThicken.value.pinTop || contentThicken.value.essence || contentThicken.value.locked),
+)
+const pinTopLabel = computed(() => adminLabels.value.pinTopLabel || '置顶')
+const essenceLabel = computed(() => adminLabels.value.essenceLabel || '精华')
+const essencePointsRewardLabel = computed(
+  () => adminLabels.value.essencePointsRewardLabel || '精华奖励积分',
+)
+const lockedLabel = computed(() => adminLabels.value.lockedLabel || '锁定')
+const publishApproveNotifyTitle = computed(
+  () => adminLabels.value.publishApproveNotifyTitle || '投稿已通过',
+)
+const scheduledPublishOn = computed(() => !!contentThicken.value.scheduledPublish)
+const scheduledUnpublishOn = computed(() => !!contentThicken.value.scheduledUnpublish)
+const publishAtLabel = computed(() => adminLabels.value.publishAtLabel || '定时发布')
+const publishAtHint = computed(() => adminLabels.value.publishAtHint || '')
+const unpublishAtLabel = computed(() => adminLabels.value.unpublishAtLabel || '定时撤回')
+const unpublishAtHint = computed(() => adminLabels.value.unpublishAtHint || '')
+const offShelfReasonOn = computed(() => !!contentThicken.value.offShelfReason)
+const offShelfReasonLabel = computed(() => adminLabels.value.offShelfReasonLabel || '下架原因')
+const offShelfReasonHint = computed(() => adminLabels.value.offShelfReasonHint || '')
+const shareCodeOn = computed(() => !!contentThicken.value.shareCode)
+const shareCodeLabel = computed(() => adminLabels.value.shareCodeLabel || '分享码')
+const shareCodeHint = computed(() => adminLabels.value.shareCodeHint || '')
+const episodeListOn = computed(() => !!contentThicken.value.episodeList)
+const episodeAdminTitle = computed(() => adminLabels.value.episodeAdminTitle || '分集维护')
+const episodeAddLabel = computed(() => adminLabels.value.episodeAddLabel || '新增分集')
+const episodeUpdateNotifyHint = computed(() => adminLabels.value.episodeUpdateNotifyHint || '')
+const episodeRows = ref([])
+async function loadEpisodes() {
+  if (!episodeListOn.value || !form.id) {
+    episodeRows.value = []
+    return
+  }
+  try {
+    const res = await http.get(`/api/media-episodes/by-item/${form.id}`)
+    episodeRows.value = res.data || res || []
+  } catch {
+    episodeRows.value = []
+  }
+}
+async function openEpisodeEdit(row) {
+  const title = row?.title || ''
+  const { value } = await ElMessageBox.prompt('分集标题', row ? '编辑分集' : episodeAddLabel.value, {
+    inputValue: title,
+    confirmButtonText: '保存',
+    cancelButtonText: '取消',
+  })
+  const t = (value || '').trim()
+  if (!t) return
+  let sortOrd = Number(row?.sortOrd) || episodeRows.value.length
+  if (!row) {
+    try {
+      const { value: s } = await ElMessageBox.prompt('排序号', '分集排序', {
+        inputValue: String(sortOrd),
+        inputPattern: /^\d+$/,
+        confirmButtonText: '下一步',
+      })
+      sortOrd = Number(s) || 0
+    } catch { /* cancel sort → keep default */ }
+  }
+  await http.post('/api/media-episodes/admin', {
+    id: row?.id || null,
+    itemId: form.id,
+    title: t,
+    sortOrd,
+    mediaUrl: row?.mediaUrl || '',
+    notify: !row,
+  })
+  if (!row && episodeUpdateNotifyHint.value) {
+    /* 新建默认通知；文案仅提示用 */
+  }
+  ElMessage.success('已保存分集')
+  loadEpisodes()
+}
+async function removeEpisode(row) {
+  await ElMessageBox.confirm(`删除分集「${row.title}」？`, '确认')
+  await http.delete(`/api/media-episodes/admin/${row.id}`)
+  ElMessage.success('已删除')
+  loadEpisodes()
+}
+const hotMode = ref(false)
 const seatAttrsOn = computed(() => !!thicken.value.seatAttrs)
 const seatAttrEditLabel = computed(() => adminLabels.value.seatAttrEditLabel || '座位属性')
 const seatAttrCoupleLabel = computed(() => adminLabels.value.seatAttrCoupleLabel || '情侣座')
@@ -653,13 +781,24 @@ const form = reactive({
   tagIds: [],
 })
 
+function toggleHotMode() {
+  hotMode.value = !hotMode.value
+  page.value = 1
+  load()
+}
+
 async function load() {
-  const res = await http.get('/api/archive', {
+  const url = hotMode.value && hotRankOn.value ? '/api/archive/hot' : '/api/archive'
+  const res = await http.get(url, {
     params: {
       page: page.value,
       size: size.value,
-      keyword: keyword.value || undefined,
-      includeDeleted: softDelete.value && includeDeleted.value ? true : undefined,
+      keyword: hotMode.value ? undefined : (keyword.value || undefined),
+      includeDeleted:
+        !hotMode.value && softDelete.value && includeDeleted.value ? true : undefined,
+      sortBy: hotMode.value && downloadCountOn.value
+        ? 'downloadCount'
+        : (hotMode.value && contentThicken.value.hotByPlay ? 'playCount' : undefined),
     },
   })
   list.value = res.data.list
@@ -753,6 +892,8 @@ function openEdit(row) {
     })
   }
   visible.value = true
+  episodeRows.value = []
+  if (form.id && episodeListOn.value) loadEpisodes()
 }
 
 async function save() {
@@ -800,7 +941,10 @@ async function save() {
     const wantOn = !!form.onShelf
     const wasOff = !!form._wasDeleted
     if (wantOn && wasOff) await http.post(`/api/archive/${id}/restore`)
-    else if (!wantOn && !wasOff) await http.delete(`/api/archive/${id}`)
+    else if (!wantOn && !wasOff) {
+      const reason = offShelfReasonOn.value ? String(form.offShelfReason || '').trim() : ''
+      await http.delete(`/api/archive/${id}`, { data: { offShelfReason: reason } })
+    }
   }
   ElMessage.success('已保存')
   visible.value = false
@@ -827,8 +971,22 @@ async function stopNotify(row) {
 
 async function remove(row) {
   const verb = softDelete.value ? softCopy.value.verb : '删除'
-  await ElMessageBox.confirm(`确认${verb}「${row.title}」？`, '确认')
-  await http.delete(`/api/archive/${row.id}`)
+  let reason = ''
+  if (softDelete.value && offShelfReasonOn.value) {
+    try {
+      const { value } = await ElMessageBox.prompt(offShelfReasonHint.value || '请填写下架原因（可留空）', `${verb}「${row.title}」`, {
+        inputValue: row.offShelfReason || '',
+        confirmButtonText: verb,
+        cancelButtonText: '取消',
+      })
+      reason = (value || '').trim()
+    } catch {
+      return
+    }
+  } else {
+    await ElMessageBox.confirm(`确认${verb}「${row.title}」？`, '确认')
+  }
+  await http.delete(`/api/archive/${row.id}`, { data: { offShelfReason: reason } })
   ElMessage.success(softDelete.value ? `已${softCopy.value.verb}` : '已删除')
   load()
 }
@@ -842,7 +1000,11 @@ async function restore(row) {
 async function approve(row) {
   await ElMessageBox.confirm(`审核通过并上架「${row.title}」？`, publishReview.value ? '投稿审核' : '商品审核')
   await http.post(`/api/archive/${row.id}/approve`)
-  ElMessage.success('已审核上架')
+  ElMessage.success(
+    publishReview.value
+      ? `${publishApproveNotifyTitle.value}，已上架`
+      : '已审核上架',
+  )
   load()
 }
 

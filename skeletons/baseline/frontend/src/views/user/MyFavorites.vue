@@ -9,6 +9,18 @@
         <el-button v-if="list.length" plain @click="copyList">复制清单</el-button>
       </div>
       <p v-if="shareHint" class="share-hint">{{ shareHint }}</p>
+      <p v-if="favoriteGroupOn && playlistVisibilityHint" class="share-hint">{{ playlistVisibilityHint }}</p>
+      <div v-if="favoriteGroupOn" class="group-filter">
+        <span class="group-lab">{{ favoriteGroupLabel }}</span>
+        <el-input
+          v-model="groupFilter"
+          clearable
+          :placeholder="favoriteGroupPlaceholder"
+          style="max-width:220px"
+          @keyup.enter="load"
+        />
+        <el-button @click="load">按分组查看</el-button>
+      </div>
     </section>
 
     <div class="grid">
@@ -21,6 +33,21 @@
           <h3>{{ row.title || '已下架' }}</h3>
           <p v-if="shopLabel(row)" class="muted shop">店铺：{{ shopLabel(row) }}</p>
           <p class="muted">收藏于 {{ row.createdAt || '—' }}</p>
+          <div v-if="favoriteGroupOn" class="group-edit">
+            <el-input
+              v-model="row._groupName"
+              size="small"
+              :placeholder="favoriteGroupPlaceholder"
+              style="max-width:140px"
+            />
+            <el-switch
+              v-model="row._isPublic"
+              size="small"
+              :active-text="playlistPublicLabel"
+              :inactive-text="playlistPrivateLabel"
+            />
+            <el-button size="small" :loading="row._saving" @click="saveMeta(row)">保存分组</el-button>
+          </div>
           <div class="row">
             <el-button
               v-if="canAddCart"
@@ -70,6 +97,7 @@ import { getSchema, menuLabel, schemaLabels } from '../../utils/domainSchema.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
 const labels = computed(() => schemaLabels())
+const thicken = computed(() => getSchema()?.contentThicken || {})
 const pageTitle = computed(() => labels.value.favoritesPageTitle || '我的收藏')
 const pageLead = computed(
   () => labels.value.favoritesPageLead || '收藏感兴趣的内容，便于再次查看。',
@@ -77,6 +105,16 @@ const pageLead = computed(
 const shareHint = computed(
   () => labels.value.favShareHint || labels.value.listingCompareHint || '',
 )
+const favoriteGroupOn = computed(
+  () => !!thicken.value.favoriteGroup || !!thicken.value.playlistVisibility,
+)
+const favoriteGroupLabel = computed(() => labels.value.favoriteGroupLabel || '分组')
+const favoriteGroupPlaceholder = computed(
+  () => labels.value.favoriteGroupPlaceholder || '如：通勤、考试周',
+)
+const playlistPublicLabel = computed(() => labels.value.playlistPublicLabel || '公开歌单')
+const playlistPrivateLabel = computed(() => labels.value.playlistPrivateLabel || '仅自己可见')
+const playlistVisibilityHint = computed(() => labels.value.playlistVisibilityHint || '')
 const cartLabel = computed(() => menuLabel('user', 'cart', '购物车'))
 const canAddCart = computed(() => (getSchema().capabilities || []).includes('order_lines'))
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
@@ -90,13 +128,39 @@ const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const size = ref(10)
+const groupFilter = ref('')
 
 async function load() {
   const res = await http.get('/api/favorites', {
-    params: { page: page.value, size: size.value },
+    params: {
+      page: page.value,
+      size: size.value,
+      groupName: favoriteGroupOn.value ? (groupFilter.value || undefined) : undefined,
+    },
   })
-  list.value = res.data?.list || []
+  list.value = (res.data?.list || []).map((row) => ({
+    ...row,
+    _groupName: row.groupName || '',
+    _isPublic: !!row.isPublic,
+    _saving: false,
+  }))
   total.value = res.data?.total || 0
+}
+
+async function saveMeta(row) {
+  if (!row?.id && !row?.itemId) return
+  row._saving = true
+  try {
+    await http.patch(`/api/favorites/${row.id || row.itemId}`, {
+      groupName: row._groupName || '',
+      isPublic: !!row._isPublic,
+    })
+    ElMessage.success('分组已保存')
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '保存失败')
+  } finally {
+    row._saving = false
+  }
 }
 
 function listLines() {
@@ -154,6 +218,9 @@ onMounted(load)
 .hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .share-hint { margin: 0; color: var(--portal-muted, #64748b); font-size: 12px; }
+.group-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+.group-lab { font-size: 13px; color: var(--portal-muted, #64748b); }
+.group-edit { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
 }

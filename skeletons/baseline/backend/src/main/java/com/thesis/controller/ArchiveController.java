@@ -28,6 +28,10 @@ public class ArchiveController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String categoryIds,
             @RequestParam(required = false) String tagIds,
+            @RequestParam(required = false) String artist,
+            @RequestParam(required = false) String album,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
             @RequestParam(required = false, defaultValue = "false") boolean includeDeleted,
             HttpSession session) {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
@@ -38,12 +42,60 @@ public class ArchiveController {
         if (admin && ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
             String uid = AdminAuth.requireLogin(session);
             data = ArchiveStore.pageItemsForMerchant(uid, keyword, categoryId, p, s);
+        } else if (!admin && year != null && year > 0) {
+            data = ArchiveStore.pageByYearMonth(year, month, keyword, categoryId, p, s);
         } else {
             data = ArchiveStore.pageItems(
-                    keyword, categoryId, parseTagIds(categoryIds), parseTagIds(tagIds), showDeleted, p, s, !admin);
+                    keyword,
+                    categoryId,
+                    parseTagIds(categoryIds),
+                    parseTagIds(tagIds),
+                    showDeleted,
+                    p,
+                    s,
+                    !admin,
+                    null,
+                    artist,
+                    album);
         }
         if (!admin) ArchiveStore.redactSensitiveListForPublic(data);
         return R.ok(data);
+    }
+
+    /** 作者主页（C-04） */
+    @GetMapping("/by-author")
+    public R<Map<String, Object>> byAuthor(
+            @RequestParam String username,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpSession session) {
+        int p = GuestTeaser.clampPage(session, page);
+        int s = GuestTeaser.clampSize(session, size);
+        Map<String, Object> data = ArchiveStore.pageByAuthor(username, p, s);
+        ArchiveStore.redactSensitiveListForPublic(data);
+        return R.ok(data);
+    }
+
+    /** 系列文上一篇/下一篇（C-04） */
+    @GetMapping("/{id:\\d+}/series-neighbors")
+    public R<Map<String, Object>> seriesNeighbors(@PathVariable long id) {
+        return R.ok(ArchiveStore.seriesNeighbors(id));
+    }
+
+    /** 口令解锁正文（C-04）；会话内记住 */
+    @PostMapping("/{id:\\d+}/unlock")
+    public R<Map<String, Object>> unlock(
+            @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
+        String pw = body == null || body.get("password") == null ? "" : String.valueOf(body.get("password"));
+        if (!ArchiveStore.checkAccessPassword(id, pw)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "口令不正确");
+        }
+        session.setAttribute("archiveUnlock:" + id, Boolean.TRUE);
+        Map<String, Object> item = ArchiveStore.getItem(id);
+        if (item == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+        ArchiveStore.redactSensitiveForPublic(item);
+        ArchiveStore.restoreContentIfUnlocked(item, true);
+        return R.ok(item);
     }
 
     @GetMapping("/suggest")
@@ -53,20 +105,36 @@ public class ArchiveController {
         return R.ok(ArchiveStore.suggestTitles(q, limit));
     }
 
-    /** 我的主帖：登录用户按 author=username 列表（含已下架） */
+    /** 内容组热门排行：按阅读数 / 下载数排序（≠协同过滤）。 */
+    @GetMapping("/hot")
+    public R<Map<String, Object>> hot(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String sortBy,
+            HttpSession session) {
+        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
+        int p = GuestTeaser.clampPage(session, page);
+        int s = GuestTeaser.clampSize(session, size);
+        Map<String, Object> data = ArchiveStore.pageHot(sortBy, p, s);
+        if (!admin) ArchiveStore.redactSensitiveListForPublic(data);
+        return R.ok(data);
+    }
+
+    /** 我的主帖：登录用户按 owner/author 列表（含已下架）；status=draft 筛草稿箱 */
     @GetMapping("/mine")
     public R<Map<String, Object>> mine(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status,
             HttpSession session) {
         String uid = AdminAuth.requireLogin(session);
         if (!ArchiveStore.userPublishEnabled()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前领域未开放用户发帖");
         }
-        return R.ok(ArchiveStore.pageMine(uid, page, size));
+        return R.ok(ArchiveStore.pageMine(uid, page, size, status));
     }
 
-    /** 用户发布档案：即时可见，无需审核 */
+    /** 用户发布档案：即时可见，或开题点名先审后发 */
     @PostMapping("/publish")
     public R<Map<String, Object>> publish(@RequestBody Map<String, Object> body, HttpSession session) {
         String uid = AdminAuth.requireLogin(session);
@@ -99,17 +167,59 @@ public class ArchiveController {
                 throw new BizException(ErrorCode.BAD_REQUEST, "数量无效");
             }
         }
+        boolean asDraft = "1".equals(str(body.get("draft")))
+                || "true".equalsIgnoreCase(str(body.get("draft")))
+                || "draft".equalsIgnoreCase(str(body.get("status")));
+        long draftId = 0L;
+        if (asDraft && body.get("id") != null && !String.valueOf(body.get("id")).isBlank()) {
+            try {
+                draftId = Long.parseLong(String.valueOf(body.get("id")).trim());
+            } catch (Exception ignored) {
+                draftId = 0L;
+            }
+        }
         try {
-            Map<String, Object> item = ArchiveStore.addUserPost(
-                    uid, title, content, categoryId, author.isBlank() ? null : author, stock);
-            if (item == null) throw new BizException(ErrorCode.BAD_REQUEST, "发布失败");
+            Map<String, Object> item;
+            if (asDraft && draftId > 0) {
+                item = ArchiveStore.updateUserDraft(draftId, uid, title, content, categoryId);
+            } else if (asDraft) {
+                item = ArchiveStore.saveUserDraft(uid, title, content, categoryId);
+            } else {
+                item = ArchiveStore.addUserPost(
+                        uid, title, content, categoryId, author.isBlank() ? null : author, stock);
+            }
+            if (item == null) throw new BizException(ErrorCode.BAD_REQUEST, asDraft ? "存草稿失败" : "发布失败");
+            long id = ((Number) item.get("id")).longValue();
+            Map<String, Object> patch = new LinkedHashMap<>();
             String startAt = str(body.get("startAt"));
-            if (!startAt.isBlank() && ArchiveStore.hasStartAt()) {
-                long id = ((Number) item.get("id")).longValue();
-                Map<String, Object> patch = new LinkedHashMap<>();
+            if (!asDraft && !startAt.isBlank() && ArchiveStore.hasStartAt()) {
                 patch.put("startAt", startAt);
+            }
+            String originKind = str(body.get("originKind"));
+            if (!originKind.isBlank()) patch.put("originKind", originKind);
+            String accessPassword = str(body.get("accessPassword"));
+            if (!accessPassword.isBlank()) patch.put("accessPassword", accessPassword);
+            if (!patch.isEmpty()) {
                 item = ArchiveStore.updateItem(id, patch);
             }
+            if (!asDraft && item != null) {
+                ArchiveStore.notifyCategoryFollowersIfPublic(id);
+            }
+            return R.ok(item);
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** 草稿发布：进入待审或直接上架 */
+    @PostMapping("/{id:\\d+}/publish-draft")
+    public R<Map<String, Object>> publishDraft(@PathVariable long id, HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        try {
+            Map<String, Object> item = ArchiveStore.publishDraft(id, uid);
+            if (item == null) throw new BizException(ErrorCode.BAD_REQUEST, "发布失败");
             return R.ok(item);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
@@ -122,14 +232,18 @@ public class ArchiveController {
     public R<Map<String, Object>> detail(@PathVariable long id, HttpSession session) {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
         Map<String, Object> item = admin ? ArchiveStore.getItemAdmin(id) : ArchiveStore.getItem(id);
-        // 本人待审/驳回：公开目录不可见，但「我的」详情仍可看
-        if (item == null && !admin && ArchiveStore.publishReviewEnabled()) {
+        // 本人草稿/待审/驳回：公开目录不可见，但「我的」详情仍可看
+        if (item == null && !admin) {
             Object uidAttr = session.getAttribute("uid");
             String uid = uidAttr == null ? "" : uidAttr.toString().trim();
             Map<String, Object> raw = ArchiveStore.getItemAdmin(id);
             if (raw != null && !uid.isBlank()
                     && (uid.equals(str(raw.get("ownerUsername"))) || uid.equals(str(raw.get("author"))))) {
-                item = raw;
+                String st = str(raw.get("status"));
+                if ("draft".equals(st) || "pending_review".equals(st) || "rejected".equals(st)
+                        || ArchiveStore.publishReviewEnabled()) {
+                    item = raw;
+                }
             }
         }
         if (item == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
@@ -142,6 +256,8 @@ public class ArchiveController {
         if (!admin) {
             ArchiveStore.bumpViewCount(id);
             ArchiveStore.redactSensitiveForPublic(item);
+            boolean unlocked = Boolean.TRUE.equals(session.getAttribute("archiveUnlock:" + id));
+            if (unlocked) ArchiveStore.restoreContentIfUnlocked(item, true);
             // 回读最新浏览计数（失败不影响详情）
             try {
                 Map<String, Object> refreshed = ArchiveStore.getItem(id);
@@ -212,17 +328,35 @@ public class ArchiveController {
         Map<String, Object> updated = ArchiveStore.updateItem(id, payload);
         if (updated == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
         String op = AdminAuth.requireLogin(session);
-        AuditLogStore.record(op, "archive_update", "archive", String.valueOf(id), "更新档案");
+        if (payload.containsKey("pinTop") || payload.containsKey("essence")) {
+            AuditLogStore.record(op, "archive_pin_essence", "archive", String.valueOf(id), "置顶/精华标记变更");
+        } else {
+            AuditLogStore.record(op, "archive_update", "archive", String.valueOf(id), "更新档案");
+        }
         return R.ok(updated);
     }
 
     @DeleteMapping("/{id:\\d+}")
-    public R<Void> delete(@PathVariable long id, HttpSession session) {
+    public R<Void> delete(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
-        if (!ArchiveStore.deleteItem(id)) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+        String reason = body == null || body.get("offShelfReason") == null
+                ? "" : String.valueOf(body.get("offShelfReason"));
+        if (!ArchiveStore.deleteItem(id, reason)) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
         String op = AdminAuth.requireLogin(session);
         AuditLogStore.record(op, "archive_delete", "archive", String.valueOf(id), "删除档案");
         return R.ok(null);
+    }
+
+    /** 片单分享码只读打开（C-05） */
+    @GetMapping("/by-share-code")
+    public R<Map<String, Object>> byShareCode(@RequestParam String code) {
+        Map<String, Object> item = ArchiveStore.getByShareCode(code);
+        if (item == null) throw new BizException(ErrorCode.NOT_FOUND, "分享码无效");
+        ArchiveStore.redactSensitiveForPublic(item);
+        return R.ok(item);
     }
 
     @PostMapping("/{id:\\d+}/restore")

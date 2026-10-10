@@ -56,10 +56,11 @@ public class ParkingPassController {
             }
             long id = ParkingPassStore.grant(user, pack, count);
             return R.ok(Map.of("id", id));
+        } catch (NumberFormatException e) {
+            // 须写在 IllegalArgumentException 前：NFE 是其子类，后捕会被判「已捕获」
+            throw new BizException(ErrorCode.BAD_REQUEST, "次数格式不正确");
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
-        } catch (NumberFormatException e) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "次数格式不正确");
         }
     }
 }

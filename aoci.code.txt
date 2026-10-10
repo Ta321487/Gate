@@ -2,18 +2,20 @@
 
 ===D:/graduate_factory_v3/===
 .gitattributes[FC5T]: F:强制文本检出为 LF，避免 Windows autocrlf 把整树标成与 AOCI baseline 不一致 | R:- | A:- | S:AOCI baseline 按原始字节比对，换行被改写会整树变 stale
-.gitignore[FC4T]: F:排除虚拟环境、依赖、数据库、上传缓存、本地临时、MCP 绑定与验收截图，不让它们进入 Git | R:- | A:- | S:data 子目录忽略内容但保留 .gitkeep；.mcp.json、playwright-mcp、sqlite 旁路与 review*.png 忽略
+.gitignore[FC4T]: F:排除虚拟环境、缓存、数据库、上传工作区、本地临时、MCP 绑定、浏览器验收缓存与截图，避免脏进 Git | R:- | A:- | S:.dsh-verify 本地验收缓存不进仓；data 靠 .gitkeep；.mcp.json 与 review*.png 同列
 AGENTS.md[SG8T]: F: 声明 Agent 在本仓库的 AOCI 认知合同：成本红线、最小入口、认知纪律、收尾维护纪律、边界、配置通道与成本参数 | R: code:HANDOFF.md | A: - | S: 整仓 overview 一次即数十万 token，仅用户明确要求完整认知时可用，须跟随 next_cursor 到 completed 并回绑 Challenge 三哈希；Entry 语义只能来自真实证据，禁按路径/扩展名等推导；纯只读任务不调 maintain；cognition_budget 不在 config set 白名单，须走 scope budget set + Scope Change Apply，手改 .aoci/config.json 无效
-HANDOFF.md[SG8M]: F:交接毕设港主线、接题硬边界、环境事实与专题索引；含 §1.6/§1.7 交易与预约加厚已收口入口 | R:code:README.md,code:docs/domains.md,code:docs/capabilities.md,code:docs/opening-feature-delivery-map.md,code:docs/trade-thicken-batch.md,code:docs/reserve-thicken-batch.md,code:.cursor/rules/param-placement.mdc | A:- | S:严禁参考或迁移 v1/v2；临时产物不得落仓库；收尾后再改受管文件须重走 acknowledge→maintain→update_entry
-README.md[SG8S]: F:说明如何把开题加工成可答辩 Web 系统，以及运营端怎么启动 | R:code:scripts/README.md,code:docs/tech-stack-delivery.md | A:GET /api/health | S:默认 jdbc；mybatis、jpa、Security 仅开题写了且能 bake 才进包。答辩 PPT 是独立 Job，不进 ZIP
+HANDOFF.md[SG8M]: F:交接毕设港主线、接题硬边界与专题索引；含 §1.1～§1.7 已收口与 §1.8 内容加厚进行中入口 | R:code:README.md,code:docs/opening-feature-delivery-map.md,code:docs/content-thicken-batch.md,code:docs/group-thicken-archives-1-1-to-1-5.md,code:docs/domain-group-ui-styles.md | A:- | S:严禁参考或迁移 v1/v2；临时产物不得落仓库；收尾后再改受管文件须重走 acknowledge→maintain→update_entry
+README.md[SG8S]: F:说明如何把开题加工成可答辩 Web 系统，以及运营端怎么启动 | R:code:scripts/README.md,code:docs/tech-stack-delivery.md,code:HANDOFF.md,code:ARCHITECTURE.md | A:GET /api/health | S:默认 jdbc；mybatis、jpa、Security 仅开题写了且能 bake 才进包。答辩 PPT 是独立 Job，不进 ZIP
 docker-compose.yml[EC5T]: F:运行配置 docker-compose | R:- | A:- | S:-
+ARCHITECTURE.md[SG7M]: F:用分层图说明工厂运营端与 bake 流水线边界，以及工厂库与学生库分离 | R:code:README.md,code:HANDOFF.md,code:architecture.html,code:docs/README.md | A:- | S:只讲工厂自身架构；学生包论文图由 bake/schema 另出；LLM 不写业务 Java/Vue
+architecture.html[SG6S]: F:浏览器可读的工厂架构图页，对照 ARCHITECTURE.md 分层与主链路 | R:code:ARCHITECTURE.md,code:README.md | A:- | S:静态展示页，不进学生 ZIP；与论文用 ER/类图不是同一套图
 
 ===D:/graduate_factory_v3/.cursor/rules/===
 00-factory-core.mdc[SG8T]: F:规定材料匹配到域与能力岛后 bake 出可答辩 ZIP，且实包、README 与论文实现一致 | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:禁止改开题迁就模板，禁止缺表或缺状态机仍宣称已交
 ai-assistant-delivery.mdc[SA7T]: F:把 AI 限定为按需能力岛：业务壳问答可开，RAG 或视觉主产品不支持 | R:- | A:- | S:工厂 Key 与 app/llm 不得进学生 ZIP
 column-contract.mdc[SD7T]: F:要求能力岛打开后 SQL 有列、三套 Store 对齐，缺列先补 ensure，禁止假成功返回 | R:- | A:- | S:-
 cross-domain-fix.mdc[SG7T]: F:规定开题翻车先修共享 bake 与门禁，禁止只改当前学生包 | R:- | A:- | S:-
-delivery-audit.mdc[SQ7T]: F:规定交付审计必须出总表、红灯、旧题回归和老板小卡，审计轮默认只出报告 | R:- | A:- | S:-
+delivery-audit.mdc[SQ7T]: F:规定交付审计必须出总表、红灯、旧题回归和老板小卡，审计轮默认只出报告 | R:code:docs/delivery-audit-rules.md | A:- | S:审计轮默认不改代码；细则以 delivery-audit-rules 为准
 opening-scene.mdc[SG7T]: F:规定壳文案、资料字段和岗位名只扫题名与开题正文，场景轴不替代领域匹配 | R:code:backend/app/bake/scene_scan.py | A:- | S:-
 tech-stack-delivery.mdc[SV7T]: F:规定出包默认 Boot、Vue3、Element、MySQL 与 jdbc，开题写了 mybatis、jpa 或 Security 才跟 | R:- | A:- | S:-
 capability-home.mdc[SG8T]: F:规定工厂进程重构只搬 backend 与 frontend，能力正文归 features 家 | R:- | A:- | S:不动 skeletons；半截搬家不算完成；未钉行为禁止动手搬
@@ -22,7 +24,7 @@ form-controls.mdc[SU7T]: F:规定学生包表单控件按字段语义选型，�
 student-copy.mdc[SU7T]: F:规定学生可见文案按店员买家口吻书写并禁工厂腔 | R:- | A:- | S:空态不指挥买家去后台；缺列硬失败不写进界面
 aoci-post-delivery.mdc[SG6T]: F:业务收尾流水线：有新文件先 scope acknowledge 再 maintain；MCP 不可用则停手提醒重启 | R:code:AGENTS.md | A:- | S:MCP 超时/断开勿连打、勿改用 CLI 硬填；禁止未 acknowledge 就因 code_missing 停住
 param-placement.mdc[SG8T]: F:规定业务参数落点三分法——单据参数与单据开关进 bake 生成的 config/TicketPolicy.java，非单据业务参数与能力开关进 AppPolicy.java，身份/门户/门禁/共享尺留 application.yml | R:code:backend/app/bake/ticket_policy.py,code:backend/app/bake/runtime_policy.py,code:backend/app/bake/engine_bake.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java,code:docs/capabilities.md | A:- | S:write_policy 须在 java 包名 remap 之前且 engine_bake 与 engine_islands 两条路径都接；三份骨架策略类与 bake 产物须逐字一致；放宽 use-quota 发射守卫即重复发键；子开关暂留 yml，要下沉须一并扩 FLAG_KEYS 与三份 binder 常量
-opening-group-delivery.mdc[SC5T]: F:规定开题密功能地图一轮清一组 thicken：四件套+三骨架同绑、门禁三绿才迁已齐；已有七组须进 HUB_BYPASS | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/proposal_caps.py,code:docs/capabilities.md | A:- | S:漏在 domain_schema 注册 apply_*_thicken_to_spec=死代码未交付；纯 Hint/前端零读取不得标已齐；新 thicken 须同步 HUB_BYPASS 与 capabilities 例外表
+opening-group-delivery.mdc[SC5T]: F:规定开题密功能地图一轮清一组 thicken：四件套+三骨架同绑、三绿才迁已齐；动 Java 骨架再加 slow 真编/bake 探针 | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/domain_schema.py,code:backend/tests/test_skeleton_mvn_compile.py,code:backend/tests/test_bake_mvn_compile_probe.py | A:- | S:漏在 domain_schema 注册 apply_*_thicken=死代码；工厂出包 build_verify 已自动编无需开关；slow 默认跳过须 -m slow
 ticket-store-ops.mdc[SC5T]: F:约束学生包 TicketStore 薄门面与 package-private Ticket*Ops 拆分及三栈对齐 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketApproveOps.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketCfgOps.java | A:- | S:禁止把 apply/approve/page/patch/complete/dashboard 脂肪正文塞回 Store；jpa 与 baseline 同体则不写 overlay Ops
 
 ===D:/graduate_factory_v3/.github/workflows/===
@@ -65,14 +67,14 @@ cross_paths.py[DB8M]: F:白名单判定借用、下单、预约交叉是否能�
 deep_skin_s.py[DB6S]: F:把深皮题型说法验收表映射到挂靠域 | R:- | A:- | S:-
 domain_entities.py[DD7S]: F:统一主实体名词，供菜单、数据表和论文小节同源引用 | R:code:backend/app/bake/domains.py | A:- | S:-
 domain_registry.py[DB8S]: F:按 domain 注册匹配、schema builder 与 SQL 模板映射 | R:code:backend/app/bake/domains.py | A:- | S:-
-domain_schema.py[DB8L]: F:装配、合并并校验 Domain Schema；attach_accept 串联 core caps、ticket flow 与借用/跟进/报修/报名/审批/交易/预约组加厚 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/features/borrow_thicken.py,code:backend/app/bake/features/follow_thicken.py,code:backend/app/bake/features/apply_thicken.py,code:backend/app/bake/features/approve_thicken.py,code:backend/app/bake/features/trade_thicken.py,code:backend/app/bake/features/reserve_thicken.py | A:- | S:attach_accept 须紧接 approve 后调用 apply_trade_thicken_to_spec 再 apply_reserve_thicken_to_spec，漏注册=死代码；加厚前勿改写 ticket；FACTORY_UI_FORBIDDEN 拦学生可见工厂腔
+domain_schema.py[DB8L]: F:装配、合并并校验 Domain Schema；attach_accept 串联 core caps、ticket flow 与借用/跟进/报修/报名/审批/交易/预约/内容组加厚 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/features/approve_thicken.py,code:backend/app/bake/features/trade_thicken.py,code:backend/app/bake/features/reserve_thicken.py,code:backend/app/bake/features/content_thicken.py | A:- | S:attach_accept 须紧接 reserve 后调用 apply_content_thicken_to_spec，漏注册=死代码；加厚前勿改写 ticket；FACTORY_UI_FORBIDDEN 拦学生可见工厂腔
 domain_skin.py[DU7S]: F:把学生端可见文案与皮肤按 DOM 域回写到出包 | R:code:backend/app/bake/domains.py | A:- | S:禁止邻域文案泄漏
 domains.py[DB9M]: F:汇总原型词、域能力与目录，并分开控制台级联分组（borrow/follow/ticket…）与出包借用族名单 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py,code:backend/app/bake/capabilities.py,code:backend/app/bake/features/proposal_caps.py | A:- | S:级联 DOMAIN_GROUPS 只决定怎么找域，表数下限走 BORROW_FAMILY_DOMAINS；LIBRARY 默认挂 book_lost，PARCEL 默认挂 parcel_shelf；DORM/PROPERTY/IT/PARCEL 域默认挂 deadline；跟进组 8 域在级联 follow 分组
 engine.py[DB8T]: F:再导出 bake_project 与 SQL 岛填充入口供调用方统一引用 | R:code:backend/app/bake/engine_bake.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/engine_islands.py | A:- | S:-
 engine_bake.py[DB9L]: F:把工厂骨架补丁写进 bake 装配/运行策略，经 ticket_policy 与 runtime_policy 渲染；超时关单、确认收货超时、售后时限、退票截止与占座分钟写入 thesis yml；出包前 assert_schema_nf 拦 JSON 业务列 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/domain_schema.py,code:backend/app/bake/ticket_policy.py,code:backend/app/bake/runtime_policy.py,code:backend/app/bake/gates/schema_nf.py,code:backend/app/services/project_disk.py | A:- | S:write_policy 必须在 java 包名 remap 之前；bake 中途写 .factory/bake_in_progress；schema_nf 失败即中止出包；ticket-refund-cutoff-minutes 与 seat-hold-timeout-minutes 仅 schema 正数才写入
 engine_islands.py[DB7T]: F:把合并 schema 写入工作区并驱动 LLM 填业务岛，同步 thesis yml 时同批重生成 TicketPolicy/AppPolicy | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_bake.py,code:backend/app/bake/ticket_policy.py,code:backend/app/bake/runtime_policy.py | A:- | S:sync_workspace_thesis_yml 是策略类第二条写盘路径，漏接则只改 schema 后 Java 侧仍是旧口径
 engine_resources.py[DB7M]: F:向学生包写入资料字段、单据列、档案列与交付清单等资源文件 | R:code:backend/app/bake/engine_sql.py | A:- | S:写资源前先建父目录，缺目录时不得静默丢资源
-engine_sql.py[DB8L]: F:装载域 SQL 模板并按能力开关叠共享列与 ensure；交易组 food/cinema/catalog 加厚后接 ensure_reserve_thicken_sql | R:code:backend/app/bake/sql/fragments.py,code:backend/app/bake/features/trade_thicken.py,code:backend/app/bake/features/reserve_thicken.py,code:backend/app/bake/domains.py | A:- | S:ensure_catalog_thicken_sql 仅 DOM-SHOP/FOOD 且须在 guestbook/order_review DDL 之后；ensure_reserve_thicken_sql 仅 RESERVE_DOMAINS，漏调则预约加厚列不进包
+engine_sql.py[DB8L]: F:装载域 SQL 模板并按能力开关叠共享列与 ensure；预约 ensure 后接 ensure_content_thicken_sql | R:code:backend/app/bake/sql/fragments.py,code:backend/app/bake/features/trade_thicken.py,code:backend/app/bake/features/reserve_thicken.py,code:backend/app/bake/features/content_thicken.py,code:backend/app/bake/domains.py | A:- | S:ensure_catalog_thicken_sql 仅 DOM-SHOP/FOOD 且须在 guestbook/order_review DDL 之后；ensure_reserve_thicken_sql 仅 RESERVE_DOMAINS；ensure_content_thicken_sql 仅 CONTENT_DOMAINS，漏调则内容加厚列不进包
 gate_contracts.py[DQ8L]: F: 定义薄领域门禁文件清单与 gate 工厂供域目录引用 | R: code:backend/app/bake/domains.py,code:backend/app/bake/features/stock_scrap.py,code:backend/app/bake/features/stock_io.py,code:backend/app/bake/features/favorites.py,code:backend/app/bake/features/book_lost.py | A: - | S: 门禁文件清单与 merge_* gate 工厂集中在本文件，域目录只做引用；报废与出入库分别走 merge_stock_scrap_gate 与 merge_stock_io_gate；dual_surface_menu_keys 供双界面菜单对账
 guest_cta.py[DU6M]: F:按域文案池与题号稳定抽取门户游客 CTA | R:- | A:- | S:-
 identity_align.py[DQ7M]: F:断言门户种子与资料页身份字段对齐 | R:- | A:- | S:只断言不改扫词与 builder；企业档禁止校园专用键
@@ -106,7 +108,7 @@ ticket_columns.py[DB6S]: F:按域裁剪单据借阅壳列并映射档案外键�
 ticket_copy_text.py[DB5M]: F:提供单据提示文案，并把页面级话术槽位（分类轴 / 单据名词）解析成 schema["lex"] 供全域消费 | R:code:backend/app/bake/schema/followup_presets.py,code:backend/app/bake/domain_vocab.py | A:- | S:开题簇词优先、域默认兑底；分类轴保留域前缀；票据标签与域话术冲突时以话术为准；归一化时前缀已含解析值则不替换，避免叠词
 ticket_rules.py[DB6T]: F:按域提供单据业务参数取值（原 SQL 种子值上提：借期/上限/罚金/取件地等），供 ticket_policy 渲染 config/TicketPolicy.java | R:code:backend/app/bake/ticket_policy.py | A:- | S:学生交付物无 sys_config；本表是工厂写参唯一来源；2026-09 起不再写 yml thesis.ticket-*
 domain_vocab.py[DQ8S]: F:维护跨域专属名词表与可见面口径门禁：slot 分叉、跨域串词、域外字段缺 allow*、种子公告口径一致 | R:code:backend/app/bake/ticket_copy_text.py,code:backend/app/llm/agents_qa.py,code:backend/app/bake/features/code_qr.py,code:backend/tests/test_seed_notice_lexicon.py | A:- | S:分叉只在名词位置判（提交X/我的X/X单/X记录/办理X/X已开放/X通过后/还没有X 与 按X浏览/X管理），动词用法不算；豁免本域实体词、槽位值与项目题名；SEED_NOTICE_KNOWN_PENDING 为空才是干净态；种子公告正文在 sql/templates/DOM-*.sql 资产里，不在 .py
-runtime_policy.py[DB7L]: F:非单据业务参数与能力开关的唯一真源：FIELDS/FLAG_KEYS/COMMENTS 渲染 config/AppPolicy.java，collect 按域与 schema 命中取值，policy_preview 只回显本轮实写键供门禁对账 | R:code:backend/app/bake/engine_bake.py,code:backend/app/bake/engine_islands.py,code:backend/app/bake/ticket_policy.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/AppPolicy.java,code:backend/tests/test_ticket_rules_bake.py | A:- | S:KEEP_YML_KEYS（title/register-role/password-hash/portal-guest-browse/guest-teaser-limit/allow-appoint-from-users/use-quota）不得产常量；FLAG_KEYS 只收主开关、类型固定 boolean 默认 false
+runtime_policy.py[DB7L]: F:非空业务常量源：FIELDS/FLAG_KEYS 渲染 AppPolicy；含 C-08 CONTENT_* / POINTS_CHECK_IN_* 与 contentThicken 岛旗映射 | R:code:backend/app/bake/engine_bake.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/AppPolicy.java,code:backend/tests/test_runtime_policy_bake.py | A:- | S:FLAG 默认 false；有 thicken 旗才置真；POINTS_CHECK_IN_AMOUNT 跟 schema
 ticket_policy.py[DB8L]: F:单据参数与开关唯一真源与渲染器：FIELDS/FLAG表加COMMENTS渲染TicketPolicy.java；含审批至十七批开关 | R:code:backend/app/bake/ticket_rules.py,code:backend/app/bake/engine_bake.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/TicketPolicy.java,code:backend/app/bake/features/approve_thicken.py | A:- | S:骨架三份与bake产物须逐字一致；FLAG默认false；use-quota属SHARED_YML_KEYS不得产常量
 
 ===D:/graduate_factory_v3/backend/app/bake/domains_catalog/===
@@ -149,17 +151,17 @@ dm.py[DB6M]: F:扫描并合并一对一私信短轮询能力，解析客服 peer
 doclib.py[DB6S]: F:扫描并合并简易文库附件与下载台账能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
 e_sign.py[DB6S]: F:扫描并合并本地签章图与勾选同意能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:非 CA 电子签章
 exam.py[DB7M]: F:扫描并合并在线考试题库组卷作答与判分能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:opts 与 exam_skin 仅开题写到才开；不新开 DOM
-favorites.py[DB6M]: F:扫描并合并收藏、点赞与内容举报处置能力，并挂对应菜单；岗位/房源收藏开题扫词才挂 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/features/follow_thicken.py | A:- | S:post_like 与 content_report 禁同文件旁挂；点赞限 forum/blog/media/music、举报限 forum/dating/blog；RECRUIT/LISTING 等档案浏览域开题写收藏才挂，菜单走各自 attach_* 挂载函数
+favorites.py[DB6M]: F:扫描并合并收藏、点赞与内容举报处置能力及菜单；content_report DDL 含 handle_deadline_at | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/features/follow_thicken.py,code:backend/app/bake/sql/fragments.py | A:- | S:post_like 与 content_report 禁同文件旁挂；点赞限 forum/blog/media/music、举报限 forum/dating/blog；CREATE 须含 handle_deadline_at，仅靠 runtime ALTER 则 domain_sql 缺列
 guestbook.py[DB6S]: F:扫描并合并留言板与访客留言能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:与公示站留言/论坛帖分离入口；论坛域不挂；扫词后挂管理端/用户端菜单与后端服务
 item_comment.py[DB6S]: F:扫描并合并影音课目标的下评论与回复能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:限 MEDIA/MUSIC/BLOG；与 guestbook 留言板分表
 lostfound.py[DB6S]: F:为失物招领加厚认领凭证核验与路人线索 | R:- | A:- | S:仅 DOM-LOST 默认挂，不扫进邻域
-loyalty.py[DB7M]: F:扫描并合并余额积分满减会员与券码；积分三态与签到过期、会员档语义包 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/engine_bake.py | A:- | S:交易壳默认可 wallet；兑换/抵扣/登录涨分/过期均窄扫；仅写「积分」不开 pay/offset
+loyalty.py[DB7M]: F:扫描合并钱包积分会员券；无订单壳开题写到积分/储值仍可挂；签到涨分与过期窄扫 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/tests/test_wallet_default.py,code:backend/app/bake/features/content_thicken.py | A:- | S:无 order_lines 仍剥误带忠诚度；仅 scanned/force 的 wallet/points 可留；≠内容域默认硬挂
 message_template.py[DB6T]: F:扫描并合并站内消息模板能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:学生包写站内消息；不写真短信通道
 opening_align.py[DQ7S]: F:核对开题模块枚举与实包能力，禁止能交却静默薄包，缺口写入 schema.openingGaps 并把本可 full 的题改判 reject | R:code:backend/app/bake/scene_scan.py,code:backend/app/bake/capabilities.py | A:- | S:只判正文域（复用 proposal_body_scope）：研究现状里转述的模块不算开题点名；多店判定走 scan_shop_marketplace，勿退回裸子串扫全文，否则单店题会被误判缺多商家模块
 order_extras.py[DB6S]: F:扫描并合并配送时段、到店自取与限时价 flash_price 能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:flash_price 限时购/限时折扣/早鸟票/特价等；非交易壳不掺；不做真秒杀
 post_mute.py[DB6T]: F:扫描并合并论坛帖子禁言能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:禁言≠整号停用；论坛默认博客须扫词
 product_spec.py[DB6S]: F:扫描并合并商品规格与单行备注 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:浅色/尺码备注面，禁止冒充完整 SKU
-proposal_caps.py[DB8S]: F:能力开题扫描总入口，供 attach_accept 与 domain_sql 调用；HUB_BYPASS 旁路非 cap 厚模块 | R:code:backend/app/bake/features/core_cap_scan.py,code:backend/app/bake/domain_schema.py,code:docs/capabilities.md,code:backend/app/bake/features/trade_thicken.py,code:backend/app/bake/features/reserve_thicken.py,code:backend/tests/test_capability_island_audit.py | A:- | S:HUB_BYPASS 须含全部无 merge_* 的 features（含 borrow_structural/approve/trade/reserve_thicken）；扫词合并只增不减；例外表与 capabilities.md 同步
+proposal_caps.py[DB8S]: F:能力开题扫描总入口，供 attach_accept 与 domain_sql 调用；HUB_BYPASS 旁路非 cap 厚模块 | R:code:backend/app/bake/features/core_cap_scan.py,code:backend/app/bake/domain_schema.py,code:docs/capabilities.md,code:backend/app/bake/features/trade_thicken.py,code:backend/app/bake/features/reserve_thicken.py,code:backend/app/bake/features/content_thicken.py,code:backend/tests/test_capability_island_audit.py | A:- | S:HUB_BYPASS 须含全部无 merge_* 的 features（含 borrow_structural/approve/trade/reserve/content_thicken）；扫词合并只增不减；例外表与 capabilities.md 同步
 room_equipment.py[DB6S]: F:扫描并合并会议室设备清单能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:≠ 设备借用 DOM-EQUIP
 seat_select.py[DB6S]: F:扫描并合并影院场次选座购票菜单与 labels，用户导语只写选座出票 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/features/trade_thicken.py | A:- | S:seatShowsLead 禁止工厂腔「无真锁座」；文案给学生包可见面
 staff_roster.py[DB6S]: F:扫描并合并按员日期周排班展示能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:开题扫词才挂；词表含维修值班/运维排班/轮班表；不做智能排课与考勤硬件
@@ -203,6 +205,7 @@ approve_thicken.py[DB8L]: F:审批23域加厚至十七批：含报销/行程子�
 borrow_structural.py[DB7L]: F:借用族结构表 DDL 按域/能力幂等补 ER 缺表（续借日志、罚款、文库扩展等） | R:code:backend/app/bake/features/e_sign.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/sql/fragments.py | A:- | S:从 fragments 迁出的 ensure；按能力开关注入，禁止无关域堆结构表
 trade_thicken.py[DB8L]: F:§1.6 交易加厚 T-00～T-11：三域超时钉齐、售后物流、影院加厚、FOOD 点餐、发票规则文案、商品侧缺货到货/上下架/好评晒图追评/足迹/浅规格库存/问答/预售 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_sql.py,code:docs/trade-thicken-batch.md | A:- | S:只挂 SHOP/FOOD/CINEMA；browse_history 为 SHOP 域默认挂 cap；完整 SKU 矩阵不支持；HOTEL/CARRENT 不加厚
 reserve_thicken.py[DB8L]: F:§1.7 预约组加厚已收口：RESERVE_DOMAINS 通识与 R-02～R-10 域皮，ensure SQL 与菜单 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_sql.py,code:docs/reserve-thicken-batch.md,code:docs/opening-feature-delivery-map.md | A:- | S:只挂七预约域，不写 SHOP/FOOD/CINEMA；主战场 SlotStore，禁止第二套预约状态机；提醒复用 DemoScheduleJobs；黑名单≠风控；须登记 HUB_BYPASS
+content_thicken.py[DB8L]: F:内容组加厚 C-00～C-09：通识/五域皮 + 能力岛 + 扫尾（FORUM 叠作者主页、草稿自动保存旗与 labels DDL） | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/runtime_policy.py,code:backend/tests/test_content_thicken_features.py,code:docs/content-thicken-batch.md | A:- | S:未挂 points/wallet/content_report/item_comment/userPublish 禁域默认硬开岛；draftAutoSave 仅有草稿箱时开；积分靠开题扫词
 
 ===D:/graduate_factory_v3/backend/app/bake/gates/===
 __init__.py[DQ6T]: F:导出领域门禁评测入口 evaluate_domain_gates | R:code:backend/app/bake/gates/evaluate.py | A:- | S:-
@@ -350,10 +353,10 @@ demo_schedule_repair.py[DD6S]: F:修复演示库日程，对齐日历并下架�
 domain_scene_seed.py[DD6L]: F:按开题场景替换演示种子文案与公告正文，不改表结构 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:只改标题、地点、备注等文案，不得改列结构；种子公告正文的源头是 sql/templates/DOM-*.sql 资产，本文件的同名句子在另一条路径上，改口径时两处都要查
 domain_templates.py[DP7S]: F:按域加载 templates 目录下 DOM-*.sql 模板 | R:code:backend/app/bake/sql/templates/DOM-ACAD.sql | A:- | S:-
 event_scene_seed.py[DD6S]: F:为 DOM-EVENT 按场景替换演示种子文案 | R:- | A:- | S:只改文案不改表结构
-fragments.py[DB8L]: F:集中各能力岛与域的结构DDL片段及ensure调用入口；单据扩展列正文在ticket_optional_columns；含订单售后列与交易加厚列 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/sql/ticket_optional_columns.py,code:backend/app/bake/sql/shared_columns.py,code:backend/app/bake/domains.py | A:- | S:ensure_*只按开关调用；报销/行程不进TICKET_OPTIONAL_COLUMNS；credit_ledger只在creditOnOverdue开时注入；预约加厚 DDL 在 reserve_thicken 不在此长写
+fragments.py[DB8L]: F:集中能力岛 DDL 片段与 ensure 入口；含 content_report DDL 与交易/预约加厚调用点 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/sql/ticket_optional_columns.py,code:backend/app/bake/sql/shared_columns.py,code:backend/app/bake/features/favorites.py,code:backend/app/bake/features/content_thicken.py | A:- | S:ensure_*只按开关调用；_CONTENT_REPORT_DDL 须含 handle_deadline_at 与 favorites 同源；预约加厚 DDL 在 reserve_thicken 不在此长写
 reserve_scene_overlays.py[DD6S]: F:为医院、美发、会议室、停车等预约域叠加场景种子皮 | R:code:backend/app/bake/sql/fragments.py | A:- | S:-
 shared_columns.py[DB7M]: F:共享列注入：预约扩展列按域清单；订单履约/售后列；SHOP/FOOD 注入 share_token 等交易加厚列 | R:code:backend/app/bake/sql/fragments.py,code:backend/app/bake/sql/ddl_edit.py,code:backend/app/bake/engine_sql.py | A:- | S:ORDER_TRADE_EXTRA_COLUMNS 仅 DOM-SHOP/DOM-FOOD 注入；不在此写长正文 DDL
-ticket_optional_columns.py[DB8L]: F:单据可选列全集与按开关拼列名；含审批加厚列但不含报销/行程JSON列 | R:code:backend/app/bake/sql/fragments.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/features/approve_thicken.py,code:backend/app/bake/ticket_policy.py | A:- | S:TICKET_OPTIONAL_COLUMNS与_ticket_flag_column_names须同批对齐；allowExpenseLines/allowTripLegs不向申请表加列
+ticket_optional_columns.py[DB8L]: F:单据可选列全集与按开关拼列名；含 parent_ticket_id 与审批加厚列 | R:code:backend/app/bake/sql/fragments.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/features/approve_thicken.py,code:backend/app/bake/ticket_policy.py,code:backend/app/bake/features/content_thicken.py | A:- | S:TICKET_OPTIONAL_COLUMNS与_ticket_flag_column_names须同批对齐；parent_ticket_id 兼楼中楼与合单，勿另起列；allowExpenseLines/allowTripLegs不向申请表加列
 
 ===D:/graduate_factory_v3/backend/app/bake/sql/templates/===
 DOM-ACAD.sql[DP6M]: F:提供学业域建表与演示种子 SQL 模板 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
@@ -434,7 +437,7 @@ key_mask.py[RS5T]: F:把运营台 API Key 脱敏成可展示文案 | R:code:back
 __init__.py[LB5T]: F:再导出 LlmRuntime 供窄 Agent 调用 | R:code:backend/app/llm/runtime.py | A:- | S:禁止生成业务源码
 agents.py[LB6T]: F:聚合匹配 Spec 填岛修复质检等窄 Agent 入口 | R:code:backend/app/llm/agents_match.py,code:backend/app/llm/unit_flow.py | A:- | S:-
 agents_common.py[LB6S]: F:提供窄 Agent 共用标签种子与提案文本工具 | R:code:backend/app/bake/catalog.py | A:- | S:不生成业务 Java/Vue
-agents_fix.py[LB7S]: F:运行修复诊断窄 Agent | R:code:backend/app/llm/agents_common.py | A:- | S:-
+agents_fix.py[LB7S]: F:出包 build_verify：结构校验后 mvn compile，失败硬拦；可选 auto_fix 重填岛再编 | R:code:backend/app/llm/agents_common.py,code:backend/app/services/jobs.py | A:- | S:无 mvn 则 skip 不挡交付；Windows 下捕获输出须 utf-8+replace，避免 GBK 吞编译日志
 agents_island.py[LB6S]: F:校验填岛角色岗位标签补丁禁止增删 id | R:code:backend/app/llm/agents_common.py | A:- | S:只允许改已有角色中文 label
 agents_match.py[LB7M]: F:运行匹配推荐 Spec 润色与上传聚类窄 Agent | R:code:backend/app/bake/catalog.py | A:- | S:-
 agents_qa.py[LB8L]: F:审查交付文案、菜单、种子与前端渲染一致性的 QA Agent（LLM 主审，无模型时结构回退） | R:code:backend/app/llm/client.py,code:backend/app/bake/domain_vocab.py | A:- | S:禁止改代码；error 仅用于误导答辩或明显错域；结构回退含话术层四条 error 规则（slot 分叉 / 跨域词 / 缺 allow* / 种子公告），并读 workspace/sql/*.sql
@@ -756,20 +759,20 @@ P-31-DOM-TOUR-旅行社线路报名管理系统.txt[FC5T]: F:提供匹配与演�
 P-32-DOM-CARRENT-汽车租赁管理系统.txt[FC5T]: F:提供匹配与演示用开题样例文本 | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/docs/===
-README.md[SG6T]: F:维护文档库索引：按一文一事把专题指向唯一文件，含 trade/reserve-thicken-batch 已收口 | R:code:HANDOFF.md,code:README.md,code:docs/trade-thicken-batch.md,code:docs/reserve-thicken-batch.md,code:docs/opening-feature-delivery-map.md | A:- | S:每个专题只承载一种叙事；新专题须同时补本索引与阅读时机
+README.md[SG6S]: F:维护文档库索引：一文一事指向唯一文件，含 trade/reserve 已收口、content 进行中与 §1.1～§1.5 复盘/UI 选型册 | R:code:HANDOFF.md,code:docs/content-thicken-batch.md,code:docs/group-thicken-archives-1-1-to-1-5.md,code:docs/domain-group-ui-styles.md | A:- | S:每个专题只承载一种叙事；新专题须同时补本索引与阅读时机
 ai-assistant-delivery.md[SG6T]: F:记录ai assistant delivery相关交付约定与说明 | R:- | A:- | S:-
 ai-opening-delivery-map.md[SG6S]: F:记录ai opening delivery map相关交付约定与说明 | R:- | A:- | S:-
-capabilities.md[SG7S]: F:登记接题可认的 cap id、挂载口径与完整 HUB 例外表（含 trade/reserve/approve/borrow_structural），并区分扫词写配置与扫词写代码常量 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/features/proposal_caps.py,code:docs/domains.md,code:docs/trade-thicken-batch.md,code:docs/reserve-thicken-batch.md,code:.cursor/rules/param-placement.mdc | A:- | S:CAPABILITIES 键集须等于本表全部 id；HUB_BYPASS 例外表与源码 frozenset 同步；新 cap 须同步 proposal_caps 与 engine_sql
+capabilities.md[SG7S]: F:登记接题可认的 cap id、挂载口径与完整 HUB 例外表（含 trade/reserve/content_thicken/approve/borrow_structural），并区分扫词写配置与扫词写代码常量 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/features/proposal_caps.py,code:docs/domains.md,code:docs/trade-thicken-batch.md,code:docs/reserve-thicken-batch.md,code:docs/content-thicken-batch.md,code:.cursor/rules/param-placement.mdc | A:- | S:CAPABILITIES 键集须等于本表全部 id；HUB_BYPASS 例外表与源码 frozenset 同步；新 cap 须同步 proposal_caps 与 engine_sql
 capability-expansion-batch.md[SG6M]: F:记录capability expansion batch相关交付约定与说明 | R:- | A:- | S:-
 defense-ppt-backend.md[SG6M]: F:记录defense ppt backend相关交付约定与说明 | R:- | A:- | S:-
 defense-ppt-module.md[SG6M]: F:记录defense ppt module相关交付约定与说明 | R:- | A:- | S:-
-delivery-audit-rules.md[SG6S]: F:规定怎么审交付：主链路、红灯细则与老板小卡，并定载体口径与各组待补清零口径 | R:code:docs/capabilities.md,code:docs/opening-feature-delivery-map.md,code:backend/tests/test_copy_carrier_contract.py | A:- | S:审计轮默认只出报告不改代码；缺老板小卡12条则报告无效；硬件划界语只写工厂侧
+delivery-audit-rules.md[SG6S]: F:规定怎么审交付：主链路、红灯细则与老板小卡；各组待补清零口径含 §1.8 内容已收口 | R:code:docs/capabilities.md,code:docs/opening-feature-delivery-map.md,code:docs/content-thicken-batch.md,code:backend/tests/test_copy_carrier_contract.py | A:- | S:审计轮默认只出报告不改代码；缺老板小卡12条则报告无效；硬件划界语只写工厂侧
 difficulty-tiers.md[SG6S]: F:定开题难度 L0–L3 分层：基线标配、可加价亮点、已落地积木与仍不接项，兼开题写法 | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:开题「拟实现」须答辩可演示；基线含单据流与时间冲突等轻规则；真 SDK、硬件不进基线
 domain-skin-gap-analysis.md[SG6L]: F:维护换皮、新预设与新能力的 ID 册与状态列，兼交付审计进度回写 | R:code:docs/delivery-audit-rules.md,code:docs/opening-feature-delivery-map.md | A:- | S:ID 册只此一处，进度按组回写；对照 domains_catalog/ 与 scene_scan.py
 domains.md[SG8M]: F:维护薄域 DOM 分组 A–H、各域默认能力组合（含 DOM-DATING）、绑壳与 Path B 真交叉白名单 | R:code:backend/app/bake/domains.py,code:docs/capabilities.md,code:docs/opening-feature-delivery-map.md | A:- | S:表内 DOM 须与 DOMAIN_CAPABILITIES 68 域对齐；报修组能力行须含 deadline；组 H 为真交叉两套玩法；密功能细节以 opening-feature-delivery-map 为准
 immersion-corners.md[SG6M]: F:记录immersion corners相关交付约定与说明 | R:- | A:- | S:-
 invariants.md[SG7T]: F:记录库表预算与岗位四槽位等硬约束 | R:code:backend/app/bake/engine_sql.py,code:docs/staff-posts-cross-domain.md | A:- | S:舒适区6–15、硬顶18；超过15只警告，计费张数超过18打回；借用族下限10
-opening-feature-delivery-map.md[SG8L]: F:开题密功能地图与状态；§1.6 交易与 §1.7 预约加厚批次均已收口 | R:code:docs/reserve-thicken-batch.md,code:docs/trade-thicken-batch.md,code:backend/app/bake/features/reserve_thicken.py,code:backend/app/bake/features/trade_thicken.py,code:backend/tests/test_opening_map_skeleton_gate.py | A:- | S:状态只写已齐/扫词开/待补/不支持；纯 Hint 与壳打印不得迁行；已齐 labels.* 必须被 baseline Vue 真读；一轮只清一组
+opening-feature-delivery-map.md[SG8L]: F:开题功能交付地图与状态机；§1.8 内容组待补清零（C-00～C-09 已收口） | R:code:docs/content-thicken-batch.md,code:backend/app/bake/features/content_thicken.py,code:backend/tests/test_opening_map_skeleton_gate.py | A:- | S:状态只写域默认/扫词开/待补/不支持；已齐 labels 须被 baseline Vue 读取
 soft-fail-scan.md[SG6S]: F:记录soft fail scan相关交付约定与说明 | R:- | A:- | S:-
 tech-stack-delivery.md[SG6T]: F:记录tech stack delivery相关交付约定与说明 | R:- | A:- | S:-
 staff-posts-cross-domain.md[SG6T]: F:梳理跨域同名岗位与界面红黄绿审计表 | R:code:docs/invariants.md,code:backend/app/bake/staff_posts.py | A:- | S:仅梳理不改它域代码；同词可跨域，但禁止用显示名直接开别域能力岛
@@ -778,6 +781,9 @@ preview-capacity-and-batch-ops.md[SG7M]: F:预览运行态实测与容量治理�
 background-reconcile-cost.md[SG6S]: F:后台对账成本专题：一轮对账花在哪、投影输入签名如何跳过未变项目、每轮重算与孤儿清盘额度，以及复测口径与已知边界 | R:code:backend/app/services/runtime_reconcile.py,code:backend/app/services/projects.py,code:backend/app/services/orphan_disk_purge.py,code:backend/app/core/config.py,code:backend/.env.example | A:- | S:签名只看 size+mtime；额度未排到不刷 TTL 故不会饿死；GF_ORPHAN_PURGE_PER_PASS 与运营「清理失效项目残留」全量受理互斥；zip 过期预热仍每 TTL 一次且冷缓存按未过期
 trade-thicken-batch.md[SG8M]: F:§1.6 交易清待补已收口档案：T-00～T-11 工序与迁行均已齐 | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/features/trade_thicken.py,code:backend/tests/test_trade_thicken_features.py | A:- | S:一组一包 trade_thicken；三绿才迁行；HOTEL/CARRENT 不进本组；超时禁止第二套状态机；打印≠已齐
 reserve-thicken-batch.md[SG8M]: F:§1.7 预约清待补已收口档案：R-00～R-10 工序与验收均已齐 | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/features/reserve_thicken.py,code:backend/tests/test_reserve_thicken_features.py | A:- | S:一组一包 reserve_thicken 且须注册 domain_schema；只挂七预约域；三绿才迁行；不抢 §1.6 交易三域；勿再标活规格
+content-thicken-batch.md[SG7M]: F:§1.8 内容组加厚批次册；C-00～C-09 均已齐，文首为已收口档案 | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/features/content_thicken.py,code:backend/tests/test_content_thicken_features.py | A:- | S:工序不迁行；一批只盯本册；纯 Hint 须被前端读；能力岛禁域默认硬挂积分
+domain-group-ui-styles.md[SG7M]: F:域组 UI 表面选型册：加厚后列表/主路径「像不像该业务」判定与可选手选构图目录 | R:code:docs/opening-feature-delivery-map.md,code:docs/domains.md | A:- | S:选型册未接线 bake/骨架；不做密功能四件套；≠theme/沉浸边角/门户首页轴
+group-thicken-archives-1-1-to-1-5.md[SG6S]: F:§1.1～§1.5 借用/跟进/报修/报名/审批加厚已收口复盘索引 | R:code:docs/opening-feature-delivery-map.md,code:docs/trade-thicken-batch.md | A:- | S:已收口档案无 T-00 式分册；明细以地图「本组本轮已齐」为准；不改写历史批次号
 
 ===D:/graduate_factory_v3/frontend/===
 .gitignore[DB5T]: F:仓库文件 .gitignore | R:- | A:- | S:-
@@ -816,7 +822,7 @@ ArchitectureDiagramViewer.vue[FB5M]: F:前端组件 ArchitectureDiagramViewer | 
 ClassDiagramViewer.vue[FB5L]: F:前端组件 ClassDiagramViewer | R:- | A:- | S:-
 ContentLoading.vue[FB5T]: F:前端组件 ContentLoading | R:- | A:- | S:-
 CopyIconButton.vue[FB5S]: F:前端组件 CopyIconButton | R:- | A:- | S:-
-DeliveryReviewPane.vue[FB5L]: F:前端组件 DeliveryReviewPane | R:- | A:- | S:-
+DeliveryReviewPane.vue[FB5L]: F:工厂运营端交付审计面板：总表/红灯/老板小卡展示与导出入口 | R:code:docs/delivery-audit-rules.md | A:- | S:只展示审计产物；不在此页改学生包代码
 ErDiagramViewer.vue[AU7L]: F:展示论文 E-R 总图与实体属性图，并支持缩放拖拽与重置布局 | R:code:frontend/src/api.js | A:- | S:松手后实体不动，刚拖的菱形留在松手处，其余联系再避开交叉
 ModuleDiagramViewer.vue[FB5M]: F:前端组件 ModuleDiagramViewer | R:- | A:- | S:-
 PageSkeleton.vue[FB5T]: F:前端组件 PageSkeleton | R:- | A:- | S:-
@@ -846,7 +852,7 @@ useDefensePpt.js[FB5M]: F:前端脚本 useDefensePpt | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/frontend/src/views/===
 ErrorPage.vue[FB6S]: F:工厂前端页面 ErrorPage | R:- | A:- | S:-
-Help.vue[FB6L]: F:工厂前端帮助页：面向运营的流程、交付条件与易混题对照 | R:- | A:- | S:卡壳先看运营诊断四痛点；不把工厂内部实现写进学生包文案
+Help.vue[FB6L]: F:工厂前端帮助页：面向运营的流程、交付条件与易混题对照 | R:code:docs/delivery-audit-rules.md | A:- | S:卡壳先看运营诊断四痛点；不把工厂内部实现写进学生包文案
 Jobs.vue[FB6M]: F:展示生成任务队列，并支持取消、清空历史与清理失效项目残留 | R:code:frontend/src/api.js | A:- | S:清空历史只动已结束任务；清理失效先清任务再受理磁盘清理并轮询至 done/error，不把无界删盘绑在单次请求成功上
 Llm.vue[FB6L]: F:工厂前端页面 Llm | R:- | A:- | S:-
 ProjectDetail.vue[FB6S]: F:工厂前端页面 ProjectDetail | R:- | A:- | S:-
@@ -911,18 +917,18 @@ ThesisApplication.java[DB5T]: F:学生端 Java 组件 ThesisApplication | R:- | 
 ===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/capability/===
 AddressStore.java[DB6S]: F:实现能力岛 AddressStore 的数据访问与业务操作 | R:- | A:- | S:-
 ArchiveLogStore.java[DB6M]: F:实现能力岛 ArchiveLogStore 的数据访问与业务操作 | R:- | A:- | S:-
-ArchiveStore.java[DB7L]: F:档案主存储：CRUD、加厚字段读写、上下架定时、浅规格兄弟库存、补货触发到货通知 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/StockNotifyStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/SeatStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:缺列 hasItemColumn 硬失败；expirePastStarts 叠 applyShelfSchedule；adjustStock 增库存须 notifyRestock；禁止完整 SKU 矩阵
+ArchiveStore.java[DB8L]: F:档案条存储 CRUD；内容加厚读写含 C-09 updateUserDraft；C-08 精华奖分与投稿审过站内信 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LoyaltyStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/MessageStore.java | A:- | S:updateUserDraft 仅本人草稿；精华 0→1 才奖分；缺列 hasItemColumn 硬失败
 AuditLogStore.java[DB6S]: F:实现能力岛 AuditLogStore 的数据访问与业务操作 | R:- | A:- | S:-
 BookSuggestStore.java[DB6M]: F:实现能力岛 BookSuggestStore 的数据访问与业务操作 | R:- | A:- | S:-
 BrowseHistoryStore.java[DB6S]: F:实现能力岛 BrowseHistoryStore 的数据访问与业务操作 | R:- | A:- | S:-
 CouponStore.java[DB6M]: F:实现能力岛 CouponStore 的领券核销与门槛校验 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/OrderStore.java | A:- | S:-
 EquipmentDictStore.java[DB6S]: F:实现能力岛 EquipmentDictStore 的数据访问与业务操作 | R:- | A:- | S:-
-FavoriteStore.java[DB6M]: F:实现能力岛 FavoriteStore 的数据访问与业务操作 | R:- | A:- | S:-
-LoyaltyStore.java[DB8M]: F:实现钱包积分满减会员结算，含兑换/抵扣/登录涨分/过期与管理充积分 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/LoyaltyController.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:payEnabled 整单只扣积分且完成后不赠分；offset 经 ThreadLocal；升档 basis 可为 points
+FavoriteStore.java[DB6L]: F:收藏/点赞/举报；收藏夹分组公开；C-08 configureCommentReport 允许 target_type=comment | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ItemCommentStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:评论举报须 commentReportOn；未开放抛错；≠平行举报引擎
+LoyaltyStore.java[DB8M]: F:实现钱包积分会员结算；含兑换/抵扣/登录赠分/过期；C-08 spendPoints/awardPoints 业务扣奖 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/DoclibStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/AuthController.java | A:- | S:spendPoints 不足硬失败；未开 points 禁止扣奖；签到同日只发一次
 OrderReviewStore.java[DB6M]: F:订单评价：星级正文、商家回复、晒图 image_url、追评 follow_body、按商品聚合好评率 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/OrderStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderReviewController.java | A:- | S:追评每人每评只一次；无 follow_body 列则 follow 硬失败；好评率按 rating>=4
 OrderStore.java[DB8L]: F:购物车与订单状态机、超时关单、售后换货、物流子表、分享口令、收货码、须知勾选、退票手续费与发票抬头状态 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderController.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/SeatStore.java | A:- | S:换货通过不关单；物流只写 order_ship_node；影院退票走 SeatStore.assertOrderRefundOpen；发票≠税控；hasLineColumn 仅保留一份
 RecommendStore.java[DB6M]: F:实现能力岛 RecommendStore 的数据访问与业务操作 | R:- | A:- | S:-
-SlotStore.java[DB8L]: F:资源时段预约与选时结算；含改约上限、取消时限、提前提醒、爽约标记与黑名单闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/VenueCleanStore.java,code:backend/app/bake/features/reserve_thicken.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DemoScheduleJobs.java | A:- | S:预约办结后若场馆保洁已开标待清洁且失败不阻断；改约/提醒/爽约列缺则降级；禁止第二套预约状态机
+SlotStore.java[DB8L]: F:资源时段预约与选时结算；含改约上限、取消时限、提前提醒、爽约与黑名单闸及域皮加收 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/VenueCleanStore.java,code:backend/app/bake/features/reserve_thicken.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DemoScheduleJobs.java | A:- | S:reserve 内已有 final note，违章备注须用 holdNote 等别名；列缺则降级；禁止第二套预约状态机
 StaffRosterStore.java[DB6M]: F:员工排班值班与请假班次；提供 assertNotOnLeave 挡约 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java | A:- | S:请假班次文案命中 isLeaveShift 才挡约；未绑定表则 configure 关闭后跳过
 TicketAsserts.java[DB6M]: F:单据申请/出示前校验：附件、进行中额度、申请截止、评教开放窗口、通行码未过期等 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:stage=维修中禁借；损坏/误领/拒收禁取件；通行码过期仅软闸签到/出示，不改状态机
 TicketCopy.java[DB6S]: F:从domain-ticket-copy.json装载状态/动词/评分维度等学生可见单据文案 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainResourceJson.java | A:- | S:空资源保持默认中文标签，不写工厂腔
@@ -951,9 +957,9 @@ VenueCleanStore.java[DB7S]: F:在档案表上维护待清洁与已清洁，不�
 ParcelShelfStore.java[DB6S]: F:驿站货架 CRUD，受 parcel-shelf-enabled 开关约束 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ParcelShelfController.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:未 configure(true) 时接口拒服
 ParcelShipStore.java[DB6S]: F:寄件登记提交、本人分页与店员受理/已寄出 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ParcelShipController.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:未开 parcel-ship-enabled 拒服；≠取件核销
 BorrowCreditStore.java[DB6M]: F:借用信誉分 Store：sys_user.credit_score 列与 credit_ledger 台账，逾期幂等扣分、低于阈值停借、管理员手工调整与最近流水 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/BorrowCreditStore.java,code:backend/app/bake/sql/fragments.py | A:- | S:只在 creditOnOverdue=true 时生效，与 maxOverdueTimes 次数冻结可并存；初始分/扣分/停借线钳制在 1–999；ensureSchema 惰性补列补表；同一 ticket 逾期不重复扣分
-ArchiveCfgOps.java[DB5T]: F:档案纯开关配置（库存预警阈值/软删/用户发布/审核/多分类等）写入 ArchiveStore 静态字段 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:不含 DDL ensure；package-private，对外仍走 ArchiveStore 门面
+ArchiveCfgOps.java[DB5T]: F:档案纯开关配置写入 ArchiveStore 静态字段；含 publishReview 与 forumDailyPostLimit | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:不含 DDL ensure；package-private，对外仍走 ArchiveStore 门面
 ArchivePriceOps.java[DB6S]: F:档案标价/限时价/规格文案/库存不足提示的解析与展示辅助（零业务 SQL 正文） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:写库/成交时非空且不可解析硬失败；列表展示脏价格当 0 不抛
-TicketApplyOps.java[DB8M]: F:单据申请提交（档案关联与独立工单 INSERT）及申请成功通知/额度占用 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketAsserts.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java | A:- | S:package-private；MODE 不匹配须改用另一入口；requireAttach 缺 attach_url 列硬失败勿假成功
+TicketApplyOps.java[DB8M]: F:单据申请提交及通知/额度；跟帖前锁定闸、敏感词与 @提醒 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/MentionNotify.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/SensitiveWordGate.java | A:- | S:package-private；assertNotLocked 挡锁定帖；SensitiveWordGate/MentionNotify 按 AppPolicy 开关；缺 attach_url 列硬失败勿假成功
 TicketApproveOps.java[DB8L]: F:单据审核状态机（含多级审、转审、通行码、cert_issue_no及审过签发verify_code） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketRowMaps.java | A:- | S:package-private；allowCertVerify时VF+10位查询码，已有值不重签，≠cert_issue_no/领取码
 TicketCfgOps.java[DB8L]: F:TicketStore开关配置入口（含apply/follow/approve 各批），写入静态字段 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:mybatis/jpa overlay不含此类；configure 批开关只写本Store静态字段
 TicketCompleteOps.java[DB8M]: F:单据完结/归还写库：结单闸、里程油耗、核定小时、回场油量等办结字段 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketPatchOps.java | A:- | S:package-private；缺列硬失败勿假成功；不写报销/行程子表
@@ -961,7 +967,7 @@ TicketDashOps.java[DB7M]: F:单据看板与图表：状态分布、近7日趋势
 TicketDeriveOps.java[DB8M]: F:单据模式绑定与派生字段（额度/时限/多开单/时间冲突等）写入 TicketStore 静态口径 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java | A:- | S:mybatis/jpa overlay 不含此类；对 Store 静态成员须显式限定名
 TicketGuardOps.java[DB8M]: F:申请闸与公开查伪：资料房间/床位/学分/禁噪窗/连续未归，以及verifyByCode、maskBatch12ForUser与抽查任务写入 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java | A:- | S:overlay不含此类；开关关闭即跳过；查伪不登录；掩评分/审批意见只对学生列表；generateCheckinSpot 的 lambda 入参须 final 局部量
 TicketNotifyOps.java[DB7M]: F:单据站内信：新报值班群发、审批结果、催办/到期提醒等 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/MessageStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/StaffRosterStore.java | A:- | S:mybatis/jpa overlay 不含此类；dutyNotify 关或当日无人值班则通知人数为 0
-TicketPatchOps.java[DB8L]: F:申请后扩展字段补丁：跟进列与审批加厚列按开关写库；报销/行程委托TicketLineOps写子表 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketLineOps.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java | A:- | S:缺列/缺表硬失败勿假成功；明细≥1行且金额>0；行程须出发地到达地日期
+TicketPatchOps.java[DB8L]: F:申请后扩展字段补丁：跟进/审批加厚列；楼中楼写 parent_ticket_id 一层闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketLineOps.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java | A:- | S:缺列/缺表硬失败勿假成功；parent 已有父则拒二层嵌套；报销明细≥1行且金额>0；行程须出发地到达地日期
 TicketQueryOps.java[DB7S]: F:单据分页查询（本人/管理端待办池/今日处理中） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketRowMaps.java | A:- | S:package-private；todayAssigned 仅 todayBoard 开时收窄当日受理
 TicketQueueOps.java[DB7M]: F:候补晋升与 hold_ready 确认（占库存后通知） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:allowWaitlist 关或非 ARCHIVE/非额度模式直接返回；库存<=0 不晋升
 TicketReviseOps.java[DB6T]: F:草稿保存、退回修改与重新提交 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java | A:- | S:allowTicketDraft 关则禁草稿；只能改本人单据
@@ -978,41 +984,41 @@ PasswordHashes.java[DB5S]: F:提供学生端公共工具 PasswordHashes | R:- | 
 R.java[DB5T]: F:提供学生端公共工具 R | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/config/===
-DemoScheduleJobs.java[EB6S]: F:演示定时：券过期、订单超时、确认收货、占座释放、售罄扫标、预约提前提醒与课时到期通知 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LessonStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/SeatStore.java | A:- | S:扫描失败只打 debug；预约提醒走 remindDueSweep；课时到期走 expireSoonNotify；禁止第二套调度框架
+DemoScheduleJobs.java[EB6S]: F:演示定时：券/订单/占座/预约提醒/课时到期，并清过期禁言 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java | A:- | S:扫描失败只打 debug；禁言到期走 UserStore.clearExpiredPostMutes；禁止第二套调度框架
 DomainResourceJson.java[EB6T]: F:配置学生端运行时 DomainResourceJson | R:- | A:- | S:-
-DomainRuntimeBinder.java[EB7L]: F:启动时按 AppPolicy/TicketPolicy 绑定各 Store 与开关，含预约 thicken 阈值、域皮与 ParkingPass/PatientProfile/黑名单 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/AppPolicy.java | A:- | S:绑定只在 run()；漏配默认关；预约阈值与 ReserveBlacklistStore 同绑；禁止再从 thesis yml 读 slot 业务键
+DomainRuntimeBinder.java[EB7L]: F:启动时把 AppPolicy 绑到 Store；含 Doclib 积分下载、Archive 内容岛、Favorite 评论举报、UserFollow/FollowersOnly | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/AppPolicy.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserFollowStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:三套 Binder 同绑；关旗则 configure 关
 JdbcSupport.java[EB6T]: F:配置学生端运行时 JdbcSupport | R:- | A:- | S:-
 SeedCalendarAligner.java[EB6S]: F:配置学生端运行时 SeedCalendarAligner | R:- | A:- | S:-
 UploadInlineFilter.java[EB6T]: F:配置学生端运行时 UploadInlineFilter | R:- | A:- | S:-
 UploadStorage.java[EB6T]: F:配置学生端运行时 UploadStorage | R:- | A:- | S:-
 WebConfig.java[EB6T]: F:配置学生端运行时 WebConfig | R:- | A:- | S:-
-AppPolicy.java[FC7S]: F:集中声明非单据业务口径：档案/订单/预约表位、库存积分阈值、预约侧阈值与域皮开关及能力岛开关 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/TicketPolicy.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java,code:backend/app/bake/runtime_policy.py | A:- | S:只放非单据常量，单据键一律进 TicketPolicy；表位空串表示未启用；常量须与 runtime_policy FIELDS 同源渲染
+AppPolicy.java[FC7S]: F:非空业务常量值；bake 渲染覆盖；含内容加厚与 C-08 岛旗/签到分值常量 | R:code:backend/app/bake/runtime_policy.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:默认全 false/0；出包才改写
 TicketPolicy.java[FC7M]: F:集中声明单据业务口径：模式与表名、借期罚金SLA、报修/跟进/审批加厚开关（含报销行程子表开关） | R:code:backend/app/bake/ticket_policy.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:本文件须由ticket_policy.render与bake产物逐字一致；天数/上限为0一律视为不限或不启用
 
 ===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/controller/===
 AdminArchiveLogController.java[EB6T]: F:提供学生端 AdminArchiveLog HTTP 接口 | R:- | A:/api | S:-
 AiAssistantController.java[EB6S]: F:提供学生端 AiAssistant HTTP 接口 | R:- | A:/api | S:-
-ArchiveController.java[EB6M]: F:提供学生端档案 HTTP 接口，含 categoryIds 与 tagIds 筛选 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:/api/archive | S:未开多维分类时 categoryIds 由 Store 忽略
+ArchiveController.java[EB7L]: F:档案 HTTP：列表/热门/年月/作者/分享码；publish 可带草稿 id 走 updateUserDraft | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:by-share-code 只读；by-author 透传；delete 可带 offShelfReason
 ArchiveLogController.java[EB6T]: F:提供学生端 ArchiveLog HTTP 接口 | R:- | A:/api | S:-
 AuditLogController.java[EB6T]: F:提供学生端 AuditLog HTTP 接口 | R:- | A:/api | S:-
 AuthController.java[EB6M]: F:提供学生包登录注册验证码接口，登录成功可触发积分签到与过期扫描 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LoyaltyStore.java | A:/api/auth | S:签到失败吞掉异常，不挡登录
 BalanceLedgerController.java[EB6T]: F:提供学生端 BalanceLedger HTTP 接口 | R:- | A:/api | S:-
 BookSuggestController.java[EB6S]: F:提供学生端 BookSuggest HTTP 接口 | R:- | A:/api | S:-
 BrowseHistoryController.java[EB6T]: F:提供学生端 BrowseHistory HTTP 接口 | R:- | A:/api | S:-
-CategoryController.java[EB6T]: F:提供学生端分类 HTTP 接口，开岛时可写维度与必选品类开关 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:/api/categories | S:dimension 仅 multiCategory 开且有列时落库
+CategoryController.java[EB6T]: F:分类 HTTP：维度/必选品类与 sectionNotice 版块公告写入 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:/api/categories | S:dimension 仅 multiCategory 开且有列时落库；sectionNotice 无 section_notice 列则 Store 忽略
 ClaimProofController.java[EB6T]: F:提供学生端 ClaimProof HTTP 接口 | R:- | A:/api | S:-
 CommonController.java[EB6T]: F:提供学生端 Common HTTP 接口 | R:- | A:/api | S:-
 CouponController.java[EB6S]: F:提供学生端 Coupon HTTP 接口 | R:- | A:/api | S:-
 DmController.java[EB6S]: F:提供学生包站内私信 HTTP 接口 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/DmStore.java | A:/api/dm | S:DmStore 未 ready 时返回业务不可用
-DoclibController.java[EB6S]: F:提供学生端 Doclib HTTP 接口 | R:- | A:/api | S:-
+DoclibController.java[EB7M]: F:提供学生包文库 HTTP：资料列表下载台账、章节版本、标签云、纠错投诉与下载审核 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/DoclibStore.java | A:GET /api/doclib/items,POST /api/doclib/items/{id}/download,GET /api/doclib/mine,GET /api/doclib/tags/cloud,POST /api/doclib/items/{id}/feedback,GET /api/doclib/admin/download-requests | S:下载带角色；未开通 DoclibStore.ready 时 404 文案；管理端接口须 admin
 ESignController.java[EB6T]: F:提供学生端 ESign HTTP 接口 | R:- | A:/api | S:-
 EquipmentDictController.java[EB6S]: F:提供学生端 EquipmentDict HTTP 接口 | R:- | A:/api | S:-
 ExamController.java[EB6M]: F:提供学生端 Exam HTTP 接口 | R:- | A:/api | S:-
-FavoriteController.java[EB6S]: F:提供学生端 Favorite HTTP 接口 | R:- | A:/api | S:-
+FavoriteController.java[EB6S]: F:收藏/点赞/举报 HTTP；含分组 PATCH 与公开歌单列表 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FavoriteStore.java | A:/api/favorites | S:分组/公开须 groupsEnabled；公开列表只读
 GateController.java[EB6T]: F:提供学生端 Gate HTTP 接口 | R:- | A:/api | S:-
 GradeScoreController.java[EB6M]: F:提供成绩接口：元数据、本人成绩、管理端录入导入、分布统计、改分记录与删除，及成绩异议时限窗口查询 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/GradeScoreStore.java | A:/api/grade-scores | S:导入端点服务端解析 CSV（认中英文表头、支持引号）并限每次 500 行；objection-window 只查本人该课程，是否关闸以 Store 的 objectionDays 为准
 GuestbookController.java[EB6S]: F:门户留言与商品问答：列表可按 itemId 过滤；发表可挂 item_id | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/GuestbookStore.java | A:/api/guestbook | S:无 item_id 列时挂商品提问硬失败；多店通道规则不变
-ItemCommentController.java[EB6S]: F:提供学生端 ItemComment HTTP 接口 | R:- | A:/api | S:-
+ItemCommentController.java[EB6S]: F:条下评论 HTTP：发表/列表/点赞/删；列表带 viewer；发表可读 followersOnly | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ItemCommentStore.java | A:/api | S:可见闸在 Store；未登录 viewer 可空
 LookupAdminController.java[EB6S]: F:提供学生端 LookupAdmin HTTP 接口 | R:- | A:/api | S:-
 LookupController.java[EB6T]: F:提供学生端 Lookup HTTP 接口 | R:- | A:/api | S:-
 LostMessageController.java[EB6T]: F:提供学生端 LostMessage HTTP 接口 | R:- | A:/api | S:-
@@ -1027,7 +1033,7 @@ OrderReviewController.java[EB6S]: F:订单评价 REST：提交可带晒图、追
 ProfileController.java[EB6S]: F:提供学生端 Profile HTTP 接口 | R:- | A:/api | S:-
 RecommendController.java[EB6T]: F:提供学生端 Recommend HTTP 接口 | R:- | A:/api | S:-
 SeatController.java[EB6S]: F:学生包选座 HTTP：场次列表、座位图、占座、须知后购票、管理端座位属性写入 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/SeatStore.java,code:skeletons/baseline/frontend/src/views/SeatMap.vue | A:/api/seats/shows,/api/seats/hold,/api/seats/purchase,/api/seats/shows/{id}/attrs | S:getMap 必须带登录用户；purchase 未勾须知拒绝；attrs 须 requireAdmin；seats 非数组返回 400
-SlotController.java[EB6S]: F:时段预约 HTTP：选时下单、改约、取消与评价 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java | A:/api/slots,/api/slots/reservations/{id}/reschedule | S:改约走 SlotStore.reschedule；黑名单拦截在 Store 侧
+SlotController.java[EB6S]: F:时段预约 HTTP：选时、改约、取消、评价与域皮加收登记 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java | A:/api/slots | S:金额类接口 NFE 须先于 IllegalArgumentException；黑名单拦截在 Store 侧
 StaffRosterController.java[EB6S]: F:提供学生端 StaffRoster HTTP 接口 | R:- | A:/api | S:-
 StockIoController.java[EB6T]: F:入出库管理端接口：流水分页与登记、报废申请审批与驳回 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/StockIoStore.java | A:/api/stock-io | S:未开通一律 404「未开通入出库功能」；报废审批另需 scrapApproveFlow
 SurveyController.java[EB6S]: F:提供学生端 Survey HTTP 接口 | R:- | A:/api | S:-
@@ -1060,8 +1066,13 @@ ListingDealController.java[EB6S]: F:提供房源成交接口：管理端登记�
 ApplyBlacklistController.java[EB6T]: F:报名黑名单管理接口：总管列出/加入/解除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ApplyBlacklistStore.java | A:/api/apply/blacklist | S:未开通 ready 时 404；写操作须 superAdmin
 StockNotifyController.java[EB5T]: F:缺货到货订阅 REST：订阅、我的、状态查询 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/StockNotifyStore.java | A:/api/stock-notify,/api/stock-notify/mine,/api/stock-notify/status | S:须登录；itemId 无效返回业务错
 ReserveBlacklistController.java[EB6S]: F:预约黑名单与申诉 HTTP：名单增删、申诉提交与裁定 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ReserveBlacklistStore.java | A:/api/reserve/blacklist,/api/reserve/blacklist/appeals | S:名单写操作须 requireAdmin；未 ready 返回业务不可用；≠风控引擎
-ParkingPassController.java[EB6T]: F:停车次卡发放与余次查询的 HTTP 入口 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ParkingPassStore.java | A:/api/parking-passes | S:Store 未 ready 时返回业务不可用，禁止假成功写库
+ParkingPassController.java[EB6T]: F:停车次卡发放与余次查询的 HTTP 入口 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ParkingPassStore.java | A:/api/parking-passes | S:NFE 须写在 IllegalArgumentException 前；Store 未 ready 返回业务不可用
 PatientProfileController.java[EB6T]: F:就诊人多档案的 HTTP 入口 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/PatientProfileStore.java | A:/api/patient-profiles | S:Store 未 ready 时返回业务不可用
+BlogFriendLinkController.java[EB5S]: F:博客友情链接公开列表与超管维护 API | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/BlogFriendLinkStore.java | A:- | S:未开开关公开端返回空列表；写删须超管
+CategoryFollowController.java[EB5S]: F:专栏分类订阅 toggle、状态与计数 API | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/CategoryFollowStore.java | A:- | S:toggle 须登录；不等于推荐引擎
+MediaEpisodeController.java[EB5S]: F:影音分集按片单列表与超管增删改 API | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/MediaEpisodeStore.java | A:- | S:写删须超管；新建默认可通知订阅者
+MediaPlayProgressController.java[EB5S]: F:播放进度读写 API；保存时 bump 播放次数 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/MediaPlayProgressStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:须登录；不等于多端云同步
+UserFollowController.java[EB5S]: F:用户关注 HTTP：status/follow/unfollow；供评论仅粉丝可见 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserFollowStore.java | A:/api | S:未 configure 启用返回未开放关注
 
 ===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/service/===
 AiAssistantStore.java[DB6M]: F:实现学生端 AiAssistantStore 服务逻辑 | R:- | A:- | S:-
@@ -1070,12 +1081,12 @@ BalanceLedgerStore.java[DB6M]: F:额度台账账户与流水，审批通过前�
 ClaimProofStore.java[DB6S]: F:实现学生端 ClaimProofStore 服务逻辑 | R:- | A:- | S:-
 DeepSeekClient.java[DB6S]: F:实现学生端 DeepSeekClient 服务逻辑 | R:- | A:- | S:-
 DmStore.java[DB6M]: F:实现学生端 DmStore 服务逻辑 | R:- | A:- | S:-
-DoclibStore.java[DB6M]: F:实现学生端 DoclibStore 服务逻辑 | R:- | A:- | S:-
+DoclibStore.java[DB8L]: F:文库台账；C-07 预览角色限额审核章节标签；C-08 configurePointsDownload 下载前扣积分 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LoyaltyStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/DoclibController.java | A:- | S:cost>0 且开旗才扣；不足抛积分不足；管理员免扣
 ESignStore.java[DB6S]: F:实现学生端 ESignStore 服务逻辑 | R:- | A:- | S:-
 ExamStore.java[DB6L]: F:实现学生端 ExamStore 服务逻辑 | R:- | A:- | S:-
 GradeScoreStore.java[DB6L]: F:实现成绩登记：录入更正留痕、课内名次、分布与及格率、批量导入，及成绩异议窗口（发布后 N 天）与超期关闸 | R:code:backend/app/bake/sql/fragments.py,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/GradeScoreController.java | A:- | S:改分与删除都写 grade_score_history；及格线固定 60；objectionDays 为 0 视为未开、上限 60，窗口基准取本人该课程最近一次登记时间
 GuestbookStore.java[DB6M]: F:留言簿：多店 channel、按商品 item_id 问答分页、回复与删除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/GuestbookController.java | A:/api/guestbook | S:无 channel 列拒 merchant；pageByItem 依赖 item_id 列；缺表 ready 假
-ItemCommentStore.java[DB6S]: F:实现学生端 ItemCommentStore 服务逻辑 | R:- | A:- | S:-
+ItemCommentStore.java[DB6M]: F:条下评论 CRUD；楼中楼一层；作者信；C-08 followers_only 可见闸与 UserFollow | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserFollowStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/SensitiveWordGate.java | A:- | S:仅粉丝可见：作者本人或关注者可见；无列则写 0
 LostMessageStore.java[DB6S]: F:实现学生端 LostMessageStore 服务逻辑 | R:- | A:- | S:-
 MaterialCheckStore.java[DB6S]: F:实现学生端 MaterialCheckStore 服务逻辑 | R:- | A:- | S:-
 MessageStore.java[DB6M]: F:站内信与消息模板读写，供逾期催还与跟进提醒投递 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStatusOps.java | A:- | S:模板关闭或缺表则 templateReady 为假；跟进催办由 TicketStatusOps 调用，本类不自扫表
@@ -1086,7 +1097,7 @@ SeatStore.java[DB7L]: F:影院选座：占座倒计时、连座提示、须知�
 StockIoStore.java[DB6L]: F:浅进销存：入库出库登记即时改档案库存并写流水，可选报废审批、盘点锁定与盲盘 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:configure 重载逐层加参，新增开关勿删旧重载；表存在性只探一次（stock_move/scrap_request）
 SurveyStore.java[DB6M]: F:实现学生端 SurveyStore 服务逻辑 | R:- | A:- | S:-
 TimebankStore.java[DB6M]: F:实现学生端 TimebankStore 服务逻辑 | R:- | A:- | S:-
-UserStore.java[DB6L]: F:实现学生端 UserStore 服务逻辑 | R:- | A:- | S:-
+UserStore.java[DB6L]: F:用户档案读写；含 clearExpiredPostMutes 清过期禁言 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DemoScheduleJobs.java | A:- | S:禁言到期须清 postMuteUntil；能力关或无列则跳过
 VoteStore.java[DB6M]: F:实现学生端 VoteStore 服务逻辑 | R:- | A:- | S:-
 FundDisburseStore.java[DB6S]: F:实现资助发放台账旁路岛的读写：登记发放金额与日期、管理端台账、单笔已发合计与删除 | R:code:backend/app/bake/sql/fragments.py,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/FundDisburseController.java | A:- | S:台账只记发放事实，不写 balance_ledger（额度扣减另有其人）；仅审核通过的申请可发放
 FundPublicityStore.java[DB6M]: F:实现资助公示旁路岛的读写：按票据登记公示期与状态、管理端全量台账、用户端按归属人查阅、异议登记、结束公示与删除，并可选注入异议截止列 | R:code:backend/app/bake/sql/fragments.py,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/FundPublicityController.java | A:- | S:仅审核通过的申请可公示；ready() 按 fund_publicity 是否建表；异议截止读单据表 objection_due_at，缺列或无窗口即不拦；站内信失败不得影响异议落库
@@ -1096,6 +1107,13 @@ ChoiceOptionOps.java[DB7S]: F:选择题选项读写辅助（问卷/考试等 cho
 ReserveBlacklistStore.java[DB6S]: F:预约黑名单轻名单表与申诉读写，供预约闸与管理端 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ReserveBlacklistController.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java | A:- | S:仅轻名单≠风控；表未就绪则 ready=false；拒绝预约文案可 configure
 ParkingPassStore.java[DB6S]: F:停车次卡发放、余次扣减与列表查询 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ParkingPassController.java | A:- | S:未 configure 时 ready=false；扣次失败不得假成功
 PatientProfileStore.java[DB6S]: F:就诊人多档案 CRUD 与默认人选 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/PatientProfileController.java | A:- | S:未 configure 时 ready=false
+MentionNotify.java[DB5T]: F:跟帖/评论 @登录名 解析并发站内信（C-03） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/MessageStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserStore.java | A:- | S:configure 关则 no-op；跳过自己与不存在用户；浅正则≠@全体
+SensitiveWordGate.java[DB5T]: F:本地敏感词包含匹配闸；命中抛学生可见文案（C-03） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:configure 关则放行；≠云审核；词表可 configureWords 覆盖
+BlogFriendLinkStore.java[PB5S]: F:blog_friend_link 表 CRUD 与公开列表 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/BlogFriendLinkController.java | A:- | S:configure 未开则写失败；ensureTable 启动自建
+CategoryFollowStore.java[PB6S]: F:category_follow 订阅 toggle/计数；新文通知 MessageStore | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/MessageStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/CategoryFollowController.java | A:- | S:notifyFollowers 跳过作者；不等于推荐引擎
+MediaEpisodeStore.java[PB6S]: F:media_episode 分集 CRUD；新建可通知分类订阅者 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/CategoryFollowStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:未 configure 禁止写；通知走 CategoryFollowStore
+MediaPlayProgressStore.java[PB5S]: F:media_play_progress 按用户片单分集一条进度与完播 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/MediaPlayProgressController.java | A:- | S:不等于多端云同步；UNIQUE username item_id episode_id
+UserFollowStore.java[DB5S]: F:用户互关浅表 user_follow：configure/follow/unfollow/isFollowing | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ItemCommentStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/UserFollowController.java | A:- | S:未启用写库失败；禁止自己关注自己
 
 ===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/resources/===
 application.yml[EC5T]: F:运行配置 application | R:- | A:- | S:-
@@ -1151,7 +1169,7 @@ PortalLayout.vue[AU6M]: F:学生门户顶栏壳：品牌回家、菜单、登录
 WorkLayout.vue[FB5T]: F:店员工作台布局，映射岗位作业页含清洁任务 | R:- | A:- | S:housekeeping 岗 index 为 /staff/clean
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/router/===
-index.js[FB6L]: F:注册学生包 Vue 路由，并按 schema 开关动态叠加能力与域路由（含预约黑名单与盲盒/积分页） | R:code:skeletons/baseline/frontend/src/utils/menuRoutes.js | A:- | S:新增域内页须同时进 enrichers 与 menuRoutes/effective_paths，否则导航 404
+index.js[FB6L]: F:注册学生包 Vue 路由；按 schema 动态挂能力路由；含 points-rules 积分规则页 | R:code:skeletons/baseline/frontend/src/utils/menuRoutes.js,code:skeletons/baseline/frontend/src/views/user/PointsRules.vue | A:- | S:pointsRulesPage 旗才挂；依赖 points cap
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/styles/===
 chrome.css[FS5M]: F:样式表 chrome | R:- | A:- | S:-
@@ -1243,7 +1261,7 @@ dates.js[FB5T]: F:前端脚本 dates | R:- | A:- | S:-
 domainFlavor.js[FB5M]: F:前端脚本 domainFlavor | R:- | A:- | S:-
 domainSchema.js[FB6L]: F:读取课题注入的 Domain Schema（文案/菜单/能力），供业务页取 labels 与 hasCap | R:code:skeletons/baseline/frontend/src/appDelivered.js,code:skeletons/baseline/frontend/src/utils/menuRoutes.js | A:- | S:业务页禁止写死领域词；菜单按端补消息/收藏等入口，用户端不灌首页枢纽
 equipmentMark.js[FB5T]: F:前端脚本 equipmentMark | R:- | A:- | S:-
-menuRoutes.js[LG6S]: F:学生端菜单 key→路径表，含预约黑名单申诉与盲盒/积分入口 | R:code:backend/app/bake/menu_routes.py,code:skeletons/baseline/frontend/src/layouts/PortalLayout.vue | A:- | S:与 menu_routes.py 须成对同步；非 editorial/mall 首页是 / 非 /home
+menuRoutes.js[LG6S]: F:学生端菜单 key→路径表；含 points_rules / blog_friend_links 等 | R:code:skeletons/baseline/frontend/src/router/index.js | A:- | S:与 bake 菜单 key 拼写同步
 messages.js[FB5T]: F:前端脚本 messages | R:- | A:- | S:-
 navOverflow.js[FB5T]: F:前端脚本 navOverflow | R:- | A:- | S:-
 profileRoomMatch.js[FB5S]: F:前端脚本 profileRoomMatch | R:- | A:- | S:-
@@ -1267,8 +1285,8 @@ orderInvoicePrint.js[FB4T]: F:订单发票浏览器开窗打印壳，拼抬头�
 AiAssistant.vue[FB6S]: F:工厂前端页面 AiAssistant | R:- | A:- | S:-
 BalanceLedgerMine.vue[FB6T]: F:工厂前端页面 BalanceLedgerMine | R:- | A:- | S:-
 BalanceMine.vue[FB6T]: F:工厂前端页面 BalanceMine | R:- | A:- | S:-
-DocBrowse.vue[FB6T]: F:工厂前端页面 DocBrowse | R:- | A:- | S:-
-DocMine.vue[FB6T]: F:工厂前端页面 DocMine | R:- | A:- | S:-
+DocBrowse.vue[FB7M]: F:用户端文库浏览下载；预览水印章节标签纠错；展示下载积分价；配额/积分不足文案 | R:code:skeletons/baseline/frontend/src/views/admin/DocFilesAdmin.vue,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/DoclibController.java | A:- | S:文案走 labels；无工厂腔；扣点成功提示 downloadPointsDebited
+DocMine.vue[FB6S]: F:用户端「我的下载」台账列表，空态读 downloadLogEmpty | R:code:skeletons/baseline/frontend/src/views/DocBrowse.vue | A:- | S:只展示本人 download_log；标题优先 labels.downloadLogLabel
 ESignMine.vue[FB6S]: F:工厂前端页面 ESignMine | R:- | A:- | S:-
 ExamAttempts.vue[FB6T]: F:工厂前端页面 ExamAttempts | R:- | A:- | S:-
 ExamPapers.vue[FB6T]: F:工厂前端页面 ExamPapers | R:- | A:- | S:-
@@ -1299,17 +1317,17 @@ CertVerify.vue[FB6S]: F:证明真伪公开查询页：输入查询码展示核�
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/admin/===
 AiKnowledgeAdmin.vue[FB6S]: F:管理端页面 AiKnowledgeAdmin | R:- | A:- | S:-
-ArchiveAdmin.vue[FB7L]: F:管理端档案维护：上下架开关、日程字段控件、影院座位属性与售罄态 | R:code:skeletons/baseline/frontend/src/components/ArchiveFieldControl.vue,code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:/api/seats/shows/{id}/attrs | S:座位属性仅 seatAttrs 且有 seatRows 时开放；日期时刻走 ArchiveFieldControl；sold_out 显示 showSoldOutLabel
+ArchiveAdmin.vue[FB7L]: F:管理端档案维护：定时上下架、下架原因、分集、分享码；读精华奖分与投稿审过通知 labels | R:code:skeletons/baseline/frontend/src/components/ArchiveFieldControl.vue,code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:分集写 media-episodes admin；审过 Toast 跟 publishApproveNotifyTitle；禁工厂腔
 ArchiveLogsAdmin.vue[FB6S]: F:管理端页面 ArchiveLogsAdmin | R:- | A:- | S:-
 AuditLogsAdmin.vue[FB6S]: F:管理端页面 AuditLogsAdmin | R:- | A:- | S:-
 BalanceAccountsAdmin.vue[FB6T]: F:管理端页面 BalanceAccountsAdmin | R:- | A:- | S:-
 BalanceLedgerAdmin.vue[FB6T]: F:管理端页面 BalanceLedgerAdmin | R:- | A:- | S:-
 BookSuggestAdmin.vue[FB6S]: F:管理端页面 BookSuggestAdmin | R:- | A:- | S:-
-CategoriesAdmin.vue[FB6S]: F:管理端分类维护，开岛时可编维度与必选 | R:- | A:- | S:未开岛仅名称；维度选项来自已有分类不写死商品
+CategoriesAdmin.vue[FB6S]: F:管理端分类维护；开岛时可编维度/必选、版块公告与订阅数 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:sectionNotice/categoryFollowerCount 随 contentThicken；计数读 /api/category-follow/count
 ContentReportsAdmin.vue[FB6S]: F:管理端页面 ContentReportsAdmin | R:- | A:- | S:-
 CouponsAdmin.vue[FB6S]: F:管理端页面 CouponsAdmin | R:- | A:- | S:-
-DocFilesAdmin.vue[FB6T]: F:管理端页面 DocFilesAdmin | R:- | A:- | S:-
-DocLogsAdmin.vue[FB6T]: F:管理端页面 DocLogsAdmin | R:- | A:- | S:-
+DocFilesAdmin.vue[FB7M]: F:管理端附件权限与文库加厚字段；含 downloadCostPoints 数字框 | R:code:skeletons/baseline/frontend/src/views/DocBrowse.vue,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/DoclibController.java | A:- | S:仅 docPointsDownload/docPaidDownload 旗显示积分价
+DocLogsAdmin.vue[FB7S]: F:管理端下载台账，并按旗显示下载审核与纠错投诉处理页签 | R:code:skeletons/baseline/frontend/src/views/admin/DocFilesAdmin.vue,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/DoclibController.java | A:- | S:审核/反馈页签仅 downloadAudit/docFeedback 开启时出现；处理写回 status
 ESignAdmin.vue[FB6T]: F:管理端页面 ESignAdmin | R:- | A:- | S:-
 EquipmentDictAdmin.vue[FB6S]: F:管理端页面 EquipmentDictAdmin | R:- | A:- | S:-
 ExamMarkAdmin.vue[FB6S]: F:管理端页面 ExamMarkAdmin | R:- | A:- | S:-
@@ -1339,7 +1357,7 @@ TicketRecordsAdmin.vue[FB6L]: F:管理端单据记录页：状态筛选、领取
 TicketsAdmin.vue[FB6L]: F:管理端待办审单：刷新、通过驳回、退回修改、转派处理人，及多选批量录用/淘汰与信誉分台账 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java,code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:/api/tickets | S:按钮文案读 schema.labels，禁止写死域词；转派走 /reassign；allowBatchHire 关则无多选列；信用台账只在 creditOn 时出现
 TimebankAccountsAdmin.vue[FB6T]: F:管理端页面 TimebankAccountsAdmin | R:- | A:- | S:-
 TimebankLedgerAdmin.vue[FB6T]: F:管理端页面 TimebankLedgerAdmin | R:- | A:- | S:-
-UsersAdmin.vue[FB7L]: F:管理端用户商家子管列表，含资料编辑启停任命重置密码与可选充值加积分禁言 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js,code:skeletons/baseline/frontend/src/utils/staffPosts.js | A:/api/admin/users | S:升岗须 schema 显式 allowAppointFromUsers；同岗唯一启用账号不可撤停；充值加积分禁言分别随 wallet/points/post_mute 显示
+UsersAdmin.vue[FB7L]: F:管理端用户/商家/子管列表：资料启停任命禁言；版主文案读 moderatorAppointLabel | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js,code:skeletons/baseline/frontend/src/utils/staffPosts.js | A:/api/admin/users | S:升岗须 allowAppointFromUsers；moderatorAppoint 开时按钮读 labels.moderatorAppointLabel
 VoteCandidatesAdmin.vue[FB6S]: F:管理端页面 VoteCandidatesAdmin | R:- | A:- | S:-
 VoteResultsAdmin.vue[FB6T]: F:管理端页面 VoteResultsAdmin | R:- | A:- | S:-
 BlindPoolsAdmin.vue[FB6S]: F:管理端维护盲盒奖池奖品权重与保底 | R:- | A:- | S:-
@@ -1372,6 +1390,7 @@ ListingDealAdmin.vue[FB6S]: F:房源成交登记页：台账列表、登记表�
 ApplyBlacklistAdmin.vue[FB6T]: F:总管维护报名黑名单：加入账号与原因、列出、移除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ApplyBlacklistController.java,code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:/api/apply/blacklist | S:文案走 applyBlacklistTitle/Lead；名单内提交报名由后端拒绝
 ReserveBlacklistAdmin.vue[FB6S]: F:管理端预约黑名单：维护名单并处理申诉 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ReserveBlacklistController.java | A:/api/reserve/blacklist,/api/reserve/blacklist/appeals | S:文案读 labels；禁工厂腔；≠风控引擎表述
 ParkingPassAdmin.vue[DZ5T]: F:受管源码对象，职责见源文件 | R:- | A:- | S:-
+BlogFriendLinksAdmin.vue[FB5S]: F:管理端博客友情链接 CRUD 页；读 labels.friendLink* | R:code:skeletons/baseline/frontend/src/router/index.js,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/BlogFriendLinkController.java | A:- | S:仅超管；空态用 friendLinkEmpty；禁工厂腔
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/special/===
 SpecialPage.vue[FB6M]: F:工厂前端页面 SpecialPage | R:- | A:- | S:-
@@ -1384,15 +1403,15 @@ StaffClean.vue[AU5T]: F:店员清洁岗作业页，复用管理端清洁任务�
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/user/===
 Addresses.vue[FB6M]: F:用户地址簿：增删改与默认地址一键 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderController.java,code:skeletons/baseline/frontend/src/views/user/Cart.vue | A:- | S:labels.defaultAddress* 须真读；默认地址供下单优先选用
-ArchiveBrowse.vue[FB7L]: F:用户端档案浏览：筛选加购、到货订阅、商品问答、上架预告与多维分类标签 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/StockNotifyController.java | A:/api/stock-notify,/api/guestbook | S:到货订阅仅无货时；问答挂 item_id；禁工厂腔
+ArchiveBrowse.vue[FB8L]: F:用户端档案浏览；作者主页筛 by-author；草稿弹窗防抖 updateUserDraft；C-08 举报/粉丝可见 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ArchiveController.java | A:- | S:draftAutoSave 跟 contentThicken 旗+草稿箱；作者页跟 authorPage；禁工厂腔
 BookSuggest.vue[FB6S]: F:图书荐购页：登录用户提交荐购（书名/ISBN/作者/理由）并分页查看本人荐购状态与审核说明 | R:code:skeletons/baseline/frontend/src/components/SchemaLabelHints.vue,code:skeletons/baseline/frontend/src/utils/statusTone.js | A:/api/book-suggest | S:页面挂 suggestBudgetHint 提示预算约束；未登录只给登录引导不拉列表；标题导语读 labels
 BrowseHistory.vue[FB6S]: F:门户页面 BrowseHistory | R:- | A:- | S:-
 Cart.vue[FB8L]: F:用户购物车：全选/清理失效/换规格/凑单包邮与锁库存提示，勾选结算下单 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderController.java,code:backend/app/bake/features/trade_thicken.py | A:- | S:labels.cart* 与 stockLockHint 须真读；下单传 itemIds；失效禁勾选；改规格用下拉非手填
 Dm.vue[FB6M]: F:门户页面 Dm | R:- | A:- | S:-
 Messages.vue[FB6S]: F:用户站内消息列表，分页已读全部已读并按 refType 跳转关联页 | R:code:skeletons/baseline/frontend/src/utils/messages.js,code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:/api/messages | S:导语读 schema.labels；多店商城不得残留预约等串台文案
-MyArchive.vue[FB6S]: F:门户页面 MyArchive | R:- | A:- | S:-
+MyArchive.vue[FB6S]: F:我的发布：草稿筛与 publish-draft 入口 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:草稿筛随 contentThicken.draftBox；禁工厂腔
 MyCoupons.vue[FB6S]: F:用户端我的优惠券：领取状态与可用券展示 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/CouponStore.java | A:- | S:空态不指挥去管理端建券；禁工厂腔
-MyFavorites.vue[FB6S]: F:用户收藏夹列表，支持导出清单与复制清单 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:导出/复制只在本页前端拼清单，不另调后端写接口
+MyFavorites.vue[FB6M]: F:用户收藏夹：导出/复制清单，及分组命名与公开/私密开关 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:分组写 PATCH /api/favorites/{id}；公开≠协作；读 labels.favoriteGroup*
 MyOrderReviews.vue[FB6S]: F:我的评价：晒图预览、一次追评提交，开关读 tradeThicken.reviewFollow | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderReviewController.java | A:/api/order-reviews,/api/order-reviews/{id}/follow | S:无 followBody 才显示追评；文案走 labels.reviewFollow*
 MyOrders.vue[FB7L]: F:用户订单：售后换货、分享口令、收货码、延保、申请/下载发票与小票打印、影院退票手续费 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderController.java,code:skeletons/baseline/frontend/src/utils/orderReceiptPrint.js | A:/api/orders/{id}/warranty,/api/orders/{id}/refund-fee,/api/orders/{id}/invoice | S:学生可见文案无工厂腔；影院 canRefund 含 pending；发票与小票随 tradeThicken 开关
 MyReservations.vue[FB7M]: F:用户我的预约：取消/改约/签到与预约侧加厚提示 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/SlotController.java | A:/api/slots/reservations | S:提示文案走 labels；缺列不崩
@@ -1416,6 +1435,7 @@ PointsLedger.vue[FB6T]: F:用户端积分流水列表页 | R:- | A:/api/loyalty/
 ReserveBlacklistAppeal.vue[FB6T]: F:用户端预约黑名单申诉提交与进度查看 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ReserveBlacklistController.java | A:/api/reserve/blacklist/appeals | S:文案读 labels；禁工厂腔与风控引擎表述
 ParkingPasses.vue[FB6S]: F:用户查看本人停车次卡余次 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ParkingPassController.java | A:/api/parking-passes | S:空态只说暂无次卡
 PatientProfiles.vue[FB6S]: F:用户维护就诊人多档案 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/PatientProfileController.java | A:/api/patient-profiles | S:档案字段控件跟 archiveFieldWidget
+PointsRules.vue[FB5T]: F:积分规则说明页：登录奖分/精华奖分/文库扣点文案；读 pointsCheckInLabel 与 essencePointsRewardLabel | R:code:skeletons/baseline/frontend/src/router/index.js,code:skeletons/baseline/frontend/src/utils/menuRoutes.js | A:- | S:只说明规则≠收银台；跟 contentThicken.pointsRulesPage
 
 ===D:/graduate_factory_v3/skeletons/baseline/sql/===
 schema.sql[DB5T]: F:仓库文件 schema | R:- | A:- | S:-
@@ -1433,15 +1453,15 @@ ThesisApplication.java[DB5T]: F:学生端 Java 组件 ThesisApplication | R:- | 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/===
 AddressStore.java[DB6S]: F:实现能力岛 AddressStore 的数据访问与业务操作 | R:- | A:- | S:-
 ArchiveLogStore.java[DB6M]: F:实现能力岛 ArchiveLogStore 的数据访问与业务操作 | R:- | A:- | S:-
-ArchiveStore.java[DB7L]: F:JPA 叠层档案主存储，对齐 baseline ArchiveStore | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:三套 Store 行为对齐
+ArchiveStore.java[DB8L]: F:persistence-jpa 档案 Store；对齐 baseline 含 updateUserDraft 与 C-08 精华奖分/投稿通知 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:与 baseline 同语义；缺列硬失败
 BrowseHistoryStore.java[DB6S]: F:实现能力岛 BrowseHistoryStore 的数据访问与业务操作 | R:- | A:- | S:-
 CouponStore.java[DB6M]: F:JPA 叠层 CouponStore 领券核销与门槛校验 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/CouponStore.java | A:- | S:-
-FavoriteStore.java[DB6L]: F:JPA 叠层能力岛 FavoriteStore：收藏/点赞/内容举报与举报处置（对作者禁言）的数据访问，语义与 baseline 同源 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FavoriteStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/JpaSupport.java | A:- | S:与 baseline 同名同签名，仅 db() 换 JpaSupport；新增重载须两侧同步，否则骨架契约测试失败
-LoyaltyStore.java[DB8L]: F:JPA 叠层钱包积分满减会员结算，含兑换抵扣登录涨分过期 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LoyaltyStore.java | A:- | S:与 baseline 同规则字节对齐同步；payEnabled 整单只扣积分；offset 经 ThreadLocal
+FavoriteStore.java[DB6L]: F:persistence-jpa 收藏举报 Store；对齐 configureCommentReport 评论举报 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FavoriteStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:评论举报须开旗
+LoyaltyStore.java[DB8L]: F:persistence-jpa 忠诚度 Store；对齐 spendPoints/awardPoints/签到赠分 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LoyaltyStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/DoclibStore.java | A:- | S:不足硬失败；未开 points 禁扣奖
 OrderReviewStore.java[DB6M]: F:JPA 叠层订单评价：星级正文、商家回复、晒图 image_url、追评 follow_body、好评率 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/OrderReviewStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/OrderStore.java | A:- | S:追评每人每评只一次；无 follow_body 列则 follow 硬失败；好评率按 rating>=4
 OrderStore.java[DB8L]: F:JPA 叠层订单：对齐 baseline 售后换货、物流、分享口令、收货核销、延保、发票与影院退票手续费 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/OrderStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/SeatStore.java | A:- | S:换货不关单；物流只写 order_ship_node；影院退票走 SeatStore.assertOrderRefundOpen；发票≠税控
 RecommendStore.java[DB6M]: F:实现能力岛 RecommendStore 的数据访问与业务操作 | R:- | A:- | S:-
-SlotStore.java[DB8L]: F:JPA 叠层时段预约 Store，对齐 baseline 加厚闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java | A:- | S:三套 Store 行为对齐；禁止第二套预约状态机
+SlotStore.java[DB8L]: F:JPA 叠层时段预约 Store，对齐 baseline 加厚闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java | A:- | S:reserve 内违章备注勿重声明 note；三套行为对齐；禁止第二套预约状态机
 TicketLookupStore.java[DB6M]: F:JPA 叠层报修壳楼栋房间类型下拉数据源 | R:code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/JpaDb.java | A:- | S:unitCapacityLabel 空串则管理端不展示容量列
 TicketSql.java[DB6S]: F:实现能力岛 TicketSql 的数据访问与业务操作 | R:- | A:- | S:-
 TicketStore.java[DB7L]: F:JPA 叠层单据存储门面：申请审批占用归还委托 Ops，含 configureApproveBatch7 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/JpaSupport.java | A:- | S:须与 baseline 同名同签名含 configureRepairThicken/Batch7；新列探针走 JpaSupport；缺列不得假成功
@@ -1469,12 +1489,12 @@ ParcelShelfStore.java[DB6S]: F:JPA 叠层驿站货架 Store，语义对齐 basel
 ParcelShipStore.java[DB6M]: F:JPA 叠层寄件登记 Store，语义对齐 baseline | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ParcelShipStore.java | A:- | S:经 JpaDb；未开开关拒服
 BorrowCreditStore.java[DB6M]: F:JPA 叠层借用信誉分：sys_user.credit_score 与 credit_ledger 落库，逾期首扣、管理员调整与台账查询 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/BorrowCreditStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/JpaSupport.java | A:- | S:仅 configure(true) 生效，与 maxOverdueTimes 次数冻结可并存；同一 ticket 不重复扣分；分值夹在 0-999
 TicketCompleteOps.java[DB8M]: F:JPA 叠层单据完结/归还：结单闸与回场油量等办结字段经 JpaSupport 写库 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketCompleteOps.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/TicketStore.java | A:- | S:与 baseline 同语义；allowReturnFuel 空值拒绝；缺列硬失败勿假成功；allowPromoFeedback 时结案附件提示投放反馈照片
-TicketPatchOps.java[DB8L]: F:JPA 叠层申请后扩展字段补丁（劳动地点/生效日/回场油量/正文版本号/施工时段等） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketPatchOps.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/TicketStore.java | A:- | S:与 baseline 同名同语义；缺列守卫硬失败勿假成功；allowDocRev 空值拒绝
+TicketPatchOps.java[DB8L]: F:JPA 叠层申请补丁；含 parent_ticket_id 楼中楼一层闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketPatchOps.java | A:- | S:与 baseline 同语义；缺列硬失败勿假成功
 StockNotifyStore.java[DB6S]: F:JPA 叠层缺货到货订阅 stock_notify：订阅、我的列表、补货站内信并标 notified_at | R:code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/ArchiveStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/MessageStore.java | A:- | S:无表则 ready 假；重复订阅 ON DUPLICATE 重置 notified_at；补货仅 stock>0 才发信
 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/===
 DemoScheduleJobs.java[EB6S]: F:JPA 叠层演示定时，含预约提醒与课时到期 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DemoScheduleJobs.java | A:- | S:扫描失败只打 debug；禁止第二套调度
-DomainRuntimeBinder.java[EB7L]: F:JPA 叠层启动绑定 AppPolicy 与预约 thicken | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:绑定只在 run()；漏配默认关
+DomainRuntimeBinder.java[EB7L]: F:persistence-jpa 运行时绑定；对齐内容岛/积分下载/评论举报/粉丝可见 | R:code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/AppPolicy.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:与 baseline 同绑点
 GeneratedKeyHolder.java[EB6T]: F:配置学生端运行时 GeneratedKeyHolder | R:- | A:- | S:-
 JpaDb.java[PB6S]: F:JPA 叠层 JdbcTemplate 同形访问层，经 DataSource 执行 SQL | R:code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/KeyHolder.java | A:- | S:update(psc,keyHolder) 必须取回 generated keys；queryForObject 无行返回 null
 JpaSupport.java[EB6T]: F:配置学生端运行时 JpaSupport | R:- | A:- | S:-
@@ -1483,7 +1503,7 @@ SeedCalendarAligner.java[EB6S]: F:配置学生端运行时 SeedCalendarAligner |
 SqlPreparedStatementCreator.java[EB6T]: F:配置学生端运行时 SqlPreparedStatementCreator | R:- | A:- | S:-
 SqlResultSetExtractor.java[EB6T]: F:配置学生端运行时 SqlResultSetExtractor | R:- | A:- | S:-
 SqlRowMapper.java[EB6T]: F:配置学生端运行时 SqlRowMapper | R:- | A:- | S:-
-AppPolicy.java[FC7S]: F:JPA 叠层非单据策略常量，与 runtime_policy 同源 | R:code:backend/app/bake/runtime_policy.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/AppPolicy.java | A:- | S:只放非单据常量
+AppPolicy.java[FC7M]: F:persistence-jpa AppPolicy 常量；含 C-08 岛旗与签到分值 | R:code:backend/app/bake/runtime_policy.py,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:默认 false；bake 渲染覆盖
 TicketPolicy.java[FC7L]: F:JPA 叠层的单据业务口径常量，与 baseline TicketPolicy 逐字一致（含 Batch7 开关） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/TicketPolicy.java | A:- | S:叠层副本必须与 baseline 逐字同步；FINE_PER_DAY=-1 沿用代码默认，0 才是真不收罚金
 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/entity/===
@@ -1494,19 +1514,19 @@ NoticeRepository.java[DB5T]: F:定义 JPA NoticeRepository | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/===
 DmStore.java[DB6S]: F:JPA 叠层站内私信存储 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/DmStore.java | A:- | S:三套 Store 行为对齐
-DoclibStore.java[DB6M]: F:实现学生端 DoclibStore 服务逻辑 | R:- | A:- | S:-
+DoclibStore.java[DB8L]: F:persistence-jpa 文库 Store；C-07 加厚 + C-08 积分下载扣点 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/DoclibStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/LoyaltyStore.java | A:- | S:开旗且 cost>0 才扣
 ESignStore.java[DB6S]: F:实现学生端 ESignStore 服务逻辑 | R:- | A:- | S:-
 ExamStore.java[DB6L]: F:实现学生端 ExamStore 服务逻辑 | R:- | A:- | S:-
 GradeScoreStore.java[DB6L]: F:JPA 叠层成绩登记：录入留痕、课内名次、分布与批量导入，及成绩异议窗口与超期关闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/GradeScoreStore.java | A:- | S:与 baseline 同源，仅 db() 换 JpaSupport；改分与删除都写 grade_score_history
 GuestbookStore.java[DB6M]: F:JPA 叠层留言簿：多店 channel、按商品 item_id 问答分页、回复与删除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/GuestbookStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/GuestbookController.java | A:/api/guestbook | S:无 channel 列拒 merchant；pageByItem 依赖 item_id 列；缺表 ready 假
-ItemCommentStore.java[DB6S]: F:实现学生端 ItemCommentStore 服务逻辑 | R:- | A:- | S:-
+ItemCommentStore.java[DB6M]: F:persistence-jpa 条下评论 Store；对齐 followers_only 与 viewer 过滤 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ItemCommentStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserFollowStore.java | A:- | S:无列写 0；未关注不可见
 MessageStore.java[DB6M]: F:JPA 叠层站内信与消息模板读写 | R:code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/JpaDb.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/MessageStore.java | A:- | S:模板关闭或缺表则 templateReady 为假，不假定表已存在
 NoticeStore.java[DB6M]: F:JPA 叠层基线公告 sys_notice 增删改查分页，含置顶与审核列探测 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/NoticeStore.java | A:- | S:JpaDb 换写法规则随 baseline；旧库无 pinned 列时运行时 ALTER 兜底；待审核不可置顶
 SeatStore.java[DB7L]: F:JPA 叠层影院选座：占座倒计时、须知出票、退票截止、座属性与卖品 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/SeatStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/capability/OrderStore.java | A:- | S:JpaDb 换写法；hold/seat_attr 缺列降级；updateSeatAttrs 仅 couple/accessible
 StockIoStore.java[DB6L]: F:JPA 叠层浅进销存：入出库登记即时改库存并写流水，可选报废审批、盘点锁定与盲盘，经 JpaDb 落库 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/StockIoStore.java,code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/JpaDb.java | A:- | S:configure 重载须与 baseline 一致（逐层加参）；表存在性只探一次（tableReady/scrapTableReady）
 SurveyStore.java[DB6M]: F:实现学生端 SurveyStore 服务逻辑 | R:- | A:- | S:-
 TimebankStore.java[DB6M]: F:实现学生端 TimebankStore 服务逻辑 | R:- | A:- | S:-
-UserStore.java[DB6L]: F:JPA 叠层用户档案与发帖禁言读写 | R:code:skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/config/JpaDb.java | A:- | S:禁言写 profile_json 的 postMuteUntil；能力关或无 profile_json 列则拒绝
+UserStore.java[DB6L]: F:JPA 叠层用户档案与 clearExpiredPostMutes | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserStore.java | A:- | S:禁言写 profile_json；对齐 baseline 清过期
 VoteStore.java[DB6M]: F:实现学生端 VoteStore 服务逻辑 | R:- | A:- | S:-
 AiAssistantStore.java[DB6L]: F:JPA 叠层 AI 助手岛 FAQ 匹配、业务摘录与 DeepSeek 问答 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/AiAssistantStore.java | A:- | S:业务规则以 baseline 为准，仅换 JpaDb；无 FAQ 且无业务摘录不调大模型自由发挥；off_topic 固定婉拒
 BalanceLedgerStore.java[DB6M]: F:JPA 叠层额度台账账户与流水，审批通过前扣减 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/BalanceLedgerStore.java | A:- | S:JpaDb 换写法随 baseline；须 configure 且表 ready；debitOnApprove 余额不足硬拒
@@ -1531,15 +1551,15 @@ ThesisApplication.java[DB5T]: F:学生端 Java 组件 ThesisApplication | R:- | 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/===
 AddressStore.java[DB6S]: F:能力岛地址簿数据访问，为收货地址列表与下单回填提供字段 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/AddressMapper.java | A:- | S:MyBatis resultType=map 返回原始列名，shape 必须同时兼容 contact_name 与 contactName，否则前端收到 null
 ArchiveLogStore.java[DB6M]: F:实现能力岛 ArchiveLogStore 的数据访问与业务操作 | R:- | A:- | S:-
-ArchiveStore.java[DB7L]: F:MyBatis 叠层档案主存储，对齐 baseline ArchiveStore | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java | A:- | S:三套 Store 行为对齐
+ArchiveStore.java[DB8L]: F:persistence-mybatis 档案 Store；对齐 baseline 含 updateUserDraft 与 C-08 精华奖分/投稿通知 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ArchiveStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:与 baseline 同语义；缺列硬失败
 BrowseHistoryStore.java[DB6S]: F:实现能力岛 BrowseHistoryStore 的数据访问与业务操作 | R:- | A:- | S:-
 CouponStore.java[DB6M]: F:MyBatis 叠层 CouponStore 领券核销与门槛校验 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/CouponStore.java | A:- | S:-
-FavoriteStore.java[DB6M]: F:MyBatis 叠层能力岛 FavoriteStore：收藏/点赞/内容举报与举报处置（对作者禁言），经 FavoriteMapper 与 PageHelper | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FavoriteStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/FavoriteMapper.java | A:- | S:与 baseline 同名同签名，新增重载须两侧同步；建表与列补齐走 mapper().ensure*；分页用 PageHelper.startPage
-LoyaltyStore.java[DB8L]: F:MyBatis 叠层钱包积分满减会员结算，含兑换抵扣登录涨分过期 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LoyaltyStore.java | A:- | S:MybatisSupport/MbSql 非 JdbcTemplate；与 baseline 同规则字节对齐同步；payEnabled 整单只扣积分；offset 经 ThreadLocal
+FavoriteStore.java[DB6L]: F:persistence-mybatis 收藏举报 Store；对齐 configureCommentReport 评论举报 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/FavoriteStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:评论举报须开旗
+LoyaltyStore.java[DB8L]: F:persistence-mybatis 忠诚度 Store；对齐 spendPoints/awardPoints/签到赠分 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/LoyaltyStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/DoclibStore.java | A:- | S:不足硬失败；未开 points 禁扣奖
 OrderReviewStore.java[DB6M]: F:MyBatis 叠层订单评价：星级正文、商家回复、晒图 image_url、追评 follow_body、好评率 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/OrderReviewStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/OrderStore.java | A:- | S:追评每人每评只一次；无 follow_body 列则 follow 硬失败；好评率按 rating>=4
 OrderStore.java[DB8L]: F:MyBatis 叠层订单：对齐 baseline 售后换货、物流、分享口令、收货核销、延保、发票与影院退票手续费 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/OrderStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/OrderMapper.java | A:- | S:换货不关单；影院退票走 SeatStore.assertOrderRefundOpen；发票≠税控
 RecommendStore.java[DB6M]: F:实现能力岛 RecommendStore 的数据访问与业务操作 | R:- | A:- | S:-
-SlotStore.java[DB8L]: F:MyBatis 叠层时段预约 Store，对齐 baseline 加厚闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java | A:- | S:三套 Store 行为对齐；禁止第二套预约状态机
+SlotStore.java[DB8L]: F:MyBatis 叠层时段预约 Store，对齐 baseline 加厚闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/SlotStore.java | A:- | S:reserve 内违章备注勿重声明 note；三套行为对齐；禁止第二套预约状态机
 TicketAsserts.java[DB6M]: F:MyBatis 叠层单据校验：附件额度截止、评教窗口、通行码未过期 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketAsserts.java | A:- | S:与 baseline 同源；叠层不得引入 JdbcTemplate；通行码过期仅软闸
 TicketLookupStore.java[DB6M]: F:MyBatis叠层报修下拉楼栋房间类型绑定，含可选单元容量列标签 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketLookupStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/TicketLookupMapper.java | A:- | S:bind支持7参unitCapacityLabel；空串隐藏容量列；表名由DomainRuntimeBinder注入
 TicketProgressOps.java[DB6S]: F:实现能力岛 TicketProgressOps 的数据访问与业务操作 | R:- | A:- | S:-
@@ -1570,16 +1590,16 @@ VenueCleanStore.java[DB7M]: F:MyBatis 叠层在档案表 clean_status 维护场�
 ParcelShelfStore.java[DB6S]: F:MyBatis叠层驿站货架Store，语义对齐baseline | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ParcelShelfStore.java | A:- | S:未开开关拒服
 ParcelShipStore.java[DB6M]: F:MyBatis叠层寄件登记Store，语义对齐baseline | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/ParcelShipStore.java | A:- | S:未开开关拒服
 BorrowCreditStore.java[DB6M]: F:MyBatis 叠层借用信誉分：sys_user.credit_score 与 credit_ledger 落库，含逾期首扣、管理员调整与台账查询 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/BorrowCreditStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/MybatisSupport.java | A:- | S:仅 configure(true) 生效；同一 ticket 不重复扣分；未 Mapper 化的原生 SQL 才走 MybatisSupport.db()，不得混用 JdbcTemplate
-TicketApplyOps.java[DB8M]: F:MyBatis 叠层单据申请提交（档案关联与独立工单 INSERT） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketApplyOps.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/TicketMapper.java | A:- | S:与 baseline 同语义；SQL 走 Mapper；requireAttach 缺列硬失败勿假成功
+TicketApplyOps.java[DB8M]: F:MyBatis 叠层单据申请；含锁定闸/敏感词/@ | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketApplyOps.java | A:- | S:与 baseline 同语义；缺列硬失败勿假成功
 TicketApproveOps.java[DB8L]: F:MyBatis 叠层审核状态机，含通行码签发、pass_expire_at 与 cert_issue_no | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketApproveOps.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/TicketMapper.java | A:- | S:与 baseline 同语义；allowPassExpire 审过才写有效期，不改状态机；allowCertIssueNo 时 CERT+8 已有值不重签；叠层不得引入 JdbcTemplate
 TicketCompleteOps.java[DB8M]: F:MyBatis 叠层单据完结/归还，含回场油量闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketCompleteOps.java | A:- | S:与 baseline 同语义；allowReturnFuel 空值拒绝；allowPromoFeedback 时结案附件提示投放反馈照片；叠层不得引入 JdbcTemplate
 TicketDashOps.java[DB7M]: F:MyBatis 叠层看板与图表（含 faultReasonSeries） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketDashOps.java | A:- | S:与 baseline 同语义；SQL 走 Mapper/原生查询入口而非 JdbcTemplate
-TicketPatchOps.java[DB8L]: F:MyBatis 叠层申请后扩展字段补丁（劳动地点/生效日/回场油量/正文版本号/施工时段等） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketPatchOps.java | A:- | S:与 baseline 同语义；缺列硬失败勿假成功；allowDocRev 空值拒绝；叠层不得引入 JdbcTemplate
+TicketPatchOps.java[DB8L]: F:MyBatis 叠层申请补丁；含 parent_ticket_id 楼中楼一层闸 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketPatchOps.java | A:- | S:与 baseline 同语义；缺列硬失败勿假成功；叠层不得引入 JdbcTemplate
 TicketQueryOps.java[DB7S]: F:MyBatis 叠层单据分页查询（待办池/今日处理中） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/capability/TicketQueryOps.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/TicketMapper.java | A:- | S:分页 PageHelper；todayAssigned 仅 todayBoard 开时收窄
 StockNotifyStore.java[DB6S]: F:MyBatis 叠层缺货到货订阅 stock_notify：订阅、我的列表、补货站内信并标 notified_at | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/ArchiveStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/MessageStore.java | A:- | S:无表则 ready 假；重复订阅 ON DUPLICATE 重置 notified_at；补货仅 stock>0 才发信
 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/===
-DomainRuntimeBinder.java[EB7L]: F:MyBatis 叠层启动绑定 AppPolicy 与预约 thicken | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:绑定只在 run()；漏配默认关
+DomainRuntimeBinder.java[EB7L]: F:persistence-mybatis 运行时绑定；对齐内容岛/积分下载/评论举报/粉丝可见 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/AppPolicy.java,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:与 baseline 同绑点
 MybatisSupport.java[EB6T]: F:静态入口取 Mapper Bean 与 MbSql，对标原 JdbcSupport | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/MbSql.java | A:- | S:须 ApplicationContext 注入后才可用；DomainRuntimeBinder 依赖其就绪
 SeedCalendarAligner.java[EB6T]: F:配置学生端运行时 SeedCalendarAligner | R:- | A:- | S:-
 MbSql.java[EB6M]: F:JdbcTemplate常用子集同形封装，含RowMapper版queryForObject | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/MybatisSupport.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/SqlRowMapper.java | A:- | S:与MyBatis共用库；主路径仍优先Mapper；须提供SqlRowMapper重载供BookSuggest等
@@ -1588,17 +1608,17 @@ SqlRowMapper.java[EB6T]: F:MbSql 行映射函数式接口，对标 Spring RowMap
 GeneratedKeyHolder.java[EB6T]: F:MbSql自增键容器，承接PreparedStatement生成主键 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/KeyHolder.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/MbSql.java | A:- | S:非Spring GeneratedKeyHolder；仅Number可解析键
 KeyHolder.java[EB6T]: F:MbSql插入取回生成主键的键持有接口 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/GeneratedKeyHolder.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/MbSql.java | A:- | S:叠层禁用org.springframework.jdbc.support.KeyHolder
 SqlPreparedStatementCreator.java[EB6T]: F:MbSql带KeyHolder更新的PreparedStatement工厂接口 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/MbSql.java | A:- | S:对标Spring PreparedStatementCreator；非Spring类型
-AppPolicy.java[FC7S]: F:MyBatis 叠层非单据策略常量，与 runtime_policy 同源 | R:code:backend/app/bake/runtime_policy.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/AppPolicy.java | A:- | S:只放非单据常量
+AppPolicy.java[FC7M]: F:persistence-mybatis AppPolicy 常量；含 C-08 岛旗与签到分值 | R:code:backend/app/bake/runtime_policy.py,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java | A:- | S:默认 false；bake 渲染覆盖
 TicketPolicy.java[FC7L]: F:MyBatis 叠层的单据业务口径常量，与 baseline TicketPolicy 逐字一致（含 Batch7 开关） | R:code:skeletons/baseline/backend/src/main/java/com/thesis/config/TicketPolicy.java | A:- | S:叠层副本必须与 baseline 逐字同步；FINE_PER_DAY=-1 沿用代码默认，0 才是真不收罚金
 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/===
 AddressMapper.java[DB5T]: F:声明 MyBatis Mapper AddressMapper | R:- | A:- | S:-
 ArchiveLogMapper.java[DB5T]: F:声明 MyBatis Mapper ArchiveLogMapper | R:- | A:- | S:-
-ArchiveMapper.java[DB6M]: F:档案分类/条目/标签/库存与多维分类的 MyBatis 接口，含 expire_on 与 shelf_on/off 定时上下架 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/ArchiveMapper.xml | A:- | S:复杂 SQL 在 XML；表名 ${} 注入勿写死；shelf 定时注解 SQL 与 expire_on 并列
+ArchiveMapper.java[DB6M]: F:档案分类/条目/标签/库存 MyBatis 接口；含加厚列与定时上下架 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/ArchiveMapper.xml | A:- | S:复杂 SQL 在 XML；表名 ${} 勿写死
 BrowseHistoryMapper.java[DB5T]: F:声明 MyBatis Mapper BrowseHistoryMapper | R:- | A:- | S:-
 CouponMapper.java[DB5S]: F:声明 MyBatis CouponMapper：券模板与用户券读写 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/CouponStore.java | A:- | S:-
 DmMapper.java[DB5T]: F:MyBatis 私信表映射 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/DmStore.java | A:- | S:-
-DoclibMapper.java[DB5T]: F:声明 MyBatis Mapper DoclibMapper | R:- | A:- | S:-
+DoclibMapper.java[DB5T]: F:文库条目 MyBatis 接口；含 download_count 可选 bump | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/DoclibStore.java | A:- | S:无 download_count 列时 Store 侧 no-op
 ESignMapper.java[DB5T]: F:声明 MyBatis Mapper ESignMapper | R:- | A:- | S:-
 ExamMapper.java[DB5S]: F:声明 MyBatis Mapper ExamMapper | R:- | A:- | S:-
 FavoriteMapper.java[DB5S]: F:声明 MyBatis Mapper FavoriteMapper | R:- | A:- | S:-
@@ -1636,19 +1656,19 @@ ChoiceOptionMapper.java[PB6T]: F:MyBatis 选择题选项 Mapper 接口 | R:code:
 
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/===
 DmStore.java[DB6S]: F:MyBatis 叠层站内私信存储 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/DmStore.java | A:- | S:三套 Store 行为对齐
-DoclibStore.java[DB6S]: F:实现学生端 DoclibStore 服务逻辑 | R:- | A:- | S:-
+DoclibStore.java[DB8L]: F:persistence-mybatis 文库 Store；C-07 加厚 + C-08 积分下载扣点 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/DoclibStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/capability/LoyaltyStore.java | A:- | S:开旗且 cost>0 才扣
 ESignStore.java[DB6S]: F:实现学生端 ESignStore 服务逻辑 | R:- | A:- | S:-
 ExamStore.java[DB6L]: F:实现学生端 ExamStore 服务逻辑 | R:- | A:- | S:-
 GradeScoreStore.java[DB6M]: F:MyBatis 叠层成绩登记 Store：录入留痕、名次、分布与批量导入 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/GradeScoreStore.java | A:- | S:与 baseline 同源；只经 mapper() 访问，不得引 JdbcTemplate
 GuestbookStore.java[DB6M]: F:MyBatis 叠层留言簿：多店 channel、按商品 item_id 问答分页、回复与删除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/GuestbookStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/GuestbookController.java | A:/api/guestbook | S:无 channel 列拒 merchant；pageByItem 依赖 item_id 列；缺表 ready 假
-ItemCommentStore.java[DB6S]: F:实现学生端 ItemCommentStore 服务逻辑 | R:- | A:- | S:-
+ItemCommentStore.java[DB6M]: F:persistence-mybatis 条下评论 Store；对齐 followers_only 与 viewer 过滤 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ItemCommentStore.java,code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserFollowStore.java | A:- | S:无列写 0；未关注不可见
 MessageStore.java[DB6M]: F:MyBatis 叠层站内信收发，含消息模板配置与套模板发送 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/MessageStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/MessageMapper.java | A:- | S:模板表经 MbSql；configureTemplate 后 ensure 表；未开模板则 sendWithTemplate 回退明文
 NoticeStore.java[DB6M]: F:MyBatis 叠层基线公告 sys_notice 增删改查分页，含置顶与审核列探测 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/NoticeStore.java | A:- | S:MybatisSupport/NoticeMapper 非 JdbcTemplate；旧库无 pinned 列时运行时 ALTER 兜底；待审核不可置顶
 SeatStore.java[DB7L]: F:MyBatis 叠层影院选座：占座倒计时、须知出票、退票截止、座属性与卖品 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/SeatStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/SeatMapper.java | A:- | S:走 SeatMapper；缺 hold/seat_attr 列则降级；购票后 OrderStore.markNoticeAgreed
 StockIoStore.java[DB6L]: F:MyBatis 叠层浅进销存：入出库登记即时改库存并写流水，可选报废审批、盘点锁定与盲盘，经 MbSql/MybatisSupport 落库 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/StockIoStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/config/MybatisSupport.java | A:- | S:configure 重载须与 baseline 一致（逐层加参）；表存在性只探一次（tableReady/scrapTableReady）
 SurveyStore.java[DB6M]: F:实现学生端 SurveyStore 服务逻辑 | R:- | A:- | S:-
 TimebankStore.java[DB6M]: F:实现学生端 TimebankStore 服务逻辑 | R:- | A:- | S:-
-UserStore.java[DB6L]: F:MyBatis叠层用户档案，含发帖禁言截止写入profile_json | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserStore.java,code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/UserMapper.java | A:- | S:禁言写入不经ProfileFields过滤；能力关则configure后仍拒绝setPostMute
+UserStore.java[DB6L]: F:MyBatis 叠层用户档案与 clearExpiredPostMutes | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/UserStore.java | A:- | S:禁言写 profile_json；对齐 baseline 清过期
 VoteStore.java[DB6M]: F:实现学生端 VoteStore 服务逻辑 | R:- | A:- | S:-
 AiAssistantStore.java[DB6L]: F:MyBatis叠层AI助手岛FAQ匹配、业务摘录与DeepSeek问答 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/AiAssistantStore.java | A:- | S:MybatisSupport/MbSql非JdbcTemplate；无FAQ且无业务摘录不调大模型；off_topic固定婉拒
 BalanceLedgerStore.java[DB6M]: F:MyBatis 叠层额度台账账户与流水，审批通过前扣减 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/BalanceLedgerStore.java | A:- | S:走 MybatisSupport/MbSql 非 JdbcTemplate；须 configure 且表 ready；余额不足硬拒
@@ -1668,7 +1688,7 @@ PatientProfileStore.java[DB6S]: F:MyBatis 叠层就诊人档案 Store | R:code:s
 ===D:/graduate_factory_v3/skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/===
 AddressMapper.xml[DP5T]: F:MyBatis SQL 映射 AddressMapper | R:- | A:- | S:-
 ArchiveLogMapper.xml[DP5T]: F:MyBatis SQL 映射 ArchiveLogMapper | R:- | A:- | S:-
-ArchiveMapper.xml[DP6S]: F:ArchiveMapper 动态表 SQL：分类条目标签库存、多维分类及 expire_on 到期下架 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/ArchiveMapper.java | A:- | S:表名列名用 ${}；过滤条件勿删；到期下架与接口方法 id 对齐
+ArchiveMapper.xml[DP6S]: F:ArchiveMapper 动态 SQL：分类条目与加厚列、expire_on 下架 | R:code:skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/mapper/ArchiveMapper.java | A:- | S:表名列名用 ${}；过滤条件勿删
 BrowseHistoryMapper.xml[DP5T]: F:MyBatis SQL 映射 BrowseHistoryMapper | R:- | A:- | S:-
 CouponMapper.xml[DP5T]: F:MyBatis SQL 映射 CouponMapper | R:- | A:- | S:-
 DmMapper.xml[DP5T]: F:MyBatis SQL 映射 DmMapper | R:- | A:- | S:-
@@ -1721,7 +1741,7 @@ capability-home.md[SG8T]: F:Trae 侧规定工厂进程重构只搬 backend 与 f
 column-contract.md[SD7T]: F:Trae 侧要求能力岛打开后 SQL 有列、三套 Store 对齐，缺列先补 ensure，禁止假成功返回 | R:code:.cursor/rules/column-contract.mdc | A:- | S:-
 commit-messages.md[SG6T]: F:Trae 侧规定本仓库提交说明与 PR 标题正文一律用中文 | R:code:.cursor/rules/commit-messages.mdc | A:- | S:代码标识与路径保留原文；禁止英文祈使句当标题
 cross-domain-fix.md[SG7T]: F:Trae 侧规定开题翻车先修共享 bake 与门禁，禁止只改当前学生包 | R:code:.cursor/rules/cross-domain-fix.mdc | A:- | S:-
-delivery-audit.md[SQ7T]: F:Trae 侧规定交付审计必须出总表、红灯、旧题回归和老板小卡，审计轮默认只出报告 | R:code:.cursor/rules/delivery-audit.mdc | A:- | S:-
+delivery-audit.md[SQ7T]: F:Trae 侧规定交付审计必须出总表、红灯、旧题回归和老板小卡，审计轮默认只出报告 | R:code:.cursor/rules/delivery-audit.mdc,code:docs/delivery-audit-rules.md | A:- | S:与 Cursor 规则同口径；细则以 delivery-audit-rules 为准
 form-controls.md[SU7T]: F:Trae 侧规定学生包表单控件按字段语义选型，不得一律文本框，对齐 archiveFieldWidget | R:code:.cursor/rules/form-controls.mdc,code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js | A:- | S:-
 opening-scene.md[SG7T]: F:Trae 侧规定壳文案、资料字段和岗位名只扫题名与开题正文，场景轴不替代领域匹配 | R:code:.cursor/rules/opening-scene.mdc,code:backend/app/bake/scene_scan.py | A:- | S:-
 student-copy.md[SU7T]: F:Trae 侧规定学生可见文案按店员买家口吻书写并禁工厂腔 | R:code:.cursor/rules/student-copy.mdc | A:- | S:空态不指挥买家去后台；缺列硬失败不写进界面

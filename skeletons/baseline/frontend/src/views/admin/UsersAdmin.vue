@@ -85,7 +85,7 @@
             link
             type="primary"
             @click="openAppoint(row)"
-          >任命岗位</el-button>
+          >{{ appointActionLabel }}</el-button>
           <el-button
             v-else-if="canAppoint && isSub(row) && canRevokeRow(row) && !marketplace"
             link
@@ -105,7 +105,7 @@
     </el-table>
     </div>
 
-    <el-dialog v-model="appointVisible" title="任命岗位" width="420px" destroy-on-close>
+    <el-dialog v-model="appointVisible" :title="appointActionLabel" width="420px" destroy-on-close>
       <p class="appoint-tip">将「{{ appointTarget?.nickname || appointTarget?.username }}」任命为：</p>
       <el-select v-model="appointPostId" placeholder="选择岗位" style="width: 100%">
         <el-option
@@ -202,6 +202,12 @@ const canAppointUser = computed(() => canAppoint.value && allowAppointFromUsers.
 const walletOn = computed(() => isWalletEnabled())
 const pointsOn = computed(() => isPointsEnabled())
 const muteOn = computed(() => hasCap('post_mute'))
+const moderatorAppointOn = computed(() => !!getSchema()?.contentThicken?.moderatorAppoint)
+const appointActionLabel = computed(() =>
+  moderatorAppointOn.value
+    ? labels.moderatorAppointLabel || '任命版主'
+    : '任命岗位',
+)
 /** 仅「用户」tab 摊业务档案列；商家 tab 摊店铺资料；子管理 / 全部与资料页一致不摊 */
 const adminCols = computed(() => {
   if (scope.value === 'users') return profileAdminColumns('user')

@@ -10,7 +10,7 @@
 
 ## 当前主线
 
-1. **能力运行时 + 薄域壳 A～G + GENERIC** 已可 bake；差的是按需冒烟、文案微调，以及密功能表里标 **待补** 的岛。  
+1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～G / GENERIC 已可 bake。**薄壳 ≠ 功能稀薄**：§1.1～§1.7 密功能加厚已收口（或待补已清）；当前能力债主要在 **§1.8 内容加厚（进行中）**、**§1.9 互动待补**，以及加厚后的 **域组 UI 表面**（见下）。  
 2. **Path B** 三条真交叉可 `full`（借用+下单 / 借用+预约 / 下单+预约）；三合一与智慧校园仍 `reject`。  
 3. LLM **只填 schema JSON**（不生成业务 Java/Vue）；接 LLM 后「代码无误」靠运行时固定。  
 4. **Path B 口径**：开题写进「拟实现」的必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力，禁止 `degraded` 交半成品装全文。
@@ -18,8 +18,11 @@
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
 开题密功能 / 待补 → [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md)。  
+§1.1～§1.5 加厚（已收口）→ [`docs/group-thicken-archives-1-1-to-1-5.md`](./docs/group-thicken-archives-1-1-to-1-5.md)（复盘索引；明细在地图「本组本轮已齐」）。  
 §1.6 交易加厚（已收口）→ [`docs/trade-thicken-batch.md`](./docs/trade-thicken-batch.md)。  
-§1.7 预约加厚（已收口）→ [`docs/reserve-thicken-batch.md`](./docs/reserve-thicken-batch.md)。
+§1.7 预约加厚（已收口）→ [`docs/reserve-thicken-batch.md`](./docs/reserve-thicken-batch.md)。  
+§1.8 内容加厚（进行中）→ [`docs/content-thicken-batch.md`](./docs/content-thicken-batch.md)。  
+域组 UI 表面（加厚后一组一 plan）→ [`docs/domain-group-ui-styles.md`](./docs/domain-group-ui-styles.md)。
 
 ---
 
@@ -30,7 +33,7 @@
 | 接 | 不接 |
 |----|------|
 | **专科 / 本科** 毕设、**课设**（Web 管理、演示级） | **硕士研究生 / 博士研究生** 课题与开题 |
-| 薄域壳单路径（功能库存见密功能表）；白名单内且 `defense_ready` 的交叉 | **真实业务全流程** / 生产级全链路 / 企业级端到端 |
+| 具名域薄壳单路径（密功能见地图 / 各组 thicken）；白名单内且 `defense_ready` 的交叉 | **真实业务全流程** / 生产级全链路 / 企业级端到端 |
 | L0～L2 积木内可演示的功能 | L3、HIS/ERP 级发散、未就绪交叉 |
 
 信号：`OUT_OF_SCOPE_SIGNALS`（硕博学位论文、真实业务全流程等）→ `reject`。  
@@ -66,8 +69,11 @@
 | 怎么审交付 | [`docs/delivery-audit-rules.md`](./docs/delivery-audit-rules.md) |
 | 换皮 ID 册 | [`docs/domain-skin-gap-analysis.md`](./docs/domain-skin-gap-analysis.md) |
 | 开题功能对照 | [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md) |
+| §1.1～§1.5 加厚复盘（已收口） | [`docs/group-thicken-archives-1-1-to-1-5.md`](./docs/group-thicken-archives-1-1-to-1-5.md)（明细仍以地图为准；§1.6 起另有独立 batch 册） |
 | §1.6 交易加厚批次（已收口） | [`docs/trade-thicken-batch.md`](./docs/trade-thicken-batch.md) |
 | §1.7 预约加厚批次（已收口） | [`docs/reserve-thicken-batch.md`](./docs/reserve-thicken-batch.md) |
+| §1.8 内容加厚批次（进行中） | [`docs/content-thicken-batch.md`](./docs/content-thicken-batch.md) |
+| 域组 UI 表面选型 | [`docs/domain-group-ui-styles.md`](./docs/domain-group-ui-styles.md) |
 | AI 开题对照 | [`docs/ai-opening-delivery-map.md`](./docs/ai-opening-delivery-map.md) |
 | 全索引 | [`docs/README.md`](./docs/README.md) |
 
@@ -79,18 +85,18 @@
 
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md；能力/领域长表见 docs/。
-主线：Path B 三条交叉已可 full；薄域冒烟或 LLM 填 schema。
+主线：Path B 三条交叉已可 full；§1.8 内容加厚进行中；加厚后 UI 表面见 docs/domain-group-ui-styles.md。
 超壳 / 三合一 / 智慧校园必须 reject；硕博与真实业务全流程不接。
-不要新开厚 DOM 包。领域清单以 docs/domains.md 为准。
+薄壳架构保留（不要新开厚 DOM 包）；薄壳≠功能稀薄。领域清单以 docs/domains.md 为准。
 ```
 
-## 新对话开场（某个薄领域）
+## 新对话开场（某个具名域）
 
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md。
-目标：薄领域 DOM-___（关键词：___）冒烟或文案/SQL 微调。
-能力组合：___（对照 docs/capabilities.md + docs/domains.md）；仅 catalog + schema + SQL 种子 + 皮肤。
-禁止内存 Store、禁止排除 DataSource、LLM 只填 schema。
+目标：具名域 DOM-___（关键词：___）冒烟、文案/SQL 微调，或对照地图该组待补。
+能力组合：___（对照 docs/capabilities.md + docs/domains.md）；密功能以 opening-feature-delivery-map 为准。
+禁止内存 Store、禁止排除 DataSource、LLM 只填 schema；禁止新开厚 DOM 包。
 ```
 
 ---

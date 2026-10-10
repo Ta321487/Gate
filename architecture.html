@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>毕设港 · 系统架构图</title>
+<style>
+  :root{
+    --ink:#1b2430; --ink-2:#43536b; --ink-3:#6b7c93;
+    --line:#d8e0ea; --bg:#eef2f7; --card:#ffffff;
+    --a:#2f6fd0; --b:#1f9d7a; --c:#c9821a; --d:#8b5cf6; --e:#d94a5f;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1240px; margin:0 auto; padding:36px 22px 90px}
+  header.hero{
+    background:linear-gradient(135deg,#12263f 0%,#22456f 55%,#2f6fd0 100%);
+    color:#fff; border-radius:18px; padding:34px 34px 30px;
+    box-shadow:0 18px 44px -20px rgba(18,38,63,.55);
+  }
+  header.hero h1{margin:0 0 8px; font-size:30px; letter-spacing:.5px}
+  header.hero p{margin:0; color:#cfe0f5; font-size:15px}
+  header.hero .badges{margin-top:18px; display:flex; flex-wrap:wrap; gap:8px}
+  header.hero .badges span{
+    background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.22);
+    padding:4px 11px; border-radius:999px; font-size:12.5px; color:#eaf2ff;
+  }
+  .lead{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:18px 22px; margin:22px 0 8px; box-shadow:0 6px 18px -12px rgba(27,36,48,.28);
+    font-size:14.5px; color:var(--ink-2);
+  }
+  .lead b{color:var(--ink)}
+  nav.toc{
+    display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 6px;
+  }
+  nav.toc a{
+    text-decoration:none; font-size:13px; color:var(--ink-2); background:#fff;
+    border:1px solid var(--line); border-radius:999px; padding:5px 13px;
+  }
+  nav.toc a:hover{border-color:var(--a); color:var(--a)}
+  section{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:24px 26px 14px; margin:22px 0;
+    box-shadow:0 8px 26px -20px rgba(27,36,48,.4);
+  }
+  section > h2{
+    margin:0 0 6px; font-size:20px; display:flex; align-items:center; gap:10px;
+  }
+  section > h2 .num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius:9px; background:var(--a); color:#fff;
+    font-size:14px; font-weight:700; flex:0 0 auto;
+  }
+  section > p.sub{margin:0 0 14px; color:var(--ink-3); font-size:13.5px}
+  .mermaid{
+    background:#fbfdff; border:1px solid #e7eef7; border-radius:12px;
+    padding:14px; margin:12px 0 18px; overflow-x:auto; text-align:center;
+  }
+  table{border-collapse:collapse; width:100%; margin:6px 0 16px; font-size:13.5px}
+  th,td{border:1px solid var(--line); padding:8px 11px; text-align:left; vertical-align:top}
+  th{background:#f3f7fc; color:var(--ink); font-weight:600}
+  td code, p code, li code{background:#f1f5fa; border-radius:5px; padding:1px 5px; font-size:12.5px}
+  ul.pts{margin:6px 0 16px; padding-left:20px; font-size:14px; color:var(--ink-2)}
+  ul.pts li{margin:4px 0}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; margin:8px 0 18px}
+  .tile{border:1px solid var(--line); border-left:4px solid var(--a); border-radius:10px; padding:12px 14px; background:#fbfdff}
+  .tile h4{margin:0 0 4px; font-size:14px}
+  .tile p{margin:0; font-size:13px; color:var(--ink-3)}
+  .tile.g{border-left-color:var(--b)} .tile.o{border-left-color:var(--c)}
+  .tile.v{border-left-color:var(--d)} .tile.r{border-left-color:var(--e)}
+  .fallback{
+    display:none; background:#fff6e5; border:1px solid #f0cf95; color:#7a5312;
+    border-radius:10px; padding:12px 16px; font-size:13.5px; margin:14px 0;
+  }
+  pre.raw{display:none; background:#0f1c2b; color:#d7e6f7; border-radius:10px; padding:14px;
+    overflow-x:auto; font-size:12.5px; text-align:left}
+  .diagram-tools{display:flex; justify-content:flex-end; align-items:center; gap:10px; margin:0 0 -4px}
+  .diagram-tools button{
+    font:inherit; font-size:12.5px; color:var(--ink-2); background:#fff;
+    border:1px solid var(--line); border-radius:8px; padding:4px 11px; cursor:pointer;
+  }
+  .diagram-tools button:hover{border-color:var(--a); color:var(--a)}
+  .diagram-tools span{font-size:12px; color:var(--ink-3)}
+  .zoom-overlay{
+    position:fixed; inset:0; background:#f6f9fd; z-index:99; display:flex; flex-direction:column;
+  }
+  .zoom-overlay .bar{
+    display:flex; align-items:center; gap:8px; padding:10px 16px;
+    border-bottom:1px solid var(--line); background:#fff;
+  }
+  .zoom-overlay .bar strong{font-size:14px; margin-right:auto}
+  .zoom-overlay .bar button{
+    font:inherit; font-size:13px; padding:5px 12px; border:1px solid var(--line);
+    border-radius:8px; background:#fff; cursor:pointer;
+  }
+  .zoom-overlay .bar button:hover{border-color:var(--a); color:var(--a)}
+  .zoom-overlay .stage{flex:1; overflow:hidden; cursor:grab; display:flex; align-items:center; justify-content:center}
+  .zoom-overlay .stage.dragging{cursor:grabbing}
+  .zoom-overlay .stage svg{max-width:none !important; transform-origin:center center}
+  body.zoom-lock{overflow:hidden}
+  footer{color:var(--ink-3); font-size:13px; text-align:center; margin-top:28px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>毕设港 · 系统架构图</h1>
+  <p>一个运营中台（FastAPI + Vue 3）驱动一条确定性流水线，把开题材料烘成可答辩的学生工程（Spring Boot 3.2 + Vue 3 + MySQL）。</p>
+  <div class="badges">
+    <span>运营后端 FastAPI · :8000</span>
+    <span>运营前端 Vue 3 + Naive UI · :5173</span>
+    <span>生成核心 bake（确定性骨架）</span>
+    <span>LLM 只填白名单业务岛</span>
+    <span>门禁不过不放行 ZIP</span>
+    <span>学生库 MySQL / 工厂元库 SQLite 或 MySQL</span>
+  </div>
+</header>
+
+<div class="lead">
+  <b>读图前提 ·</b> 可靠性来自固定骨架 + 模板 + 门禁，LLM 只挂缺口；LLM 不写业务 Java / Vue。
+  两个数据库完全分离：<b>工厂元库</b>（项目 / 任务 / 用量）与<b>学生库</b>（每题一个 MySQL schema）。
+  三种「图」别混：本页是<b>工厂自身</b>架构；学生交付物里另有论文用 E-R / 类图 / 用例图；<code>prototype/</code> 只是运营端静态原型。
+</div>
+
+<nav class="toc">
+  <a href="#s1">① 总体架构</a>
+  <a href="#s2">② 六步流水线</a>
+  <a href="#s3">③ 任务状态机</a>
+  <a href="#s4">④ 运营前端</a>
+  <a href="#s5">⑤ 后端分层</a>
+  <a href="#s6">⑥ 数据与磁盘</a>
+  <a href="#s7">⑦ 预览子系统</a>
+  <a href="#s8">⑧ 交付闸</a>
+  <a href="#s9">⑨ 学生交付物</a>
+  <a href="#s10">⑩ 外部依赖</a>
+  <a href="#s11">⑪ 启动链路</a>
+</nav>
+
+<div class="fallback" id="fallback">
+  当前环境访问不到 Mermaid CDN，图未渲染。下方保留了每张图的源码；把本文件放到联网环境打开，或直接把
+  <code>ARCHITECTURE.md</code> 贴进支持 Mermaid 的编辑器（VS Code / Typora / GitHub）即可看到图形。
+</div>
+
+<section id="s1">
+  <h2><span class="num">1</span>总体架构（运行边界）</h2>
+  <p class="sub">九个分区：使用者 → 运营前端 → 运营后端 → 生成核心 / LLM 层 → 工厂元库 → 运行预览沙箱 → 学生交付物 → 外部依赖。</p>
+  <div class="mermaid">
+flowchart TB
+    subgraph L1["① 使用者"]
+        OP["运营 / 交付团队浏览器"]
+        STU["学生（拿到 ZIP 后自己跑）"]
+    end
+    subgraph L2["② 运营前端 frontend/ :5173 Vue 3 + Naive UI + Vite"]
+        FE_VIEW["views/ 项目 详情 任务 大模型 Unsplash 运行环境 帮助"]
+        FE_DETAIL["views/projectDetail/ 匹配 生成 产物 运行 日志"]
+        FE_API["api.js axios baseURL=/api + SSE 进度订阅"]
+    end
+    subgraph L3["③ 运营后端 backend/ :8000 FastAPI"]
+        API_PROJ["api/projects/ 上传分堆 匹配 生成 下载 运行"]
+        API_JOBS["api/jobs 任务队列 取消 / 重试"]
+        API_SYS["api/system* 大模型 / 用量 / 环境 / 端口"]
+        API_PPT["api/defense_ppt 答辩 PPT"]
+        SVC["services/ 编排层 projects jobs runtime delivery_review proposal"]
+    end
+    subgraph L4["④ 生成核心 backend/app/bake 确定性 bake"]
+        BAKE_ENG["engine_bake.py 复制 baseline 叠加域 / 持久层 / 能力"]
+        BAKE_SQL["sql/ DOM-*.sql 模板 + compose 拼 GENERIC"]
+        BAKE_SCH["schema/ 壳 / ER / 模块 / 用例 / 测试用例"]
+        BAKE_GATE["gates/ 门禁 p0a…p3q + overall"]
+        SCENE["scene_scan.py 场景身份唯一真源"]
+    end
+    subgraph L5["⑤ LLM 层 backend/app/llm 只填白名单岛"]
+        LLM_FLOW["unit_flow/ Plan → Unit 并发 → Merge"]
+        LLM_AG["agents_* match / island / usecase / fix / qa / sample"]
+        LLM_RT["client · runtime · model_catalog DeepSeek / Gemini"]
+    end
+    subgraph L6["⑥ 工厂元库"]
+        META["默认 SQLite data/factory.db 或 MySQL docker-compose"]
+    end
+    subgraph L7["⑦ 运行预览沙箱 services/runtime.py"]
+        RT_BE["学生后端进程 端口池 9100–9120"]
+        RT_FE["学生前端 Vite 端口池 9200–9220"]
+    end
+    subgraph L8["⑧ 学生交付物 data/workspace/project_id/"]
+        DEL_BE["backend/ Spring Boot 3.2 + JDK 17"]
+        DEL_FE["frontend/ Vue 3 + Element Plus"]
+        DEL_SQL["sql/ 库表与种子数据"]
+        DEL_ZIP["ZIP 门禁通过才可下载"]
+    end
+    subgraph L9["⑨ 外部依赖"]
+        DS["DeepSeek API"]
+        GEM["Gemini API 可选 双开互备"]
+        UNS["Unsplash 可选 失败用本地色板"]
+    end
+    DB_STU[("学生 MySQL 每题一个 schema")]
+    OP --> FE_VIEW --> FE_DETAIL --> FE_API
+    FE_API -->|HTTP /api| API_PROJ
+    FE_API -->|轮询 + SSE| API_JOBS
+    FE_API --> API_SYS
+    FE_API --> API_PPT
+    API_PROJ --> SVC
+    API_JOBS --> SVC
+    API_SYS --> SVC
+    API_PPT --> SVC
+    SVC --> META
+    SVC --> BAKE_ENG
+    BAKE_ENG --> BAKE_SQL
+    BAKE_ENG --> BAKE_SCH
+    BAKE_ENG --> SCENE
+    SVC --> LLM_FLOW --> LLM_AG --> LLM_RT
+    LLM_RT --> DS
+    LLM_RT --> GEM
+    BAKE_SCH -.->|本地色板兜底| UNS
+    SVC --> BAKE_GATE
+    BAKE_ENG --> DEL_BE
+    BAKE_ENG --> DEL_FE
+    BAKE_ENG --> DEL_SQL
+    SVC -->|门禁通过后打包| DEL_ZIP
+    DEL_ZIP -->|交给学生| STU
+    SVC --> RT_BE --> DEL_BE
+    SVC --> RT_FE --> DEL_FE
+    RT_BE --> DB_STU
+    DEL_SQL --> DB_STU
+    STU --> DB_STU
+  </div>
+  <div class="grid">
+    <div class="tile"><h4>进程隔离</h4><p>运营后端（Python）与学生工程（JVM + Node）是两类进程；工厂只启停与探活。</p></div>
+    <div class="tile g"><h4>端口池</h4><p>学生后端 9100–9120、前端 9200–9220；限制同时在跑的数量，不限制选题库存。</p></div>
+    <div class="tile o"><h4>数据分离</h4><p>工厂元库管运营状态；学生库由 student_db.py 建库建表灌种子并回收。</p></div>
+    <div class="tile v"><h4>LLM 边界</h4><p>只产出白名单 island / 标签 / 用例等 schema JSON，业务代码由模板决定。</p></div>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="num">2</span>一次生成 Job 的六步流水线</h2>
+  <p class="sub">STEP_DEFS 是唯一真源；run_job() 在单进程 asyncio 内串行推进，每步把状态写回 jobs.steps。</p>
+  <div class="mermaid">
+flowchart LR
+    U["上传材料 PDF / Word / TXT"] --> PLAN["分堆方案 upload/plan"]
+    PLAN --> CONF["确认分堆 upload/confirm"]
+    CONF --> MATCH["匹配推荐 骨架 × 领域"]
+    MATCH --> GEN["POST /{id}/generate 建 Job"]
+    subgraph JOB["生成 Job · STEP_DEFS 六步"]
+        direction TB
+        S0["1 parse_merge 解析开题 · 合并 Spec"]
+        S1["2 copy_bake 复制骨架 · 领域 SQL"]
+        S2["3 island_fill 业务配置填充"]
+        S3["4 build_verify 构建验证"]
+        S4["5 gate_e2e 门禁：登录 + 主流程"]
+        S5["6 pack 清单验收 · 打包 ZIP"]
+        S0 --> S1 --> S2 --> S3 --> S4 --> S5
+    end
+    GEN --> S0
+    S5 --> DONE["zip_ready = true status = generated"]
+    S4 -->|overall = false| FAIL["status = failed 禁止下载 ZIP"]
+    FAIL -->|从失败步续跑| S2
+    DONE --> REVIEW["交付复审 验圈 / 合卷 / 登记偏差"]
+    DONE --> PPT["答辩 PPT Job 旁路 kind=defense_ppt"]
+    REVIEW --> DELIVER["delivery_mark 人工履约标记"]
+  </div>
+  <table>
+    <tr><th>步</th><th>关键实现</th><th>产物 / 副作用</th></tr>
+    <tr><td>1 <code>parse_merge</code></td><td><code>services/proposal.py</code>、<code>proposal_diff.py</code></td><td>合并后的开题文本与 <code>spec</code> 契约</td></tr>
+    <tr><td>2 <code>copy_bake</code></td><td><code>bake/engine_bake.py</code>：复制 <code>skeletons/baseline</code>，叠加 <code>skeletons/overlays/*</code> 与域 SQL</td><td>工作区完整工程骨架；<code>student_db.ensure_student_schema</code> 建库建表</td></tr>
+    <tr><td>3 <code>island_fill</code></td><td><code>llm/unit_flow/</code>：Plan → 并发 Unit → Merge 写回工作区</td><td>岛文案 / 角色 / E-R / 模块 / 用例标签；<code>fill_event_hub</code> 推 SSE</td></tr>
+    <tr><td>4 <code>build_verify</code></td><td><code>llm/agents_fix.py</code> 的 <code>run_fix_agent</code></td><td>构建与修复轮次（<code>fix_rounds_max</code>）</td></tr>
+    <tr><td>5 <code>gate_e2e</code></td><td><code>bake/gates/evaluate.py</code> + <code>delivery_review.evaluate_workspace_gates</code> + QA Agent</td><td><code>projects.gates</code>、<code>projects.checklist</code>；<code>overall</code> 决定能否打包</td></tr>
+    <tr><td>6 <code>pack</code></td><td><code>delivery_review.finalize_pack</code> → <code>jobs.pack_zip</code></td><td>先写临时文件再原子替换的 ZIP；排除 node_modules / target / .git / islands / .factory</td></tr>
+  </table>
+  <p class="sub">门禁键：<code>p0a</code> 后端骨架 · <code>p0b</code> 前端骨架 · <code>p1</code> 登录基线 · <code>p2</code> 领域主流程 E2E · <code>p3a</code> 清单实装 · <code>p3b</code> Spec/契约一致 · <code>p3t</code> 技术栈 · <code>p3d</code> 文档 · <code>p3s</code> 语义 · <code>p3n</code> 库表 · <code>p3q</code> 质量摘要，外加可接题边界 <code>accept</code>。复审期间由 <code>forbid_full_rebake</code> 拦截整段重跑。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="num">3</span>任务状态机</h2>
+  <p class="sub">重启兜底与旁路任务都在这一层收口。</p>
+  <div class="mermaid">
+stateDiagram-v2
+    [*] --> queued: 建 Job
+    queued --> running: run_job 取到
+    running --> success: 六步全过
+    running --> failed: 任一步异常 / 门禁不过
+    running --> cancelled: POST /cancel
+    failed --> running: POST /retry 带 from_step 续跑
+    success --> [*]
+    cancelled --> [*]
+    failed --> [*]: 服务重启 fail_orphaned_jobs 兜底
+  </div>
+  <ul class="pts">
+    <li>进度：<code>progress = (已完成步 + 当前步 0.5) / 6 × 100</code>，每步 <code>set_step</code> 即 commit；前端短轮询 + SSE 双通道读。</li>
+    <li>重启兜底：<code>fail_orphaned_jobs()</code> 把库里仍 running/queued 但内存无 Task 的任务标失败，避免进度条永远卡住。</li>
+    <li>旁路：<code>kind=defense_ppt</code> 走自己的 5 步（证据 → 填页 Unit → 采图 → 瞎写/结构检查 → 写 deck.json），<b>不得</b>改动 <code>project.status</code> / <code>zip_ready</code>。</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="num">4</span>运营前端结构（frontend/src/）</h2>
+  <p class="sub">没有 store 库、没有 TypeScript：一个 god-composable + provide/inject 撑起整个项目详情页。</p>
+  <div class="mermaid">
+flowchart TB
+    MAIN["main.js createApp + naive 全量安装 + initTheme + 全局 errorHandler → /error/500"] --> APP["App.vue · 唯一布局壳 侧栏（工作区 / 系统两组）+ 面包屑 + 暗色切换 + router-view"]
+    APP --> RT["router.js（createWebHistory）"]
+    RT --> V1["/ 项目 Projects.vue"]
+    RT --> V2["/projects/:id 详情 ProjectDetail.vue"]
+    RT --> V3["/jobs 任务队列 Jobs.vue"]
+    RT --> V4["/llm 大模型 Llm.vue（/deepseek /gemini 重定向到此）"]
+    RT --> V5["/unsplash · /system · /help"]
+    RT --> V6["/error/500 · 404 兜底 ErrorPage.vue"]
+    V2 --> PD["views/projectDetail/ useProjectDetail() 统一下发上下文（provide PD_KEY）"]
+    PD --> T1["MatchTab 骨架 × 领域 × 身份场景"]
+    PD --> T2["GenerateTab 生成 / soft-bake 选项 / 步骤轨"]
+    PD --> T3["RuntimeTab 预览启停 + 日志"]
+    PD --> T4["LogsTab 日志过滤"]
+    PD --> T5["ArtifactsTab 库表 / 论文材料 / API / 复审 / 质量 / PPT"]
+    T5 --> AV["图查看器组件 ER · 模块 · 架构 · 序列 · 活动 · 类 · 用例 · 测试用例"]
+    T2 --> PPM["components/defensePpt/ + ppt/ 答辩 PPT 面板与页预览"]
+    V1 --> API["api.js · axios baseURL='/api' timeout 60s（重操作 600s / 轮询 8s 静默）"]
+    V2 --> API
+    V3 --> API
+    V4 --> API
+  </div>
+  <table>
+    <tr><th>维度</th><th>事实</th></tr>
+    <tr><td>技术栈</td><td>Vue <code>^3.5.39</code> + vue-router <code>^4.6.4</code> + Naive UI <code>^2.44.1</code> + axios + jszip；Vite <code>^5.4.11</code></td></tr>
+    <tr><td><b>没有</b>的东西</td><td>无 Pinia / Vuex、无 TypeScript、无 ESLint 配置、无 playwright.config（装了没接线）</td></tr>
+    <tr><td>状态管理</td><td><code>ProjectDetail.vue</code> 是薄壳，逻辑全在 <code>useProjectDetail.js</code>，用 <code>provide(PD_KEY, …)</code> + <code>bindPd()</code> 下发；各 Tab 不直接调 <code>api.*</code></td></tr>
+    <tr><td>壳的职责</td><td><code>App.vue</code> 同时是布局与导航（无独立 layout 组件），面包屑由 <code>route.meta.crumb</code> 推导</td></tr>
+    <tr><td>实时性</td><td>无 WebSocket、无 fetch()：进度靠轮询 + SSE，文件类走浏览器直达 URL</td></tr>
+  </table>
+  <table>
+    <tr><th>场景</th><th>机制</th><th>参数</th></tr>
+    <tr><td>任务队列页</td><td>轮询 <code>GET /jobs</code></td><td><code>setInterval</code> 3000 ms</td></tr>
+    <tr><td>生成中的详情页</td><td>轮询（lite 模式）+ SSE</td><td>轮询 1500 ms（防重入，连续 2 次失败提示同步中断）；SSE <code>/fill-events</code> 由进程内 hub 推送，<code>done/failed</code> 自动关闭</td></tr>
+    <tr><td>答辩 PPT 进度</td><td>SSE + 轮询双保险</td><td>SSE <code>/defense-ppt/events</code> 独立 channel；同时 <code>setInterval(pollPptJob, 800)</code></td></tr>
+    <tr><td>预览启停</td><td>有限次轮询收敛</td><td>动作后 700 ms 一轮；stop 上限 8 s、start/restart 上限 90 s</td></tr>
+    <tr><td>孤儿盘清理</td><td>轮询状态接口</td><td>1200 ms 一轮、15 分钟上限</td></tr>
+  </table>
+  <p class="sub">上传链路：<code>uploadMaterials.js</code> 递归收集（拖拽用 <code>webkitGetAsEntry()</code>、<code>.zip</code> 用 jszip 展开、跳过 <code>__MACOSX</code> / <code>.DS_Store</code> / <code>~$</code>、大小写无关去重），<b>超过 8 份直接报错而不是截断</b>；再由客户端队列逐个 <code>upload/plan</code> → 人工确认 → <code>upload/confirm</code> 建项目。</p>
+</section>
+
+<section id="s5">
+  <h2><span class="num">5</span>后端分层与模块职责</h2>
+  <p class="sub">api 只做 HTTP；业务写 services；bake 保持确定性可单测；LLM 一律在 llm。</p>
+  <div class="mermaid">
+flowchart TB
+    subgraph API["app/api · HTTP 边界（只做校验 / 编排调用）"]
+        A1["projects/ common · crud · schema · runtime · delivery_review"]
+        A2["jobs · system_router → deepseek / gemini / usage / info / tools / unsplash"]
+        A3["defense_ppt"]
+    end
+    subgraph SERVICES["app/services · 业务编排（无 HTTP 依赖）"]
+        SV1["projects 门面 → project_match / project_delivery / project_disk / project_projection"]
+        SV2["jobs 任务执行器"]
+        SV3["runtime + runtime_reconcile 进程与投影"]
+        SV4["delivery_review 复审 / 验圈 / 合卷"]
+        SV5["proposal · proposal_match · proposal_diff · upload_cluster"]
+        SV6["student_db · student_copy · student_api_smoke"]
+        SV7["defense_ppt/ planner · job_runner · export_pptx · figures · screenshots"]
+    end
+    subgraph CORE["app/core"]
+        C1["config.py Settings GF_* / LLM_* / 端口池 / 预算"]
+        C2["database.py async engine + SessionLocal + create_all + 幂等 ALTER"]
+        C3["key_mask.py"]
+    end
+    subgraph BAKE["app/bake · 纯函数为主，便于单测"]
+        B1["engine*.py 入口 sql / bake / resources / islands 分册"]
+        B2["domains_catalog/ + domain_registry + domain_entities"]
+        B3["schema/ shells · builders_* · er_* · modules · usecases · testcases"]
+        B4["sql/templates + compose + ddl_edit"]
+        B5["gates/ evaluate · semantic · schema_nf · feature_keywords"]
+        B6["features/ 能力加厚运行时"]
+    end
+    MODELS["app/models Project / Job / LlmCall / SettingRow"]
+    SCHEMAS["app/schemas Pydantic 出入参"]
+    API --> SERVICES
+    SERVICES --> BAKE
+    SERVICES --> MODELS
+    API --> SCHEMAS
+    SERVICES --> CORE
+    BAKE --> CORE
+    MODELS --> C2
+  </div>
+  <ul class="pts">
+    <li><code>services/projects.py</code> 是<b>门面</b>：正文按职责拆到 project_match / project_delivery / project_disk / project_projection，新逻辑不再往门面堆。</li>
+    <li>启动生命周期（<code>main.py lifespan</code>）：<code>init_db()</code> → 回灌大模型预算与模型设置 → <code>fail_orphaned_jobs()</code> → 启动后台对账 <code>start_runtime_reconcile()</code>，关闭时 <code>stop_runtime_reconcile()</code>。</li>
+    <li>表结构演进用 <code>create_all</code> + <code>_migrate_project_columns</code>（幂等 ALTER），没有 Alembic。</li>
+  </ul>
+</section>
+
+<section id="s6">
+  <h2><span class="num">6</span>数据模型与磁盘布局</h2>
+  <p class="sub">四张表：projects / jobs / llm_calls / settings。</p>
+  <div class="mermaid">
+erDiagram
+    PROJECT ||--o{ JOB : "project_id"
+    PROJECT ||--o{ LLM_CALL : "project_id"
+    PROJECT {
+        string id PK
+        string title
+        string status "needs_confirm/ready/generating/generated/failed/running/archived"
+        string domain "DOM-*"
+        string archetype "ARCH-CRUD…"
+        string persistence "jdbc/mybatis/jpa"
+        bool spring_security
+        bool ai_assistant
+        bool match_locked
+        json spec
+        json gates
+        json checklist
+        string workspace_path
+        string zip_path
+        bool zip_ready
+        string delivery_mark "none/ready/delivered"
+        json delivery_review
+        int backend_port
+        int frontend_port
+        bool backend_running
+        bool frontend_running
+    }
+    JOB {
+        int id PK
+        string project_id FK
+        string kind "bake/defense_ppt"
+        string status "queued/running/success/failed/cancelled"
+        string step
+        int progress
+        json steps
+        json units
+        text error
+    }
+    LLM_CALL {
+        int id PK
+        string project_id FK
+        string stage
+        int tokens
+        bool ok
+    }
+    SETTING_ROW {
+        string key PK
+        json value
+    }
+  </div>
+  <div class="mermaid">
+flowchart LR
+    DATA["data/"] --> DB["factory.db 工厂元库（默认 SQLite / 或 MySQL）"]
+    DATA --> UP["uploads/ 上传材料落盘"]
+    DATA --> WS["workspace/id/ 每题学生工程工作区"]
+    DATA --> ZIP["workspace/id.zip 门禁通过后的交付包"]
+    DATA --> LOG["logs/id/ job.log · backend.log · frontend.log · deepseek.log"]
+    DATA --> CACHE["cache/ 共享缓存 baseline 前端 node_modules 复用"]
+    SK["skeletons/"] --> BASE["baseline/ 学生工程骨架 jdbc 默认"]
+    SK --> OV["overlays/ mybatis / jpa / spring-security 叠加层"]
+  </div>
+</section>
+
+<section id="s7">
+  <h2><span class="num">7</span>运行时预览子系统</h2>
+  <p class="sub">一个预览实例 = 一组 JVM + Node 进程，内存是硬约束，所以列表 GET 只读库。</p>
+  <div class="mermaid">
+flowchart LR
+    UI["前端「运行」标签页"] -->|"GET /{id}/runtime"| ST["RuntimeState"]
+    UI -->|"POST /{id}/runtime/{side}/{action}"| ACT["start / stop"]
+    UI -->|POST /runtime/batch| BATCH["批量启停 错峰 + 额度"]
+    ACT --> POOL["allocate_ports 从空闲端口池取一对"]
+    BATCH --> POOL
+    POOL --> PREP["prepare_frontend_deps 共享缓存 node_modules 软链"]
+    POOL --> BE["start_backend mvn spring-boot:run 注入 GF_STUDENT_MYSQL_*"]
+    POOL --> FE["start_frontend vite --port"]
+    BE --> PROBE["探活：TCP / HTTP / 日志致命串"]
+    FE --> PROBE
+    PROBE --> PROJ["回写 projects.side_running / _port"]
+    REC["runtime_reconcile 后台循环 GF_RUNTIME_RECONCILE_SEC=5s"] --> PROBE
+    REC --> PURGE["孤儿目录小额清盘 GF_ORPHAN_PURGE_PER_PASS"]
+  </div>
+  <ul class="pts">
+    <li>列表与 <code>/stats</code> 只读库；真实运行态由后台 <code>runtime_reconcile</code> 周期性对账回写，启停与详情仍当场 sync。</li>
+    <li>批量启动只启动到 <code>GF_PREVIEW_MAX_RUNNING</code> 额度，其余返回 deferred，并按 <code>GF_PREVIEW_START_STAGGER_SEC</code> 错峰，避免首次 Maven 编译把机器打死。</li>
+  </ul>
+</section>
+
+<section id="s8">
+  <h2><span class="num">8</span>交付闸与人工履约</h2>
+  <p class="sub">机器质检与人工履约刻意分成两个字段。</p>
+  <div class="mermaid">
+flowchart TB
+    G["门禁 overall 通过"] --> ZR["zip_ready = true（机器质检）"]
+    ZR --> DM{"delivery_mark（人工履约）"}
+    DM -->|none| N1["不可下载"]
+    DM -->|ready 已审待发| N2["可下载，未视为已交学生"]
+    DM -->|delivered 已发出| N3["已交学生"]
+    ZR --> RV["交付复审 delivery_review"]
+    RV --> V1["验圈 verify：重跑门禁 + 单调性比对"]
+    RV --> V2["合卷 repack：重打学生 ZIP"]
+    RV --> V3["登记偏差 fix_notes"]
+    RV --> V4["清洗学生可见工厂腔 scrub-student-copy"]
+    RV --> V5["导出运营交接包 handoff"]
+  </div>
+  <p class="sub">复审期间 <code>forbid_full_rebake</code> 禁止整段重跑生成，只能验圈 / 合卷，防止「基线修洞后 ZIP 仍是旧工程」。</p>
+</section>
+
+<section id="s9">
+  <h2><span class="num">9</span>学生交付物内部结构</h2>
+  <p class="sub">ZIP 内容 = 工作区去掉工厂内部产物。</p>
+  <div class="mermaid">
+flowchart TB
+    subgraph STU["data/workspace/id （= 交付 ZIP 内容）"]
+        subgraph SE["backend/ Spring Boot 3.2 · JDK 17"]
+            SC["controller/ REST 入口 Auth / 各业务"]
+            SS["service/ + capability/ 业务与能力运行时"]
+            SP["config/ JdbcSupport / WebConfig / 上传 / 种子对齐"]
+            SY["resources/application.yml + domain-*.json"]
+        end
+        subgraph SF["frontend/ Vue 3 + Element Plus zh-cn"]
+            FV["views/ + views/admin/"]
+            FC["components/ 通用组件"]
+            FT["styles/themes/*.css 按域配色"]
+            FH["api/http.js + utils/"]
+        end
+        SQ["sql/ 建库建表 + 种子数据"]
+        SR["README.md 运行说明"]
+        SX["spec.json / domain.schema.json 工厂产物，不进 ZIP"]
+    end
+    MYSQL[("MySQL 每题一个库")]
+    SQ --> MYSQL
+    SE --> MYSQL
+    SF -->|/api| SE
+  </div>
+  <ul class="pts">
+    <li>骨架不含 <code>node_modules</code> / <code>target</code> / <code>dist</code>：<code>bake_project</code> 的 <code>copytree(ignore=…)</code> 明确跳过；前端依赖由预览子系统挂共享缓存，Maven target 由编译再生。</li>
+    <li>持久层由 <code>bake/persistence.py</code> 决定：默认 <code>jdbc</code>（JdbcTemplate），开题点名时切 <code>mybatis</code> / <code>jpa</code>，并按需叠 <code>addon-spring-security</code>。</li>
+    <li>场景身份（校园 / 企业 / 社区）由 <code>bake/scene_scan.py</code> 的 <code>scene_for(domain, title, proposal)</code> 统一决定；壳文案与注册资料页必须读同一 scene，<b>禁止改开题迁就模板</b>。</li>
+  </ul>
+</section>
+
+<section id="s10">
+  <h2><span class="num">10</span>外部依赖与降级</h2>
+  <table>
+    <tr><th>依赖</th><th>用途</th><th>缺失 / 失败时</th></tr>
+    <tr><td>DeepSeek API</td><td>匹配推荐、填岛、标签、QA、Fix、样例题</td><td>无 Key 仍可 bake：业务岛走确定性填充</td></tr>
+    <tr><td>Gemini API（可选）</td><td>与 DeepSeek 并存，可双开，优先一家失败自动换</td><td>按 <code>LLM_PROVIDER</code> / 运营台开关</td></tr>
+    <tr><td>Unsplash</td><td>登录氛围图、门户轮播</td><td>按 <code>themes.css</code> 色板本地生成</td></tr>
+    <tr><td>MySQL</td><td>学生库必用；工厂元库可选</td><td>工厂元库退化为 SQLite <code>data/factory.db</code></td></tr>
+  </table>
+</section>
+
+<section id="s11">
+  <h2><span class="num">11</span>启动链路与关键配置</h2>
+  <div class="mermaid">
+flowchart LR
+    L["scripts/launcher.bat 有 Windows Terminal 则同窗标签页"] --> B["start-backend → uvicorn :8000"]
+    L --> F["start-frontend → vite :5173"]
+    B --> H["GET /api/health"]
+    F --> P["vite proxy /api → 127.0.0.1:8000"]
+    D["docker compose up -d MySQL 8（可选）"] --> B
+  </div>
+  <table>
+    <tr><th>变量</th><th>作用</th><th>默认</th></tr>
+    <tr><td><code>GF_DATABASE_URL</code></td><td>工厂元库</td><td><code>sqlite+aiosqlite:///data/factory.db</code></td></tr>
+    <tr><td><code>GF_DATA_DIR</code> / <code>GF_SKELETONS_DIR</code></td><td>数据目录 / 骨架目录</td><td><code>data</code> / <code>skeletons</code></td></tr>
+    <tr><td><code>GF_HOST</code> / <code>GF_PORT</code></td><td>工厂 API 监听</td><td><code>127.0.0.1</code> / <code>8000</code></td></tr>
+    <tr><td><code>GF_BACKEND_PORT_START/END</code></td><td>学生后端端口池</td><td><code>9100</code> / <code>9120</code></td></tr>
+    <tr><td><code>GF_FRONTEND_PORT_START/END</code></td><td>学生前端端口池</td><td><code>9200</code> / <code>9220</code></td></tr>
+    <tr><td><code>GF_STUDENT_MYSQL_*</code></td><td>学生库连接</td><td><code>root</code> / <code>root123</code> @ <code>3306</code></td></tr>
+    <tr><td><code>GF_PREVIEW_MAX_RUNNING</code></td><td>同时运行预览上限</td><td><code>3</code></td></tr>
+    <tr><td><code>GF_PREVIEW_START_STAGGER_SEC</code></td><td>批量启动错峰</td><td><code>4.0</code></td></tr>
+    <tr><td><code>GF_FILL_UNIT_CONCURRENCY</code></td><td>填岛 Unit 并发</td><td><code>3</code>（代码内夹在 1–8）</td></tr>
+    <tr><td><code>GF_RUNTIME_RECONCILE_SEC</code></td><td>后台对账间隔</td><td><code>5.0</code>（<code>&lt;=0</code> 关闭）</td></tr>
+    <tr><td><code>GF_ORPHAN_PURGE_PER_PASS</code></td><td>每轮清孤儿目录数</td><td><code>1</code></td></tr>
+    <tr><td><code>GF_QA_WARN_BLOCKS_PACK</code></td><td>QA 告警是否拦打包</td><td><code>true</code></td></tr>
+    <tr><td><code>LLM_PROVIDER</code> / <code>DEEPSEEK_*</code> / <code>GEMINI_*</code></td><td>大模型配置</td><td>DeepSeek 开、Gemini 可选</td></tr>
+  </table>
+  <ul class="pts">
+    <li>生产 / 局域网：<code>GF_HOST=0.0.0.0</code>，<code>GF_PUBLIC_HOST</code> 填对外 IP 或域名，学生进程自动绑 <code>0.0.0.0</code>；<code>GF_BIND_HOST</code> 可强制覆盖。</li>
+    <li>运营端本身无登录鉴权，默认按内网运营工具用；<code>/docs</code>、<code>/redoc</code> 仅供调试，勿与学生 ZIP 内的 Spring 接口混淆。</li>
+  </ul>
+</section>
+
+<footer>
+  毕设港 · 系统架构图 · 与仓库根目录 <code>ARCHITECTURE.md</code> 同源 · 阅读入口 <code>README.md</code>
+</footer>
+
+</div>
+
+<pre class="raw" id="raw"></pre>
+
+<script type="module">
+  const blocks = [...document.querySelectorAll('.mermaid')];
+  const raw = document.getElementById('raw');
+  raw.textContent = blocks.map((b, i) => `%% ---------- 图 ${i + 1} ----------\n` + b.textContent.trim()).join('\n\n');
+
+  /* ---------- 图放大查看（滚轮缩放 + 拖拽） ---------- */
+  let overlay = null, stage = null, zoom = 1, panX = 0, panY = 0, drag = null;
+
+  function makeOverlay() {
+    overlay = document.createElement('div');
+    overlay.className = 'zoom-overlay';
+    overlay.innerHTML = `
+      <div class="bar">
+        <strong>放大查看</strong>
+        <button data-act="out">缩小 −</button>
+        <button data-act="reset">复位</button>
+        <button data-act="in">放大 ＋</button>
+        <button data-act="close">关闭 ✕</button>
+      </div>
+      <div class="stage"></div>`;
+    document.body.appendChild(overlay);
+    stage = overlay.querySelector('.stage');
+
+    overlay.querySelector('.bar').addEventListener('click', (e) => {
+      const act = e.target.getAttribute && e.target.getAttribute('data-act');
+      if (act === 'close') closeOverlay();
+      else if (act === 'in') apply(1.25);
+      else if (act === 'out') apply(1 / 1.25);
+      else if (act === 'reset') { zoom = 1; panX = 0; panY = 0; draw(); }
+    });
+
+    stage.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      apply(e.deltaY < 0 ? 1.12 : 1 / 1.12);
+    }, { passive: false });
+
+    stage.addEventListener('pointerdown', (e) => {
+      drag = { x: e.clientX, y: e.clientY, px: panX, py: panY };
+      stage.classList.add('dragging');
+      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    stage.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      panX = drag.px + (e.clientX - drag.x);
+      panY = drag.py + (e.clientY - drag.y);
+      draw();
+    });
+    const endDrag = () => { drag = null; stage.classList.remove('dragging'); };
+    stage.addEventListener('pointerup', endDrag);
+    stage.addEventListener('pointercancel', endDrag);
+
+    document.addEventListener('keydown', (e) => {
+      if (overlay && overlay.style.display === 'flex' && e.key === 'Escape') closeOverlay();
+    });
+  }
+
+  function draw() {
+    const svg = stage.querySelector('svg');
+    if (svg) svg.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+  }
+
+  function apply(factor) {
+    zoom = Math.min(8, Math.max(0.2, zoom * factor));
+    draw();
+  }
+
+  function openOverlay(sourceBlock) {
+    if (!overlay) makeOverlay();
+    stage.innerHTML = '';
+    const svg = sourceBlock.querySelector('svg');
+    if (svg) stage.appendChild(svg.cloneNode(true));
+    else stage.textContent = '这张图还没渲染完成，请稍候再点。';
+    zoom = 1; panX = 0; panY = 0; draw();
+    overlay.style.display = 'flex';
+    document.body.classList.add('zoom-lock');
+  }
+
+  function closeOverlay() {
+    if (!overlay) return;
+    overlay.style.display = 'none';
+    stage.innerHTML = '';
+    document.body.classList.remove('zoom-lock');
+  }
+
+  function attachTools() {
+    blocks.forEach((block) => {
+      if (block.dataset.tools === '1' || !block.querySelector('svg')) return;
+      block.dataset.tools = '1';
+      const bar = document.createElement('div');
+      bar.className = 'diagram-tools';
+      bar.innerHTML = '<span>图太大？</span><button type="button">放大查看</button>';
+      bar.querySelector('button').addEventListener('click', () => openOverlay(block));
+      block.parentNode.insertBefore(bar, block);
+    });
+  }
+
+  try {
+    const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'loose',
+      theme: 'base',
+      fontFamily: '"Segoe UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif',
+      flowchart: { curve: 'basis', htmlLabels: true, nodeSpacing: 26, rankSpacing: 42 },
+      themeVariables: {
+        fontSize: '14px',
+        primaryColor: '#e8f0fb',
+        primaryTextColor: '#14213a',
+        primaryBorderColor: '#2f6fd0',
+        lineColor: '#7d8fa8',
+        secondaryColor: '#e6f6f0',
+        tertiaryColor: '#fdf2e3',
+        clusterBkg: '#f7fafd',
+        clusterBorder: '#c8d6e6',
+        edgeLabelBackground: '#ffffff'
+      }
+    });
+    await mermaid.run({ nodes: blocks });
+    attachTools();
+  } catch (err) {
+    document.getElementById('fallback').style.display = 'block';
+    raw.style.display = 'block';
+    console.error('mermaid 渲染失败：', err);
+  }
+</script>
+</body>
+</html>

@@ -317,6 +317,7 @@ CREATE TABLE IF NOT EXISTS content_report (
   handle_note VARCHAR(512) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   handled_at DATETIME NULL,
+  handle_deadline_at DATETIME NULL,
   KEY idx_creport_status (status, id),
   KEY idx_creport_target (target_type, target_id)
 );

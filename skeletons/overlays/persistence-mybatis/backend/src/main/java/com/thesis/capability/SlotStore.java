@@ -448,9 +448,9 @@ public final class SlotStore {
             extraCols.put("violation_hold_yuan", toDecimal(ex.get("violationHoldYuan")));
         }
         if (hasResvColumn("violation_hold_note")) {
-            String note = str(ex.get("violationHoldNote"));
-            if (note.length() > 255) note = note.substring(0, 255);
-            extraCols.put("violation_hold_note", note);
+            String holdNote = str(ex.get("violationHoldNote"));
+            if (holdNote.length() > 255) holdNote = holdNote.substring(0, 255);
+            extraCols.put("violation_hold_note", holdNote);
         }
         if (hasResvColumn("inspect_ack")) {
             extraCols.put("inspect_ack", toInt(ex.get("inspectAck")) > 0 ? 1 : 0);

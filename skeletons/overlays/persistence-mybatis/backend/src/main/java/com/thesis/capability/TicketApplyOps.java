@@ -46,6 +46,7 @@ final class TicketApplyOps {
         }
         Map<String, Object> item = ArchiveStore.getItem(itemId);
         if (item == null) throw new IllegalArgumentException("对象不存在");
+        ArchiveStore.assertNotLocked(item);
         TicketGuardOps.assertClaimCooldownIfRequired(item);
         TicketGuardOps.assertSemesterCreditCapIfRequired(username, item);
         int stock = item.get("stock") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(item.get("stock")));
@@ -106,6 +107,7 @@ final class TicketApplyOps {
         }
 
         String rawNote = remark == null ? "" : remark.trim();
+        com.thesis.service.SensitiveWordGate.assertClean(rawNote);
         if (TicketStore.requireRemark && rawNote.isBlank()) {
             throw new IllegalStateException("请填写说明后再提交");
         }
@@ -216,6 +218,10 @@ final class TicketApplyOps {
                 TicketDeriveOps.appendProgress(id, String.valueOf(applied.get("status")), username,
                         "先修提示：提示码 " + prereq + "（弱提示，未强制拦截）");
             }
+        }
+        try {
+            com.thesis.service.MentionNotify.notifyFromText(username, note, "ticket", id, "跟帖");
+        } catch (Exception ignored) {
         }
         return applied;
     }

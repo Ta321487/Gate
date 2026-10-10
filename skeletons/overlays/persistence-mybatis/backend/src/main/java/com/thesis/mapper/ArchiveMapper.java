@@ -41,7 +41,11 @@ public interface ArchiveMapper {
             @Param("multiCategory") boolean multiCategory,
             @Param("itemCatTable") String itemCatTable,
             @Param("includeDimension") boolean includeDimension,
-            @Param("includeRequiredPick") boolean includeRequiredPick);
+            @Param("includeRequiredPick") boolean includeRequiredPick,
+            @Param("includeSectionNotice") boolean includeSectionNotice);
+
+    @Select("SELECT section_notice FROM `${catTable}` WHERE id=#{id}")
+    String selectCategorySectionNotice(@Param("catTable") String catTable, @Param("id") long id);
 
     @Update("UPDATE `${catTable}` SET required_pick=#{pick} WHERE id=#{id}")
     int updateCategoryRequiredPick(
@@ -110,7 +114,15 @@ public interface ArchiveMapper {
             @Param("scheduleFilter") boolean scheduleFilter,
             @Param("filterByEnd") boolean filterByEnd,
             @Param("ownerUsername") String ownerUsername,
-            @Param("orderStallScore") boolean orderStallScore);
+            @Param("orderStallScore") boolean orderStallScore,
+            @Param("orderEssence") boolean orderEssence);
+
+    /** 内容组热门：orderCol 仅允许 view_count / download_count（由 Store 白名单传入）。 */
+    List<Map<String, Object>> selectHotItems(
+            @Param("itemTable") String itemTable,
+            @Param("excludeDeleted") boolean excludeDeleted,
+            @Param("requireAvailable") boolean requireAvailable,
+            @Param("orderCol") String orderCol);
 
     @Update("UPDATE `${itemTable}` SET status='unavailable' "
             + "WHERE status='available' AND start_at IS NOT NULL AND start_at <= NOW()")
@@ -199,6 +211,14 @@ public interface ArchiveMapper {
     List<Map<String, Object>> selectMine(
             @Param("itemTable") String itemTable,
             @Param("mineCol") String mineCol,
+            @Param("username") String username,
+            @Param("statusFilter") String statusFilter);
+
+    @Select("SELECT COUNT(*) FROM `${itemTable}` WHERE `${ownerCol}`=#{username} "
+            + "AND DATE(created_at)=CURDATE() AND IFNULL(status,'')<>'draft'")
+    int countTodayNonDraftPosts(
+            @Param("itemTable") String itemTable,
+            @Param("ownerCol") String ownerCol,
             @Param("username") String username);
 
     List<Map<String, Object>> suggestTitles(

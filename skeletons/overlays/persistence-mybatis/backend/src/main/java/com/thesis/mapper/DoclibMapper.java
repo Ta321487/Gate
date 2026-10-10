@@ -21,6 +21,9 @@ public interface DoclibMapper {
     @Insert("INSERT INTO download_log(item_id, username) VALUES(#{itemId}, #{username})")
     int insertLog(@Param("itemId") long itemId, @Param("username") String username);
 
+    @Update("UPDATE doc_item SET download_count=IFNULL(download_count,0)+1 WHERE id=#{id}")
+    int bumpDownloadCount(@Param("id") long id);
+
     @Select("SELECT COUNT(*) FROM download_log WHERE username=#{username}")
     Integer countMine(String username);
 

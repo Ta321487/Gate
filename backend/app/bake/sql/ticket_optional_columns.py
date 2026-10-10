@@ -536,7 +536,7 @@ def _ticket_flag_column_names(flags: dict | None) -> list[str]:
         names.append("asset_code")
     if f.get("allowRemoteUrl"):
         names.append("remote_url")
-    if f.get("allowTicketMerge"):
+    if f.get("allowTicketMerge") or f.get("allowNestedReply"):
         names.append("parent_ticket_id")
     if f.get("allowKnowledgeDeposit"):
         names.append("knowledge_deposit")

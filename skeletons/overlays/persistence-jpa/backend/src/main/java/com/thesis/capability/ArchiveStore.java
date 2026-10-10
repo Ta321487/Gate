@@ -3,11 +3,11 @@ package com.thesis.capability;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thesis.config.DomainResourceJson;
-import com.thesis.config.JpaSupport;
-import com.thesis.config.JpaDb;
-import com.thesis.config.GeneratedKeyHolder;
-import com.thesis.config.KeyHolder;
+import com.thesis.config.JdbcSupport;
 import com.thesis.service.UserStore;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -24,7 +24,7 @@ public final class ArchiveStore {
 
     private static String CAT = "category";
     private static String ITEM = "book";
-    /** 逻辑键 author/isbn 对应的物理列（bake 写入 domain-archive-columns.json） */
+    /** 逻辑键 author/isbn 对应的物理列（见 domain-archive-columns.json） */
     private static String COL_AUTHOR = "author";
     private static String COL_ISBN = "isbn";
     private static Boolean hasStartAt;
@@ -40,6 +40,8 @@ public final class ArchiveStore {
     static boolean userPublishEnabled = false;
     /** 开题点名投稿审核/先审后发：用户发布为 pending_review，通过后才进公开目录。 */
     static boolean publishReviewEnabled = false;
+    /** 论坛每日发帖上限；0 表示不限制（草稿不计入）。 */
+    static int forumDailyPostLimit = 0;
     private static boolean galleryEnabled = false;
     private static boolean detailAttrsEnabled = false;
     private static List<String> detailAttrKeys = List.of();
@@ -64,12 +66,12 @@ public final class ArchiveStore {
         }
     }
 
-    public static boolean flashPriceEnabled() {
-        return flashPriceEnabled;
-    }
-
     public static void configureStockWarn(boolean notify, int below) {
         ArchiveCfgOps.configureStockWarn(notify, below);
+    }
+
+    public static boolean flashPriceEnabled() {
+        return flashPriceEnabled;
     }
 
     private static void ensurePromoColumns() {
@@ -160,7 +162,7 @@ public final class ArchiveStore {
     static boolean multiCategoryEnabled = false;
     static Boolean hasDimensionCol = null;
     private static String itemTagFk = "post_id";
-    /** bake 注入：库存/名额等列名，供不足提示复用 */
+    /** 库存/名额等展示用列名，供不足提示复用 */
     static String STOCK_LABEL = "库存";
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -187,7 +189,7 @@ public final class ArchiveStore {
         return ArchivePriceOps.stockShortageTitled(title, remain);
     }
 
-    /** bake 写入的 domain-ticket-copy.json；无单据域也会有 stockLabel */
+    /** 单据文案见 domain-ticket-copy.json；无单据域也会有 stockLabel */
     private static void loadStockLabelFromResource() {
         Map<String, Object> root = DomainResourceJson.loadObjectMap("domain-ticket-copy.json");
         String lab = DomainResourceJson.str(root, "stockLabel", "");
@@ -253,7 +255,6 @@ public final class ArchiveStore {
 
     public static void configureRoomEquipment(boolean enabled) {
         roomEquipmentEnabled = enabled;
-        if (enabled) ensureEquipmentColumn();
     }
 
     public static boolean roomEquipmentEnabled() {
@@ -283,6 +284,30 @@ public final class ArchiveStore {
 
     public static boolean publishReviewEnabled() {
         return publishReviewEnabled;
+    }
+
+    private static boolean essencePointsRewardOn = false;
+    private static int essencePointsRewardAmount = 0;
+    private static boolean publishApproveNotifyOn = false;
+
+    /** C-08：精华奖分 / 投稿审过通知。 */
+    public static void configureContentIslands(
+            boolean essenceReward, int essenceAmount, boolean publishApproveNotify) {
+        essencePointsRewardOn = essenceReward;
+        essencePointsRewardAmount = Math.max(0, essenceAmount);
+        publishApproveNotifyOn = publishApproveNotify;
+    }
+
+    public static void configureForumDailyPostLimit(int limit) {
+        ArchiveCfgOps.configureForumDailyPostLimit(limit);
+    }
+
+    /** 锁定帖禁止跟帖/申请（C-02）。 */
+    public static void assertNotLocked(Map<String, Object> item) {
+        if (item == null) return;
+        if (toInt(item.get("locked")) > 0) {
+            throw new IllegalStateException("该帖已锁定，暂时不能回复");
+        }
     }
 
     public static void configureShopMarketplace(boolean enabled) {
@@ -336,8 +361,8 @@ public final class ArchiveStore {
         return ITEM;
     }
 
-    private static JpaDb db() {
-        return JpaSupport.db();
+    private static JdbcTemplate db() {
+        return JdbcSupport.jdbc();
     }
 
     private static String fmt(Object o) {
@@ -425,6 +450,11 @@ public final class ArchiveStore {
     }
 
     public static Map<String, Object> updateCategory(long id, String name, String dimension, Boolean requiredPick) {
+        return updateCategory(id, name, dimension, requiredPick, null);
+    }
+
+    public static Map<String, Object> updateCategory(
+            long id, String name, String dimension, Boolean requiredPick, String sectionNotice) {
         Integer exists = db().queryForObject("SELECT COUNT(*) FROM " + CAT + " WHERE id=?", Integer.class, id);
         if (exists == null || exists == 0) throw new IllegalArgumentException("分类不存在");
         String n = name == null ? "" : name.trim();
@@ -439,6 +469,11 @@ public final class ArchiveStore {
             db().update("UPDATE " + CAT + " SET name=? WHERE id=?", n, id);
         }
         applyRequiredPick(id, requiredPick);
+        if (sectionNotice != null && hasCategoryColumn("section_notice")) {
+            String notice = sectionNotice.trim();
+            if (notice.length() > 512) notice = notice.substring(0, 512);
+            db().update("UPDATE " + CAT + " SET section_notice=? WHERE id=?", notice, id);
+        }
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", id);
         m.put("name", n);
@@ -447,6 +482,14 @@ public final class ArchiveStore {
         }
         if (hasRequiredPickCategories() && requiredPick != null) {
             m.put("requiredPick", requiredPick);
+        }
+        if (hasCategoryColumn("section_notice")) {
+            try {
+                String sn = db().queryForObject(
+                        "SELECT section_notice FROM " + CAT + " WHERE id=?", String.class, id);
+                m.put("sectionNotice", sn == null ? "" : sn);
+            } catch (Exception ignored) {
+            }
         }
         return m;
     }
@@ -504,8 +547,9 @@ public final class ArchiveStore {
         }
         String dimSel = multiCategoryActive() && hasDimensionColumn() ? ", c.dimension" : "";
         String pickSel = hasRequiredPickCategories() ? ", c.required_pick" : "";
+        String noticeSel = hasCategoryColumn("section_notice") ? ", c.section_notice" : "";
         return db().query(
-                "SELECT c.id, c.name" + dimSel + pickSel + ", " + cntSql + " AS item_count "
+                "SELECT c.id, c.name" + dimSel + pickSel + noticeSel + ", " + cntSql + " AS item_count "
                         + "FROM " + CAT + " c ORDER BY c.id",
                 (rs, i) -> {
                     Map<String, Object> row = new LinkedHashMap<>();
@@ -520,6 +564,13 @@ public final class ArchiveStore {
                     if (hasRequiredPickCategories()) {
                         try {
                             row.put("requiredPick", rs.getInt("required_pick") > 0);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    if (hasCategoryColumn("section_notice")) {
+                        try {
+                            String sn = rs.getString("section_notice");
+                            row.put("sectionNotice", sn == null ? "" : sn);
                         } catch (Exception ignored) {
                         }
                     }
@@ -559,16 +610,22 @@ public final class ArchiveStore {
         }
         Map<String, Object> visible = getItem(id);
         if (visible != null) return visible;
-        if (publishReviewEnabled) return getItemAdmin(id);
+        // 待审 / 草稿：公开 getItem 隐藏，创建后仍要回给作者
+        if (publishReviewEnabled || (extra != null && "draft".equals(str(extra.get("status"))))) {
+            return getItemAdmin(id);
+        }
         return null;
     }
 
     /**
-     * 门户用户发布档案：即时上架；owner_username 固定登录名（「我的」归属）。
+     * 门户用户发布档案：默认即时上架；开题点名先审后发时 status=pending_review。
+     * owner_username 固定登录名（「我的」归属）。
      * author 可填业务字段（如联系人）；未传则仍用登录名。
+     * stock 可填余座等；未传或非法则 1。
+     * 正文走 isbn 逻辑键（论坛 richtext 可为 HTML）；站长下架走 soft-delete。
      */
     public static Map<String, Object> addUserPost(String username, String title, String body, long categoryId) {
-        return addUserPost(username, title, body, categoryId, null, null);
+        return addUserPost(username, title, body, categoryId, null, null, false);
     }
 
     public static Map<String, Object> addUserPost(
@@ -578,6 +635,50 @@ public final class ArchiveStore {
             long categoryId,
             String authorOpt,
             Integer stockOpt) {
+        return addUserPost(username, title, body, categoryId, authorOpt, stockOpt, false);
+    }
+
+    public static Map<String, Object> saveUserDraft(
+            String username, String title, String body, long categoryId) {
+        return addUserPost(username, title, body, categoryId, null, null, true);
+    }
+
+    /** C-09：更新本人草稿（自动保存 / 再存草稿）。 */
+    public static Map<String, Object> updateUserDraft(
+            long id, String username, String title, String body, long categoryId) {
+        if (!userPublishEnabled) {
+            throw new IllegalStateException("当前领域未开放用户发帖");
+        }
+        String uid = username == null ? "" : username.trim();
+        if (uid.isBlank()) throw new IllegalArgumentException("未登录");
+        Map<String, Object> raw = getItemRaw(id);
+        if (raw == null) throw new IllegalArgumentException("草稿不存在");
+        if (!"draft".equals(str(raw.get("status")).trim())) {
+            throw new IllegalStateException("仅草稿可更新");
+        }
+        String owner = str(raw.get("ownerUsername"));
+        if (owner.isBlank()) owner = str(raw.get("author"));
+        if (!uid.equals(owner)) throw new IllegalStateException("无权修改该草稿");
+        String t = title == null ? "" : title.trim();
+        if (t.isBlank()) throw new IllegalArgumentException("标题不能为空");
+        String content = body == null ? "" : body;
+        com.thesis.service.SensitiveWordGate.assertClean(t);
+        com.thesis.service.SensitiveWordGate.assertClean(content);
+        Map<String, Object> patch = new LinkedHashMap<>();
+        patch.put("title", t);
+        patch.put("isbn", content);
+        if (categoryId > 0) patch.put("categoryId", categoryId);
+        return updateItem(id, patch);
+    }
+
+    public static Map<String, Object> addUserPost(
+            String username,
+            String title,
+            String body,
+            long categoryId,
+            String authorOpt,
+            Integer stockOpt,
+            boolean asDraft) {
         if (!userPublishEnabled) {
             throw new IllegalStateException("当前领域未开放用户发帖");
         }
@@ -586,8 +687,13 @@ public final class ArchiveStore {
         com.thesis.service.UserStore.assertNotPostMuted(uid);
         String t = title == null ? "" : title.trim();
         if (t.isBlank()) throw new IllegalArgumentException("标题不能为空");
-        long cat = categoryId > 0 ? categoryId : 1L;
         String content = body == null ? "" : body;
+        com.thesis.service.SensitiveWordGate.assertClean(t);
+        com.thesis.service.SensitiveWordGate.assertClean(content);
+        if (!asDraft) {
+            assertForumDailyPostLimit(uid);
+        }
+        long cat = categoryId > 0 ? categoryId : 1L;
         String author = authorOpt == null ? "" : authorOpt.trim();
         if (author.isBlank()) author = uid;
         if (author.length() > 100) author = author.substring(0, 100);
@@ -597,14 +703,68 @@ public final class ArchiveStore {
         }
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("ownerUsername", uid);
-        if (publishReviewEnabled) {
+        if (asDraft) {
+            extra.put("status", "draft");
+        } else if (publishReviewEnabled) {
             extra.put("status", "pending_review");
         }
-        return addItem(t, author, content, cat, stock, "", extra);
+        Map<String, Object> item = addItem(t, author, content, cat, stock, "", extra);
+        if (item != null) return item;
+        if (asDraft) {
+            Map<String, Object> mine = pageMine(uid, 1, 1, "draft");
+            Object list = mine.get("list");
+            if (list instanceof List<?> rows && !rows.isEmpty() && rows.get(0) instanceof Map<?, ?> row) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> cast = (Map<String, Object>) row;
+                return cast;
+            }
+        }
+        return null;
+    }
+
+    private static void assertForumDailyPostLimit(String uid) {
+        if (forumDailyPostLimit <= 0 || uid == null || uid.isBlank()) return;
+        String ownerCol = hasOwnerUsername() ? "owner_username" : authorColumn();
+        Integer n = db().queryForObject(
+                "SELECT COUNT(*) FROM " + ITEM + " WHERE " + ownerCol
+                        + "=? AND DATE(created_at)=CURDATE() AND IFNULL(status,'')<>'draft'",
+                Integer.class,
+                uid);
+        if (n != null && n >= forumDailyPostLimit) {
+            throw new IllegalStateException("今天发帖已达上限");
+        }
+    }
+
+    /** 草稿发布：pending_review（审后可见）或 available。 */
+    public static Map<String, Object> publishDraft(long id, String username) {
+        if (!userPublishEnabled) {
+            throw new IllegalStateException("当前领域未开放用户发帖");
+        }
+        String uid = username == null ? "" : username.trim();
+        if (uid.isBlank()) throw new IllegalArgumentException("未登录");
+        Map<String, Object> raw = getItemRaw(id);
+        if (raw == null) throw new IllegalArgumentException("草稿不存在");
+        String st = str(raw.get("status")).trim();
+        if (!"draft".equals(st)) throw new IllegalStateException("仅草稿可发布");
+        String owner = str(raw.get("ownerUsername"));
+        if (owner.isBlank()) owner = str(raw.get("author"));
+        if (!uid.equals(owner)) throw new IllegalStateException("无权发布该草稿");
+        assertForumDailyPostLimit(uid);
+        Map<String, Object> patch = new LinkedHashMap<>();
+        patch.put("status", publishReviewEnabled ? "pending_review" : "available");
+        Map<String, Object> updated = updateItem(id, patch);
+        if (updated != null && "available".equals(str(updated.get("status")))) {
+            notifyCategoryFollowersIfPublic(id);
+        }
+        return updated;
     }
 
     /** 本人发布（含站长下架）：优先按 owner_username，否则按作者列=登录名 */
     public static Map<String, Object> pageMine(String username, int page, int size) {
+        return pageMine(username, page, size, null);
+    }
+
+    public static Map<String, Object> pageMine(String username, int page, int size, String statusFilter) {
         if (!userPublishEnabled) {
             throw new IllegalStateException("当前领域未开放用户发帖");
         }
@@ -615,12 +775,21 @@ public final class ArchiveStore {
         String where = hasOwnerUsername()
                 ? " WHERE owner_username=?"
                 : (" WHERE " + authorColumn() + "=?");
-        Integer total = db().queryForObject("SELECT COUNT(*) FROM " + ITEM + where, Integer.class, uid);
+        List<Object> args = new ArrayList<>();
+        args.add(uid);
+        String sf = statusFilter == null ? "" : statusFilter.trim();
+        if (!sf.isBlank()) {
+            where += " AND status=?";
+            args.add(sf);
+        }
+        Integer total = db().queryForObject("SELECT COUNT(*) FROM " + ITEM + where, Integer.class, args.toArray());
         int t = total == null ? 0 : total;
+        args.add(size);
+        args.add((page - 1) * size);
         List<Map<String, Object>> list = db().query(
                 "SELECT * FROM " + ITEM + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
                 (rs, i) -> enrichItem(mapItemRow(rs)),
-                uid, size, (page - 1) * size);
+                args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
         out.put("total", t);
@@ -651,11 +820,17 @@ public final class ArchiveStore {
         Object startRaw = patch.containsKey("startAt") ? patch.get("startAt") : m.get("startAt");
         Object endRaw = patch.containsKey("endAt") ? patch.get("endAt") : m.get("endAt");
         String status = availStatus(stock, startRaw, endRaw);
-        if (shopMarketplaceEnabled || publishReviewEnabled) {
+        if (shopMarketplaceEnabled || publishReviewEnabled || "draft".equals(str(m.get("status")).trim())) {
             String cur = str(m.get("status")).trim();
-            // 待审/驳回只能走 approve/reject，禁止 update 改写为 available 进公开目录
-            if ("pending_review".equals(cur) || "rejected".equals(cur)) {
-                status = cur;
+            // 草稿/待审/驳回：默认保现状；显式 status 才改（发布草稿→available/pending_review）
+            if ("draft".equals(cur) || "pending_review".equals(cur) || "rejected".equals(cur)) {
+                if (patch.containsKey("status") && patch.get("status") != null) {
+                    String st = String.valueOf(patch.get("status")).trim();
+                    if (!st.isBlank()) status = st;
+                    else status = cur;
+                } else {
+                    status = cur;
+                }
             } else if (patch.containsKey("status") && patch.get("status") != null) {
                 String st = String.valueOf(patch.get("status")).trim();
                 if (!st.isBlank() && !"pending_review".equals(st) && !"rejected".equals(st)) {
@@ -747,10 +922,8 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "region", "region", 64);
         patchOptStr(id, patch, "summary", "summary", 512);
         patchOptStr(id, patch, "harvestOn", "harvest_on", 32);
-        if (flashPriceEnabled
-                && (patch.containsKey("promoPrice")
-                        || patch.containsKey("promoStart")
-                        || patch.containsKey("promoEnd"))) {
+        if (flashPriceEnabled && (patch.containsKey("promoPrice")
+                || patch.containsKey("promoStart") || patch.containsKey("promoEnd"))) {
             if (!hasPromoPrice()) {
                 throw new IllegalStateException("系统未配置秒杀价字段，无法保存");
             }
@@ -831,6 +1004,7 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "roomKind", "room_kind", 16);
         patchOptStr(id, patch, "pickupNavUrl", "pickup_nav_url", 255);
         patchOptStr(id, patch, "returnNavUrl", "return_nav_url", 255);
+
         patchOptStr(id, patch, "courseKind", "course_kind", 16);
         patchOptStr(id, patch, "prereqCode", "prereq_code", 64);
         patchOptInt(id, patch, "minGroupSize", "min_group_size");
@@ -848,15 +1022,63 @@ public final class ArchiveStore {
         if (patch.containsKey("shelfOff") && hasItemColumn("shelf_off")) {
             db().update("UPDATE " + ITEM + " SET shelf_off=? WHERE id=?", parseTs(patch.get("shelfOff")), id);
         }
+        if (patch.containsKey("publishAt") && hasItemColumn("publish_at")) {
+            db().update("UPDATE " + ITEM + " SET publish_at=? WHERE id=?", parseTs(patch.get("publishAt")), id);
+        }
+        if (patch.containsKey("unpublishAt") && hasItemColumn("unpublish_at")) {
+            db().update("UPDATE " + ITEM + " SET unpublish_at=? WHERE id=?", parseTs(patch.get("unpublishAt")), id);
+        }
+        patchOptInt(id, patch, "seriesId", "series_id");
+        patchOptInt(id, patch, "seriesOrd", "series_ord");
+        patchOptStr(id, patch, "originKind", "origin_kind", 16);
+        patchOptStr(id, patch, "accessPassword", "access_password", 64);
+        patchOptInt(id, patch, "playCount", "play_count");
+        patchOptStr(id, patch, "offShelfReason", "off_shelf_reason", 255);
+        patchOptStr(id, patch, "shareCode", "share_code", 32);
+        patchOptStr(id, patch, "artist", "artist", 100);
+        patchOptStr(id, patch, "album", "album", 128);
+        patchOptStr(id, patch, "lyrics", "lyrics", 8000);
+        patchOptInt(id, patch, "isCover", "is_cover");
         patchOptNum(id, patch, "stallScore", "stall_score");
         patchOptNum(id, patch, "minAge", "min_age");
         patchOptNum(id, patch, "maxAge", "max_age");
         patchOptStr(id, patch, "lostCategory", "lost_category", 32);
         patchOptInt(id, patch, "viewCount", "view_count");
         patchOptInt(id, patch, "pinTop", "pin_top");
+        int prevEssence = 0;
+        if (patch.containsKey("essence") && hasItemColumn("essence")) {
+            Map<String, Object> before = getItemRaw(id);
+            prevEssence = before == null ? 0 : toInt(before.get("essence"));
+        }
+        patchOptInt(id, patch, "essence", "essence");
+        if (essencePointsRewardOn
+                && essencePointsRewardAmount > 0
+                && patch.containsKey("essence")
+                && hasItemColumn("essence")) {
+            int next = toInt(patch.get("essence"));
+            if (prevEssence <= 0 && next > 0) {
+                Map<String, Object> after = getItemRaw(id);
+                String author = after == null ? "" : str(after.get("ownerUsername"));
+                if (author.isBlank() && after != null) author = str(after.get("author"));
+                if (!author.isBlank()) {
+                    try {
+                        LoyaltyStore.awardPoints(
+                                author,
+                                essencePointsRewardAmount,
+                                "精华奖励 +" + essencePointsRewardAmount,
+                                "archive",
+                                id);
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        }
+        patchOptInt(id, patch, "locked", "locked");
         patchOptStr(id, patch, "college", "college", 64);
         patchOptStr(id, patch, "planUrl", "plan_url", 255);
         patchOptStr(id, patch, "volunteerRole", "volunteer_role", 64);
+        patchOptStr(id, patch, "admitMode", "admit_mode", 32);
+        patchOptStr(id, patch, "seatZones", "seat_zones", 255);
         patchOptInt(id, patch, "surveyFormId", "survey_form_id");
         patchOptStr(id, patch, "weatherNote", "weather_note", 2000);
         patchOptStr(id, patch, "singleRoomNote", "single_room_note", 2000);
@@ -891,7 +1113,43 @@ public final class ArchiveStore {
                 throw new IllegalStateException("同步选座布局失败", e);
             }
         }
+        notifyScheduleChangeIfNeeded(id, m, patch);
         return getItemAdmin(id);
+    }
+
+    /** 调课站内信：上课起止或课号/教室变更时通知已选同学。 */
+    private static void notifyScheduleChangeIfNeeded(
+            long id, Map<String, Object> before, Map<String, Object> patch) {
+        if (!TicketStore.scheduleChangeNotify || before == null || patch == null) return;
+        boolean changed = patch.containsKey("startAt") || patch.containsKey("endAt") || patch.containsKey("isbn");
+        if (!changed) return;
+        String oldStart = str(before.get("startAt"));
+        String oldEnd = str(before.get("endAt"));
+        String oldIsbn = str(before.get("isbn"));
+        String newStart = patch.containsKey("startAt") ? str(patch.get("startAt")) : oldStart;
+        String newEnd = patch.containsKey("endAt") ? str(patch.get("endAt")) : oldEnd;
+        String newIsbn = patch.containsKey("isbn") ? str(patch.get("isbn")) : oldIsbn;
+        if (oldStart.equals(newStart) && oldEnd.equals(newEnd) && oldIsbn.equals(newIsbn)) return;
+        String subject = str(before.get("title"));
+        if (subject.isBlank()) subject = "课程";
+        String body = "「" + subject + "」上课时间或地点已调整，请查看最新安排。";
+        try {
+            String ticketTable = TicketStore.TICKET;
+            String fk = TicketStore.itemFkColumn();
+            List<String> users = db().query(
+                    "SELECT DISTINCT username FROM " + ticketTable
+                            + " WHERE " + fk + "=? AND status IN ('pending','approved','lottery','waitlisted')",
+                    (rs, i) -> rs.getString("username"),
+                    id);
+            for (String u : users) {
+                if (u == null || u.isBlank()) continue;
+                try {
+                    com.thesis.service.MessageStore.send(u, "调课通知", body, "archive", id);
+                } catch (Exception ignored) {
+                }
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private static void patchOptStr(long id, Map<String, Object> patch, String key, String col, int max) {
@@ -976,7 +1234,23 @@ public final class ArchiveStore {
         int stock = m.get("stock") instanceof Number n ? n.intValue() : 0;
         String status = stock > 0 ? "available" : "unavailable";
         db().update("UPDATE " + ITEM + " SET status=? WHERE id=?", status, id);
-        return getItemAdmin(id);
+        Map<String, Object> done = getItemAdmin(id);
+        if (publishApproveNotifyOn && done != null) {
+            String to = str(done.get("ownerUsername"));
+            if (to.isBlank()) to = str(done.get("author"));
+            if (!to.isBlank()) {
+                try {
+                    com.thesis.service.MessageStore.send(
+                            to,
+                            "投稿已通过",
+                            "你的投稿「" + str(done.get("title")) + "」已审核通过并上架，可在列表中查看。",
+                            "archive",
+                            id);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return done;
     }
 
     /** 多店商品 / 投稿先审：超管驳回，不进公开目录。 */
@@ -1023,9 +1297,9 @@ public final class ArchiveStore {
         Map<String, Object> m = getItemRaw(id);
         if (m == null) return null;
         if (isSoftDeleted(m)) return null;
-        if (publishReviewEnabled) {
-            String st = str(m.get("status")).trim();
-            if ("pending_review".equals(st) || "rejected".equals(st)) return null;
+        String stHide = str(m.get("status")).trim();
+        if ("draft".equals(stHide) || "pending_review".equals(stHide) || "rejected".equals(stHide)) {
+            return null;
         }
         Map<String, Object> out = enrichItem(m);
         try {
@@ -1049,6 +1323,89 @@ public final class ArchiveStore {
             db().update("UPDATE " + ITEM + " SET view_count=IFNULL(view_count,0)+1 WHERE id=?", id);
         } catch (Exception ignored) {
         }
+    }
+
+    /**
+     * 内容组热门排行：按 view_count / download_count / play_count 降序。
+     * sortBy=downloadCount|playCount 且有对应列时走该榜；否则走阅读榜。
+     */
+    public static Map<String, Object> pageHot(String sortBy, int page, int size) {
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String want = sortBy == null ? "" : sortBy.trim();
+        String col = "view_count";
+        String sortKey = "viewCount";
+        if ("downloadCount".equalsIgnoreCase(want) && hasItemColumn("download_count")) {
+            col = "download_count";
+            sortKey = "downloadCount";
+        } else if ("playCount".equalsIgnoreCase(want) && hasItemColumn("play_count")) {
+            col = "play_count";
+            sortKey = "playCount";
+        } else if (!hasItemColumn("view_count")) {
+            if (hasItemColumn("play_count")) {
+                col = "play_count";
+                sortKey = "playCount";
+            } else {
+                return pageItems(null, null, null, null, false, page, size, true, null);
+            }
+        }
+        StringBuilder where = new StringBuilder(" WHERE 1=1");
+        if (hasDeletedAt() && softDeleteEnabled) {
+            where.append(" AND deleted_at IS NULL");
+        }
+        if (publishReviewEnabled || shopMarketplaceEnabled) {
+            where.append(" AND status='available'");
+        }
+        Integer total = db().queryForObject("SELECT COUNT(*) FROM " + ITEM + where, Integer.class);
+        int t = total == null ? 0 : total;
+        List<Map<String, Object>> list = db().query(
+                "SELECT * FROM " + ITEM + where
+                        + " ORDER BY IFNULL(" + col + ",0) DESC, id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> enrichItem(mapItemRow(rs)),
+                size,
+                (page - 1) * size);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        out.put("sortBy", sortKey);
+        return out;
+    }
+
+    /** 媒资播放次数 +1（无 play_count 列时 no-op）。 */
+    public static void bumpPlayCount(long id) {
+        if (id <= 0 || !hasItemColumn("play_count")) return;
+        try {
+            db().update("UPDATE " + ITEM + " SET play_count=IFNULL(play_count,0)+1 WHERE id=?", id);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 凭分享码取片单（只读链；≠协作编辑）。 */
+    public static Map<String, Object> getByShareCode(String code) {
+        String c = code == null ? "" : code.trim();
+        if (c.isBlank() || !hasItemColumn("share_code")) return null;
+        List<Map<String, Object>> rows = db().query(
+                "SELECT * FROM " + ITEM + " WHERE share_code=? LIMIT 1",
+                (rs, i) -> enrichItem(mapItemRow(rs)),
+                c);
+        if (rows == null || rows.isEmpty()) return null;
+        Map<String, Object> item = rows.get(0);
+        if (softDeleteEnabled && hasDeletedAt() && item.get("deletedAt") != null) return null;
+        return item;
+    }
+
+    public static boolean deleteItem(long id, String offShelfReason) {
+        if (softDeleteEnabled && hasItemColumn("off_shelf_reason")) {
+            String r = offShelfReason == null ? "" : offShelfReason.trim();
+            if (r.length() > 255) r = r.substring(0, 255);
+            try {
+                db().update("UPDATE " + ITEM + " SET off_shelf_reason=? WHERE id=?", r, id);
+            } catch (Exception ignored) {
+            }
+        }
+        return deleteItem(id);
     }
 
     public static Map<String, Object> pageItems(String keyword, Long categoryId, int page, int size) {
@@ -1100,6 +1457,27 @@ public final class ArchiveStore {
             int size,
             boolean openCatalogOnly,
             String ownerUsernameFilter) {
+        return pageItems(
+                keyword, categoryId, categoryIds, tagIds, includeDeleted, page, size,
+                openCatalogOnly, ownerUsernameFilter, null, null);
+    }
+
+    /**
+     * @param artist 非空且有 artist 列时按歌手模糊筛（C-06）
+     * @param album 非空且有 album 列时按专辑模糊筛（C-06）
+     */
+    public static Map<String, Object> pageItems(
+            String keyword,
+            Long categoryId,
+            List<Long> categoryIds,
+            List<Long> tagIds,
+            boolean includeDeleted,
+            int page,
+            int size,
+            boolean openCatalogOnly,
+            String ownerUsernameFilter,
+            String artist,
+            String album) {
         expirePastStarts();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
@@ -1111,8 +1489,10 @@ public final class ArchiveStore {
         if (openCatalogOnly && (hasStartAt() || hasEndAt())) {
             where.append(" AND status='available'");
             if (hasEndAt()) {
+                // 查寝窗等：结束前仍可浏览/登记
                 where.append(" AND (end_at IS NULL OR end_at > NOW())");
             } else {
+                // 仅出发/开场：开始后下架
                 where.append(" AND (start_at IS NULL OR start_at > NOW())");
             }
         }
@@ -1151,6 +1531,14 @@ public final class ArchiveStore {
             args.add(like);
             args.add(like);
         }
+        if (artist != null && !artist.isBlank() && hasItemColumn("artist")) {
+            where.append(" AND artist LIKE ?");
+            args.add("%" + artist.trim() + "%");
+        }
+        if (album != null && !album.isBlank() && hasItemColumn("album")) {
+            where.append(" AND album LIKE ?");
+            args.add("%" + album.trim() + "%");
+        }
         if (tagIds != null && !tagIds.isEmpty() && tagsEnabled()) {
             for (Long tid : tagIds) {
                 if (tid == null || tid <= 0) continue;
@@ -1161,22 +1549,31 @@ public final class ArchiveStore {
             }
         }
         Integer total = db().queryForObject("SELECT COUNT(*) FROM " + ITEM + where, Integer.class, args.toArray());
-        int tcount = total == null ? 0 : total;
+        int t = total == null ? 0 : total;
         args.add(size);
         args.add((page - 1) * size);
         List<Map<String, Object>> list = db().query(
                 "SELECT * FROM " + ITEM + where
-                        + (hasItemColumn("stall_score")
-                                ? " ORDER BY stall_score DESC, id DESC"
-                                : (hasItemColumn("pin_top") ? " ORDER BY pin_top DESC, id DESC" : " ORDER BY id"))
+                        + catalogOrderBy()
                         + " LIMIT ? OFFSET ?",
                 (rs, i) -> enrichItem(mapItemRow(rs)), args.toArray());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
-        out.put("total", tcount);
+        out.put("total", t);
         out.put("page", page);
         out.put("size", size);
         return out;
+    }
+
+    /** 目录排序：置顶 > 精华 > id（有列才用）。 */
+    private static String catalogOrderBy() {
+        if (hasItemColumn("stall_score")) return " ORDER BY stall_score DESC, id DESC";
+        boolean pin = hasItemColumn("pin_top");
+        boolean ess = hasItemColumn("essence");
+        if (pin && ess) return " ORDER BY pin_top DESC, essence DESC, id DESC";
+        if (pin) return " ORDER BY pin_top DESC, id DESC";
+        if (ess) return " ORDER BY essence DESC, id DESC";
+        return " ORDER BY id";
     }
 
     /** 商家后台：仅本店商品（含待审）。 */
@@ -1220,6 +1617,15 @@ public final class ArchiveStore {
         m.put("id", rs.getLong("id"));
         m.put("title", rs.getString("title"));
         m.put("author", safeStr(rs, authorColumn()));
+        m.put("isbn", safeStr(rs, isbnColumn()));
+        m.put("categoryId", rs.getLong("category_id"));
+        m.put("stock", rs.getInt("stock"));
+        m.put("status", rs.getString("status"));
+        try {
+            m.put("likeCount", rs.getInt("like_count"));
+        } catch (Exception ignored) {
+            // 未挂 post_like 时无列
+        }
         if (flashPriceEnabled && hasPromoPrice()) {
             try {
                 double promo = rs.getDouble("promo_price");
@@ -1245,10 +1651,6 @@ public final class ArchiveStore {
                 m.put("priceYuan", list);
             }
         }
-        m.put("isbn", safeStr(rs, isbnColumn()));
-        m.put("categoryId", rs.getLong("category_id"));
-        m.put("stock", rs.getInt("stock"));
-        m.put("status", rs.getString("status"));
         if (usesDedicatedSpecNote()) {
             try {
                 m.put("specNote", safeStr(rs, "spec_note"));
@@ -1284,6 +1686,46 @@ public final class ArchiveStore {
         if (hasItemColumn("shelf_off")) {
             try {
                 m.put("shelfOff", fmt(rs.getTimestamp("shelf_off")));
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("publish_at")) {
+            try {
+                m.put("publishAt", fmt(rs.getTimestamp("publish_at")));
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("unpublish_at")) {
+            try {
+                m.put("unpublishAt", fmt(rs.getTimestamp("unpublish_at")));
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("series_id")) {
+            try {
+                long sid = rs.getLong("series_id");
+                if (!rs.wasNull()) m.put("seriesId", sid);
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("series_ord")) {
+            try {
+                m.put("seriesOrd", rs.getInt("series_ord"));
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("origin_kind")) {
+            try {
+                m.put("originKind", safeStr(rs, "origin_kind"));
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("access_password")) {
+            try {
+                String pw = safeStr(rs, "access_password");
+                m.put("accessPasswordSet", pw != null && !pw.isBlank());
+                // 管理端可带回明文以便改口令；公开路径 redact 会剥掉
+                if (pw != null && !pw.isBlank()) m.put("accessPassword", pw);
             } catch (Exception ignored) {
             }
         }
@@ -1438,10 +1880,22 @@ public final class ArchiveStore {
         putOptNum(m, rs, "max_age", "maxAge");
         putOptStr(m, rs, "lost_category", "lostCategory");
         putOptInt(m, rs, "view_count", "viewCount");
+        putOptInt(m, rs, "play_count", "playCount");
+        putOptStr(m, rs, "off_shelf_reason", "offShelfReason");
+        putOptStr(m, rs, "share_code", "shareCode");
+        putOptStr(m, rs, "artist", "artist");
+        putOptStr(m, rs, "album", "album");
+        putOptStr(m, rs, "lyrics", "lyrics");
+        putOptInt(m, rs, "is_cover", "isCover");
+        putOptInt(m, rs, "download_count", "downloadCount");
         putOptInt(m, rs, "pin_top", "pinTop");
+        putOptInt(m, rs, "essence", "essence");
+        putOptInt(m, rs, "locked", "locked");
         putOptStr(m, rs, "college", "college");
         putOptStr(m, rs, "plan_url", "planUrl");
         putOptStr(m, rs, "volunteer_role", "volunteerRole");
+        putOptStr(m, rs, "admit_mode", "admitMode");
+        putOptStr(m, rs, "seat_zones", "seatZones");
         putOptInt(m, rs, "survey_form_id", "surveyFormId");
         putOptStr(m, rs, "weather_note", "weatherNote");
         putOptStr(m, rs, "single_room_note", "singleRoomNote");
@@ -1565,6 +2019,7 @@ public final class ArchiveStore {
         return m;
     }
 
+    /** 多店：优先店铺名称，否则昵称。 */
     private static String resolveShopName(String ownerUsername) {
         try {
             com.thesis.service.UserStore.Profile p = com.thesis.service.UserStore.get(ownerUsername);
@@ -1580,11 +2035,167 @@ public final class ArchiveStore {
         }
     }
 
-    /** 门户/推荐等非管理端：去掉签到码等口令字段。 */
+    /** 门户/推荐等非管理端：去掉签到码等口令字段；有访问口令时隐藏正文。 */
     public static void redactSensitiveForPublic(Map<String, Object> item) {
         if (item == null) return;
         item.remove("checkinCode");
         item.remove("adminNote");
+        item.remove("accessPassword");
+        if (Boolean.TRUE.equals(item.get("accessPasswordSet")) || "1".equals(String.valueOf(item.get("accessPasswordSet")))) {
+            item.put("contentLocked", true);
+            item.put("isbn", "");
+            item.put("content", "");
+            item.put("body", "");
+        }
+    }
+
+    /** 会话已解锁口令时恢复正文（详情接口用）。 */
+    public static void restoreContentIfUnlocked(Map<String, Object> item, boolean unlocked) {
+        if (item == null || !unlocked) return;
+        item.put("contentLocked", false);
+        Map<String, Object> raw = getItemAdmin(toLong(item.get("id")));
+        if (raw == null) return;
+        if (raw.get("isbn") != null) item.put("isbn", raw.get("isbn"));
+        if (raw.get("content") != null) item.put("content", raw.get("content"));
+        item.remove("accessPassword");
+    }
+
+    public static boolean checkAccessPassword(long id, String password) {
+        if (id <= 0 || !hasItemColumn("access_password")) return true;
+        try {
+            String expect = db().queryForObject(
+                    "SELECT access_password FROM " + ITEM + " WHERE id=?", String.class, id);
+            if (expect == null || expect.isBlank()) return true;
+            String got = password == null ? "" : password.trim();
+            return expect.equals(got);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** 文章公开时通知专栏订阅者。 */
+    public static void notifyCategoryFollowersIfPublic(long id) {
+        Map<String, Object> raw = getItemRaw(id);
+        if (raw == null) return;
+        if (!"available".equals(str(raw.get("status")))) return;
+        long cat = toLong(raw.get("categoryId"));
+        String owner = str(raw.get("ownerUsername"));
+        if (owner.isBlank()) owner = str(raw.get("author"));
+        try {
+            com.thesis.service.CategoryFollowStore.notifyFollowers(
+                    cat, owner, id, str(raw.get("title")));
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 作者主页：有 owner_username 按归属，否则关键词=作者登录名。 */
+    public static Map<String, Object> pageByAuthor(String authorUsername, int page, int size) {
+        String u = authorUsername == null ? "" : authorUsername.trim();
+        if (u.isBlank()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("list", List.of());
+            empty.put("total", 0);
+            empty.put("page", page < 1 ? 1 : page);
+            empty.put("size", size < 1 ? 10 : size);
+            return empty;
+        }
+        if (hasOwnerUsername()) {
+            return pageItems(null, null, null, null, false, page, size, true, u);
+        }
+        return pageItems(u, null, null, null, false, page, size, true, null);
+    }
+
+    /** 年月归档（created_at）。 */
+    public static Map<String, Object> pageByYearMonth(
+            Integer year, Integer month, String keyword, Long categoryId, int page, int size) {
+        expirePastStarts();
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        StringBuilder where = new StringBuilder(" WHERE status='available'");
+        List<Object> args = new ArrayList<>();
+        if (hasDeletedAt()) where.append(" AND deleted_at IS NULL");
+        if (year != null && year > 0) {
+            where.append(" AND YEAR(created_at)=?");
+            args.add(year);
+            if (month != null && month >= 1 && month <= 12) {
+                where.append(" AND MONTH(created_at)=?");
+                args.add(month);
+            }
+        }
+        if (categoryId != null && categoryId > 0) {
+            where.append(" AND category_id=?");
+            args.add(categoryId);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            where.append(" AND (title LIKE ? OR ").append(authorColumn()).append(" LIKE ?)");
+            String like = "%" + keyword.trim() + "%";
+            args.add(like);
+            args.add(like);
+        }
+        Integer total = db().queryForObject(
+                "SELECT COUNT(*) FROM " + ITEM + where, Integer.class, args.toArray());
+        int t = total == null ? 0 : total;
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add(size);
+        pageArgs.add((page - 1L) * size);
+        List<Map<String, Object>> list = db().query(
+                "SELECT * FROM " + ITEM + where + catalogOrderBy() + " LIMIT ? OFFSET ?",
+                (rs, i) -> mapItemRow(rs),
+                pageArgs.toArray());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    /** 系列文上一篇/下一篇。 */
+    public static Map<String, Object> seriesNeighbors(long id) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("prev", null);
+        out.put("next", null);
+        if (id <= 0 || !hasItemColumn("series_id")) return out;
+        Map<String, Object> raw = getItemRaw(id);
+        if (raw == null) return out;
+        long seriesId = toLong(raw.get("seriesId"));
+        if (seriesId <= 0) return out;
+        int ord = 0;
+        try {
+            ord = Integer.parseInt(str(raw.get("seriesOrd")));
+        } catch (Exception ignored) {
+        }
+        String ordCol = hasItemColumn("series_ord") ? "series_ord" : "id";
+        try {
+            List<Map<String, Object>> prev = db().query(
+                    "SELECT id, title FROM " + ITEM
+                            + " WHERE series_id=? AND status='available' AND id<>?"
+                            + " AND (" + ordCol + "<? OR (" + ordCol + "=? AND id<?))"
+                            + " ORDER BY " + ordCol + " DESC, id DESC LIMIT 1",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", rs.getLong("id"));
+                        m.put("title", rs.getString("title"));
+                        return m;
+                    },
+                    seriesId, id, ord, ord, id);
+            if (!prev.isEmpty()) out.put("prev", prev.get(0));
+            List<Map<String, Object>> next = db().query(
+                    "SELECT id, title FROM " + ITEM
+                            + " WHERE series_id=? AND status='available' AND id<>?"
+                            + " AND (" + ordCol + ">? OR (" + ordCol + "=? AND id>?))"
+                            + " ORDER BY " + ordCol + " ASC, id ASC LIMIT 1",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", rs.getLong("id"));
+                        m.put("title", rs.getString("title"));
+                        return m;
+                    },
+                    seriesId, id, ord, ord, id);
+            if (!next.isEmpty()) out.put("next", next.get(0));
+        } catch (Exception ignored) {
+        }
+        return out;
     }
 
     @SuppressWarnings("unchecked")
@@ -1638,6 +2249,30 @@ public final class ArchiveStore {
         }
         n += expirePastExpireOn();
         n += applyShelfSchedule();
+        n += applyPublishSchedule();
+        return n;
+    }
+
+    /** C-04：定时发布 / 定时撤回（publish_at / unpublish_at）。 */
+    public static int applyPublishSchedule() {
+        int n = 0;
+        if (hasItemColumn("unpublish_at")) {
+            try {
+                n += db().update(
+                        "UPDATE " + ITEM + " SET status='unavailable' "
+                                + "WHERE status='available' AND unpublish_at IS NOT NULL AND unpublish_at <= NOW()");
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("publish_at")) {
+            try {
+                n += db().update(
+                        "UPDATE " + ITEM + " SET status='available' "
+                                + "WHERE status IN ('unavailable','pending_publish') AND publish_at IS NOT NULL AND publish_at <= NOW()"
+                                + " AND (unpublish_at IS NULL OR unpublish_at > NOW())");
+            } catch (Exception ignored) {
+            }
+        }
         return n;
     }
 
@@ -1694,11 +2329,13 @@ public final class ArchiveStore {
 
     /**
      * 招聘岗位等：expire_on（yyyy-MM-dd）到期自动下架。
+     * 列表/详情入口会顺带跑，答辩可演示「过期岗位不再出现」。
      */
     public static int expirePastExpireOn() {
         if (!hasItemColumn("expire_on")) return 0;
         try {
             if (hasItemColumn("stage")) {
+                // 失物等：到期同时把「招领中」标为已下架；其它 stage 语义不动
                 db().update(
                         "UPDATE " + ITEM + " SET stage='已下架' "
                                 + "WHERE status='available' AND stage IN ('招领中','招领','') "
@@ -1807,7 +2444,7 @@ public final class ArchiveStore {
             }
             if (TicketStore.allowContractExpireRemind && "expire_on".equals(dateCol)) {
                 try {
-                    List<String> owners = TicketSql.db().query(
+                    List<String> owners = com.thesis.capability.TicketSql.db().query(
                             "SELECT DISTINCT username FROM " + TicketStore.TICKET
                                     + " WHERE " + TicketStore.itemFkColumn()
                                     + "=? AND status IN ('approved','returned')",
@@ -1943,6 +2580,7 @@ public final class ArchiveStore {
             try {
                 db().execute("ALTER TABLE `" + ITEM + "` ADD COLUMN `" + col + "` " + ddl);
             } catch (Exception ignored) {
+                // 并发或已存在：再探测一次
             }
         }
     }
@@ -2257,7 +2895,7 @@ public final class ArchiveStore {
         }
     }
 
-    /** L1 互斥：缺列时补上（选课域 bake 后亦应有 SQL 列） */
+    /** 互斥码：缺列时补上（选课等场景 schema 也应带此列） */
     public static void ensureMutexColumn() {
         if (hasMutexCode()) return;
         try {
@@ -2312,13 +2950,13 @@ public final class ArchiveStore {
     }
 
     private static void syncJunctionIds(
-            long itemId, List<Long> ids, String junction, String itemFk, String refFk) {
+            long itemId, List<Long> ids, String junction, String itemFk, String catFk) {
         db().update("DELETE FROM " + junction + " WHERE " + itemFk + "=?", itemId);
-        for (Long refId : ids) {
+        for (Long cid : ids) {
             try {
                 db().update(
-                        "INSERT INTO " + junction + " (" + itemFk + ", " + refFk + ") VALUES (?,?)",
-                        itemId, refId);
+                        "INSERT INTO " + junction + " (" + itemFk + ", " + catFk + ") VALUES (?,?)",
+                        itemId, cid);
             } catch (Exception ignored) {
             }
         }
@@ -2590,6 +3228,7 @@ public final class ArchiveStore {
 
     /**
      * 档案字段分组计数（工作台饼图/漏斗：stage、lead_source、rent_stage 等）。
+     * 列不存在或查询失败时返回空列表，不炸工作台。
      */
     public static List<Map<String, Object>> countByItemColumn(String column, int limit) {
         if (column == null || column.isBlank() || !hasItemColumn(column.trim())) {

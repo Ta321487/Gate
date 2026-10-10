@@ -5,6 +5,10 @@
       <p>{{ pageLead }}</p>
       <div class="acts">
         <el-button type="primary" @click="$router.push('/archive')">{{ browseCta }}</el-button>
+        <el-radio-group v-if="draftBoxOn" v-model="statusFilter" size="small" @change="onFilter">
+          <el-radio-button label="">全部</el-radio-button>
+          <el-radio-button label="draft">{{ draftStatusLabel }}</el-radio-button>
+        </el-radio-group>
         <el-button @click="load">刷新</el-button>
       </div>
     </section>
@@ -24,6 +28,13 @@
           <p v-else-if="row.isbn" class="excerpt plain">{{ row.isbn }}</p>
           <div class="row">
             <el-button size="small" :disabled="!!row.deletedAt" @click="openDetail(row)">查看</el-button>
+            <el-button
+              v-if="draftBoxOn && String(row.status) === 'draft' && !row.deletedAt"
+              size="small"
+              type="primary"
+              :loading="publishingId === row.id"
+              @click="publishDraft(row)"
+            >{{ publishFromDraftLabel }}</el-button>
           </div>
         </div>
       </article>
@@ -53,6 +64,13 @@
         <p v-else-if="statusText(detail)" class="warn">{{ statusText(detail) }}</p>
         <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
         <p v-else class="plain-body">{{ detail.isbn || '—' }}</p>
+        <div v-if="draftBoxOn && String(detail.status) === 'draft'" class="row" style="margin-top:16px">
+          <el-button
+            type="primary"
+            :loading="publishingId === detail.id"
+            @click="publishDraft(detail)"
+          >{{ publishFromDraftLabel }}</el-button>
+        </div>
       </template>
     </el-drawer>
   </div>
@@ -60,12 +78,15 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
-import { archiveCopy, menuLabel, schemaLabels } from '../../utils/domainSchema.js'
+import { archiveCopy, getSchema, menuLabel, schemaLabels } from '../../utils/domainSchema.js'
 
 const archive = archiveCopy()
 const labels = computed(() => schemaLabels())
+const thicken = computed(() => getSchema()?.contentThicken || {})
+const draftBoxOn = computed(() => !!thicken.value.draftBox)
 const unit = computed(() => archive.label || '内容')
 const fields = computed(() => archive.fields || [])
 const bodyRich = computed(() => {
@@ -73,20 +94,31 @@ const bodyRich = computed(() => {
   return f?.type === 'richtext' || archive.bodyField === 'isbn'
 })
 const browseCta = computed(() => (bodyRich.value ? '去发帖 / 浏览' : '去登记 / 浏览'))
-const pageTitle = computed(
-  () => labels.value.myArchivePageTitle || menuLabel('user', 'my_archive', `我的${unit.value}`),
-)
-const pageLead = computed(
-  () =>
+const pageTitle = computed(() => {
+  if (draftBoxOn.value && statusFilter.value === 'draft') {
+    return labels.value.draftBoxPageTitle || '草稿箱'
+  }
+  return labels.value.myArchivePageTitle || menuLabel('user', 'my_archive', `我的${unit.value}`)
+})
+const pageLead = computed(() => {
+  if (draftBoxOn.value && statusFilter.value === 'draft') {
+    return labels.value.draftBoxPageLead || '先存草稿，写好再发布。'
+  }
+  return (
     labels.value.myArchivePageLead ||
-    `本人登记的${unit.value}即时可见；管理员下架后仍可在此查看状态。`,
-)
-const emptyText = computed(() =>
-  bodyRich.value ? '暂无发布记录，去检索页发一篇吧。' : `暂无记录，去检索页登记一条吧。`,
-)
+    `本人登记的${unit.value}即时可见；管理员下架后仍可在此查看状态。`
+  )
+})
+const draftStatusLabel = computed(() => labels.value.draftStatusLabel || '草稿')
+const publishFromDraftLabel = computed(() => labels.value.publishFromDraftLabel || '发布草稿')
+const emptyText = computed(() => {
+  if (statusFilter.value === 'draft') return '暂无草稿。'
+  return bodyRich.value ? '暂无发布记录，去检索页发一篇吧。' : `暂无记录，去检索页登记一条吧。`
+})
 
 function statusText(row) {
   const st = String(row?.status || '')
+  if (st === 'draft') return draftStatusLabel.value
   if (st === 'pending_review') return '待审核'
   if (st === 'rejected') return '已驳回'
   return ''
@@ -96,13 +128,20 @@ const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const size = ref(10)
+const statusFilter = ref('')
 const detailVisible = ref(false)
 const detail = ref(null)
+const publishingId = ref(null)
+
+function onFilter() {
+  page.value = 1
+  load()
+}
 
 async function load() {
-  const res = await http.get('/api/archive/mine', {
-    params: { page: page.value, size: size.value },
-  })
+  const params = { page: page.value, size: size.value }
+  if (statusFilter.value) params.status = statusFilter.value
+  const res = await http.get('/api/archive/mine', { params })
   list.value = res.data?.list || []
   total.value = res.data?.total || 0
 }
@@ -118,6 +157,23 @@ async function openDetail(row) {
   detailVisible.value = true
 }
 
+async function publishDraft(row) {
+  if (!row?.id) return
+  publishingId.value = row.id
+  try {
+    await http.post(`/api/archive/${row.id}/publish-draft`)
+    const review = !!archive.publishReview
+    ElMessage.success(review ? '已提交审核，通过后公开展示' : '已发布')
+    detailVisible.value = false
+    await load()
+  } catch (e) {
+    const msg = String(e?.message || e?.response?.data?.message || '')
+    if (msg) ElMessage.warning(msg)
+  } finally {
+    publishingId.value = null
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -125,9 +181,11 @@ onMounted(load)
 .hero { margin-bottom: 18px; }
 .hero h1 { margin: 0 0 6px; font-size: 22px; }
 .hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
-.acts { display: flex; gap: 10px; flex-wrap: wrap; }
+.acts { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
 }
 .card {
   padding: var(--portal-pad, 16px);

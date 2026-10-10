@@ -3,7 +3,8 @@
 > **本文只负责**：地图 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.6「本组待补」的**分批实现顺序、挂载口径、验收勾选**。  
 > **不负责**：cap 定义（[`capabilities.md`](./capabilities.md)）；怎么审交付（[`delivery-audit-rules.md`](./delivery-audit-rules.md)）；清待补工序纪律（`.cursor/rules/opening-group-delivery.mdc`）。  
 > **状态**：**已收口档案**（T-00～T-11 均已齐）。地图 §1.6 待补仅留「小票打印≠已齐」与不支持项。  
-> **索引**：[README.md](./README.md) · 地图 §1.6 · 范本 `approve_thicken` / `apply_thicken`。
+> **索引**：[README.md](./README.md) · 地图 §1.6 · 范本 `approve_thicken` / `apply_thicken`。  
+> **不负责 UI 表面构图**：货架/档口列表选型见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md)（门户 `portal_home_style=mall` 已有，列表轴另开 plan）。
 
 ---
 

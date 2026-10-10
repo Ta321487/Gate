@@ -31,6 +31,10 @@ final class ArchiveCfgOps {
         ArchiveStore.publishReviewEnabled = enabled;
     }
 
+    static void configureForumDailyPostLimit(int limit) {
+        ArchiveStore.forumDailyPostLimit = Math.max(0, limit);
+    }
+
     static void configureShopMarketplace(boolean enabled) {
         ArchiveStore.shopMarketplaceEnabled = enabled;
     }

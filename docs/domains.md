@@ -1,24 +1,42 @@
 # 领域清单（组 A–H）
 
-> **本文只负责**：薄域 DOM 分组、各域**默认**能力组合、GENERIC/ARCH 绑壳、Path B 真交叉白名单与答辩口径。  
-> **不负责**：开题密功能全表 / 待补清单（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；cap 挂载细则（[`capabilities.md`](./capabilities.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）。  
+> **本文只负责**：具名 `DOM-*` 分组（bake 目录 A–H）、各域**默认**能力组合、GENERIC/ARCH 绑壳、Path B 真交叉白名单与答辩口径。  
+> **不负责**：开题密功能全表 / 待补清单（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；cap 挂载细则（[`capabilities.md`](./capabilities.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；组 UI 表面选型（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)）。  
 > **交接**：[HANDOFF.md](../HANDOFF.md) · **总览**：[README.md](../README.md) · **索引**：[README.md](./README.md)
 
 ---
 
-**薄**指：不另起厚代码包；同组共运行时，差别主要在 schema 文案/种子/菜单。  
-**不**表示功能库存可以空——开题可碰项以密功能对照表为准。组 **H** 为真交叉（两套玩法）。
+**薄壳（架构）**：不另起厚 DOM 代码包；同组共运行时，差别主要在 schema 文案 / 种子 / 菜单。禁止新开厚包。  
+**薄壳 ≠ 功能稀薄**：密功能是否齐看地图 §1.x 与各组 `*_thicken`；加厚是在薄壳上钉四件套，不是改成独立厚域。  
+组 **H** 为真交叉（两套玩法）。
+
+**两组编号**：本文 **A–H** 服务 bake 目录与 Path B；清待补 / 加厚按地图 **§1.1～§1.10**。查库存与待补以地图为准。对照如下（A 族大表会拆到多个 §1.x）：
+
+| domains 组 | 大致落点 | 地图加厚节 | 复盘 / batch |
+|------------|----------|------------|--------------|
+| **A** 大表（借阅+跟进+审批+双选+考试…混排） | bake 能力组合与表预算 | **拆开**：借用 §1.1 · 跟进 §1.2 · 审批 §1.5 · 互动 §1.9（双选/考试/拼车等）· 文库等见内容 §1.8 | §1.1～§1.5 见 [`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md)；§1.9 见 [`interact-thicken-batch.md`](./interact-thicken-batch.md) |
+| **B** 报修 | DORM / PROPERTY / IT | §1.3 | 同上复盘册 §3 |
+| **C** 报名 | ACTIVITY / LOST / COURSE / TOUR | §1.4 | 同上复盘册 §4 |
+| **D** 交易 | SHOP / FOOD / CINEMA | §1.6 | [`trade-thicken-batch.md`](./trade-thicken-batch.md) |
+| **E** 预约 | HOSPITAL…CARRENT；INSTRUMENT | §1.7 | [`reserve-thicken-batch.md`](./reserve-thicken-batch.md) |
+| **F** 兜底 | GENERIC + ARCH | §1.10 | 地图导引待补 |
+| **G** 内容 | MEDIA / MUSIC / FORUM / BLOG（DOCLIB 常跟内容组） | §1.8 | [`content-thicken-batch.md`](./content-thicken-batch.md)（进行中） |
+| **H** 真交叉 | Path B 三条 | 不按 §1.x 加厚；交叉白名单 | 本文组 H |
+
+例：CRM 写在本文 **A** 表，加厚归地图 **§1.2**；SEAL 亦在 A 表，加厚归 **§1.5**。勿按 A 族一次清完。
 
 | 相关专题 | 链接 |
 |----------|------|
 | 能力组合含义 | [`capabilities.md`](./capabilities.md) |
 | 开题密功能对照 | [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) |
+| §1.1～§1.5 加厚复盘 | [`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) |
 | 换皮 ID 册 / 组审进度 | [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md) |
 | 怎么审交付 | [`delivery-audit-rules.md`](./delivery-audit-rules.md) |
+| 域组 UI 表面（加厚后做） | [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) |
 
-### A. 借用 / 占用流（能力齐，可先薄落地）
+### A. 借用 / 占用流（薄壳 + 能力组合；密功能见地图）
 
-出包表数 **10～15**（全厂下限仍是 6）。薄审单默认挂额度台账 / 时段占用 / 材料清单之一：管理端能管，用户端能看见。挂上的能力走现有 `ensure_*` 与基线 Store，不另起引擎。  
+出包表数 **10～15**（全厂下限仍是 6）。审单默认挂额度台账 / 时段占用 / 材料清单之一：管理端能管，用户端能看见。挂上的能力走现有 `ensure_*` 与基线 Store，不另起引擎。  
 密功能见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.1（级联「借用/占用」，**待补已清**；跟进类见 §1.2 亦已清，审批填报见 §1.5）。
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
@@ -142,9 +160,9 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 | ARCH-TRADE | + order_lines + **guestbook**（+ 默认 **favorites**） | `DOM-GENERIC-TRADE.sql` |
 | ARCH-RESERVE | + slot_reserve | `DOM-GENERIC-RESERVE.sql` |
 
-### G. 内容 / 媒资 / 社区（能力齐，可薄落地）
+### G. 内容 / 媒资 / 社区（薄壳 + 能力组合；密功能见地图 §1.8）
 
-密功能 / 待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.8；互动/匹配类（婚恋/双选/考试等）见 §1.9。
+密功能 / 待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.8；互动/匹配类（婚恋/双选/考试等）见 §1.9 与 [`interact-thicken-batch.md`](./interact-thicken-batch.md)。
 
 | 领域 ID | 覆盖题目关键词 | 能力组合 |
 |---------|----------------|----------|

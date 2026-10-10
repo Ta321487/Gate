@@ -19,6 +19,7 @@ HUB_BYPASS_MODULES: frozenset[str] = frozenset(
         "approve_thicken",  # 审批/填报组加厚，非独立 cap；落点见交付地图 §1.5
         "trade_thicken",  # 交易组加厚，非独立 cap；落点见交付地图 §1.6
         "reserve_thicken",  # 预约组加厚，非独立 cap；落点见交付地图 §1.7
+        "content_thicken",  # 内容组加厚，非独立 cap；落点见交付地图 §1.8
     }
 )
 
