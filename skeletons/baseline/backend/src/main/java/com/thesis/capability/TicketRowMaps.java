@@ -103,6 +103,29 @@ final class TicketRowMaps {
             m.put("pickupPlace", TicketSql.safeStr(rs, "pickup_place"));
             m.put("contactChannel", TicketSql.safeStr(rs, "contact_channel"));
             m.put("nextFollowAt", TicketSql.fmt(TicketSql.safeTs(rs, "next_follow_at")));
+            m.put("meetIntent", TicketSql.safeStr(rs, "meet_intent"));
+            try {
+                int er = rs.getInt("exit_request");
+                if (!rs.wasNull()) m.put("exitRequest", er);
+            } catch (Exception ignored) {
+                // 无 exit_request 列时跳过
+            }
+            try {
+                int sl = rs.getInt("seat_locked");
+                if (!rs.wasNull()) m.put("seatLocked", sl);
+            } catch (Exception ignored) {
+                // 无 seat_locked 列时跳过
+            }
+            try {
+                int ns = rs.getInt("no_show");
+                if (!rs.wasNull()) m.put("noShow", ns);
+            } catch (Exception ignored) {
+                // 无 no_show 列时跳过
+            }
+            try {
+                m.put("cancelReason", TicketSql.safeStr(rs, "cancel_reason"));
+            } catch (Exception ignored) {
+            }
             try {
                 int aq = rs.getInt("actual_qty");
                 if (!rs.wasNull()) m.put("actualQty", aq);

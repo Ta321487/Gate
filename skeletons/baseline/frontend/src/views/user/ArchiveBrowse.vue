@@ -15,6 +15,30 @@
         {{ hotRankPageTitle }}：{{ hotRankPageLead }}
       </p>
       <p v-if="activeSectionNotice" class="page-hint section-notice">{{ activeSectionNotice }}</p>
+      <p v-if="datingActivityEntryOn" class="page-hint">
+        <strong v-if="datingActivityEntryTitle">{{ datingActivityEntryTitle }} · </strong>
+        {{ datingActivityEntryHint }}
+        <el-button link type="primary" @click="$router.push('/notices')">{{ datingActivityEntryCta }}</el-button>
+      </p>
+      <p v-if="mutualInterviewEntryOn" class="page-hint">
+        <strong v-if="mutualInterviewEntryTitle">{{ mutualInterviewEntryTitle }} · </strong>
+        {{ mutualInterviewEntryHint }}
+        <el-button link type="primary" @click="$router.push('/notices')">{{ mutualInterviewEntryCta }}</el-button>
+      </p>
+      <div v-if="teamSkillTagsOn" class="search-extra" style="margin-top:8px">
+        <el-input
+          v-model="skillTagFilter"
+          clearable
+          size="large"
+          :placeholder="skillTagsFilterPlaceholder"
+          style="max-width:240px"
+          @change="load"
+          @clear="load"
+        />
+      </div>
+      <p v-if="teamFullStageHint && interactThicken.mutualTeamFullClose" class="page-hint">{{ teamFullStageHint }}</p>
+      <p v-if="carpoolFullStageHint && interactThicken.carpoolFullClose" class="page-hint">{{ carpoolFullStageHint }}</p>
+      <p v-if="carpoolDupTripDeny && interactThicken.carpoolDupTripCheck" class="page-hint">{{ carpoolDupTripDeny }}</p>
       <div class="search">
         <el-autocomplete
           v-if="titleSuggestOn"
@@ -112,6 +136,35 @@
           :placeholder="albumFilterPlaceholder"
           style="max-width:140px"
           @keyup.enter="load"
+        />
+        <el-input
+          v-if="datingIdealFilterOn"
+          v-model="datingCityFilter"
+          size="large"
+          clearable
+          :placeholder="datingFilterCityPlaceholder"
+          style="max-width:140px"
+          @keyup.enter="load"
+        />
+        <el-input-number
+          v-if="datingIdealFilterOn"
+          v-model="datingAgeMinFilter"
+          size="large"
+          :min="1"
+          :max="99"
+          controls-position="right"
+          :placeholder="datingFilterAgeMinPlaceholder"
+          style="max-width:120px"
+        />
+        <el-input-number
+          v-if="datingIdealFilterOn"
+          v-model="datingAgeMaxFilter"
+          size="large"
+          :min="1"
+          :max="99"
+          controls-position="right"
+          :placeholder="datingFilterAgeMaxPlaceholder"
+          style="max-width:120px"
         />
         <el-button type="primary" size="large" @click="load">搜索</el-button>
         <el-button
@@ -225,7 +278,7 @@
     </div>
     <div class="grid" :class="{ 'poster-wall': posterWallOn }">
       <article
-        v-for="row in list"
+        v-for="row in filteredList"
         :key="row.id"
         class="card imm-lift"
         :class="{ 'reported-dim': reportedIds.has(row.id), 'poster-card': posterWallOn }"
@@ -288,6 +341,45 @@
           </p>
           <p v-if="quotaRemainOn && quotaRemainOf(row) != null" class="sched muted">
             {{ quotaRemainHint || '名额余量' }}：{{ quotaRemainOf(row) }}
+          </p>
+          <div v-if="tutorQuotaBarOn && tutorQuotaPercent(row) != null" class="quota-bar">
+            <span class="muted">{{ tutorQuotaBarLabel }} {{ tutorQuotaText(row) }}</span>
+            <el-progress
+              :percentage="tutorQuotaPercent(row)"
+              :stroke-width="8"
+              :show-text="false"
+            />
+            <span v-if="tutorQuotaBarHint" class="muted tiny">{{ tutorQuotaBarHint }}</span>
+          </div>
+          <p v-if="carpoolSeatRemainOn && row.stock != null" class="sched muted">
+            {{ carpoolSeatRemainLabel }}：{{ row.stock }}
+            <span v-if="carpoolSeatRemainHint" class="tiny"> · {{ carpoolSeatRemainHint }}</span>
+          </p>
+          <p v-if="carpoolCampusDictOn && (row.startCampus || row.endCampus)" class="sched muted">
+            {{ carpoolCampusStartLabel }} {{ row.startCampus || '—' }}
+            → {{ carpoolCampusEndLabel }} {{ row.endCampus || '—' }}
+          </p>
+          <p v-if="carpoolViaPointsOn && row.viaPoints" class="sched muted">
+            {{ carpoolViaPointsLabel }}：{{ row.viaPoints }}
+          </p>
+          <p v-if="carpoolShareNoteOn && row.shareNote" class="sched muted">
+            {{ carpoolShareNoteLabel }}：{{ row.shareNote }}
+          </p>
+          <p v-if="carpoolPrefNoteOn && row.prefNote" class="sched muted">
+            {{ carpoolPrefNoteLabel }}：{{ row.prefNote }}
+          </p>
+          <p v-if="carpoolLuggageOn && Number(row.luggageCount) > 0" class="sched muted">
+            {{ carpoolLuggageCountLabel }}：{{ row.luggageCount }}
+          </p>
+          <p v-if="carpoolAaCalcOn && aaPerPerson(row) != null" class="sched muted">
+            {{ carpoolAaLabel }}：约 {{ aaPerPerson(row) }} 元/人
+            <span v-if="carpoolAaHint" class="tiny"> · {{ carpoolAaHint }}</span>
+          </p>
+          <p v-if="teamSkillTagsOn && skillTagsOf(row).length" class="sched muted">
+            {{ skillTagsLabel }}：{{ skillTagsOf(row).join(' · ') }}
+          </p>
+          <p v-if="teamSkillMatchOn && skillMatchCount(row) != null" class="sched muted">
+            {{ teamSkillMatchLabel }}：重合 {{ skillMatchCount(row) }} 项
           </p>
           <p v-if="row.mutexCode" class="sched muted">互斥组 {{ row.mutexCode }}</p>
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
@@ -377,6 +469,12 @@
               @click="openDetail(row)"
             >{{ bodyRich ? '阅读' : '详情' }}</el-button>
             <el-button
+              v-if="teamInviteOn"
+              size="small"
+              plain
+              @click="sendTeamInvite(row)"
+            >{{ teamInviteLabel }}</el-button>
+            <el-button
               v-if="showPrimaryApply"
               size="small"
               type="primary"
@@ -389,7 +487,12 @@
               :type="favIds.includes(row.id) ? 'warning' : 'default'"
               :class="{ 'like-pulse': favPulseId === row.id }"
               @click="toggleFav(row)"
-            >{{ favIds.includes(row.id) ? '已收藏' : '收藏' }}</el-button>
+            >{{ favIds.includes(row.id) ? favoritedVerb : favoritesVerb }}</el-button>
+            <el-button
+              v-if="datingUserFollowOn && !isGuest && authorKey(row)"
+              size="small"
+              @click="toggleFollowUser(authorKey(row))"
+            >{{ followBtnLabel(authorKey(row)) }}</el-button>
             <el-button
               v-if="likeOn && !isGuest"
               size="small"
@@ -433,6 +536,12 @@
 
     <el-drawer v-model="detailVisible" :title="detail?.title || '详情'" size="520px" destroy-on-close>
       <template v-if="detail">
+        <p v-if="datingUserFollowOn && authorKey(detail) && !isGuest" class="detail-line">
+          <el-button size="small" type="primary" plain @click="toggleFollowUser(authorKey(detail))">
+            {{ followBtnLabel(authorKey(detail)) }}
+          </el-button>
+        </p>
+        <p v-if="datingAlbumAuditOn && detail.albumHidden" class="muted">{{ albumAuditHiddenHint }}</p>
         <div v-if="galleryUrls.length" class="gallery">
           <el-carousel height="220px" indicator-position="outside">
             <el-carousel-item v-for="(u, i) in galleryUrls" :key="i">
@@ -579,7 +688,16 @@
               class="detail-line"
             >{{ f.label }}：{{ formatFieldValue(detail, f) }}</p>
             <p v-if="scheduleText(detail)" class="sched">{{ scheduleText(detail) }}</p>
-            <p v-if="detail.applyDeadlineAt" class="sched muted">截止 {{ detail.applyDeadlineAt }}</p>
+            <p v-if="detail.applyDeadlineAt" class="sched muted">
+              {{ applyDeadlineLabel }} {{ detail.applyDeadlineAt }}
+              <template v-if="mutualDeadlineText(detail)"> · {{ mutualDeadlineText(detail) }}</template>
+            </p>
+            <p v-if="mutualDeadlineHint && detail.applyDeadlineAt" class="sched muted">{{ mutualDeadlineHint }}</p>
+            <p v-if="mutualIntroPackOn && detail.introPackUrl" class="sched">
+              {{ introPackLabel }}：
+              <a :href="detail.introPackUrl" target="_blank" rel="noopener">{{ introPackOpenLabel }}</a>
+              <span v-if="introPackHint" class="muted"> · {{ introPackHint }}</span>
+            </p>
           </el-tab-pane>
           <el-tab-pane :label="productSpecLabel" name="spec">
             <p class="detail-line">{{ productSpecText(detail) }}</p>
@@ -592,7 +710,16 @@
             class="detail-line"
           >{{ f.label }}：{{ formatFieldValue(detail, f) }}</p>
           <p v-if="scheduleText(detail)" class="sched">{{ scheduleText(detail) }}</p>
-          <p v-if="detail.applyDeadlineAt" class="sched muted">截止 {{ detail.applyDeadlineAt }}</p>
+          <p v-if="detail.applyDeadlineAt" class="sched muted">
+            {{ applyDeadlineLabel }} {{ detail.applyDeadlineAt }}
+            <template v-if="mutualDeadlineText(detail)"> · {{ mutualDeadlineText(detail) }}</template>
+          </p>
+          <p v-if="mutualDeadlineHint && detail.applyDeadlineAt" class="sched muted">{{ mutualDeadlineHint }}</p>
+          <p v-if="mutualIntroPackOn && detail.introPackUrl" class="sched">
+            {{ introPackLabel }}：
+            <a :href="detail.introPackUrl" target="_blank" rel="noopener">{{ introPackOpenLabel }}</a>
+            <span v-if="introPackHint" class="muted"> · {{ introPackHint }}</span>
+          </p>
         </template>
         <div v-if="roomEquipOn && detailEquipNames.length" class="equip">
           <p class="equip-title">{{ equipSectionTitle }}</p>
@@ -735,7 +862,7 @@
             v-if="favOn && !isGuest"
             :type="favIds.includes(detail.id) ? 'warning' : 'default'"
             @click="toggleFav(detail)"
-          >{{ favIds.includes(detail.id) ? '已收藏' : '收藏' }}</el-button>
+          >{{ favIds.includes(detail.id) ? favoritedVerb : favoritesVerb }}</el-button>
           <el-button
             v-if="likeOn && !isGuest"
             :type="likeIds.includes(detail.id) ? 'warning' : 'default'"
@@ -843,7 +970,7 @@
             <p class="ic-meta">
               <span>{{ c.nickname || c.username || '用户' }} · {{ c.createdAt }}</span>
               <el-button
-                v-if="followersOnlyCommentOn && c.username && !isGuest"
+                v-if="userFollowUiOn && c.username && !isGuest"
                 link
                 type="primary"
                 size="small"
@@ -962,6 +1089,27 @@
             placeholder="选填"
           />
         </el-form-item>
+        <el-form-item v-if="teamSkillMatchOn" :label="teamSkillMatchLabel">
+          <el-input
+            v-model="mySkillTagsInput"
+            :placeholder="skillTagsPlaceholder"
+            maxlength="255"
+          />
+          <p v-if="skillMatchCount(applyRow) != null" class="muted" style="margin:4px 0 0">
+            {{ teamSkillMatchLabel }}：重合 {{ skillMatchCount(applyRow) }} 项
+            <span v-if="teamSkillMatchHint"> · {{ teamSkillMatchHint }}</span>
+          </p>
+          <p v-else class="muted" style="margin:4px 0 0">{{ teamSkillMatchEmpty }}</p>
+        </el-form-item>
+        <el-form-item v-if="datingMeetIntentOn" :label="meetIntentLabel" required>
+          <el-select
+            v-model="applyMeetIntent"
+            style="width:100%"
+            :placeholder="meetIntentPlaceholder"
+          >
+            <el-option v-for="opt in meetIntentOptions" :key="opt" :label="opt" :value="opt" />
+          </el-select>
+        </el-form-item>
         <el-form-item v-if="rateOnApply" label="多维评分" required>
           <div class="rate-dims">
             <div v-for="d in ratingDims" :key="d.key" class="rate-dim-row">
@@ -1051,6 +1199,71 @@
             style="width:100%"
             :placeholder="`请选择${fieldLabel('startAt', '出发时间')}`"
           />
+        </el-form-item>
+        <template v-if="carpoolCampusDictOn">
+          <el-form-item :label="carpoolCampusStartLabel" required>
+            <el-select
+              v-model="publishStartCampus"
+              filterable
+              clearable
+              :placeholder="carpoolCampusPlaceholder"
+              style="width:100%"
+            >
+              <el-option v-for="c in carpoolCampusOptions" :key="'ps' + c" :label="c" :value="c" />
+            </el-select>
+          </el-form-item>
+          <el-form-item :label="carpoolCampusEndLabel" required>
+            <el-select
+              v-model="publishEndCampus"
+              filterable
+              clearable
+              :placeholder="carpoolCampusPlaceholder"
+              style="width:100%"
+            >
+              <el-option v-for="c in carpoolCampusOptions" :key="'pe' + c" :label="c" :value="c" />
+            </el-select>
+          </el-form-item>
+        </template>
+        <el-form-item v-if="carpoolViaPointsOn" :label="carpoolViaPointsLabel">
+          <el-input
+            v-model="publishViaPoints"
+            type="textarea"
+            :rows="2"
+            :placeholder="carpoolViaPointsPlaceholder"
+          />
+        </el-form-item>
+        <el-form-item v-if="carpoolShareNoteOn" :label="carpoolShareNoteLabel">
+          <el-input
+            v-model="publishShareNote"
+            type="textarea"
+            :rows="2"
+            :placeholder="carpoolShareNotePlaceholder"
+          />
+        </el-form-item>
+        <el-form-item v-if="carpoolPrefNoteOn" :label="carpoolPrefNoteLabel">
+          <el-input v-model="publishPrefNote" :placeholder="carpoolPrefNotePlaceholder" />
+        </el-form-item>
+        <el-form-item v-if="carpoolLuggageOn" :label="carpoolLuggageCountLabel">
+          <el-input-number v-model="publishLuggageCount" :min="0" :max="99" controls-position="right" />
+        </el-form-item>
+        <el-form-item v-if="carpoolAaCalcOn" :label="fareTotalLabel">
+          <el-input-number
+            v-model="publishFareTotalYuan"
+            :min="0"
+            :max="99999"
+            :precision="2"
+            controls-position="right"
+          />
+          <p v-if="fareTotalHint" class="apply-tip muted">{{ fareTotalHint }}</p>
+        </el-form-item>
+        <el-form-item v-if="carpoolDepartRemindOn" :label="carpoolDepartRemindLeadLabel">
+          <el-input-number
+            v-model="publishRemindBeforeMinutes"
+            :min="0"
+            :max="1440"
+            controls-position="right"
+          />
+          <p v-if="carpoolDepartRemindHint" class="apply-tip muted">{{ carpoolDepartRemindHint }}</p>
         </el-form-item>
         <el-form-item :label="fieldLabel('isbn', publishUsesRichBody ? '正文' : '备注')" required>
           <RichTextEditor
@@ -1181,6 +1394,85 @@ function intentCountOf(row) {
   const v = row?.intentCount ?? row?.intent_count ?? row?.favCount
   return v == null || v === '' ? null : v
 }
+function skillTagsOf(row) {
+  const raw = row?.skillTags || row?.skill_tags || ''
+  return String(raw)
+    .split(/[,，;；、\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function tutorQuotaPercent(row) {
+  if (!row) return null
+  const cap = Number(row.quotaCap ?? row.quota_cap ?? 0)
+  const stock = Number(row.stock ?? 0)
+  if (!(cap > 0)) return null
+  const used = Math.max(0, Math.min(cap, cap - stock))
+  return Math.round((used / cap) * 100)
+}
+
+function tutorQuotaText(row) {
+  const cap = Number(row?.quotaCap ?? row?.quota_cap ?? 0)
+  const stock = Number(row?.stock ?? 0)
+  if (!(cap > 0)) return ''
+  const used = Math.max(0, cap - stock)
+  return `${used}/${cap}`
+}
+
+/** I-05：总费用 ÷ 座位数（余座+已占近似 = 初始 stock 不可得时用余座+1） */
+function aaPerPerson(row) {
+  if (!carpoolAaCalcOn.value || !row) return null
+  const total = Number(row.fareTotalYuan ?? row.fare_total_yuan ?? 0)
+  if (!(total > 0)) return null
+  const remain = Number(row.stock ?? 0)
+  const seats = Math.max(1, remain > 0 ? remain : 1)
+  return (total / seats).toFixed(2)
+}
+
+function skillMatchCount(row) {
+  if (!teamSkillMatchOn.value) return null
+  const mine = String(mySkillTagsInput.value || '')
+    .split(/[,，;；、\s]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+  if (!mine.length) return null
+  const theirs = skillTagsOf(row).map((s) => s.toLowerCase())
+  if (!theirs.length) return 0
+  return mine.filter((t) => theirs.includes(t)).length
+}
+
+function rowMatchesSkillFilter(row) {
+  const q = String(skillTagFilter.value || '').trim().toLowerCase()
+  if (!q) return true
+  const tags = skillTagsOf(row).map((s) => s.toLowerCase())
+  if (!tags.length) return false
+  return q.split(/[,，;；、\s]+/).filter(Boolean).every((t) => tags.some((x) => x.includes(t)))
+}
+
+async function sendTeamInvite(row) {
+  const { value } = await ElMessageBox.prompt(
+    teamInviteHint.value || '请输入对方账号',
+    teamInviteLabel.value,
+    {
+      confirmButtonText: '发送',
+      cancelButtonText: '取消',
+      inputPattern: /\S+/,
+      inputErrorMessage: '请填写账号',
+      inputValue: inviteToUsername.value,
+    },
+  )
+  inviteToUsername.value = value
+  await http.post('/api/tickets/team-invite', {
+    toUsername: value,
+    itemId: row.id,
+    note: teamInviteBody.value || '',
+  })
+  ElMessage.success(
+    (teamInviteTitle.value ? `${teamInviteTitle.value}：` : '')
+      + (browseLabels.value.teamInviteDone || '邀请已发送'),
+  )
+}
+
 function quotaRemainOf(row) {
   const v = row?.quotaRemain ?? row?.quota_remain ?? row?.remainQuota
   if (v != null && v !== '') return v
@@ -1444,10 +1736,11 @@ const isSlotMode = computed(() => {
   if (hasTrait('slotPrimary')) return true
   return !caps.value.includes('ticket_flow')
 })
-/** 即时收藏：交易域或内容流（无单据审核） */
+/** 即时收藏：交易/内容流；婚恋心动可与单据并存（interactThicken.datingFavorites） */
 const favOn = computed(() => {
   if (!caps.value.includes('favorites')) return false
   if (isOrderMode.value || isSeatSelectMode.value) return true
+  if (getSchema()?.interactThicken?.datingFavorites) return true
   return !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve')
 })
 const likeOn = computed(() => hasCap('post_like'))
@@ -1461,6 +1754,24 @@ const flashCountdownLabel = computed(
 const flashCountdownEnded = computed(
   () => getSchema()?.labels?.flashCountdownEnded || '已结束',
 )
+const favoritesVerb = computed(() => getSchema()?.labels?.favoritesVerb || '收藏')
+const favoritedVerb = computed(() => getSchema()?.labels?.favoritedVerb || '已收藏')
+const applyDeadlineLabel = computed(
+  () => getSchema()?.labels?.applyDeadlineLabel || '截止',
+)
+const mutualDeadlineCountdownOn = computed(
+  () => !!getSchema()?.interactThicken?.mutualDeadlineCountdown,
+)
+const mutualDeadlineCountdownLabel = computed(
+  () => getSchema()?.labels?.mutualDeadlineCountdownLabel || '距志愿截止',
+)
+const mutualDeadlinePassedLabel = computed(
+  () => getSchema()?.labels?.mutualDeadlinePassedLabel || '志愿已截止',
+)
+const mutualDeadlineHint = computed(() => {
+  if (!mutualDeadlineCountdownOn.value) return ''
+  return getSchema()?.labels?.mutualDeadlineHint || ''
+})
 const { nowMs } = useNowTick()
 
 function flashSecondsLeft(row) {
@@ -1473,6 +1784,14 @@ function flashCountdownText(row) {
   if (sec == null) return ''
   if (sec <= 0) return flashCountdownEnded.value
   return `${flashCountdownLabel.value} ${formatCountdownClock(sec)}`
+}
+
+function mutualDeadlineText(row) {
+  if (!mutualDeadlineCountdownOn.value || !row?.applyDeadlineAt) return ''
+  const sec = secondsUntil(row.applyDeadlineAt, nowMs.value)
+  if (sec == null) return ''
+  if (sec <= 0) return mutualDeadlinePassedLabel.value
+  return `${mutualDeadlineCountdownLabel.value} ${formatCountdownClock(sec)}`
 }
 const reportOn = computed(() => hasCap('content_report'))
 const likeVerb = computed(() => getSchema()?.labels?.likeVerb || '点赞')
@@ -1517,6 +1836,159 @@ const contentThicken = computed(() => getSchema()?.contentThicken || {})
 const reportReasonDictOn = computed(() => !!contentThicken.value.reportReasonDict)
 const commentReportOn = computed(() => !!contentThicken.value.commentReport)
 const followersOnlyCommentOn = computed(() => !!contentThicken.value.followersOnlyComment)
+const interactThicken = computed(() => getSchema()?.interactThicken || {})
+const datingUserFollowOn = computed(() => !!interactThicken.value.datingUserFollow)
+const datingMeetIntentOn = computed(() => !!interactThicken.value.datingMeetIntent)
+const datingIdealFilterOn = computed(() => !!interactThicken.value.datingIdealFilter)
+const datingActivityEntryOn = computed(() => !!interactThicken.value.datingActivityEntry)
+const mutualInterviewEntryOn = computed(() => !!interactThicken.value.mutualInterviewEntry)
+const mutualIntroPackOn = computed(() => !!interactThicken.value.mutualIntroPack)
+const tutorQuotaBarOn = computed(() => !!interactThicken.value.mutualTutorQuotaBar)
+const teamSkillTagsOn = computed(() => !!interactThicken.value.mutualTeamSkillTags)
+const teamSkillMatchOn = computed(() => !!interactThicken.value.mutualTeamSkillMatch)
+const teamInviteOn = computed(() => !!interactThicken.value.mutualTeamInvite)
+const carpoolFullCloseOn = computed(() => !!interactThicken.value.carpoolFullClose)
+const carpoolSeatRemainOn = computed(() => !!interactThicken.value.carpoolSeatRemain)
+const carpoolCampusDictOn = computed(() => !!interactThicken.value.carpoolCampusDict)
+const carpoolViaPointsOn = computed(() => !!interactThicken.value.carpoolViaPoints)
+const carpoolShareNoteOn = computed(() => !!interactThicken.value.carpoolShareNote)
+const carpoolPrefNoteOn = computed(() => !!interactThicken.value.carpoolPrefNote)
+const carpoolLuggageOn = computed(() => !!interactThicken.value.carpoolLuggage)
+const carpoolAaCalcOn = computed(() => !!interactThicken.value.carpoolAaCalc)
+const carpoolDepartRemindOn = computed(() => !!interactThicken.value.carpoolDepartRemind)
+const carpoolFullStageHint = computed(() => browseLabels.value.carpoolFullStageHint || '')
+const carpoolSeatRemainLabel = computed(
+  () => browseLabels.value.carpoolSeatRemainLabel || '剩余座位',
+)
+const carpoolSeatRemainHint = computed(() => browseLabels.value.carpoolSeatRemainHint || '')
+const carpoolCampusStartLabel = computed(
+  () => browseLabels.value.carpoolCampusStartLabel || '出发校区',
+)
+const carpoolCampusEndLabel = computed(
+  () => browseLabels.value.carpoolCampusEndLabel || '到达校区',
+)
+const carpoolCampusPlaceholder = computed(
+  () => browseLabels.value.carpoolCampusPlaceholder || '选择校区',
+)
+const carpoolCampusOptions = computed(() => {
+  const raw = String(browseLabels.value.carpoolCampusOptions || '')
+  return raw.split(/[,，]/).map((s) => s.trim()).filter(Boolean)
+})
+const carpoolViaPointsLabel = computed(() => browseLabels.value.viaPointsLabel || '途经点')
+const carpoolViaPointsPlaceholder = computed(
+  () => browseLabels.value.viaPointsPlaceholder || '多个途经点用逗号或换行分隔',
+)
+const carpoolShareNoteLabel = computed(() => browseLabels.value.shareNoteLabel || '费用分摊说明')
+const carpoolShareNotePlaceholder = computed(
+  () => browseLabels.value.shareNotePlaceholder || '',
+)
+const carpoolPrefNoteLabel = computed(() => browseLabels.value.prefNoteLabel || '同行偏好')
+const carpoolPrefNotePlaceholder = computed(
+  () => browseLabels.value.prefNotePlaceholder || '',
+)
+const carpoolLuggageCountLabel = computed(
+  () => browseLabels.value.luggageCountLabel || '行李件数',
+)
+const fareTotalLabel = computed(() => browseLabels.value.fareTotalLabel || '预计总费用')
+const fareTotalHint = computed(() => browseLabels.value.fareTotalHint || '')
+const carpoolAaLabel = computed(() => browseLabels.value.carpoolAaLabel || '人均分摊')
+const carpoolAaHint = computed(() => browseLabels.value.carpoolAaHint || '')
+const carpoolDepartRemindLeadLabel = computed(
+  () => browseLabels.value.carpoolDepartRemindLeadLabel || '出发前提醒',
+)
+const carpoolDepartRemindHint = computed(
+  () => browseLabels.value.carpoolDepartRemindHint || '',
+)
+const carpoolDupTripDeny = computed(
+  () => browseLabels.value.carpoolDupTripDeny || '你已发布相近出发时间的同行行程，请勿重复发布。',
+)
+const tutorQuotaBarLabel = computed(
+  () => browseLabels.value.tutorQuotaBarLabel || '名额占用',
+)
+const tutorQuotaBarHint = computed(() => browseLabels.value.tutorQuotaBarHint || '')
+const skillTagsLabel = computed(() => browseLabels.value.skillTagsLabel || '技能标签')
+const skillTagsFilterPlaceholder = computed(
+  () => browseLabels.value.skillTagsFilterPlaceholder || '按技能标签筛选',
+)
+const teamSkillMatchLabel = computed(
+  () => browseLabels.value.teamSkillMatchLabel || '技能匹配',
+)
+const teamSkillMatchHint = computed(
+  () => browseLabels.value.teamSkillMatchHint || '按标签重合数量提示匹配度，仅供参考。',
+)
+const skillTagsPlaceholder = computed(
+  () => browseLabels.value.skillTagsPlaceholder || '多个标签用逗号分隔',
+)
+const teamInviteLabel = computed(() => browseLabels.value.teamInviteLabel || '邀请组队')
+const teamInviteHint = computed(() => browseLabels.value.teamInviteHint || '')
+const teamInviteTitle = computed(() => browseLabels.value.teamInviteTitle || '组队邀请')
+const teamInviteBody = computed(() => browseLabels.value.teamInviteBody || '')
+const teamFullStageHint = computed(() => browseLabels.value.teamFullStageHint || '')
+const teamRemarkRequired = computed(
+  () => browseLabels.value.teamRemarkRequired || '请填写申请附言后再提交',
+)
+const teamSkillMatchEmpty = computed(
+  () => browseLabels.value.teamSkillMatchEmpty || '填写技能标签后可看重合数',
+)
+const skillTagFilter = ref('')
+const mySkillTagsInput = ref('')
+const inviteToUsername = ref('')
+const filteredList = computed(() => {
+  const rows = list.value || []
+  if (!teamSkillTagsOn.value || !String(skillTagFilter.value || '').trim()) return rows
+  return rows.filter((r) => rowMatchesSkillFilter(r))
+})
+const mutualInterviewEntryTitle = computed(
+  () => browseLabels.value.mutualInterviewEntryTitle || '',
+)
+const mutualInterviewEntryHint = computed(
+  () =>
+    browseLabels.value.mutualInterviewEntryHint
+    || '面试时段安排见互选公告；如需预约会议室请按当期公告指引办理。',
+)
+const mutualInterviewEntryCta = computed(
+  () => browseLabels.value.mutualInterviewEntryCta || '查看互选公告',
+)
+const introPackLabel = computed(() => browseLabels.value.introPackLabel || '附件简介包')
+const introPackOpenLabel = computed(
+  () => browseLabels.value.introPackOpenLabel || '查看简介包',
+)
+const introPackHint = computed(() => browseLabels.value.introPackHint || '')
+const datingAlbumAuditOn = computed(() => !!interactThicken.value.datingAlbumAudit)
+const userFollowUiOn = computed(() => followersOnlyCommentOn.value || datingUserFollowOn.value)
+const datingFilterCityPlaceholder = computed(
+  () => browseLabels.value.datingFilterCityPlaceholder || '按城市筛选',
+)
+const datingFilterAgeMinPlaceholder = computed(
+  () => browseLabels.value.datingFilterAgeMinPlaceholder || '最小',
+)
+const datingFilterAgeMaxPlaceholder = computed(
+  () => browseLabels.value.datingFilterAgeMaxPlaceholder || '最大',
+)
+const datingActivityEntryTitle = computed(
+  () => browseLabels.value.datingActivityEntryTitle || '',
+)
+const datingActivityEntryHint = computed(
+  () => browseLabels.value.datingActivityEntryHint || '线下联谊安排见交友公告。',
+)
+const datingActivityEntryCta = computed(
+  () => browseLabels.value.datingActivityEntryCta || '查看交友公告',
+)
+const albumAuditHiddenHint = computed(
+  () => browseLabels.value.albumAuditHiddenHint || '相册审核通过后才会公开展示。',
+)
+const meetIntentLabel = computed(() => browseLabels.value.meetIntentLabel || '见面意向')
+const meetIntentPlaceholder = computed(
+  () => browseLabels.value.meetIntentPlaceholder || '请选择见面意向',
+)
+const meetIntentOptions = computed(() => {
+  const raw = ticket.meetIntentOptions || getSchema()?.entities?.ticket?.meetIntentOptions
+  return Array.isArray(raw) && raw.length ? raw : ['线上沟通', '线下见面', '参加联谊', '暂不确定']
+})
+const datingCityFilter = ref('')
+const datingAgeMinFilter = ref(null)
+const datingAgeMaxFilter = ref(null)
+const applyMeetIntent = ref('')
 const reportReasonOptions = computed(() => {
   const raw = getSchema()?.reportReasons
   return Array.isArray(raw) ? raw : []
@@ -2311,6 +2783,14 @@ const publishAuthor = ref('')
 const publishBody = ref('')
 const publishStock = ref(2)
 const publishStartAt = ref('')
+const publishStartCampus = ref('')
+const publishEndCampus = ref('')
+const publishViaPoints = ref('')
+const publishShareNote = ref('')
+const publishPrefNote = ref('')
+const publishLuggageCount = ref(0)
+const publishFareTotalYuan = ref(null)
+const publishRemindBeforeMinutes = ref(0)
 const publishCategoryId = ref(null)
 const publishLoading = ref(false)
 const publishDraftId = ref(null)
@@ -2553,13 +3033,21 @@ async function toggleFollowUser(followee) {
       const next = new Set(followingUsers.value)
       next.delete(followee)
       followingUsers.value = next
-      ElMessage.success(browseLabels.value.unfollowUserLabel || '已取消关注')
+      ElMessage.success(
+        browseLabels.value.datingUnfollowDone
+          || browseLabels.value.unfollowUserLabel
+          || '已取消关注',
+      )
     } else {
       await http.post('/api/user-follow', { followee })
       const next = new Set(followingUsers.value)
       next.add(followee)
       followingUsers.value = next
-      ElMessage.success(browseLabels.value.followUserLabel || '已关注')
+      ElMessage.success(
+        browseLabels.value.datingFollowDone
+          || browseLabels.value.followUserLabel
+          || '已关注',
+      )
     }
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
@@ -2629,6 +3117,13 @@ async function load() {
     tagIds: tagIds.value?.length ? tagIds.value.join(',') : undefined,
     artist: artistAlbumFilterOn.value ? (artistFilter.value || undefined) : undefined,
     album: artistAlbumFilterOn.value ? (albumFilter.value || undefined) : undefined,
+    city: datingIdealFilterOn.value ? (datingCityFilter.value || undefined) : undefined,
+    ageMin: datingIdealFilterOn.value && datingAgeMinFilter.value
+      ? Number(datingAgeMinFilter.value)
+      : undefined,
+    ageMax: datingIdealFilterOn.value && datingAgeMaxFilter.value
+      ? Number(datingAgeMaxFilter.value)
+      : undefined,
   }
   if (hotMode.value && hotRankOn.value) {
     url = '/api/archive/hot'
@@ -2794,10 +3289,10 @@ async function toggleFav(row) {
   setTimeout(() => { if (favPulseId.value === row.id) favPulseId.value = null }, 360)
   if (on) {
     if (!favIds.value.includes(row.id)) favIds.value = [...favIds.value, row.id]
-    ElMessage.success('已收藏')
+    ElMessage.success(favoritedVerb.value)
   } else {
     favIds.value = favIds.value.filter((x) => x !== row.id)
-    ElMessage.success('已取消收藏')
+    ElMessage.success(getSchema()?.labels?.favoritesCancelLabel || '已取消收藏')
   }
 }
 
@@ -2870,6 +3365,14 @@ function openPublish() {
   publishBody.value = ''
   publishStock.value = publishShowStock.value ? 2 : 1
   publishStartAt.value = ''
+  publishStartCampus.value = ''
+  publishEndCampus.value = ''
+  publishViaPoints.value = ''
+  publishShareNote.value = ''
+  publishPrefNote.value = ''
+  publishLuggageCount.value = 0
+  publishFareTotalYuan.value = null
+  publishRemindBeforeMinutes.value = 0
   publishCategoryId.value = categories.value[0]?.id || null
   publishOriginKind.value = 'original'
   publishAccessPassword.value = ''
@@ -2958,6 +3461,12 @@ async function submitPublish(asDraft = false) {
     ElMessage.warning(`请填写${fieldLabel('startAt', '出发时间')}`)
     return
   }
+  if (!asDraft && carpoolCampusDictOn.value) {
+    if (!String(publishStartCampus.value || '').trim() || !String(publishEndCampus.value || '').trim()) {
+      ElMessage.warning('请选择出发校区与到达校区')
+      return
+    }
+  }
   let isbn = ''
   if (publishUsesRichBody.value) {
     isbn = sanitizeHtml(publishBody.value || '')
@@ -2987,6 +3496,26 @@ async function submitPublish(asDraft = false) {
     if (publishShowAuthor.value) body.author = publishAuthor.value.trim()
     if (!asDraft && publishShowStock.value) body.stock = Number(publishStock.value) || 1
     if (!asDraft && publishShowStartAt.value) body.startAt = String(publishStartAt.value).trim()
+    if (carpoolCampusDictOn.value) {
+      body.startCampus = String(publishStartCampus.value || '').trim()
+      body.endCampus = String(publishEndCampus.value || '').trim()
+    }
+    if (carpoolViaPointsOn.value && String(publishViaPoints.value || '').trim()) {
+      body.viaPoints = String(publishViaPoints.value).trim()
+    }
+    if (carpoolShareNoteOn.value && String(publishShareNote.value || '').trim()) {
+      body.shareNote = String(publishShareNote.value).trim()
+    }
+    if (carpoolPrefNoteOn.value && String(publishPrefNote.value || '').trim()) {
+      body.prefNote = String(publishPrefNote.value).trim()
+    }
+    if (carpoolLuggageOn.value) body.luggageCount = Number(publishLuggageCount.value) || 0
+    if (carpoolAaCalcOn.value && publishFareTotalYuan.value != null) {
+      body.fareTotalYuan = Number(publishFareTotalYuan.value)
+    }
+    if (carpoolDepartRemindOn.value) {
+      body.remindBeforeMinutes = Number(publishRemindBeforeMinutes.value) || 0
+    }
     if (originKindOn.value) body.originKind = publishOriginKind.value
     if (accessPasswordOn.value && (publishAccessPassword.value || '').trim()) {
       body.accessPassword = publishAccessPassword.value.trim()
@@ -3060,6 +3589,7 @@ async function apply(row) {
   applyAmount.value = null
   applyPeriod.value = null
   applyChannel.value = ''
+  applyMeetIntent.value = ''
   applyNextFollow.value = ''
   applyCheckinCode.value = ''
   applyAnonymous.value = false
@@ -3098,7 +3628,11 @@ async function submitApply() {
   } else if (requireRemark.value) {
     remark = (applyRemark.value || '').trim()
     if (!remark) {
-      ElMessage.warning(`请填写${remarkLabel.value}`)
+      ElMessage.warning(
+        interactThicken.value.mutualTeamRemarkRequired
+          ? teamRemarkRequired.value
+          : `请填写${remarkLabel.value}`,
+      )
       return
     }
   }
@@ -3160,6 +3694,10 @@ async function submitApply() {
       dimsPayload[d.key] = v
     }
   }
+  if (datingMeetIntentOn.value && !applyMeetIntent.value) {
+    ElMessage.warning(browseLabels.value.meetIntentRequired || '请选择见面意向')
+    return
+  }
   applyLoading.value = true
   try {
     const body = {
@@ -3180,6 +3718,7 @@ async function submitApply() {
       if (applyChannel.value) body.contactChannel = applyChannel.value
       if (applyNextFollow.value) body.nextFollowAt = applyNextFollow.value
     }
+    if (datingMeetIntentOn.value) body.meetIntent = applyMeetIntent.value
     if (checkinOnApply.value) body.checkinCode = applyCheckinCode.value.trim()
     if (dimsPayload) {
       body.dims = dimsPayload

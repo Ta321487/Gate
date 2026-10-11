@@ -1,7 +1,7 @@
 package com.thesis.capability;
 
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.thesis.config.JpaDb;
+import com.thesis.config.JpaSupport;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -262,8 +262,8 @@ public final class GroupBuyStore {
         if (!enabled) throw new IllegalStateException("拼团未开启");
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static JpaDb db() {
+        return JpaSupport.db();
     }
 
     private static String itemTable() {

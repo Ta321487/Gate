@@ -1,7 +1,7 @@
 package com.thesis.capability;
 
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.thesis.config.JpaDb;
+import com.thesis.config.JpaSupport;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -417,8 +417,8 @@ public final class BlindBoxStore {
         if (!enabled) throw new IllegalStateException("盲盒未开启");
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static JpaDb db() {
+        return JpaSupport.db();
     }
 
     private static String itemTable() {

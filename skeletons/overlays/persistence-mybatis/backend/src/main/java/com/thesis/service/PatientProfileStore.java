@@ -1,7 +1,7 @@
 package com.thesis.service;
 
+import com.thesis.config.MbSql;
 import com.thesis.config.MybatisSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -26,7 +26,7 @@ public class PatientProfileStore {
         return enabled;
     }
 
-    private static JdbcTemplate db() {
+    private static MbSql db() {
         return MybatisSupport.db();
     }
 

@@ -1,9 +1,9 @@
 package com.thesis.service;
 
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
+import com.thesis.config.JpaDb;
+import com.thesis.config.JpaSupport;
+import com.thesis.config.GeneratedKeyHolder;
+import com.thesis.config.KeyHolder;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -28,8 +28,8 @@ public class ItemCommentStore {
     private static boolean authorNotifyEnabled = false;
     private static boolean followersOnlyOn = false;
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static JpaDb db() {
+        return JpaSupport.db();
     }
 
     /** C-04：新评论站内信通知文章作者。 */

@@ -2,6 +2,7 @@ package com.thesis.capability;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import com.thesis.config.MbSql;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.SchemaMapper;
 import com.thesis.mapper.SlotMapper;
@@ -58,6 +59,10 @@ public final class SlotStore {
     private static boolean instrumentTrainingRequired = false;
 
     private SlotStore() {}
+
+    private static MbSql db() {
+        return MybatisSupport.db();
+    }
 
     private static SlotMapper mapper() {
         return MybatisSupport.mapper(SlotMapper.class);
@@ -1706,11 +1711,11 @@ public final class SlotStore {
             String u = String.valueOf(w.get("username"));
             String next = requireConfirm ? "pending" : "confirmed";
             mapper().updateResvStatus(RESV, rid, next);
-            mapper().updateRemain(SLOT, slotId, remain - 1);
+            mapper().bumpBooked(SLOT, slotId);
             String body = "pending".equals(next)
                     ? "您的候补号源已占位，请等待窗口确认"
                     : "您的候补号源已转正，请按时就诊";
-            MessageStore.add(u, "候补已转正", body, "reservation", String.valueOf(rid));
+            MessageStore.send(u, "候补已转正", body, "reservation", rid);
         } catch (Exception ignored) {
         }
     }
@@ -1744,15 +1749,10 @@ public final class SlotStore {
                 if (slot != null) {
                     int remain = ((Number) slot.getOrDefault("remain", 0)).intValue();
                     int capacity = ((Number) slot.getOrDefault("capacity", 0)).intValue();
-                    if (remain < capacity) mapper().updateRemain(SLOT, sid, remain + 1);
+                    if (remain < capacity) mapper().releaseBooked(SLOT, sid);
                 }
             }
-            MessageStore.add(
-                    u,
-                    "科室停诊通知",
-                    "您预约的科室已安排停诊，原预约已取消，请改约其它时段。",
-                    "reservation",
-                    String.valueOf(rid));
+            MessageStore.send(u, "科室停诊通知", "您预约的科室已安排停诊，原预约已取消，请改约其它时段。", "reservation", rid);
             n++;
         }
         return n;

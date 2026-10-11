@@ -1,8 +1,8 @@
 package com.thesis.capability;
 
-import com.thesis.config.JdbcSupport;
+import com.thesis.config.MbSql;
+import com.thesis.config.MybatisSupport;
 import com.thesis.service.MessageStore;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -19,8 +19,8 @@ public final class StockNotifyStore {
 
     private StockNotifyStore() {}
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static MbSql db() {
+        return MybatisSupport.db();
     }
 
     private static boolean ready() {

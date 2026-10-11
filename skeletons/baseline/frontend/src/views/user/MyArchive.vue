@@ -24,6 +24,7 @@
           </p>
           <p v-if="row.deletedAt" class="warn">已下架 · {{ row.deletedAt }}</p>
           <p v-else-if="statusText(row)" class="warn">{{ statusText(row) }}</p>
+          <p v-if="rejectReasonOf(row)" class="warn">{{ datingRejectReasonLead }}{{ rejectReasonOf(row) }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
           <p v-else-if="row.isbn" class="excerpt plain">{{ row.isbn }}</p>
           <div class="row">
@@ -62,6 +63,7 @@
         </p>
         <p v-if="detail.deletedAt" class="warn">已下架 · {{ detail.deletedAt }}</p>
         <p v-else-if="statusText(detail)" class="warn">{{ statusText(detail) }}</p>
+        <p v-if="rejectReasonOf(detail)" class="warn">{{ datingRejectReasonLead }}{{ rejectReasonOf(detail) }}</p>
         <RichTextView v-if="bodyRich" :html="detail.isbn || ''" />
         <p v-else class="plain-body">{{ detail.isbn || '—' }}</p>
         <div v-if="draftBoxOn && String(detail.status) === 'draft'" class="row" style="margin-top:16px">
@@ -86,6 +88,11 @@ import { archiveCopy, getSchema, menuLabel, schemaLabels } from '../../utils/dom
 const archive = archiveCopy()
 const labels = computed(() => schemaLabels())
 const thicken = computed(() => getSchema()?.contentThicken || {})
+const interactThicken = computed(() => getSchema()?.interactThicken || {})
+const datingRejectReasonOn = computed(() => !!interactThicken.value.datingRejectReason)
+const datingRejectReasonLead = computed(
+  () => labels.value.datingRejectReasonLead || '资料未通过：',
+)
 const draftBoxOn = computed(() => !!thicken.value.draftBox)
 const unit = computed(() => archive.label || '内容')
 const fields = computed(() => archive.fields || [])
@@ -122,6 +129,12 @@ function statusText(row) {
   if (st === 'pending_review') return '待审核'
   if (st === 'rejected') return '已驳回'
   return ''
+}
+
+function rejectReasonOf(row) {
+  if (!datingRejectReasonOn.value) return ''
+  if (String(row?.status || '') !== 'rejected') return ''
+  return String(row?.rejectReason || '').trim()
 }
 
 const list = ref([])

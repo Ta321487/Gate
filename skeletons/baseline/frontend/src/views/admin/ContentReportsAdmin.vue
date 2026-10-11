@@ -21,6 +21,11 @@
           <template #default="{ row }">{{ statusLabel(row.status) }}</template>
         </el-table-column>
         <el-table-column prop="createdAt" label="提交时间" width="170" />
+        <el-table-column v-if="reportDeadlineOn" :label="reportDeadlineLabel" width="120">
+          <template #default="{ row }">
+            <span :class="{ warn: isOverdue(row) }">{{ deadlineText(row) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
             <div v-if="row.status === 'pending'" class="table-ops">
@@ -61,10 +66,32 @@ import http from '../../api/http'
 import { getSchema, hasCap } from '../../utils/domainSchema.js'
 
 const labels = computed(() => getSchema()?.labels || {})
-const pageLead = computed(
-  () => labels.value.contentReportsPageLead || '查看用户举报并处理（忽略或下架相关内容）。',
-)
+const pageLead = computed(() => {
+  const base = labels.value.contentReportsPageLead || '查看用户举报并处理（忽略或下架相关内容）。'
+  const th = getSchema()?.interactThicken || {}
+  const hint =
+    labels.value.datingReportDeadlineHint || labels.value.reportDeadlineHint || ''
+  if (
+    hint &&
+    (th.datingReportDeadline || th.reportDeadlineIsland)
+  ) {
+    return `${base} ${hint}`
+  }
+  return base
+})
 const muteOn = computed(() => hasCap('post_mute'))
+const reportHandleDays = computed(() => Math.max(0, Number(getSchema()?.reportHandleDays) || 0))
+const reportDeadlineOn = computed(
+  () =>
+    reportHandleDays.value > 0 &&
+    !!(
+      getSchema()?.contentThicken?.reportDeadline ||
+      getSchema()?.interactThicken?.datingReportDeadline ||
+      getSchema()?.interactThicken?.reportDeadlineIsland
+    ),
+)
+const reportDeadlineLabel = computed(() => labels.value.reportDeadlineLabel || '处理时限')
+const reportOverdueLabel = computed(() => labels.value.reportOverdueLabel || '已超时')
 
 const list = ref([])
 const page = ref(1)
@@ -82,6 +109,31 @@ function statusLabel(s) {
 function targetLabel(row) {
   const t = row.targetType === 'ticket' ? '单据' : '档案'
   return `${t} #${row.targetId}`
+}
+
+function parseCreated(row) {
+  const raw = String(row?.createdAt || '').replace('T', ' ').trim()
+  if (!raw) return null
+  const d = new Date(raw.replace(/-/g, '/'))
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function isOverdue(row) {
+  if (row.status !== 'pending' || !reportHandleDays.value) return false
+  const created = parseCreated(row)
+  if (!created) return false
+  const due = new Date(created.getTime() + reportHandleDays.value * 86400000)
+  return Date.now() > due.getTime()
+}
+
+function deadlineText(row) {
+  if (row.status !== 'pending') return '—'
+  if (isOverdue(row)) return reportOverdueLabel.value
+  const created = parseCreated(row)
+  if (!created || !reportHandleDays.value) return '—'
+  const due = new Date(created.getTime() + reportHandleDays.value * 86400000)
+  const left = Math.ceil((due.getTime() - Date.now()) / 86400000)
+  return left > 0 ? `${left} 日内` : reportOverdueLabel.value
 }
 
 function onStatus() {
@@ -123,4 +175,5 @@ onMounted(load)
 .pager { margin-top: 12px; display: flex; justify-content: flex-end; }
 .table-ops { display: flex; gap: 4px; flex-wrap: wrap; }
 .muted { color: var(--portal-muted, #94a3b8); font-size: 13px; }
+.warn { color: #c45656; font-weight: 600; }
 </style>

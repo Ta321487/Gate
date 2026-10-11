@@ -1,7 +1,7 @@
 package com.thesis.service;
 
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.thesis.config.MbSql;
+import com.thesis.config.MybatisSupport;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -32,8 +32,8 @@ public class ReserveBlacklistStore {
         return enabled;
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static MbSql db() {
+        return MybatisSupport.db();
     }
 
     public static boolean ready() {

@@ -630,25 +630,57 @@ INSERT IGNORE INTO vote_candidate (id, campaign_id, name, intro, sort_no, status
 
 VOTE_CANDIDATE_COLUMNS: list[tuple[str, str]] = [
     ("avatar_url", "VARCHAR(255) DEFAULT ''"),
+    ("slogan", "VARCHAR(255) NOT NULL DEFAULT ''"),
+]
+
+VOTE_CAMPAIGN_COLUMNS: list[tuple[str, str]] = [
+    ("anonymous", "TINYINT NOT NULL DEFAULT 0"),
+    ("daily_vote_limit", "INT NOT NULL DEFAULT 0"),
+    ("results_publish_at", "DATETIME NULL"),
+    ("allow_abstain", "TINYINT NOT NULL DEFAULT 0"),
+    ("require_real_name", "TINYINT NOT NULL DEFAULT 0"),
+    ("poll_seconds", "INT NOT NULL DEFAULT 0"),
+    ("ip_hint_enabled", "TINYINT NOT NULL DEFAULT 1"),
+]
+
+VOTE_BALLOT_COLUMNS: list[tuple[str, str]] = [
+    ("client_ip", "VARCHAR(64) NOT NULL DEFAULT ''"),
+    ("abstain", "TINYINT NOT NULL DEFAULT 0"),
 ]
 
 
 def ensure_vote_sql(sql: str, *, enabled: bool, seed_activity: bool = False) -> str:
-    """vote 能力开启时幂等补评选表；表已存在时仍补 avatar_url（DOM-VOTE 模板曾漏列）。"""
+    """vote 能力开启时幂等补评选表；表已存在时仍补 I-10 列（DOM-VOTE 模板曾漏列）。"""
     if not enabled:
         return sql
     out = sql
     if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?vote_ballot`?\b", out):
         out = out.rstrip() + "\n" + _VOTE_CORE_DDL
 
-    def repl(m: re.Match[str]) -> str:
+    def repl_cand(m: re.Match[str]) -> str:
         head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
         if table.lower() != "vote_candidate":
             return m.group(0)
         body = _inject_missing_columns(body, VOTE_CANDIDATE_COLUMNS)
         return f"{head}{body}{tail}"
 
-    out = _CREATE_TABLE_RE.sub(repl, out)
+    def repl_camp(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "vote_campaign":
+            return m.group(0)
+        body = _inject_missing_columns(body, VOTE_CAMPAIGN_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    def repl_ballot(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "vote_ballot":
+            return m.group(0)
+        body = _inject_missing_columns(body, VOTE_BALLOT_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl_cand, out)
+    out = _CREATE_TABLE_RE.sub(repl_camp, out)
+    out = _CREATE_TABLE_RE.sub(repl_ballot, out)
     if seed_activity and "活动优秀个人评选" not in out:
         out = out.rstrip() + "\n" + _VOTE_ACTIVITY_SEED
     return out
@@ -3213,6 +3245,10 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
     ("actual_qty", "INT NULL"),
     ("contact_channel", "VARCHAR(32) DEFAULT ''"),
     ("next_follow_at", "DATETIME NULL"),
+    ("meet_intent", "VARCHAR(32) DEFAULT ''"),
+    ("seat_locked", "TINYINT NOT NULL DEFAULT 0"),
+    ("no_show", "TINYINT NOT NULL DEFAULT 0"),
+    ("cancel_reason", "VARCHAR(255) NOT NULL DEFAULT ''"),
     ("checked_in_at", "DATETIME NULL"),
     ("pass_code", "VARCHAR(32) DEFAULT ''"),
     ("renew_count", "INT NOT NULL DEFAULT 0"),
@@ -3382,7 +3418,7 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-FUND": ["contact_channel", "next_follow_at", "defense_result", "bank_account", "disburse_batch"],
     "DOM-LABSAFE": ["contact_channel", "next_follow_at"],
     "DOM-RECRUIT": ["contact_channel", "next_follow_at", "interview_place", "interview_result", "written_score", "bg_check_note"],
-    "DOM-DATING": ["contact_channel", "next_follow_at"],
+    "DOM-DATING": ["contact_channel", "next_follow_at", "meet_intent"],
     "DOM-GRADE": ["contact_channel", "next_follow_at", "notice_ack", "rank_scope"],
     "DOM-INTERN": [
         "contact_channel", "next_follow_at", "week_no",
@@ -3423,7 +3459,7 @@ TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
         "contact_channel", "next_follow_at", "follow_soon_notified_at",
         "feedback_interest", "feedback_concern", "feedback_next", "record_url",
     ],
-    "DOM-CARPOOL": ["contact_channel", "next_follow_at"],
+    "DOM-CARPOOL": ["contact_channel", "next_follow_at", "seat_locked", "no_show", "cancel_reason"],
     "DOM-TOUR": [
         "contact_channel",
         "next_follow_at",

@@ -432,13 +432,13 @@ public final class FavoriteStore {
         if (dup != null && dup > 0) {
             throw new IllegalStateException("您已提交过该内容的举报，请等待处理");
         }
-        String finalNote = note;
-        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
-        Timestamp deadline = reportHandleDays > 0
+        final String finalType = type;
+        final String finalNote = note;
+        final Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+        final Timestamp deadlineFinal = reportHandleDays > 0
                 ? Timestamp.valueOf(LocalDateTime.now().plusDays(reportHandleDays))
                 : null;
         KeyHolder kh = new GeneratedKeyHolder();
-        final Timestamp deadlineFinal = deadline;
         db().update(con -> {
             if (deadlineFinal != null) {
                 PreparedStatement ps = con.prepareStatement(
@@ -447,7 +447,7 @@ public final class FavoriteStore {
                                 + "VALUES (?,?,?,?,?,?,?)",
                         Statement.RETURN_GENERATED_KEYS);
                 ps.setString(1, username);
-                ps.setString(2, type);
+                ps.setString(2, finalType);
                 ps.setLong(3, targetId);
                 ps.setString(4, finalNote);
                 ps.setString(5, "pending");
@@ -460,7 +460,7 @@ public final class FavoriteStore {
                             + " (username,target_type,target_id,reason,status,created_at) VALUES (?,?,?,?,?,?)",
                     Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, username);
-            ps.setString(2, type);
+            ps.setString(2, finalType);
             ps.setLong(3, targetId);
             ps.setString(4, finalNote);
             ps.setString(5, "pending");

@@ -29,12 +29,13 @@
         <div class="uid">@{{ form.username }}</div>
         <div v-if="form.profileEditable" class="complete">
           <div class="complete-row">
-            <span>资料完善度</span>
+            <span>{{ profileCompletenessLabel }}</span>
             <strong>{{ profileCompletePct }}%</strong>
           </div>
           <el-progress :percentage="profileCompletePct" :stroke-width="8" :show-text="false" />
+          <p v-if="datingCompletenessHint" class="complete-hint">{{ datingCompletenessHint }}</p>
           <p v-if="profileMissingLabels.length" class="complete-hint">
-            待完善：{{ profileMissingLabels.slice(0, 4).join('、') }}
+            {{ datingCompletenessMissingLead }}{{ profileMissingLabels.slice(0, 4).join('、') }}
             <template v-if="profileMissingLabels.length > 4">等</template>
           </p>
         </div>
@@ -313,6 +314,21 @@ const displayName = computed(() =>
   form.extras?.realName || form.nickname || form.username || '未设置姓名',
 )
 
+const datingCompletenessOn = computed(
+  () => !!getSchema()?.interactThicken?.datingProfileCompleteness,
+)
+const profileCompletenessLabel = computed(
+  () => getSchema()?.labels?.profileCompletenessLabel || '资料完善度',
+)
+const datingCompletenessHint = computed(() =>
+  datingCompletenessOn.value ? (getSchema()?.labels?.datingCompletenessHint || '') : '',
+)
+const datingCompletenessMissingLead = computed(
+  () => getSchema()?.labels?.datingCompletenessMissingLead || '待完善：',
+)
+/** I-02：婚恋完整度额外计入城市/学历/年龄段（即使非必填） */
+const DATING_EXTRA_KEYS = new Set(['city', 'education', 'ageRange'])
+
 const profileChecklist = computed(() => {
   const items = []
   items.push({
@@ -325,7 +341,9 @@ const profileChecklist = computed(() => {
   })
   for (const f of allFields.value) {
     if (!isProfileFieldVisible(f, form.extras)) continue
-    if (!f.required && !isProfileFieldRequired(f, form.extras)) continue
+    const force =
+      datingCompletenessOn.value && DATING_EXTRA_KEYS.has(f.key)
+    if (!force && !f.required && !isProfileFieldRequired(f, form.extras)) continue
     let ok = false
     if (f.storage === 'phone') ok = !!String(form.phone || '').trim()
     else ok = !!String(form.extras?.[f.key] || '').trim()

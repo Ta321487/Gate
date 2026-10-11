@@ -759,6 +759,124 @@ public class TicketController {
         }
     }
 
+    /** I-03：截止前修改志愿说明/类型 */
+    @PostMapping("/{id}/edit-wish")
+    public R<Map<String, Object>> editWish(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        String remark = body == null || body.get("remark") == null
+                ? null : String.valueOf(body.get("remark"));
+        String channel = body == null || body.get("contactChannel") == null
+                ? null : String.valueOf(body.get("contactChannel"));
+        try {
+            return R.ok(TicketStore.editWishBeforeDeadline(id, uid, remark, channel));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** I-03：互选结果公示（脱敏只读） */
+    @GetMapping("/mutual-match-result")
+    public R<List<Map<String, Object>>> mutualMatchResult(
+            @RequestParam(required = false) Long itemId,
+            HttpSession session) {
+        requireLogin(session);
+        return R.ok(TicketStore.mutualMatchResult(itemId));
+    }
+
+    /** I-03：管理端调剂留痕 */
+    @GetMapping("/adjust-log")
+    public R<Map<String, Object>> adjustLog(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpSession session) {
+        requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        return R.ok(TicketStore.pageAdjustLog(page, size));
+    }
+
+    /** I-03：向已互选学生发送站内通知 */
+    @PostMapping("/mutual-result-notify")
+    public R<Map<String, Object>> mutualResultNotify(HttpSession session) {
+        requireLogin(session);
+        AdminAuth.requireAdmin(session);
+        int n = TicketStore.notifyMutualMatchResults();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("notified", n);
+        return R.ok(out);
+    }
+
+    /** I-04 TEAM：发送组队邀请站内信 */
+    @PostMapping("/team-invite")
+    public R<Map<String, Object>> teamInvite(
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        String uid = requireLogin(session);
+        String to = body == null || body.get("toUsername") == null
+                ? "" : String.valueOf(body.get("toUsername")).trim();
+        long itemId = 0L;
+        if (body != null && body.get("itemId") != null) {
+            try {
+                itemId = Long.parseLong(String.valueOf(body.get("itemId")).trim());
+            } catch (Exception ignored) {
+                itemId = 0L;
+            }
+        }
+        String note = body == null || body.get("note") == null
+                ? "" : String.valueOf(body.get("note"));
+        try {
+            return R.ok(TicketStore.sendTeamInvite(uid, to, itemId, note));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** I-04 TEAM：成员申请退出 */
+    @PostMapping("/{id}/request-exit")
+    public R<Map<String, Object>> requestExit(@PathVariable long id, HttpSession session) {
+        String uid = requireLogin(session);
+        try {
+            return R.ok(TicketStore.requestTeamExit(id, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** I-04 TEAM：队长处理退出申请 */
+    @PostMapping("/{id}/peer-exit-respond")
+    public R<Map<String, Object>> peerExitRespond(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        boolean pass = body.get("pass") == null || Boolean.parseBoolean(String.valueOf(body.get("pass")));
+        String remark = body.get("remark") == null ? "" : String.valueOf(body.get("remark")).trim();
+        try {
+            return R.ok(TicketStore.peerExitRespond(id, uid, pass, remark));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** I-04 TEAM：队长待处理退出申请 */
+    @GetMapping("/exit-inbox")
+    public R<Map<String, Object>> exitInbox(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            HttpSession session) {
+        String uid = requireLogin(session);
+        return R.ok(TicketStore.pageExitInbox(uid, page, size));
+    }
+
     /** 申请人撤销待审申请 */
     @PostMapping("/{id}/withdraw")
     public R<Map<String, Object>> withdraw(@PathVariable long id, HttpSession session) {

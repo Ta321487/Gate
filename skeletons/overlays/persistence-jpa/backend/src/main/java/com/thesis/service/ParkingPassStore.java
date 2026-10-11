@@ -1,7 +1,7 @@
 package com.thesis.service;
 
+import com.thesis.config.JpaDb;
 import com.thesis.config.JpaSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -26,7 +26,7 @@ public class ParkingPassStore {
         return enabled;
     }
 
-    private static JdbcTemplate db() {
+    private static JpaDb db() {
         return JpaSupport.db();
     }
 

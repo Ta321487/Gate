@@ -771,6 +771,18 @@ final class TicketCfgOps {
 
     public static void configurePeerAccept(boolean enabled) {
         TicketStore.peerAccept = enabled;
+        // I-03 MUTUAL 通识：互选开启时一并启用截止前改志愿 / 盲选 / 超时婉拒 / 调剂上限
+        if (enabled) {
+            TicketStore.allowWishEditBeforeDeadline = true;
+            TicketStore.blindPhaseUntilDeadline = true;
+            TicketStore.allowPeerTimeoutReject = true;
+            if (TicketStore.peerTimeoutRejectHours <= 0) {
+                TicketStore.peerTimeoutRejectHours = 72;
+            }
+            if (TicketStore.maxAdjustWishes <= 0) {
+                TicketStore.maxAdjustWishes = 1;
+            }
+        }
     }
 
     public static void configureIssuePassCode(boolean enabled) {

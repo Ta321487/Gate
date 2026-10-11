@@ -16,6 +16,18 @@
         </template>
       </el-table-column>
       <el-table-column prop="submittedAt" label="交卷时间" />
+      <el-table-column v-if="certOn" label="证书" width="120">
+        <template #default="{ row }">
+          <el-button
+            v-if="row.status === 'submitted' && row.mode !== 'practice'"
+            link
+            type="primary"
+            @click="$router.push(`/exam/certificate/${row.id}`)"
+          >
+            {{ certOpenLabel }}
+          </el-button>
+        </template>
+      </el-table-column>
     </el-table>
     <el-pagination
       class="pager"
@@ -25,7 +37,7 @@
       :page-sizes="[10, 20, 50]"
       :total="total"
       @current-change="load"
-        @size-change="load"
+      @size-change="load"
     />
   </div>
 </template>
@@ -39,7 +51,12 @@ const list = ref([])
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
-const title = computed(() => (getSchema().labels || {}).examAttemptsTitle || '我的成绩')
+const schema = computed(() => getSchema() || {})
+const labels = computed(() => schema.value.labels || {})
+const thicken = computed(() => schema.value.interactThicken || {})
+const title = computed(() => labels.value.examAttemptsTitle || '我的成绩')
+const certOn = computed(() => !!thicken.value.examCertificate)
+const certOpenLabel = computed(() => labels.value.examCertificateOpenLabel || '查看证书')
 
 function statusText(s) {
   return { in_progress: '答题中', submitted: '已出分', reviewing: '待阅卷' }[s] || s

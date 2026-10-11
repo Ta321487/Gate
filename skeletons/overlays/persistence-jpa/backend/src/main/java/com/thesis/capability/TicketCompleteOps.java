@@ -1,7 +1,7 @@
 package com.thesis.capability;
 
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
+import com.thesis.config.GeneratedKeyHolder;
+import com.thesis.config.KeyHolder;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.*;

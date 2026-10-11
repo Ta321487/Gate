@@ -4,6 +4,7 @@ import com.thesis.config.JpaSupport;
 import com.thesis.config.JpaDb;
 import com.thesis.config.GeneratedKeyHolder;
 import com.thesis.config.KeyHolder;
+import com.thesis.service.UserStore;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -33,6 +34,9 @@ public class ExamStore {
     private static boolean requireBeforeTicket;
     private static Boolean tableReady;
     private static Boolean gateColReady;
+    private static Boolean i07ColReady;
+    private static Boolean blurColReady;
+    private static Boolean i08ColReady;
 
     private ExamStore() {}
 
@@ -66,6 +70,9 @@ public class ExamStore {
         requireBeforeTicket = requireBeforeTicketFlag;
         tableReady = null;
         gateColReady = null;
+        i07ColReady = null;
+        blurColReady = null;
+        i08ColReady = null;
     }
 
     public static boolean enabled() {
@@ -108,6 +115,48 @@ public class ExamStore {
             gateColReady = false;
         }
         return gateColReady;
+    }
+
+    private static boolean hasI07Cols() {
+        if (i07ColReady != null) return i07ColReady;
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.columns "
+                            + "WHERE table_schema=DATABASE() AND table_name='exam_paper' AND column_name='entry_code'",
+                    Integer.class);
+            i07ColReady = n != null && n > 0;
+        } catch (Exception e) {
+            i07ColReady = false;
+        }
+        return i07ColReady;
+    }
+
+    private static boolean hasBlurCol() {
+        if (blurColReady != null) return blurColReady;
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.columns "
+                            + "WHERE table_schema=DATABASE() AND table_name='exam_attempt' AND column_name='blur_count'",
+                    Integer.class);
+            blurColReady = n != null && n > 0;
+        } catch (Exception e) {
+            blurColReady = false;
+        }
+        return blurColReady;
+    }
+
+    private static boolean hasI08Cols() {
+        if (i08ColReady != null) return i08ColReady;
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.columns "
+                            + "WHERE table_schema=DATABASE() AND table_name='exam_question' AND column_name='mark_rubric'",
+                    Integer.class);
+            i08ColReady = n != null && n > 0;
+        } catch (Exception e) {
+            i08ColReady = false;
+        }
+        return i08ColReady;
     }
 
     /** C-02：申请前须通过 gate_ticket=1 的已发布试卷（pass_score 为百分制，默认 60）。 */
@@ -206,6 +255,13 @@ public class ExamStore {
             if (explainEnabled) {
                 m.put("explainText", rs.getString("explain_text"));
             }
+            if (hasI08Cols()) {
+                try {
+                    m.put("markRubric", rs.getString("mark_rubric") == null ? "" : rs.getString("mark_rubric"));
+                } catch (SQLException e) {
+                    m.put("markRubric", "");
+                }
+            }
         }
         return m;
     }
@@ -249,12 +305,30 @@ public class ExamStore {
         if (subjectId == null) subjectId = toLong(body.get("subject_id"));
         String explain = clip(str(body.get("explainText")), 2000);
         if (explain.isBlank()) explain = clip(str(body.get("explain_text")), 2000);
+        String rubric = clip(str(body.containsKey("markRubric") ? body.get("markRubric") : body.get("mark_rubric")), 1000);
         KeyHolder kh = new GeneratedKeyHolder();
         Long finalSubjectId = subjectId;
         String finalAnswerKey = answerKey;
         String finalOptionsJson = optionsJson;
         String finalExplain = explain;
+        String finalRubric = rubric;
+        boolean withRubric = hasI08Cols();
         db().update(con -> {
+            if (withRubric) {
+                PreparedStatement ps = con.prepareStatement(
+                        "INSERT INTO exam_question (subject_id,type,stem,answer_key,score,explain_text,mark_rubric) "
+                                + "VALUES (?,?,?,?,?,?,?)",
+                        Statement.RETURN_GENERATED_KEYS);
+                if (finalSubjectId == null) ps.setNull(1, java.sql.Types.BIGINT);
+                else ps.setLong(1, finalSubjectId);
+                ps.setString(2, type);
+                ps.setString(3, stem);
+                ps.setString(4, finalAnswerKey);
+                ps.setInt(5, score);
+                ps.setString(6, finalExplain.isBlank() ? null : finalExplain);
+                ps.setString(7, finalRubric);
+                return ps;
+            }
             PreparedStatement ps = con.prepareStatement(
                     "INSERT INTO exam_question (subject_id,type,stem,answer_key,score,explain_text) "
                             + "VALUES (?,?,?,?,?,?)",
@@ -318,6 +392,10 @@ public class ExamStore {
             sets.add("explain_text=?");
             args.add(explain.isBlank() ? null : explain);
         }
+        if (hasI08Cols() && (body.containsKey("markRubric") || body.containsKey("mark_rubric"))) {
+            sets.add("mark_rubric=?");
+            args.add(clip(str(body.containsKey("markRubric") ? body.get("markRubric") : body.get("mark_rubric")), 1000));
+        }
         if (sets.isEmpty() && optionsJson == null) return getQuestion(id);
         if (!sets.isEmpty()) {
             args.add(id);
@@ -361,9 +439,43 @@ public class ExamStore {
         if (hasGateCols()) {
             m.put("gateTicket", rs.getInt("gate_ticket") == 1);
             m.put("passScore", rs.getInt("pass_score"));
+        } else if (hasI07Cols()) {
+            m.put("gateTicket", false);
+            try {
+                m.put("passScore", rs.getInt("pass_score"));
+            } catch (SQLException e) {
+                m.put("passScore", 60);
+            }
         } else {
             m.put("gateTicket", false);
             m.put("passScore", 60);
+        }
+        if (hasI07Cols()) {
+            m.put("shuffleQuestions", rs.getInt("shuffle_questions") == 1);
+            m.put("shuffleOptions", rs.getInt("shuffle_options") == 1);
+            m.put("explainAfterScore", rs.getInt("explain_after_score") == 1);
+            m.put("partialMulti", rs.getInt("partial_multi") == 1);
+            m.put("lockAfterSubmit", rs.getInt("lock_after_submit") == 1);
+            m.put("openAt", fmt(rs.getTimestamp("open_at")));
+            m.put("lateEnterMin", rs.getInt("late_enter_min"));
+            m.put("entryCode", rs.getString("entry_code") == null ? "" : rs.getString("entry_code"));
+            m.put("hasEntryCode", rs.getString("entry_code") != null && !rs.getString("entry_code").isBlank());
+            try {
+                m.put("difficulty", rs.getString("difficulty") == null ? "" : rs.getString("difficulty"));
+            } catch (SQLException e) {
+                m.put("difficulty", "");
+            }
+        } else {
+            m.put("shuffleQuestions", false);
+            m.put("shuffleOptions", false);
+            m.put("explainAfterScore", true);
+            m.put("partialMulti", false);
+            m.put("lockAfterSubmit", false);
+            m.put("openAt", null);
+            m.put("lateEnterMin", 0);
+            m.put("entryCode", "");
+            m.put("hasEntryCode", false);
+            m.put("difficulty", "");
         }
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         return m;
@@ -390,9 +502,13 @@ public class ExamStore {
 
     public static List<Map<String, Object>> listPublishedPapers() {
         require();
-        return db().query(
+        List<Map<String, Object>> list = db().query(
                 "SELECT * FROM exam_paper WHERE status='published' ORDER BY id DESC",
                 (rs, i) -> mapPaper(rs));
+        for (Map<String, Object> p : list) {
+            p.remove("entryCode");
+        }
+        return list;
     }
 
     public static Map<String, Object> createPaper(Map<String, Object> body) {
@@ -407,11 +523,48 @@ public class ExamStore {
         int maxAttempts = toInt(body.get("maxAttempts"), toInt(body.get("max_attempts"), 0));
         boolean gateTicket = boolFlag(body.get("gateTicket"), boolFlag(body.get("gate_ticket"), false));
         int passScore = toInt(body.get("passScore"), toInt(body.get("pass_score"), 60));
+        boolean shuffleQ = boolFlag(body.get("shuffleQuestions"), boolFlag(body.get("shuffle_questions"), false));
+        boolean shuffleO = boolFlag(body.get("shuffleOptions"), boolFlag(body.get("shuffle_options"), false));
+        boolean explainAfter = boolFlag(body.get("explainAfterScore"), boolFlag(body.get("explain_after_score"), true));
+        boolean partialMulti = boolFlag(body.get("partialMulti"), boolFlag(body.get("partial_multi"), false));
+        boolean lockAfter = boolFlag(body.get("lockAfterSubmit"), boolFlag(body.get("lock_after_submit"), false));
+        int lateMin = toInt(body.get("lateEnterMin"), toInt(body.get("late_enter_min"), 0));
+        String entryCode = clip(str(body.containsKey("entryCode") ? body.get("entryCode") : body.get("entry_code")), 64);
+        String difficulty = clip(str(body.get("difficulty")), 32);
+        LocalDateTime openAt = parseDt(body.get("openAt") != null ? body.get("openAt") : body.get("open_at"));
         KeyHolder kh = new GeneratedKeyHolder();
         Long finalSubjectId = subjectId;
         String finalStatus = status;
+        String finalDifficulty = difficulty;
         boolean withGate = hasGateCols();
+        boolean withI07 = hasI07Cols();
         db().update(con -> {
+            if (withGate && withI07) {
+                PreparedStatement ps = con.prepareStatement(
+                        "INSERT INTO exam_paper (title,duration_min,status,subject_id,max_attempts,gate_ticket,pass_score,"
+                                + "shuffle_questions,shuffle_options,explain_after_score,partial_multi,lock_after_submit,"
+                                + "open_at,late_enter_min,entry_code,difficulty) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, title);
+                ps.setInt(2, durationMin);
+                ps.setString(3, finalStatus);
+                if (finalSubjectId == null) ps.setNull(4, java.sql.Types.BIGINT);
+                else ps.setLong(4, finalSubjectId);
+                ps.setInt(5, maxAttempts);
+                ps.setInt(6, gateTicket ? 1 : 0);
+                ps.setInt(7, passScore);
+                ps.setInt(8, shuffleQ ? 1 : 0);
+                ps.setInt(9, shuffleO ? 1 : 0);
+                ps.setInt(10, explainAfter ? 1 : 0);
+                ps.setInt(11, partialMulti ? 1 : 0);
+                ps.setInt(12, lockAfter ? 1 : 0);
+                if (openAt == null) ps.setNull(13, java.sql.Types.TIMESTAMP);
+                else ps.setTimestamp(13, Timestamp.valueOf(openAt));
+                ps.setInt(14, Math.max(0, lateMin));
+                ps.setString(15, entryCode);
+                ps.setString(16, finalDifficulty);
+                return ps;
+            }
             if (withGate) {
                 PreparedStatement ps = con.prepareStatement(
                         "INSERT INTO exam_paper (title,duration_min,status,subject_id,max_attempts,gate_ticket,pass_score) "
@@ -440,6 +593,23 @@ public class ExamStore {
         }, kh);
         Number key = kh.getKey();
         return getPaper(key == null ? 0L : key.longValue());
+    }
+
+    private static LocalDateTime parseDt(Object o) {
+        if (o == null) return null;
+        String s = String.valueOf(o).trim();
+        if (s.isBlank() || "null".equalsIgnoreCase(s)) return null;
+        s = s.replace('T', ' ');
+        if (s.length() == 16) s = s + ":00";
+        try {
+            return LocalDateTime.parse(s, FMT);
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(s);
+            } catch (Exception e2) {
+                return null;
+            }
+        }
     }
 
     private static boolean boolFlag(Object o, boolean def) {
@@ -483,6 +653,51 @@ public class ExamStore {
             if (body.containsKey("passScore") || body.containsKey("pass_score")) {
                 sets.add("pass_score=?");
                 args.add(toInt(body.get("passScore"), toInt(body.get("pass_score"), 60)));
+            }
+        } else if (hasI07Cols() && (body.containsKey("passScore") || body.containsKey("pass_score"))) {
+            sets.add("pass_score=?");
+            args.add(toInt(body.get("passScore"), toInt(body.get("pass_score"), 60)));
+        }
+        if (hasI07Cols()) {
+            if (body.containsKey("shuffleQuestions") || body.containsKey("shuffle_questions")) {
+                sets.add("shuffle_questions=?");
+                args.add(boolFlag(body.get("shuffleQuestions"), boolFlag(body.get("shuffle_questions"), false)) ? 1 : 0);
+            }
+            if (body.containsKey("shuffleOptions") || body.containsKey("shuffle_options")) {
+                sets.add("shuffle_options=?");
+                args.add(boolFlag(body.get("shuffleOptions"), boolFlag(body.get("shuffle_options"), false)) ? 1 : 0);
+            }
+            if (body.containsKey("explainAfterScore") || body.containsKey("explain_after_score")) {
+                sets.add("explain_after_score=?");
+                args.add(boolFlag(body.get("explainAfterScore"), boolFlag(body.get("explain_after_score"), true)) ? 1 : 0);
+            }
+            if (body.containsKey("partialMulti") || body.containsKey("partial_multi")) {
+                sets.add("partial_multi=?");
+                args.add(boolFlag(body.get("partialMulti"), boolFlag(body.get("partial_multi"), false)) ? 1 : 0);
+            }
+            if (body.containsKey("lockAfterSubmit") || body.containsKey("lock_after_submit")) {
+                sets.add("lock_after_submit=?");
+                args.add(boolFlag(body.get("lockAfterSubmit"), boolFlag(body.get("lock_after_submit"), false)) ? 1 : 0);
+            }
+            if (body.containsKey("openAt") || body.containsKey("open_at")) {
+                sets.add("open_at=?");
+                LocalDateTime od = parseDt(body.get("openAt") != null ? body.get("openAt") : body.get("open_at"));
+                args.add(od == null ? null : Timestamp.valueOf(od));
+            }
+            if (body.containsKey("lateEnterMin") || body.containsKey("late_enter_min")) {
+                sets.add("late_enter_min=?");
+                args.add(Math.max(0, toInt(body.get("lateEnterMin"), toInt(body.get("late_enter_min"), 0))));
+            }
+            if (body.containsKey("entryCode") || body.containsKey("entry_code")) {
+                sets.add("entry_code=?");
+                args.add(clip(str(body.containsKey("entryCode") ? body.get("entryCode") : body.get("entry_code")), 64));
+            }
+            if (body.containsKey("difficulty")) {
+                sets.add("difficulty=?");
+                args.add(clip(str(body.get("difficulty")), 32));
+            }
+            if (!hasGateCols() && (body.containsKey("passScore") || body.containsKey("pass_score"))) {
+                // already handled above when !hasGateCols
             }
         }
         if (sets.isEmpty()) return getPaper(id);
@@ -554,6 +769,15 @@ public class ExamStore {
         m.put("totalScore", rs.getObject("total_score"));
         m.put("startedAt", fmt(rs.getTimestamp("started_at")));
         m.put("submittedAt", fmt(rs.getTimestamp("submitted_at")));
+        if (hasBlurCol()) {
+            try {
+                m.put("blurCount", rs.getInt("blur_count"));
+            } catch (SQLException e) {
+                m.put("blurCount", 0);
+            }
+        } else {
+            m.put("blurCount", 0);
+        }
         return m;
     }
 
@@ -565,6 +789,10 @@ public class ExamStore {
     }
 
     public static Map<String, Object> startAttempt(String username, long paperId, String mode) {
+        return startAttempt(username, paperId, mode, null);
+    }
+
+    public static Map<String, Object> startAttempt(String username, long paperId, String mode, String entryCode) {
         require();
         Map<String, Object> paper = getPaper(paperId);
         if (paper == null) throw new IllegalArgumentException("试卷不存在");
@@ -575,8 +803,20 @@ public class ExamStore {
         if ("practice".equals(m) && !practiceEnabled) {
             throw new IllegalStateException("练习模式未开通");
         }
+        if ("exam".equals(m)) {
+            assertCanEnterExam(paper, entryCode);
+        }
         Map<String, Object> existing = findInProgress(username, paperId);
         if (existing != null) return existing;
+        if ("exam".equals(m) && Boolean.TRUE.equals(paper.get("lockAfterSubmit"))) {
+            Integer done = db().queryForObject(
+                    "SELECT COUNT(*) FROM exam_attempt WHERE paper_id=? AND username=? "
+                            + "AND mode='exam' AND status IN ('submitted','reviewing')",
+                    Integer.class, paperId, username);
+            if (done != null && done > 0) {
+                throw new IllegalStateException("本卷已交卷，不可再次开考。");
+            }
+        }
         if ("exam".equals(m) && attemptLimitEnabled) {
             int max = ((Number) paper.get("maxAttempts")).intValue();
             if (max > 0) {
@@ -608,6 +848,45 @@ public class ExamStore {
         return getAttempt(key == null ? 0L : key.longValue());
     }
 
+    private static void assertCanEnterExam(Map<String, Object> paper, String entryCode) {
+        if (!hasI07Cols()) return;
+        String expect = str(paper.get("entryCode"));
+        if (!expect.isBlank()) {
+            String got = entryCode == null ? "" : entryCode.trim();
+            if (!expect.equals(got)) {
+                throw new IllegalStateException("入场口令不正确");
+            }
+        }
+        Object openRaw = paper.get("openAt");
+        if (openRaw == null || String.valueOf(openRaw).isBlank()) return;
+        LocalDateTime openAt = parseDt(openRaw);
+        if (openAt == null) return;
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(openAt)) {
+            throw new IllegalStateException("未到开考时间，请稍后再试。");
+        }
+        int late = paper.get("lateEnterMin") instanceof Number n ? n.intValue() : 0;
+        if (late > 0 && now.isAfter(openAt.plusMinutes(late))) {
+            throw new IllegalStateException("已超过允许迟到时间，无法进入考试。");
+        }
+    }
+
+    public static Map<String, Object> recordBlur(long attemptId, String username) {
+        require();
+        Map<String, Object> attempt = getAttempt(attemptId);
+        if (attempt == null) throw new IllegalArgumentException("答卷不存在");
+        if (!username.equals(String.valueOf(attempt.get("username")))) {
+            throw new IllegalStateException("无权操作");
+        }
+        if (!"in_progress".equals(String.valueOf(attempt.get("status")))) {
+            return attempt;
+        }
+        if (hasBlurCol()) {
+            db().update("UPDATE exam_attempt SET blur_count=blur_count+1 WHERE id=?", attemptId);
+        }
+        return getAttempt(attemptId);
+    }
+
     private static Map<String, Object> findInProgress(String username, long paperId) {
         List<Map<String, Object>> list = db().query(
                 "SELECT * FROM exam_attempt WHERE paper_id=? AND username=? AND status='in_progress' "
@@ -633,9 +912,15 @@ public class ExamStore {
         String attemptStatus = String.valueOf(attempt.get("status"));
         boolean closed = "submitted".equals(attemptStatus) || "reviewing".equals(attemptStatus);
         boolean reveal = "submitted".equals(attemptStatus);
+        long paperId = ((Number) attempt.get("paperId")).longValue();
+        Map<String, Object> paper = getPaper(paperId);
+        boolean shuffleQ = paper != null && Boolean.TRUE.equals(paper.get("shuffleQuestions"));
+        boolean shuffleO = paper != null && Boolean.TRUE.equals(paper.get("shuffleOptions"));
+        boolean explainAfter = paper == null || !Boolean.FALSE.equals(paper.get("explainAfterScore"));
+        boolean showExplain = explainEnabled && reveal && explainAfter;
+        List<Map<String, Object>> list;
         if (!closed && !afterSubmit) {
-            // take: no answer key / explain
-            return db().query(
+            list = db().query(
                     "SELECT q.id, q.subject_id, q.type, q.stem, q.score, pq.sort_no "
                             + "FROM exam_paper_question pq "
                             + "JOIN exam_question q ON q.id=pq.question_id "
@@ -643,40 +928,68 @@ public class ExamStore {
                             + "WHERE a.id=? ORDER BY pq.sort_no, pq.id",
                     (rs, i) -> {
                         Map<String, Object> m = new LinkedHashMap<>();
-                        m.put("id", rs.getLong("id"));
+                        long qid = rs.getLong("id");
+                        m.put("id", qid);
                         m.put("subjectId", rs.getObject("subject_id"));
                         m.put("type", rs.getString("type"));
                         m.put("stem", rs.getString("stem"));
-                        m.put("optionsJson", ChoiceOptionOps.loadJson(db(), "exam_option", rs.getLong("id")));
+                        m.put("optionsJson", loadOptionsForTake(qid, shuffleO, attemptId));
                         m.put("score", rs.getInt("score"));
                         m.put("sortNo", rs.getInt("sort_no"));
                         return m;
                     },
                     attemptId);
+        } else {
+            list = db().query(
+                    "SELECT q.*, pq.sort_no, ea.answer_text, ea.is_correct, ea.score AS earned_score "
+                            + "FROM exam_paper_question pq "
+                            + "JOIN exam_question q ON q.id=pq.question_id "
+                            + "JOIN exam_attempt a ON a.paper_id=pq.paper_id "
+                            + "LEFT JOIN exam_answer ea ON ea.attempt_id=a.id AND ea.question_id=q.id "
+                            + "WHERE a.id=? ORDER BY pq.sort_no, pq.id",
+                    (rs, i) -> {
+                        Map<String, Object> m = mapQuestion(rs, reveal);
+                        m.put("sortNo", rs.getInt("sort_no"));
+                        m.put("userAnswer", rs.getString("answer_text"));
+                        Object marked = rs.getObject("is_correct");
+                        int markFlag = marked == null ? 0 : ((Number) marked).intValue();
+                        m.put("pendingMark", markFlag == PENDING_MARK);
+                        m.put("correct", markFlag == PENDING_MARK ? null : marked);
+                        m.put("earnedScore", markFlag == PENDING_MARK ? null : rs.getObject("earned_score"));
+                        if (showExplain) {
+                            m.put("explainText", rs.getString("explain_text"));
+                        }
+                        return m;
+                    },
+                    attemptId);
         }
-        // after submit: include scoring detail
-        return db().query(
-                "SELECT q.*, pq.sort_no, ea.answer_text, ea.is_correct, ea.score AS earned_score "
-                        + "FROM exam_paper_question pq "
-                        + "JOIN exam_question q ON q.id=pq.question_id "
-                        + "JOIN exam_attempt a ON a.paper_id=pq.paper_id "
-                        + "LEFT JOIN exam_answer ea ON ea.attempt_id=a.id AND ea.question_id=q.id "
-                        + "WHERE a.id=? ORDER BY pq.sort_no, pq.id",
-                (rs, i) -> {
-                    Map<String, Object> m = mapQuestion(rs, reveal);
-                    m.put("sortNo", rs.getInt("sort_no"));
-                    m.put("userAnswer", rs.getString("answer_text"));
-                    Object marked = rs.getObject("is_correct");
-                    int markFlag = marked == null ? 0 : ((Number) marked).intValue();
-                    m.put("pendingMark", markFlag == PENDING_MARK);
-                    m.put("correct", markFlag == PENDING_MARK ? null : marked);
-                    m.put("earnedScore", markFlag == PENDING_MARK ? null : rs.getObject("earned_score"));
-                    if (explainEnabled && reveal) {
-                        m.put("explainText", rs.getString("explain_text"));
-                    }
-                    return m;
-                },
-                attemptId);
+        if (shuffleQ && !closed && !afterSubmit) {
+            list = new ArrayList<>(list);
+            Collections.shuffle(list, new Random(attemptId * 31L + 7L));
+        }
+        return list;
+    }
+
+    private static String loadOptionsForTake(long questionId, boolean shuffleOptions, long attemptId) {
+        if (!shuffleOptions) {
+            return ChoiceOptionOps.loadJson(db(), "exam_option", questionId);
+        }
+        try {
+            List<Map<String, String>> opts = db().query(
+                    "SELECT label, content FROM exam_option WHERE question_id=? ORDER BY sort_no",
+                    (rs, i) -> {
+                        Map<String, String> o = new LinkedHashMap<>();
+                        o.put("label", rs.getString("label"));
+                        o.put("content", rs.getString("content"));
+                        return o;
+                    },
+                    questionId);
+            opts = new ArrayList<>(opts);
+            Collections.shuffle(opts, new Random(attemptId * 17L + questionId));
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(opts);
+        } catch (Exception e) {
+            return ChoiceOptionOps.loadJson(db(), "exam_option", questionId);
+        }
     }
 
     public static Map<String, Object> submitAttempt(long attemptId, String username, List<Map<String, Object>> answers) {
@@ -747,25 +1060,33 @@ public class ExamStore {
                         attemptId, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX), PENDING_MARK, 0);
                 continue;
             }
-            int earned = scoreAnswer(qType, String.valueOf(q.get("answerKey")), userAns, maxScore);
+            boolean partialMulti = Boolean.TRUE.equals(paper.get("partialMulti"));
+            int earned = scoreAnswer(qType, String.valueOf(q.get("answerKey")), userAns, maxScore, partialMulti);
             boolean correct = earned == maxScore && maxScore > 0;
             objectiveScore += earned;
             db().update(
                     "INSERT INTO exam_answer (attempt_id,question_id,answer_text,is_correct,score) VALUES (?,?,?,?,?)",
                     attemptId, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX), correct ? 1 : 0, earned);
-            if (wrongbookEnabled && !correct) {
+            if (wrongbookEnabled && !correct && !"practice".equals(String.valueOf(attempt.get("mode")))) {
                 upsertWrongbook(username, qid, paperId, attemptId);
             }
         }
 
+        boolean practice = "practice".equals(String.valueOf(attempt.get("mode")));
         String nextStatus = pendingSubjective ? "reviewing" : "submitted";
-        int publishedScore = pendingSubjective ? 0 : objectiveScore;
+        int publishedScore = practice ? 0 : (pendingSubjective ? 0 : objectiveScore);
+        int publishedTotal = practice ? 0 : paperTotal;
         db().update(
                 "UPDATE exam_attempt SET status=?, score=?, total_score=?, submitted_at=? WHERE id=?",
-                nextStatus, publishedScore, paperTotal, Timestamp.valueOf(LocalDateTime.now()), attemptId);
+                nextStatus, publishedScore, publishedTotal, Timestamp.valueOf(LocalDateTime.now()), attemptId);
 
         Map<String, Object> out = new LinkedHashMap<>(getAttempt(attemptId));
         out.put("timedOut", timedOut);
+        out.put("practice", practice);
+        if (practice) {
+            out.put("selfCheckScore", objectiveScore);
+            out.put("selfCheckTotal", paperTotal);
+        }
         out.put("questions", listAttemptQuestions(attemptId, username, true));
         return out;
     }
@@ -790,8 +1111,12 @@ public class ExamStore {
     public static List<Map<String, Object>> reviewDetail(long attemptId) {
         require();
         if (getAttempt(attemptId) == null) throw new IllegalArgumentException("答卷不存在");
+        boolean withRubric = hasI08Cols();
+        String cols = withRubric
+                ? "q.id, q.type, q.stem, q.answer_key, q.score, q.mark_rubric, ea.answer_text, ea.is_correct, ea.score AS earned "
+                : "q.id, q.type, q.stem, q.answer_key, q.score, ea.answer_text, ea.is_correct, ea.score AS earned ";
         return db().query(
-                "SELECT q.id, q.type, q.stem, q.answer_key, q.score, ea.answer_text, ea.is_correct, ea.score AS earned "
+                "SELECT " + cols
                         + "FROM exam_paper_question pq "
                         + "JOIN exam_question q ON q.id=pq.question_id "
                         + "JOIN exam_attempt a ON a.paper_id=pq.paper_id "
@@ -808,6 +1133,9 @@ public class ExamStore {
                     m.put("answerKey", rs.getString("answer_key"));
                     m.put("maxScore", rs.getInt("score"));
                     m.put("userAnswer", rs.getString("answer_text"));
+                    if (withRubric) {
+                        m.put("markRubric", rs.getString("mark_rubric") == null ? "" : rs.getString("mark_rubric"));
+                    }
                     boolean pending = "subjective".equals(type) && markFlag == PENDING_MARK;
                     m.put("pending", pending);
                     m.put("earnedScore", pending ? null : rs.getObject("earned"));
@@ -864,13 +1192,23 @@ public class ExamStore {
         return getAttempt(attemptId);
     }
 
+    /**
+     * 客观题判分口径（I-01；I-07 可开多选部分分）：
+     * single/judge：去空白后忽略大小写全等才得满分；
+     * multi：默认集合完全一致才满分；partialMulti 时无错选按比例给分；
+     * subjective：自动得 0，待教师阅卷。
+     */
     static int scoreAnswer(String type, String answerKey, String userAnswer, int maxScore) {
+        return scoreAnswer(type, answerKey, userAnswer, maxScore, false);
+    }
+
+    static int scoreAnswer(String type, String answerKey, String userAnswer, int maxScore, boolean partialMulti) {
         if (answerKey == null || answerKey.isBlank()) return 0;
         String ua = userAnswer == null ? "" : userAnswer.trim();
         String key = answerKey.trim();
         switch (type) {
             case "single" -> {
-                return ua.equals(key) ? maxScore : 0;
+                return ua.equalsIgnoreCase(key) ? maxScore : 0;
             }
             case "judge" -> {
                 return ua.equalsIgnoreCase(key) ? maxScore : 0;
@@ -878,7 +1216,13 @@ public class ExamStore {
             case "multi" -> {
                 Set<String> expected = splitMulti(key);
                 Set<String> actual = splitMulti(ua);
-                return expected.equals(actual) ? maxScore : 0;
+                if (expected.equals(actual)) return maxScore;
+                if (!partialMulti || expected.isEmpty()) return 0;
+                for (String a : actual) {
+                    if (!expected.contains(a)) return 0;
+                }
+                if (actual.isEmpty()) return 0;
+                return (int) Math.round(maxScore * (actual.size() * 1.0 / expected.size()));
             }
             default -> {
                 return 0;
@@ -1029,6 +1373,239 @@ public class ExamStore {
         return db().update("DELETE FROM exam_wrongbook WHERE id=? AND username=?", id, username) > 0;
     }
 
+    // --- I-08 ---
+
+    public static String exportWrongbookCsv(String username) {
+        require();
+        if (!wrongbookEnabled) throw new IllegalStateException("错题本未开通");
+        List<Map<String, Object>> list = db().query(
+                "SELECT w.question_id, q.type, q.stem, q.answer_key FROM exam_wrongbook w "
+                        + "JOIN exam_question q ON q.id=w.question_id WHERE w.username=? ORDER BY w.id DESC",
+                (rs, i) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("questionId", rs.getLong("question_id"));
+                    m.put("type", rs.getString("type"));
+                    m.put("stem", rs.getString("stem"));
+                    m.put("answerKey", rs.getString("answer_key"));
+                    return m;
+                },
+                username);
+        StringBuilder sb = new StringBuilder("questionId,type,stem,answerKey\n");
+        for (Map<String, Object> r : list) {
+            sb.append(csvCell(r.get("questionId"))).append(',')
+                    .append(csvCell(r.get("type"))).append(',')
+                    .append(csvCell(r.get("stem"))).append(',')
+                    .append(csvCell(r.get("answerKey"))).append('\n');
+        }
+        return sb.toString();
+    }
+
+    public static String questionImportTemplate() {
+        return "type,stem,options,answer_key,score,explain,mark_rubric\n"
+                + "single,示例单选题,选项A|选项B|选项C|选项D,A,5,解析说明,\n"
+                + "subjective,示例主观题,,参考要点,10,,要点齐全满分\n";
+    }
+
+    public static Map<String, Object> importQuestionsCsv(String csvText) {
+        require();
+        if (csvText == null || csvText.isBlank()) throw new IllegalArgumentException("导入内容为空");
+        String[] lines = csvText.replace("\r\n", "\n").replace('\r', '\n').split("\n");
+        int ok = 0;
+        int skip = 0;
+        for (String line : lines) {
+            String t = line.trim();
+            if (t.isBlank() || t.toLowerCase(Locale.ROOT).startsWith("type,")) {
+                continue;
+            }
+            List<String> cells = splitCsvLine(t);
+            if (cells.size() < 2) {
+                skip++;
+                continue;
+            }
+            try {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("type", cells.get(0));
+                body.put("stem", cells.size() > 1 ? cells.get(1) : "");
+                String opts = cells.size() > 2 ? cells.get(2) : "";
+                if (!opts.isBlank()) {
+                    String[] parts = opts.split("\\|");
+                    List<String> arr = new ArrayList<>();
+                    for (String p : parts) {
+                        if (!p.isBlank()) arr.add(p.trim());
+                    }
+                    body.put("optionsJson", new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(arr));
+                } else {
+                    body.put("optionsJson", "[]");
+                }
+                body.put("answerKey", cells.size() > 3 ? cells.get(3) : "");
+                body.put("score", cells.size() > 4 && !cells.get(4).isBlank() ? cells.get(4) : "5");
+                body.put("explainText", cells.size() > 5 ? cells.get(5) : "");
+                body.put("markRubric", cells.size() > 6 ? cells.get(6) : "");
+                createQuestion(body);
+                ok++;
+            } catch (Exception e) {
+                skip++;
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("imported", ok);
+        out.put("skipped", skip);
+        return out;
+    }
+
+    public static Map<String, Object> randomDrawToPaper(long paperId, int count, String typeFilter) {
+        require();
+        if (getPaper(paperId) == null) throw new IllegalArgumentException("试卷不存在");
+        if (count < 1) throw new IllegalArgumentException("抽取数量至少为 1");
+        if (count > 100) count = 100;
+        String type = typeFilter == null ? "" : typeFilter.trim().toLowerCase(Locale.ROOT);
+        String sql = "SELECT id FROM exam_question WHERE id NOT IN "
+                + "(SELECT question_id FROM exam_paper_question WHERE paper_id=?)";
+        List<Object> args = new ArrayList<>();
+        args.add(paperId);
+        if (!type.isBlank() && Set.of("single", "multi", "judge", "subjective").contains(type)) {
+            sql += " AND type=?";
+            args.add(type);
+        }
+        sql += " ORDER BY RAND() LIMIT ?";
+        args.add(count);
+        List<Long> ids = db().query(sql, (rs, i) -> rs.getLong("id"), args.toArray());
+        Integer maxSort = db().queryForObject(
+                "SELECT COALESCE(MAX(sort_no),0) FROM exam_paper_question WHERE paper_id=?",
+                Integer.class, paperId);
+        int sort = maxSort == null ? 0 : maxSort;
+        int added = 0;
+        for (Long qid : ids) {
+            sort++;
+            db().update(
+                    "INSERT INTO exam_paper_question (paper_id,question_id,sort_no) VALUES (?,?,?)",
+                    paperId, qid, sort);
+            added++;
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("added", added);
+        out.put("paperId", paperId);
+        return out;
+    }
+
+    public static String scoreImportTemplate() {
+        return "username,paper_id,score,total_score\nuser,1,80,100\n";
+    }
+
+    public static Map<String, Object> importScoresCsv(String csvText) {
+        require();
+        if (csvText == null || csvText.isBlank()) throw new IllegalArgumentException("导入内容为空");
+        String[] lines = csvText.replace("\r\n", "\n").replace('\r', '\n').split("\n");
+        int ok = 0;
+        int skip = 0;
+        for (String line : lines) {
+            String t = line.trim();
+            if (t.isBlank() || t.toLowerCase(Locale.ROOT).startsWith("username,")) continue;
+            List<String> cells = splitCsvLine(t);
+            if (cells.size() < 4) {
+                skip++;
+                continue;
+            }
+            try {
+                String username = cells.get(0).trim();
+                long paperId = Long.parseLong(cells.get(1).trim());
+                int score = Integer.parseInt(cells.get(2).trim());
+                int total = Integer.parseInt(cells.get(3).trim());
+                if (username.isBlank() || getPaper(paperId) == null) {
+                    skip++;
+                    continue;
+                }
+                db().update(
+                        "INSERT INTO exam_attempt (paper_id,username,mode,status,score,total_score,started_at,submitted_at) "
+                                + "VALUES (?,?,'exam','submitted',?,?,?,?)",
+                        paperId, username, score, total,
+                        Timestamp.valueOf(LocalDateTime.now()),
+                        Timestamp.valueOf(LocalDateTime.now()));
+                ok++;
+            } catch (Exception e) {
+                skip++;
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("imported", ok);
+        out.put("skipped", skip);
+        return out;
+    }
+
+    public static Map<String, Object> certificatePayload(long attemptId, String username) {
+        require();
+        Map<String, Object> attempt = getAttempt(attemptId);
+        if (attempt == null) throw new IllegalArgumentException("答卷不存在");
+        if (!username.equals(String.valueOf(attempt.get("username")))) {
+            throw new IllegalStateException("无权查看");
+        }
+        if (!"submitted".equals(String.valueOf(attempt.get("status")))) {
+            throw new IllegalStateException("成绩尚未公布");
+        }
+        long paperId = ((Number) attempt.get("paperId")).longValue();
+        Map<String, Object> paper = getPaper(paperId);
+        if (paper == null) throw new IllegalArgumentException("试卷不存在");
+        int score = attempt.get("score") instanceof Number n ? n.intValue() : 0;
+        int total = attempt.get("totalScore") instanceof Number n ? n.intValue() : 0;
+        int pass = paper.get("passScore") instanceof Number n ? n.intValue() : 60;
+        if (pass <= 0) pass = 60;
+        boolean passed = total > 0 && score * 100 >= pass * total;
+        if (!passed) throw new IllegalStateException("未达到及格线，暂无证书。");
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("attemptId", attemptId);
+        out.put("username", username);
+        try {
+            out.put("displayName", UserStore.displayName(username));
+        } catch (Exception e) {
+            out.put("displayName", username);
+        }
+        out.put("paperTitle", paper.get("title"));
+        out.put("score", score);
+        out.put("totalScore", total);
+        out.put("passScore", pass);
+        out.put("submittedAt", attempt.get("submittedAt"));
+        out.put("difficulty", paper.get("difficulty"));
+        return out;
+    }
+
+    private static String csvCell(Object o) {
+        String s = o == null ? "" : String.valueOf(o);
+        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
+            return "\"" + s.replace("\"", "\"\"") + "\"";
+        }
+        return s;
+    }
+
+    private static List<String> splitCsvLine(String line) {
+        List<String> out = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        boolean inQ = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (inQ) {
+                if (c == '"') {
+                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        cur.append('"');
+                        i++;
+                    } else {
+                        inQ = false;
+                    }
+                } else {
+                    cur.append(c);
+                }
+            } else if (c == '"') {
+                inQ = true;
+            } else if (c == ',') {
+                out.add(cur.toString().trim());
+                cur.setLength(0);
+            } else {
+                cur.append(c);
+            }
+        }
+        out.add(cur.toString().trim());
+        return out;
+    }
+
     private static Map<String, Object> pageOut(List<Map<String, Object>> list, Integer total, int page, int size) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list == null ? List.of() : list);
@@ -1038,4 +1615,3 @@ public class ExamStore {
         return out;
     }
 }
-

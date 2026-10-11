@@ -27,6 +27,7 @@
             <if test="score != null">score=#{score},</if>
             <if test="subjectId != null or clearSubject">subject_id=#{subjectId},</if>
             <if test="explainText != null">explain_text=#{explainText},</if>
+            <if test="markRubric != null">mark_rubric=#{markRubric},</if>
         </set>
         WHERE id=#{id}
     </update>
@@ -43,9 +44,29 @@
             <if test="status != null">status=#{status},</if>
             <if test="subjectId != null or clearSubject">subject_id=#{subjectId},</if>
             <if test="maxAttempts != null">max_attempts=#{maxAttempts},</if>
+            <if test="passScore != null">pass_score=#{passScore},</if>
+            <if test="shuffleQuestions != null">shuffle_questions=#{shuffleQuestions},</if>
+            <if test="shuffleOptions != null">shuffle_options=#{shuffleOptions},</if>
+            <if test="explainAfterScore != null">explain_after_score=#{explainAfterScore},</if>
+            <if test="partialMulti != null">partial_multi=#{partialMulti},</if>
+            <if test="lockAfterSubmit != null">lock_after_submit=#{lockAfterSubmit},</if>
+            <if test="openAt != null or clearOpenAt">open_at=#{openAt},</if>
+            <if test="lateEnterMin != null">late_enter_min=#{lateEnterMin},</if>
+            <if test="entryCode != null">entry_code=#{entryCode},</if>
+            <if test="difficulty != null">difficulty=#{difficulty},</if>
+            <if test="gateTicket != null">gate_ticket=#{gateTicket},</if>
         </set>
         WHERE id=#{id}
     </update>
+
+    <select id="listRandomQuestionIds" resultType="long">
+        SELECT id FROM exam_question
+        WHERE id NOT IN (SELECT question_id FROM exam_paper_question WHERE paper_id=#{paperId})
+        <if test="type != null and type != ''">
+            AND type=#{type}
+        </if>
+        ORDER BY RAND() LIMIT #{count}
+    </select>
 
     <select id="listPaperQuestions" resultType="map">
         SELECT q.*, pq.sort_no AS sort_no

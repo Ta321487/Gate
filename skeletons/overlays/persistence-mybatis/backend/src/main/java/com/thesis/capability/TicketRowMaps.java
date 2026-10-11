@@ -3,6 +3,10 @@ package com.thesis.capability;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.TicketMapper;
 
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,6 +23,21 @@ final class TicketRowMaps {
     static Map<String, Object> load(long id) {
         Map<String, Object> raw = mapper().selectById(TicketStore.ticketTable(), id);
         return raw == null ? null : shape(raw);
+    }
+
+
+    /** MbSql / JDBC ResultSet → API map（与 shape 同源）。 */
+    static Map<String, Object> mapRow(ResultSet rs) throws SQLException {
+        Map<String, Object> raw = new LinkedHashMap<>();
+        ResultSetMetaData meta = rs.getMetaData();
+        for (int c = 1; c <= meta.getColumnCount(); c++) {
+            String label = meta.getColumnLabel(c);
+            if (label == null || label.isBlank()) {
+                label = meta.getColumnName(c);
+            }
+            raw.put(label, rs.getObject(c));
+        }
+        return shape(raw);
     }
 
     /** MyBatis Map（snake / camel）→ API camelCase。 */
@@ -111,6 +130,32 @@ final class TicketRowMaps {
             m.put("pickupAt", fmt(first(raw, "pickupAt", "pickup_at")));
             m.put("pickupPlace", str(first(raw, "pickupPlace", "pickup_place")));
             m.put("contactChannel", str(first(raw, "contactChannel", "contact_channel")));
+            m.put("meetIntent", str(first(raw, "meetIntent", "meet_intent")));
+            Object er = first(raw, "exitRequest", "exit_request");
+            if (er != null && !String.valueOf(er).isBlank() && !"null".equalsIgnoreCase(String.valueOf(er))) {
+                try {
+                    m.put("exitRequest", Integer.parseInt(String.valueOf(er).trim()));
+                } catch (Exception ignored) {
+                    m.put("exitRequest", 0);
+                }
+            }
+            Object sl = first(raw, "seatLocked", "seat_locked");
+            if (sl != null && !String.valueOf(sl).isBlank() && !"null".equalsIgnoreCase(String.valueOf(sl))) {
+                try {
+                    m.put("seatLocked", Integer.parseInt(String.valueOf(sl).trim()));
+                } catch (Exception ignored) {
+                    m.put("seatLocked", 0);
+                }
+            }
+            Object ns = first(raw, "noShow", "no_show");
+            if (ns != null && !String.valueOf(ns).isBlank() && !"null".equalsIgnoreCase(String.valueOf(ns))) {
+                try {
+                    m.put("noShow", Integer.parseInt(String.valueOf(ns).trim()));
+                } catch (Exception ignored) {
+                    m.put("noShow", 0);
+                }
+            }
+            m.put("cancelReason", str(first(raw, "cancelReason", "cancel_reason")));
             m.put("nextFollowAt", fmt(first(raw, "nextFollowAt", "next_follow_at")));
             Object aq = first(raw, "actualQty", "actual_qty");
             if (aq != null && !"".equals(String.valueOf(aq))) {
@@ -323,7 +368,7 @@ final class TicketRowMaps {
         putFollowOptStr(m, raw, "seal_copy_nos", "sealCopyNos");
         putFollowOptStr(m, raw, "fuel_note", "fuelNote");
         Object sealWitnessObj = first(raw, "sealWitnessAck", "seal_witness_ack");
-        if (sealWitnessObj != null) m.put("sealWitnessAck", truthy(sealWitnessObj));
+        if (sealWitnessObj != null) m.put("sealWitnessAck", TicketNotifyOps.truthy(sealWitnessObj));
         Object certUrgentObj = first(raw, "certUrgent", "cert_urgent");
         if (certUrgentObj != null) {
             String a = String.valueOf(certUrgentObj);

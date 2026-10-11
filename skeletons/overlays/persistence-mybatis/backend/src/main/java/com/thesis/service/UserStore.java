@@ -3,6 +3,7 @@ package com.thesis.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thesis.common.PasswordHashes;
+import com.thesis.config.MbSql;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.SchemaMapper;
 import com.thesis.mapper.UserMapper;
@@ -153,6 +154,10 @@ public class UserStore {
             }
             return m;
         }
+    }
+
+    private static MbSql db() {
+        return MybatisSupport.db();
     }
 
     private static UserMapper mapper() {

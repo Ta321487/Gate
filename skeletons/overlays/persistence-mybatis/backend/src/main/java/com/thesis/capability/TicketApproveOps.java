@@ -1,5 +1,9 @@
 package com.thesis.capability;
 
+
+import com.thesis.config.MbSql;
+import com.thesis.config.MybatisSupport;
+import com.thesis.mapper.TicketMapper;
 import java.util.*;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -14,6 +18,10 @@ import com.thesis.service.TimebankStore;
 final class TicketApproveOps {
 
     private TicketApproveOps() {}
+
+    private static TicketMapper mapper() {
+        return MybatisSupport.mapper(TicketMapper.class);
+    }
 
 static Map<String, Object> approve(long ticketId, boolean pass, String remark) {
         return approve(ticketId, pass, remark, null, true, null);
@@ -123,6 +131,7 @@ static Map<String, Object> approve(
             TicketNotifyOps.notifyTicketResult(m, false, note);
             TicketDeriveOps.appendProgress(ticketId, "rejected", op,
                     note == null || note.isBlank() ? TicketCopy.stateLabel("rejected", TicketCopy.verbLabel("reject", "已驳回")) : note);
+            TicketDeriveOps.maybeAppendAdminAdjust(ticketId, op, false, note);
             return TicketDeriveOps.get(ticketId);
         }
 
@@ -217,6 +226,7 @@ static Map<String, Object> approve(
         TicketNotifyOps.notifyArrivalIfNeeded(m);
         TicketDeriveOps.appendProgress(ticketId, "approved", op, note.isBlank()
                 ? TicketCopy.stateLabel("approved", TicketCopy.verbLabel("approve", "审核通过")) : note);
+        TicketDeriveOps.maybeAppendAdminAdjust(ticketId, op, true, note);
         // 库存扣尽：同对象其它待审自动驳回（失物一件一主；图书最后一本等同）
         int autoRejected = 0;
         if (approvedItemId > 0) {
@@ -281,7 +291,7 @@ static String issuePassCodeIfNeeded(long ticketId) {
                     && TicketStore.hasColumn("pass_expire_at")) {
                 java.sql.Timestamp exp = java.sql.Timestamp.valueOf(
                         java.time.LocalDateTime.now().plusDays(TicketStore.passExpireDays));
-                TicketSql.db().update(
+                MybatisSupport.db().update(
                         "UPDATE " + TicketStore.TICKET + " SET pass_expire_at=? WHERE id=?",
                         exp, ticketId);
             }
@@ -306,7 +316,7 @@ static String issueCertIssueNoIfNeeded(long ticketId) {
         }
         String code = "CERT" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
         try {
-            int n = TicketSql.db().update(
+            int n = MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET cert_issue_no=? WHERE id=?", code, ticketId);
             if (n <= 0) {
                 throw new IllegalStateException("开具流水号签发失败，请重试");
@@ -332,7 +342,7 @@ static String issueVerifyCodeIfNeeded(long ticketId) {
         }
         String code = "VF" + String.format("%010d", Math.floorMod(System.nanoTime(), 10_000_000_000L));
         try {
-            int n = TicketSql.db().update(
+            int n = MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET verify_code=? WHERE id=?", code, ticketId);
             if (n <= 0) {
                 throw new IllegalStateException("真伪查询码签发失败，请重试");
@@ -358,7 +368,7 @@ static String issuePickupRedeemIfNeeded(long ticketId) {
         }
         String code = "PK" + String.format("%010d", Math.floorMod(System.nanoTime() + 17, 10_000_000_000L));
         try {
-            int n = TicketSql.db().update(
+            int n = MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET pickup_redeem_code=? WHERE id=?", code, ticketId);
             if (n <= 0) {
                 throw new IllegalStateException("领取核销码签发失败，请重试");

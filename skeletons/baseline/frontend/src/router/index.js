@@ -430,6 +430,7 @@ function withSurveyRoutes(baseRoutes) {
     }
     add('survey/forms', () => import('../views/SurveyForms.vue'))
     add('survey/fill/:id', () => import('../views/SurveyFill.vue'))
+    add('survey/thanks/:id', () => import('../views/SurveyThanks.vue'))
     add('survey/mine', () => import('../views/SurveyMine.vue'))
   }
   const admin = routes.find((r) => r.path === '/admin')
@@ -463,6 +464,7 @@ function withVoteRoutes(baseRoutes) {
     }
     add('vote/campaigns', () => import('../views/VoteCampaigns.vue'))
     add('vote/cast/:id', () => import('../views/VoteCast.vue'))
+    add('vote/poster/:id', () => import('../views/VotePoster.vue'))
     add('vote/mine', () => import('../views/VoteMine.vue'))
   }
   const admin = routes.find((r) => r.path === '/admin')
@@ -528,6 +530,9 @@ function withTimebankRoutes(baseRoutes) {
     }
     add('tb/account', () => import('../views/TimebankAccount.vue'))
     add('tb/ledger', () => import('../views/TimebankLedger.vue'))
+    add('tb/rank', () => import('../views/TimebankRank.vue'))
+    add('tb/catalog', () => import('../views/TimebankCatalog.vue'))
+    add('tb/appeal', () => import('../views/TimebankAppeal.vue'))
   }
   const admin = routes.find((r) => r.path === '/admin')
   const adminKids = admin?.children
@@ -542,6 +547,18 @@ function withTimebankRoutes(baseRoutes) {
       adminKids.push({
         path: 'tb/ledger',
         component: () => import('../views/admin/TimebankLedgerAdmin.vue'),
+      })
+    }
+    if (!adminKids.some((c) => c.path === 'tb/catalog')) {
+      adminKids.push({
+        path: 'tb/catalog',
+        component: () => import('../views/admin/TimebankCatalogAdmin.vue'),
+      })
+    }
+    if (!adminKids.some((c) => c.path === 'tb/appeals')) {
+      adminKids.push({
+        path: 'tb/appeals',
+        component: () => import('../views/admin/TimebankAppealsAdmin.vue'),
       })
     }
   }
@@ -600,7 +617,8 @@ function withBorrowThickenRoutes(baseRoutes) {
   const needMaterial = hasCap('material_check')
   const needLostClue = hasCap('lost_clue')
   const needBlacklist = !!getSchema().applyBlacklist
-  if (!needLedger && !needOccupy && !needMaterial && !needLostClue && !needBlacklist) return baseRoutes
+  const needReserveBlacklist = !!getSchema().reserveBlacklist
+  if (!needLedger && !needOccupy && !needMaterial && !needLostClue && !needBlacklist && !needReserveBlacklist) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
   const portal = routes.find((r) => r.path === '/')
   const kids = portal?.children
@@ -674,6 +692,7 @@ function withExamRoutes(baseRoutes) {
     add('exam/practice', () => import('../views/ExamPractice.vue'))
     add('exam/rank', () => import('../views/ExamRank.vue'))
     add('exam/wrongbook', () => import('../views/ExamWrongbook.vue'))
+    add('exam/certificate/:id', () => import('../views/ExamCertificate.vue'))
   }
   const admin = routes.find((r) => r.path === '/admin')
   const adminKids = admin?.children
@@ -1056,6 +1075,7 @@ const archiveTicketRoutes = [
       { path: 'archive', component: () => import('../views/user/ArchiveBrowse.vue') },
       { path: 'tickets', component: () => import('../views/user/MyTickets.vue') },
       { path: 'peer-tickets', component: () => import('../views/user/PeerTickets.vue') },
+      { path: 'mutual-results', component: () => import('../views/user/MutualResults.vue') },
       { path: 'week', component: () => import('../views/user/WeekCalendar.vue') },
       { path: 'notices', component: Notices },
       { path: 'notices/:id', component: NoticeDetail },
@@ -1131,6 +1151,8 @@ const slotRoutes = [
       { path: 'slots', component: () => import('../views/user/SlotBook.vue') },
       { path: 'reservations', component: () => import('../views/user/MyReservations.vue') },
       { path: 'reserve/blacklist-appeal', component: () => import('../views/user/ReserveBlacklistAppeal.vue') },
+      { path: 'patient-profiles', component: () => import('../views/user/PatientProfiles.vue') },
+      { path: 'parking-passes', component: () => import('../views/user/ParkingPasses.vue') },
       { path: 'orders', component: () => import('../views/user/MyOrders.vue') },
       { path: 'notices', component: Notices },
       { path: 'notices/:id', component: NoticeDetail },
@@ -1148,6 +1170,7 @@ const slotRoutes = [
       { path: 'categories', component: () => import('../views/admin/CategoriesAdmin.vue') },
       { path: 'reservations', component: () => import('../views/admin/ReservationsAdmin.vue') },
       { path: 'reserve/blacklist', component: () => import('../views/admin/ReserveBlacklistAdmin.vue') },
+      { path: 'parking-passes', component: () => import('../views/admin/ParkingPassAdmin.vue') },
       { path: 'orders', component: () => import('../views/admin/OrdersAdmin.vue') },
       { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },

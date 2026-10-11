@@ -34,6 +34,9 @@ final class TicketPatchOps {
             }
             String ch = TicketSql.str(body.get("contactChannel")).trim();
             if (ch.length() > 32) ch = ch.substring(0, 32);
+            Map<String, Object> cur = TicketRowMaps.load(ticketId);
+            String owner = cur == null ? "" : TicketSql.str(cur.get("username"));
+            TicketAsserts.assertAdjustWishCap(owner, ch, ticketId);
             TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET contact_channel=? WHERE id=?", ch, ticketId);
         }
         if (body.containsKey("weekNo")) {
@@ -77,6 +80,15 @@ final class TicketPatchOps {
                 }
             }
             TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET next_follow_at=? WHERE id=?", ts, ticketId);
+        }
+        // I-02：婚恋见面意向（轻单字段；非支付）
+        if (body.containsKey("meetIntent")) {
+            if (!TicketStore.hasColumn("meet_intent")) {
+                throw new IllegalStateException("系统未配置见面意向字段");
+            }
+            String mi = TicketSql.str(body.get("meetIntent")).trim();
+            if (mi.length() > 32) mi = mi.substring(0, 32);
+            TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET meet_intent=? WHERE id=?", mi, ticketId);
         }
         // 报销等：提交时写入金额（复用 fine_yuan；借阅罚金/SLA 到期不计此路径）
         if (!TicketStore.useDeadline && (body.containsKey("fineYuan") || body.containsKey("amountYuan"))) {

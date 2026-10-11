@@ -153,6 +153,12 @@ final class TicketAsserts {
         Object stageObj = item.get("stage");
         if (stageObj != null) {
             String stage = String.valueOf(stageObj).trim();
+            if ("已满员".equals(stage)) {
+                throw new IllegalStateException("该组队已满员，不可再申请");
+            }
+            if ("已满".equals(stage)) {
+                throw new IllegalStateException("该行程座位已满，不可再申请");
+            }
             if ("满员".equals(stage) || "已出团".equals(stage) || "下架".equals(stage)) {
                 throw new IllegalStateException(
                         "满员".equals(stage) ? "该线路已满员，不可再报名"
@@ -216,6 +222,31 @@ final class TicketAsserts {
             String hint = catName.isBlank() ? "该分类" : ("分类「" + catName + "」");
             throw new IllegalStateException(
                     hint + "最多可选 " + TicketStore.categoryLimit + " 门，请先退选后再申请");
+        }
+    }
+
+    /**
+     * I-03：调剂志愿上限。excludeTicketId&gt;0 时改志愿不计自身。
+     * 计数走 JDBC（与 TicketDeriveOps 互选路径同源；无独立 Mapper 片段）。
+     */
+    static void assertAdjustWishCap(String username, String contactChannel, long excludeTicketId) {
+        if (TicketStore.maxAdjustWishes <= 0 || !TicketStore.peerAccept) return;
+        if (contactChannel == null || !contactChannel.contains("调剂")) return;
+        if (!TicketStore.hasColumn("contact_channel")) return;
+        String user = username == null ? "" : username.trim();
+        if (user.isBlank()) return;
+        String sql = "SELECT COUNT(*) FROM " + TicketStore.TICKET
+                + " WHERE username=? AND status IN ('pending','pending_mid','pending_final','approved','overdue')"
+                + " AND contact_channel LIKE ?"
+                + (excludeTicketId > 0 ? " AND id<>?" : "");
+        Integer n;
+        if (excludeTicketId > 0) {
+            n = MybatisSupport.db().queryForObject(sql, Integer.class, user, "%调剂%", excludeTicketId);
+        } else {
+            n = MybatisSupport.db().queryForObject(sql, Integer.class, user, "%调剂%");
+        }
+        if (n != null && n >= TicketStore.maxAdjustWishes) {
+            throw new IllegalStateException("调剂志愿数量已达上限，请先撤销后再报。");
         }
     }
 

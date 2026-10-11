@@ -542,6 +542,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.content_thicken import apply_content_thicken_to_spec
 
     out = apply_content_thicken_to_spec(out, body)
+    from app.bake.features.interact_thicken import apply_interact_thicken_to_spec
+
+    out = apply_interact_thicken_to_spec(out, body)
 
     # 岗位随开题补挂（如 FOOD 骑手）；复用 attach_staff_posts，刷新 spec.roles
     from app.bake.domains import DOMAINS
@@ -571,6 +574,19 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.opening_align import apply_opening_align_to_spec
 
     out = apply_opening_align_to_spec(out, body)
+    # 提案 out_scope 不得与已挂主路径打架（时段冲突/名额占用等）；通用消毒
+    prop = out.get("proposal")
+    if isinstance(prop, dict) and isinstance(prop.get("out_scope_lines"), list):
+        from app.bake.proposal_lexicon import normalize_out_scope_lines
+
+        prop = dict(prop)
+        prop["out_scope_lines"] = normalize_out_scope_lines(
+            prop.get("feature_lines"),
+            prop.get("out_scope_lines"),
+            out.get("capabilities") or [],
+            limit=5,
+        )
+        out["proposal"] = prop
     return out
 
 

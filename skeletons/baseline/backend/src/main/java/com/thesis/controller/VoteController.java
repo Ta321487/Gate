@@ -5,9 +5,12 @@ import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
 import com.thesis.service.VoteStore;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +23,17 @@ public class VoteController {
         if (!VoteStore.ready()) {
             throw new BizException(ErrorCode.NOT_FOUND, "未开通投票功能");
         }
+    }
+
+    private static String clientIp(HttpServletRequest request) {
+        if (request == null) return "";
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        String real = request.getHeader("X-Real-IP");
+        if (real != null && !real.isBlank()) return real.trim();
+        return request.getRemoteAddr() == null ? "" : request.getRemoteAddr();
     }
 
     @GetMapping("/campaigns")
@@ -49,9 +63,13 @@ public class VoteController {
     public R<Map<String, Object>> cast(
             @PathVariable long id,
             @RequestBody Map<String, Object> body,
+            HttpServletRequest request,
             HttpSession session) {
         requireVote();
         String uid = AdminAuth.requireLogin(session);
+        boolean abstain = body != null && (
+                Boolean.TRUE.equals(body.get("abstain"))
+                        || "true".equalsIgnoreCase(String.valueOf(body.get("abstain"))));
         List<Long> ids = new ArrayList<>();
         Object raw = body == null ? null : body.get("candidateIds");
         if (raw instanceof List<?> list) {
@@ -64,7 +82,7 @@ public class VoteController {
             ids.add(Long.parseLong(String.valueOf(body.get("candidateId"))));
         }
         try {
-            return R.ok(VoteStore.cast(uid, id, ids));
+            return R.ok(VoteStore.cast(uid, id, ids, abstain, clientIp(request)));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
@@ -74,7 +92,11 @@ public class VoteController {
     public R<List<Map<String, Object>>> results(@PathVariable long id, HttpSession session) {
         requireVote();
         AdminAuth.requireLogin(session);
-        return R.ok(VoteStore.results(id));
+        try {
+            return R.ok(VoteStore.results(id, false));
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @GetMapping("/ballots/mine")
@@ -138,6 +160,41 @@ public class VoteController {
     public R<List<Map<String, Object>>> adminResults(@PathVariable long campaignId, HttpSession session) {
         requireVote();
         AdminAuth.requireAdmin(session);
-        return R.ok(VoteStore.results(campaignId));
+        return R.ok(VoteStore.results(campaignId, true));
+    }
+
+    @PutMapping("/admin/campaigns/{campaignId}/settings")
+    public R<Map<String, Object>> updateSettings(
+            @PathVariable long campaignId,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireVote();
+        AdminAuth.requireAdmin(session);
+        try {
+            return R.ok(VoteStore.updateCampaignSettings(campaignId, body == null ? Map.of() : body));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/admin/campaigns/{campaignId}/export")
+    public void exportResults(
+            @PathVariable long campaignId,
+            HttpSession session,
+            HttpServletResponse response) {
+        requireVote();
+        AdminAuth.requireAdmin(session);
+        try {
+            String csv = VoteStore.exportResultsCsv(campaignId);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            response.setContentType("text/csv;charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=vote_results.csv");
+            response.getOutputStream().write(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
+            response.getOutputStream().write(csv.getBytes(StandardCharsets.UTF_8));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 }

@@ -9,13 +9,14 @@
     </el-select>
     <div class="toolbar" v-if="campaignId">
       <el-input v-model="draft.name" placeholder="姓名" style="width: 140px" />
-      <el-input v-model="draft.intro" placeholder="简介" style="width: 200px" />
-      <el-input v-model="draft.avatarUrl" placeholder="头像 URL（可选）" style="width: 220px" />
+      <el-input v-model="draft.intro" :placeholder="introLabel" style="width: 200px" />
+      <el-input v-model="draft.slogan" :placeholder="sloganPlaceholder" style="width: 200px" />
+      <el-input v-model="draft.avatarUrl" :placeholder="avatarLabel + ' URL（可选）'" style="width: 220px" />
       <el-input-number v-model="draft.sortNo" :min="0" />
       <el-button type="primary" @click="create">新增</el-button>
     </div>
     <el-table :data="list" stripe style="margin-top: 1rem">
-      <el-table-column label="头像" width="72">
+      <el-table-column :label="avatarLabel" width="72">
         <template #default="{ row }">
           <el-avatar :size="36" :src="row.avatarUrl || undefined">
             {{ String(row.name || '?').slice(0, 1) }}
@@ -23,7 +24,8 @@
         </template>
       </el-table-column>
       <el-table-column prop="name" label="姓名" />
-      <el-table-column prop="intro" label="简介" />
+      <el-table-column prop="intro" :label="introLabel" />
+      <el-table-column prop="slogan" :label="sloganLabel" />
       <el-table-column prop="sortNo" label="排序" width="80" />
       <el-table-column label="操作" width="100">
         <template #default="{ row }">
@@ -35,14 +37,21 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import { getSchema } from '../../utils/domainSchema'
+
+const labels = computed(() => getSchema()?.labels || {})
+const introLabel = computed(() => labels.value.voteIntroLabel || '图文简介')
+const sloganLabel = computed(() => labels.value.voteSloganLabel || '拉票文案')
+const sloganPlaceholder = computed(() => labels.value.voteSloganPlaceholder || '一句话拉票（选填）')
+const avatarLabel = computed(() => labels.value.voteAvatarLabel || '头像')
 
 const campaigns = ref([])
 const campaignId = ref(null)
 const list = ref([])
-const draft = reactive({ name: '', intro: '', sortNo: 0, avatarUrl: '' })
+const draft = reactive({ name: '', intro: '', slogan: '', sortNo: 0, avatarUrl: '' })
 
 async function loadCampaigns() {
   const res = await http.get('/api/vote/campaigns')
@@ -66,6 +75,7 @@ async function create() {
   ElMessage.success('已新增')
   draft.name = ''
   draft.intro = ''
+  draft.slogan = ''
   draft.avatarUrl = ''
   await loadCands()
 }

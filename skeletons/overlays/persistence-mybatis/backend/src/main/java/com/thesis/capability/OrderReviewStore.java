@@ -1,10 +1,10 @@
 package com.thesis.capability;
 
-import com.thesis.config.JdbcSupport;
+import com.thesis.config.MbSql;
+import com.thesis.config.MybatisSupport;
 import com.thesis.service.UserStore;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
+import com.thesis.config.GeneratedKeyHolder;
+import com.thesis.config.KeyHolder;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -35,8 +35,8 @@ public final class OrderReviewStore {
         return enabled;
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static MbSql db() {
+        return MybatisSupport.db();
     }
 
     private static boolean hasCol(String col) {

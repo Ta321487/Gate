@@ -706,6 +706,14 @@ def domain_sql(
         category_table=runtime.get("archive_category_table") or "category",
         ticket_table=resolved_ticket,
     )
+    from app.bake.features.interact_thicken import ensure_interact_thicken_sql
+
+    text = ensure_interact_thicken_sql(
+        text,
+        domain=domain or "",
+        item_table=resolved_item,
+        ticket_table=resolved_ticket,
+    )
     try:
         ci = int(flags.get("creditInitial") or 100)
     except (TypeError, ValueError):

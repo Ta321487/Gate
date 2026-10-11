@@ -58,7 +58,7 @@
             >
               加入{{ cartLabel }}
             </el-button>
-            <el-button size="small" @click="toggle(row)">取消收藏</el-button>
+            <el-button size="small" @click="toggle(row)">{{ cancelLabel }}</el-button>
           </div>
         </div>
       </article>
@@ -66,8 +66,8 @@
 
     <EmptyHint
       v-if="!list.length"
-      title="暂无收藏"
-      desc="去浏览加一加吧。"
+      :title="emptyTitle"
+      :desc="emptyDesc"
       mark="藏"
       cta-label="去浏览"
       @cta="$router.push('/archive')"
@@ -102,6 +102,9 @@ const pageTitle = computed(() => labels.value.favoritesPageTitle || '我的收�
 const pageLead = computed(
   () => labels.value.favoritesPageLead || '收藏感兴趣的内容，便于再次查看。',
 )
+const emptyTitle = computed(() => labels.value.favoritesEmptyTitle || '暂无收藏')
+const emptyDesc = computed(() => labels.value.favoritesEmptyDesc || '去浏览加一加吧。')
+const cancelLabel = computed(() => labels.value.favoritesCancelLabel || '取消收藏')
 const shareHint = computed(
   () => labels.value.favShareHint || labels.value.listingCompareHint || '',
 )

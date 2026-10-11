@@ -30,6 +30,9 @@ public class ArchiveController {
             @RequestParam(required = false) String tagIds,
             @RequestParam(required = false) String artist,
             @RequestParam(required = false) String album,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) Integer ageMin,
+            @RequestParam(required = false) Integer ageMax,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false, defaultValue = "false") boolean includeDeleted,
@@ -56,7 +59,10 @@ public class ArchiveController {
                     !admin,
                     null,
                     artist,
-                    album);
+                    album,
+                    city,
+                    ageMin,
+                    ageMax);
         }
         if (!admin) ArchiveStore.redactSensitiveListForPublic(data);
         return R.ok(data);
@@ -179,6 +185,10 @@ public class ArchiveController {
             }
         }
         try {
+            // I-05 CARPOOL：同一出发时间与路线的行程只保留一条（非拼车域自动放行）
+            if (!asDraft && ArchiveStore.isDuplicateTrip(uid, title, str(body.get("startAt")))) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "你已发布过相同出发时间与路线的行程，请勿重复发布。");
+            }
             Map<String, Object> item;
             if (asDraft && draftId > 0) {
                 item = ArchiveStore.updateUserDraft(draftId, uid, title, content, categoryId);
@@ -199,6 +209,41 @@ public class ArchiveController {
             if (!originKind.isBlank()) patch.put("originKind", originKind);
             String accessPassword = str(body.get("accessPassword"));
             if (!accessPassword.isBlank()) patch.put("accessPassword", accessPassword);
+            // I-05 CARPOOL：行程加厚字段（空值不写入；非法数字忽略）
+            String viaPoints = str(body.get("viaPoints"));
+            if (!viaPoints.isBlank()) patch.put("viaPoints", viaPoints);
+            String shareNote = str(body.get("shareNote"));
+            if (!shareNote.isBlank()) patch.put("shareNote", shareNote);
+            String prefNote = str(body.get("prefNote"));
+            if (!prefNote.isBlank()) patch.put("prefNote", prefNote);
+            String luggageRaw = str(body.get("luggageCount"));
+            if (!luggageRaw.isBlank()) {
+                try {
+                    patch.put("luggageCount", Integer.parseInt(luggageRaw));
+                } catch (NumberFormatException ignored) {
+                    // 行李件数非法则忽略
+                }
+            }
+            String startCampus = str(body.get("startCampus"));
+            if (!startCampus.isBlank()) patch.put("startCampus", startCampus);
+            String endCampus = str(body.get("endCampus"));
+            if (!endCampus.isBlank()) patch.put("endCampus", endCampus);
+            String remindRaw = str(body.get("remindBeforeMinutes"));
+            if (!remindRaw.isBlank()) {
+                try {
+                    patch.put("remindBeforeMinutes", Integer.parseInt(remindRaw));
+                } catch (NumberFormatException ignored) {
+                    // 提前提醒分钟数非法则忽略
+                }
+            }
+            String fareRaw = str(body.get("fareTotalYuan"));
+            if (!fareRaw.isBlank()) {
+                try {
+                    patch.put("fareTotalYuan", Double.parseDouble(fareRaw));
+                } catch (NumberFormatException ignored) {
+                    // 总费用非法则忽略
+                }
+            }
             if (!patch.isEmpty()) {
                 item = ArchiveStore.updateItem(id, patch);
             }
@@ -385,20 +430,48 @@ public class ArchiveController {
         }
     }
 
-    /** 多店 / 投稿先审：超管驳回 */
+    /** 多店 / 投稿先审：超管驳回（I-02 可带 rejectReason） */
     @PostMapping("/{id:\\d+}/reject")
-    public R<Map<String, Object>> reject(@PathVariable long id, HttpSession session) {
+    public R<Map<String, Object>> reject(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
         if (!ArchiveStore.shopMarketplaceEnabled() && !ArchiveStore.publishReviewEnabled()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前未开启审核上架");
         }
         try {
-            Map<String, Object> m = ArchiveStore.rejectPublishItem(id);
+            String reason = "";
+            if (body != null && body.get("rejectReason") != null) {
+                reason = String.valueOf(body.get("rejectReason"));
+            } else if (body != null && body.get("reason") != null) {
+                reason = String.valueOf(body.get("reason"));
+            }
+            Map<String, Object> m = ArchiveStore.rejectPublishItem(id, reason);
             if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
             String op = AdminAuth.requireLogin(session);
             AuditLogStore.record(op, "archive_reject", "archive", String.valueOf(id), "审核驳回");
             return R.ok(m);
         } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** I-02：资料相册审核 */
+    @PostMapping("/{id:\\d+}/album-audit")
+    public R<Map<String, Object>> albumAudit(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        String status = body == null || body.get("status") == null ? "" : String.valueOf(body.get("status"));
+        try {
+            Map<String, Object> m = ArchiveStore.setAlbumAuditStatus(id, status);
+            if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
+            String op = AdminAuth.requireLogin(session);
+            AuditLogStore.record(op, "archive_album_audit", "archive", String.valueOf(id), "相册审核:" + status);
+            return R.ok(m);
+        } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
     }

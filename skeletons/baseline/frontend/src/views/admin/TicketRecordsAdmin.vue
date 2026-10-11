@@ -11,7 +11,8 @@
         v-model="ratedOnly"
         style="margin-left:4px"
         @change="onFilter"
-      >仅已评分</el-checkbox>
+      >{{ ratingFilterRatedLabel }}</el-checkbox>
+      <span v-if="allowRating && ratingAdminLead" class="muted rating-lead">{{ ratingAdminLead }}</span>
       <el-checkbox
         v-if="todayBoardOn"
         v-model="todayOnly"
@@ -20,6 +21,23 @@
       >今日处理中</el-checkbox>
       <el-button type="primary" @click="load">查询</el-button>
       <el-button :disabled="!list.length" @click="exportCsv">{{ exportBtnLabel }}</el-button>
+      <el-button
+        v-if="mutualAdjustLogOn"
+        plain
+        @click="openAdjustLog"
+      >{{ mutualAdjustLogTitle }}</el-button>
+      <el-button
+        v-if="mutualResultExportNotifyOn"
+        plain
+        @click="exportMutualResults"
+      >{{ mutualResultExportLabel }}</el-button>
+      <el-button
+        v-if="mutualResultExportNotifyOn"
+        type="success"
+        plain
+        :loading="mutualNotifyLoading"
+        @click="notifyMutualResults"
+      >{{ mutualResultNotifyLabel }}</el-button>
       <el-checkbox
         v-if="stuNoMaskOn"
         v-model="maskStuNo"
@@ -472,6 +490,37 @@
         <el-button type="primary" :loading="adminCheckin.loading" @click="submitAdminCheckin">确认补签</el-button>
       </template>
     </el-dialog>
+    <el-dialog v-model="adjustLogVisible" :title="mutualAdjustLogTitle" width="640px" destroy-on-close>
+      <p class="muted" style="margin-bottom:8px">
+        {{ labels.mutualAdjustLogLead || '查看管理端对志愿的调剂确认与驳回留痕。' }}
+      </p>
+      <p v-if="labels.mutualAdjustCapDeny" class="muted" style="margin-bottom:8px">
+        {{ labels.mutualAdjustCapDeny }}
+      </p>
+      <p v-if="labels.onePerArchiveDenyMessage" class="muted" style="margin-bottom:8px">
+        {{ labels.onePerArchiveDenyMessage }}
+      </p>
+      <p v-if="labels.mutualResultNotifyBody" class="muted" style="margin-bottom:8px">
+        {{ labels.mutualResultNotifyBody }}
+      </p>
+      <el-table :data="adjustLogList" stripe size="small">
+        <el-table-column prop="ticketId" label="单据" width="80" />
+        <el-table-column prop="operator" label="操作人" width="100" />
+        <el-table-column prop="remark" label="说明" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="createdAt" label="时间" width="160" />
+      </el-table>
+      <el-empty v-if="!adjustLogList.length" :description="labels.mutualAdjustLogEmpty || '暂无调剂记录'" />
+      <div v-if="adjustLogTotal > 10" style="margin-top:12px;text-align:right">
+        <el-pagination
+          background
+          layout="prev, pager, next"
+          :total="adjustLogTotal"
+          :page-size="10"
+          :current-page="adjustLogPage"
+          @current-change="(p) => { adjustLogPage = p; loadAdjustLog() }"
+        />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -523,6 +572,10 @@ function statusLabel(row) {
 }
 const richRemark = computed(() => !!ticket.richRemark)
 const allowRating = computed(() => !!ticket.allowRating)
+const ratingFilterRatedLabel = computed(
+  () => labels.value.ratingFilterRatedLabel || '仅已评分',
+)
+const ratingAdminLead = computed(() => labels.value.ratingAdminLead || '')
 const todayBoardOn = computed(() => !!ticket.todayBoard)
 const todayBoardHint = computed(() => labels.value.todayBoardHint || '')
 const printTicketOn = computed(
@@ -770,6 +823,56 @@ async function runLotteryDraw() {
     lotteryLoading.value = false
   }
 }
+const interactThicken = computed(() => getSchema()?.interactThicken || {})
+const mutualAdjustLogOn = computed(() => !!interactThicken.value.mutualAdjustLog)
+const mutualResultExportNotifyOn = computed(() => !!interactThicken.value.mutualResultExportNotify)
+const mutualAdjustLogTitle = computed(() => labels.value.mutualAdjustLogTitle || '调剂记录')
+const mutualResultExportLabel = computed(() => labels.value.mutualResultExportLabel || '导出互选结果')
+const mutualResultNotifyLabel = computed(() => labels.value.mutualResultNotifyLabel || '通知已互选学生')
+const mutualNotifyLoading = ref(false)
+const adjustLogVisible = ref(false)
+const adjustLogList = ref([])
+const adjustLogTotal = ref(0)
+const adjustLogPage = ref(1)
+
+async function openAdjustLog() {
+  adjustLogPage.value = 1
+  await loadAdjustLog()
+  adjustLogVisible.value = true
+}
+
+async function loadAdjustLog() {
+  const res = await http.get('/api/tickets/adjust-log', {
+    params: { page: adjustLogPage.value, size: 10 },
+  })
+  const data = res.data || res
+  adjustLogList.value = data.list || []
+  adjustLogTotal.value = data.total || 0
+}
+
+async function exportMutualResults() {
+  const res = await http.get('/api/tickets/mutual-match-result')
+  const data = res.data || res
+  const rows = Array.isArray(data) ? data : data.list || []
+  downloadCsv(
+    `mutual_results_${Date.now()}.csv`,
+    ['编号', '学生', '状态', '申请时间', '对象编号'],
+    rows.map((r) => [r.id, r.username || '', r.status || '', r.applyAt || '', r.itemId || '']),
+  )
+  ElMessage.success(`已导出 ${rows.length} 条互选结果`)
+}
+
+async function notifyMutualResults() {
+  mutualNotifyLoading.value = true
+  try {
+    const res = await http.post('/api/tickets/mutual-result-notify')
+    const data = res.data || res
+    ElMessage.success(labels.value.mutualResultNotifyDone || `已发送 ${data.notified || 0} 条通知`)
+  } finally {
+    mutualNotifyLoading.value = false
+  }
+}
+
 const exportBtnLabel = computed(() => {
   if (status.value === 'absent' && (labels.value.absentExportLabel || '')) {
     return labels.value.absentExportLabel
@@ -1508,6 +1611,7 @@ onMounted(() => {
 .board-hint { margin: 0 0 10px; color: #64748b; font-size: 13px; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .rating { color: #b45309; font-weight: 600; }
+.rating-lead { font-size: 13px; margin-left: 4px; }
 .muted { color: var(--portal-muted, #94a3b8); }
 .type-dot {
   display: inline-block;

@@ -1,9 +1,9 @@
 package com.thesis.service;
 
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
+import com.thesis.config.MbSql;
+import com.thesis.config.MybatisSupport;
+import com.thesis.config.GeneratedKeyHolder;
+import com.thesis.config.KeyHolder;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -59,8 +59,8 @@ public class DoclibStore {
         return enabled;
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static MbSql db() {
+        return MybatisSupport.db();
     }
 
     public static boolean ready() {

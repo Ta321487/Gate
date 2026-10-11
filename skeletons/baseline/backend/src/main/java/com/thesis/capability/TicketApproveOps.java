@@ -127,6 +127,7 @@ static Map<String, Object> approve(
             TicketNotifyOps.notifyTicketResult(m, false, note);
             TicketDeriveOps.appendProgress(ticketId, "rejected", op,
                     note == null || note.isBlank() ? TicketCopy.stateLabel("rejected", TicketCopy.verbLabel("reject", "已驳回")) : note);
+            TicketDeriveOps.maybeAppendAdminAdjust(ticketId, op, false, note);
             return TicketDeriveOps.get(ticketId);
         }
 
@@ -283,6 +284,7 @@ static Map<String, Object> approve(
         TicketNotifyOps.notifyArrivalIfNeeded(m);
         TicketDeriveOps.appendProgress(ticketId, "approved", op, note.isBlank()
                 ? TicketCopy.stateLabel("approved", TicketCopy.verbLabel("approve", "审核通过")) : note);
+        TicketDeriveOps.maybeAppendAdminAdjust(ticketId, op, true, note);
         // 库存扣尽：同对象其它待审自动驳回（失物一件一主；图书最后一本等同）
         int autoRejected = 0;
         if (approvedItemId > 0) {

@@ -1,11 +1,13 @@
 <template>
   <div>
     <h2>时长流水</h2>
+    <p v-if="exportHint" class="hint">{{ exportHint }}</p>
     <el-form inline class="filter" @submit.prevent>
       <el-form-item label="用户">
         <el-input v-model="username" clearable placeholder="可选筛选" style="width: 160px" />
       </el-form-item>
       <el-button type="primary" @click="() => { page = 1; load() }">查询</el-button>
+      <el-button v-if="exportOn" @click="exportCsv">{{ exportLabel }}</el-button>
     </el-form>
     <el-table :data="list" stripe>
       <el-table-column prop="createdAt" label="时间" width="180" />
@@ -28,9 +30,15 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import { getSchema } from '../../utils/domainSchema'
 
+const labels = computed(() => getSchema()?.labels || {})
+const exportOn = computed(() => !!getSchema()?.interactThicken?.timebankLedgerExport)
+const exportLabel = computed(() => labels.value.tbLedgerExportLabel || '导出流水')
+const exportHint = computed(() => labels.value.tbLedgerExportHint || '')
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -46,6 +54,25 @@ async function load() {
   total.value = data.total || 0
 }
 
+async function exportCsv() {
+  try {
+    const res = await http.get('/api/timebank/admin/ledger/export', {
+      params: { username: username.value || undefined },
+      responseType: 'blob',
+    })
+    const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'tb_ledger.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('已导出')
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e.message || '导出失败')
+  }
+}
+
 watch(page, load)
 onMounted(load)
 </script>
@@ -53,4 +80,5 @@ onMounted(load)
 <style scoped>
 .filter { margin: 1rem 0; }
 .pager { margin-top: 1rem; }
+.hint { color: var(--el-text-color-secondary); font-size: 13px; }
 </style>

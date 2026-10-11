@@ -42,9 +42,6 @@ public interface UserMapper {
             + "0,1,0,'shop_merchant','clerk')")
     int insertMerchantPlain(Map<String, Object> row);
 
-    @Update("UPDATE sys_user SET post_mute_until=#{until} WHERE username=#{username}")
-    int updatePostMuteUntil(@Param("username") String username, @Param("until") String until);
-
     @Update("UPDATE sys_user SET nickname=#{nickname}, phone=#{phone}, enabled=#{enabled}, profile_json=#{profileJson} WHERE username=#{username}")
     int updateAdminWithProfile(Map<String, Object> row);
 

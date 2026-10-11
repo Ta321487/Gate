@@ -348,6 +348,14 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
             out["CONTENT_COMMENT_REPORT"] = True
         if thicken.get("followersOnlyComment"):
             out["CONTENT_FOLLOWERS_ONLY_COMMENT"] = True
+        # I-02：婚恋互关复用 UserFollowStore（同一 FLAG；FE 用 interactThicken.datingUserFollow）
+        interact = (
+            schema.get("interactThicken")
+            if isinstance(schema.get("interactThicken"), dict)
+            else {}
+        )
+        if interact.get("datingUserFollow"):
+            out["CONTENT_FOLLOWERS_ONLY_COMMENT"] = True
         if thicken.get("publishApproveNotify"):
             out["CONTENT_PUBLISH_APPROVE_NOTIFY"] = True
         n_report = _int_or(schema.get("reportHandleDays"), 0)

@@ -89,13 +89,14 @@
           </div>
         </template>
         <div v-if="ticket.allowRating" class="todo-row">
-          <span>已评价 {{ data.ratedCount || 0 }} {{ ticketUnit }} · 均分 {{ data.avgRating ?? '—' }}</span>
+          <span>已评价 {{ data.ratedCount || 0 }} {{ ticketUnit }} · {{ avgRatingLabel }} {{ data.avgRating ?? '—' }}</span>
           <el-button
             v-if="nav('/admin/ticket-records')"
             link
             @click="go(nav('/admin/ticket-records?rated=1'))"
           >看评价</el-button>
         </div>
+        <p v-if="timebankStarHint" class="cfg-hint">{{ timebankStarHint }}</p>
         <div v-if="showOverdue" class="todo-row">
           <span>逾期 {{ data.overdueBorrow || 0 }} {{ ticketUnit }}</span>
           <el-button
@@ -194,6 +195,18 @@ const approveEndsFlow = computed(
 )
 const rejectedLabel = computed(() => ticketStatusLabel('rejected', '已驳回'))
 const slaPageHint = computed(() => getSchema()?.labels?.slaPageHint || '')
+const avgRatingLabel = computed(() => {
+  const lab = getSchema()?.labels || {}
+  if (getSchema()?.interactThicken?.timebankStarReputation) {
+    return lab.timebankStarReputationLabel || lab.avgRatingLabel || '星级信誉'
+  }
+  return lab.avgRatingLabel || '均分'
+})
+const timebankStarHint = computed(() => {
+  if (!getSchema()?.interactThicken?.timebankStarReputation) return ''
+  if (!ticket.value.allowRating) return ''
+  return getSchema()?.labels?.timebankStarReputationHint || ''
+})
 const remindVerb = computed(() => ticket.value.verbs?.remind || '催办')
 const orderLabel = computed(() => getSchema()?.entities?.order?.label || '订单')
 const orderPendingLabel = computed(() => orderStatusLabel('pending', `待确认${orderLabel.value}`))
@@ -334,7 +347,7 @@ const cards = computed(() => {
   if (ticket.value.allowRating && data.value.avgRating != null) {
     list.push({
       key: 'avg',
-      label: `均分${data.value.ratedCount ? `（${data.value.ratedCount}）` : ''}`,
+      label: `${avgRatingLabel.value}${data.value.ratedCount ? `（${data.value.ratedCount}）` : ''}`,
       value: data.value.avgRating,
       ...(withNav('/admin/ticket-records?rated=1')),
     })
@@ -349,6 +362,19 @@ const cards = computed(() => {
       value: data.value.missingCheckinToday ?? '—',
       ...withNav('/admin/archive-logs'),
     })
+  }
+  if (caps.value.includes('survey') && Array.isArray(data.value.surveyRecycleCards)) {
+    const cards = data.value.surveyRecycleCards
+    if (cards.length) {
+      const top = cards[0]
+      const lab = getSchema()?.labels?.surveyRecycleCardLabel || '回收率'
+      list.push({
+        key: 'surveyRecycle',
+        label: `${lab}·${top.title || '问卷'}`,
+        value: `${top.ratePct ?? 0}%`,
+        ...withNav('/admin/survey/stats'),
+      })
+    }
   }
   return list
 })

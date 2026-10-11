@@ -21,6 +21,9 @@
       <div v-for="q in questions" :key="q.questionId" class="q">
         <p><strong>[{{ typeLabel(q.type) }}]</strong> {{ q.stem }}（满分 {{ q.maxScore }}）</p>
         <p v-if="q.type === 'subjective'" class="ref">参考答案：{{ q.answerKey || '（无）' }}</p>
+        <p v-if="rubricOn && q.type === 'subjective' && q.markRubric" class="ref">
+          {{ rubricLabel }}：{{ q.markRubric }}
+        </p>
         <p>考生作答：{{ q.userAnswer || '（空）' }}</p>
         <div v-if="q.type === 'subjective' && q.pending" class="mark">
           <el-input-number v-model="scores[q.questionId]" :min="0" :max="q.maxScore" />
@@ -34,9 +37,15 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'
+import { getSchema } from '../../utils/domainSchema'
+
+const labels = computed(() => getSchema()?.labels || {})
+const thicken = computed(() => getSchema()?.interactThicken || {})
+const rubricOn = computed(() => !!thicken.value.examMarkRubric)
+const rubricLabel = computed(() => labels.value.examMarkRubricLabel || '评分细则')
 
 const queue = ref([])
 const visible = ref(false)

@@ -7,7 +7,7 @@
     @update:model-value="emit('update:modelValue', $event)"
     @closed="onClosed"
   >
-    <p v-if="title" class="tip">对「{{ title }}」{{ followMode ? '追评' : '评分' }}</p>
+    <p v-if="title" class="tip">对「{{ title }}」{{ followMode ? '追评' : ratingLabel }}</p>
     <p v-if="lowHint && needLowRemark" class="hint">{{ lowHint }}</p>
     <el-form label-width="88px">
       <template v-if="dims.length">
@@ -20,7 +20,7 @@
           <el-rate v-model="dimScores[d.key]" :max="5" />
         </el-form-item>
       </template>
-      <el-form-item v-else label="评分" required>
+      <el-form-item v-else :label="ratingLabel" required>
         <el-rate v-model="rating" :max="5" />
       </el-form-item>
       <el-form-item v-if="tagOptions.length" label="评价标签">
@@ -80,9 +80,10 @@ const tagOptions = computed(() => {
 })
 const requireLow = computed(() => !!ticket.value.requireLowRatingRemark)
 const lowHint = computed(() => labels.value.lowRatingReasonHint || '')
+const ratingLabel = computed(() => labels.value.ratingLabel || '评分')
 const dialogTitle = computed(() => {
   if (props.followMode) return '追评'
-  return dims.value.length ? '多维评分' : '评分'
+  return dims.value.length ? '多维评分' : ratingLabel.value
 })
 
 const rating = ref(5)

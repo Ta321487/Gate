@@ -2,6 +2,7 @@
   <div>
     <h2>{{ title }}</h2>
     <p class="lead">{{ lead }}</p>
+    <p v-if="denyMessage" class="lead muted">被拦截时提示：{{ denyMessage }}</p>
     <el-form inline @submit.prevent>
       <el-form-item label="账号">
         <el-input v-model="form.username" maxlength="64" placeholder="禁止报名的用户名" style="width: 200px" />
@@ -34,6 +35,7 @@ const title = computed(() => labels.value.applyBlacklistTitle || '报名黑名�
 const lead = computed(
   () => labels.value.applyBlacklistLead || '维护禁止报名的账号；名单内用户提交报名时将被拒绝。',
 )
+const denyMessage = computed(() => labels.value.applyBlacklistDenyMessage || '')
 const list = ref([])
 const form = reactive({ username: '', reason: '' })
 

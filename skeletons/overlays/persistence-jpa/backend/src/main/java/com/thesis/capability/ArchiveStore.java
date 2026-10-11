@@ -3,11 +3,11 @@ package com.thesis.capability;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thesis.config.DomainResourceJson;
-import com.thesis.config.JdbcSupport;
+import com.thesis.config.JpaDb;
+import com.thesis.config.JpaSupport;
 import com.thesis.service.UserStore;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
+import com.thesis.config.GeneratedKeyHolder;
+import com.thesis.config.KeyHolder;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -361,8 +361,8 @@ public final class ArchiveStore {
         return ITEM;
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static JpaDb db() {
+        return JpaSupport.db();
     }
 
     private static String fmt(Object o) {
@@ -884,6 +884,32 @@ public final class ArchiveStore {
             db().update(
                     "UPDATE " + ITEM + " SET gallery_json=? WHERE id=?",
                     toGalleryJson(patch.get("galleryImages")), id);
+            if (hasItemColumn("album_audit_status")) {
+                db().update("UPDATE " + ITEM + " SET album_audit_status='pending' WHERE id=?", id);
+            }
+        }
+        patchOptStr(id, patch, "rejectReason", "reject_reason", 255);
+        patchOptInt(id, patch, "ageYears", "age_years");
+        patchOptStr(id, patch, "idealCity", "ideal_city", 64);
+        patchOptInt(id, patch, "idealAgeMin", "ideal_age_min");
+        patchOptInt(id, patch, "idealAgeMax", "ideal_age_max");
+        patchOptStr(id, patch, "albumAuditStatus", "album_audit_status", 16);
+        patchOptStr(id, patch, "introPackUrl", "intro_pack_url", 255);
+        patchOptStr(id, patch, "skillTags", "skill_tags", 255);
+        patchOptInt(id, patch, "quotaCap", "quota_cap");
+        // I-05 CARPOOL：行程加厚字段
+        patchOptStr(id, patch, "startCampus", "start_campus", 64);
+        patchOptStr(id, patch, "endCampus", "end_campus", 64);
+        patchOptStr(id, patch, "viaPoints", "via_points", 512);
+        patchOptStr(id, patch, "shareNote", "share_note", 255);
+        patchOptStr(id, patch, "prefNote", "pref_note", 255);
+        patchOptInt(id, patch, "luggageCount", "luggage_count");
+        patchOptNum(id, patch, "fareTotalYuan", "fare_total_yuan");
+        patchOptInt(id, patch, "remindBeforeMinutes", "remind_before_minutes");
+        if (hasItemColumn("start_at") && hasItemColumn("start_campus")
+                && (patch.containsKey("startAt") || patch.containsKey("startCampus")
+                || patch.containsKey("endCampus"))) {
+            assertNoDuplicateCarpoolTrip(id);
         }
         writeDetailAttrs(id, patch, m);
         if (roomEquipmentEnabled && patch.containsKey("equipmentNames")) {
@@ -1058,12 +1084,14 @@ public final class ArchiveStore {
             int next = toInt(patch.get("essence"));
             if (prevEssence <= 0 && next > 0) {
                 Map<String, Object> after = getItemRaw(id);
-                String author = after == null ? "" : str(after.get("ownerUsername"));
-                if (author.isBlank() && after != null) author = str(after.get("author"));
-                if (!author.isBlank()) {
+                String essenceAuthor = after == null ? "" : str(after.get("ownerUsername"));
+                if (essenceAuthor.isBlank() && after != null) {
+                    essenceAuthor = str(after.get("author"));
+                }
+                if (!essenceAuthor.isBlank()) {
                     try {
                         LoyaltyStore.awardPoints(
-                                author,
+                                essenceAuthor,
                                 essencePointsRewardAmount,
                                 "精华奖励 +" + essencePointsRewardAmount,
                                 "archive",
@@ -1255,13 +1283,39 @@ public final class ArchiveStore {
 
     /** 多店商品 / 投稿先审：超管驳回，不进公开目录。 */
     public static Map<String, Object> rejectPublishItem(long id) {
+        return rejectPublishItem(id, "");
+    }
+
+    /** I-02：婚恋/投稿审驳可写 reject_reason，供用户端回读。 */
+    public static Map<String, Object> rejectPublishItem(long id, String reason) {
         Map<String, Object> m = getItemRaw(id);
         if (m == null) return null;
         String cur = str(m.get("status")).trim();
         if (!"pending_review".equals(cur)) {
             throw new IllegalStateException("仅待审核条目可驳回");
         }
-        db().update("UPDATE " + ITEM + " SET status='rejected' WHERE id=?", id);
+        String r = reason == null ? "" : reason.trim();
+        if (r.length() > 255) r = r.substring(0, 255);
+        if (hasItemColumn("reject_reason")) {
+            db().update("UPDATE " + ITEM + " SET status='rejected', reject_reason=? WHERE id=?", r, id);
+        } else {
+            db().update("UPDATE " + ITEM + " SET status='rejected' WHERE id=?", id);
+        }
+        return getItemAdmin(id);
+    }
+
+    /** I-02：资料相册审核状态（none/pending/approved/rejected）。 */
+    public static Map<String, Object> setAlbumAuditStatus(long id, String status) {
+        if (!hasItemColumn("album_audit_status")) {
+            throw new IllegalStateException("系统未配置相册审核");
+        }
+        Map<String, Object> m = getItemRaw(id);
+        if (m == null) return null;
+        String st = status == null ? "" : status.trim().toLowerCase();
+        if (!"pending".equals(st) && !"approved".equals(st) && !"rejected".equals(st) && !"none".equals(st)) {
+            throw new IllegalArgumentException("相册审核状态无效");
+        }
+        db().update("UPDATE " + ITEM + " SET album_audit_status=? WHERE id=?", st, id);
         return getItemAdmin(id);
     }
 
@@ -1459,7 +1513,7 @@ public final class ArchiveStore {
             String ownerUsernameFilter) {
         return pageItems(
                 keyword, categoryId, categoryIds, tagIds, includeDeleted, page, size,
-                openCatalogOnly, ownerUsernameFilter, null, null);
+                openCatalogOnly, ownerUsernameFilter, null, null, null, null, null);
     }
 
     /**
@@ -1478,6 +1532,29 @@ public final class ArchiveStore {
             String ownerUsernameFilter,
             String artist,
             String album) {
+        return pageItems(
+                keyword, categoryId, categoryIds, tagIds, includeDeleted, page, size,
+                openCatalogOnly, ownerUsernameFilter, artist, album, null, null, null);
+    }
+
+    /**
+     * I-02：婚恋城市/年龄筛选（city→author 列；age→age_years）。
+     */
+    public static Map<String, Object> pageItems(
+            String keyword,
+            Long categoryId,
+            List<Long> categoryIds,
+            List<Long> tagIds,
+            boolean includeDeleted,
+            int page,
+            int size,
+            boolean openCatalogOnly,
+            String ownerUsernameFilter,
+            String artist,
+            String album,
+            String city,
+            Integer ageMin,
+            Integer ageMax) {
         expirePastStarts();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
@@ -1538,6 +1615,18 @@ public final class ArchiveStore {
         if (album != null && !album.isBlank() && hasItemColumn("album")) {
             where.append(" AND album LIKE ?");
             args.add("%" + album.trim() + "%");
+        }
+        if (city != null && !city.isBlank()) {
+            where.append(" AND " + authorColumn() + " LIKE ?");
+            args.add("%" + city.trim() + "%");
+        }
+        if (ageMin != null && ageMin > 0 && hasItemColumn("age_years")) {
+            where.append(" AND age_years >= ?");
+            args.add(ageMin);
+        }
+        if (ageMax != null && ageMax > 0 && hasItemColumn("age_years")) {
+            where.append(" AND age_years <= ?");
+            args.add(ageMax);
         }
         if (tagIds != null && !tagIds.isEmpty() && tagsEnabled()) {
             for (Long tid : tagIds) {
@@ -1882,6 +1971,23 @@ public final class ArchiveStore {
         putOptInt(m, rs, "view_count", "viewCount");
         putOptInt(m, rs, "play_count", "playCount");
         putOptStr(m, rs, "off_shelf_reason", "offShelfReason");
+        putOptStr(m, rs, "reject_reason", "rejectReason");
+        putOptInt(m, rs, "age_years", "ageYears");
+        putOptStr(m, rs, "ideal_city", "idealCity");
+        putOptInt(m, rs, "ideal_age_min", "idealAgeMin");
+        putOptInt(m, rs, "ideal_age_max", "idealAgeMax");
+        putOptStr(m, rs, "album_audit_status", "albumAuditStatus");
+        putOptStr(m, rs, "intro_pack_url", "introPackUrl");
+        putOptStr(m, rs, "skill_tags", "skillTags");
+        putOptInt(m, rs, "quota_cap", "quotaCap");
+        putOptStr(m, rs, "start_campus", "startCampus");
+        putOptStr(m, rs, "end_campus", "endCampus");
+        putOptStr(m, rs, "via_points", "viaPoints");
+        putOptStr(m, rs, "share_note", "shareNote");
+        putOptStr(m, rs, "pref_note", "prefNote");
+        putOptInt(m, rs, "luggage_count", "luggageCount");
+        putOptNum(m, rs, "fare_total_yuan", "fareTotalYuan");
+        putOptInt(m, rs, "remind_before_minutes", "remindBeforeMinutes");
         putOptStr(m, rs, "share_code", "shareCode");
         putOptStr(m, rs, "artist", "artist");
         putOptStr(m, rs, "album", "album");
@@ -2046,6 +2152,14 @@ public final class ArchiveStore {
             item.put("isbn", "");
             item.put("content", "");
             item.put("body", "");
+        }
+        // I-02：相册未通过前不对公开侧展示图集
+        if (hasItemColumn("album_audit_status")) {
+            String st = str(item.get("albumAuditStatus")).trim().toLowerCase();
+            if ("pending".equals(st) || "rejected".equals(st)) {
+                item.put("galleryImages", List.of());
+                item.put("albumHidden", true);
+            }
         }
     }
 
@@ -3082,6 +3196,126 @@ public final class ArchiveStore {
     }
 
     /**
+     * I-05：发布前预检（Controller 调用）。同日同标题已有行程则视为重复；
+     * 写入起终点后由 {@link #assertNoDuplicateCarpoolTrip(long)} 再精检。
+     */
+    public static boolean isDuplicateTrip(String username, String title, String startAt) {
+        if (!hasItemColumn("start_at") || !hasOwnerUsername()) return false;
+        String owner = username == null ? "" : username.trim();
+        String start = startAt == null ? "" : startAt.trim();
+        String t = title == null ? "" : title.trim();
+        if (owner.isBlank() || start.isBlank()) return false;
+        String day = start.length() >= 10 ? start.substring(0, 10) : start;
+        try {
+            if (!t.isBlank()) {
+                Integer n = db().queryForObject(
+                        "SELECT COUNT(*) FROM " + ITEM
+                                + " WHERE owner_username=? AND status IN ('available','pending_review')"
+                                + " AND DATE(start_at)=DATE(?) AND title=?",
+                        Integer.class, owner, day, t);
+                return n != null && n > 0;
+            }
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM " + ITEM
+                            + " WHERE owner_username=? AND status IN ('available','pending_review')"
+                            + " AND DATE(start_at)=DATE(?)",
+                    Integer.class, owner, day);
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * I-05：同一车主相近出发时间的行程不可重复发布（同日 + 起终点一致）。
+     */
+    private static void assertNoDuplicateCarpoolTrip(long itemId) {
+        if (!hasItemColumn("start_at") || !hasOwnerUsername()) return;
+        Map<String, Object> cur = getItemRaw(itemId);
+        if (cur == null) return;
+        String owner = str(cur.get("ownerUsername")).trim();
+        String startAt = str(cur.get("startAt")).trim();
+        if (owner.isBlank() || startAt.isBlank()) return;
+        String day = startAt.length() >= 10 ? startAt.substring(0, 10) : startAt;
+        String startCampus = hasItemColumn("start_campus") ? str(cur.get("startCampus")).trim() : "";
+        String endCampus = hasItemColumn("end_campus") ? str(cur.get("endCampus")).trim() : "";
+        try {
+            String sql = "SELECT COUNT(*) FROM " + ITEM
+                    + " WHERE owner_username=? AND id<>? AND status IN ('available','pending_review')"
+                    + " AND DATE(start_at)=DATE(?)";
+            Integer n;
+            if (!startCampus.isBlank() && !endCampus.isBlank()
+                    && hasItemColumn("start_campus") && hasItemColumn("end_campus")) {
+                n = db().queryForObject(
+                        sql + " AND start_campus=? AND end_campus=?",
+                        Integer.class, owner, itemId, day, startCampus, endCampus);
+            } else {
+                n = db().queryForObject(sql, Integer.class, owner, itemId, day);
+            }
+            if (n != null && n > 0) {
+                throw new IllegalStateException("你已发布相近出发时间的同行行程，请勿重复发布。");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * I-05：出发前提醒扫——按 remind_before_minutes 通知车主与已确认乘客（站内信）。
+     */
+    public static int remindDepartSweep() {
+        if (!hasStartAt() || !hasItemColumn("remind_before_minutes")
+                || !hasItemColumn("depart_reminded_at")) {
+            return 0;
+        }
+        List<Map<String, Object>> rows;
+        try {
+            rows = db().query(
+                    "SELECT id, title, owner_username, start_at, remind_before_minutes FROM " + ITEM
+                            + " WHERE status='available' AND remind_before_minutes>0"
+                            + " AND depart_reminded_at IS NULL"
+                            + " AND start_at > NOW()"
+                            + " AND start_at <= DATE_ADD(NOW(), INTERVAL remind_before_minutes MINUTE)",
+                    (rs, i) -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("id", rs.getLong("id"));
+                        row.put("title", rs.getString("title"));
+                        row.put("owner", rs.getString("owner_username"));
+                        row.put("startAt", fmt(rs.getTimestamp("start_at")));
+                        return row;
+                    });
+        } catch (Exception e) {
+            return 0;
+        }
+        int n = 0;
+        for (Map<String, Object> row : rows) {
+            long id = ((Number) row.get("id")).longValue();
+            String title = str(row.get("title")).trim();
+            if (title.isBlank()) title = "行程#" + id;
+            String body = "「" + title + "」将于 " + row.get("startAt") + " 出发，请按时到达约定地点。";
+            try {
+                String owner = str(row.get("owner")).trim();
+                if (!owner.isBlank()) {
+                    com.thesis.service.MessageStore.send(owner, "出发提醒", body, "archive", id);
+                }
+                try {
+                    List<String> riders = TicketStore.listApprovedUsernamesForItem(id);
+                    for (String u : riders) {
+                        if (u == null || u.isBlank() || u.equals(owner)) continue;
+                        com.thesis.service.MessageStore.send(u, "出发提醒", body, "archive", id);
+                    }
+                } catch (Exception ignored) {
+                }
+                db().update("UPDATE " + ITEM + " SET depart_reminded_at=NOW() WHERE id=?", id);
+                n++;
+            } catch (Exception ignored) {
+            }
+        }
+        return n;
+    }
+
+    /**
      * 床位占用皮：stock 扣至 0 且 stage 为「空闲」→「已分配」；回补且为「已分配」→「空闲」。
      * 线路报名皮：stock 扣至 0 且 stage 为「开放报名」→「满员」；回补且为「满员」→「开放报名」。
      * 已出团/下架/维修中等其它 stage 语义不动。
@@ -3109,6 +3343,10 @@ public final class ArchiveStore {
                 db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "已满", itemId);
             } else if (delta > 0 && stock > 0 && "已满".equals(stage)) {
                 db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "开放", itemId);
+            } else if (delta < 0 && stock <= 0 && "招募中".equals(stage)) {
+                db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "已满员", itemId);
+            } else if (delta > 0 && stock > 0 && "已满员".equals(stage)) {
+                db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "招募中", itemId);
             } else if (delta < 0 && stock <= 0
                     && ("招领中".equals(stage) || "招领".equals(stage) || stage.isEmpty())) {
                 db().update("UPDATE " + ITEM + " SET stage=? WHERE id=?", "已认领", itemId);
@@ -3132,9 +3370,11 @@ public final class ArchiveStore {
         }
         String stage = str(book.get("stage")).trim();
         try {
-            if ("满员".equals(stage) || "已出团".equals(stage) || "下架".equals(stage)) {
+            if ("满员".equals(stage) || "已出团".equals(stage) || "下架".equals(stage)
+                    || "已满员".equals(stage) || "已满".equals(stage)) {
                 db().update("UPDATE " + ITEM + " SET status='unavailable' WHERE id=?", id);
-            } else if ("开放报名".equals(stage) && stock > 0) {
+            } else if (("开放报名".equals(stage) || "招募中".equals(stage) || "开放".equals(stage))
+                    && stock > 0) {
                 db().update("UPDATE " + ITEM + " SET status='available' WHERE id=?", id);
             }
         } catch (RuntimeException e) {

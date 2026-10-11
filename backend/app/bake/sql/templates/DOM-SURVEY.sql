@@ -31,6 +31,14 @@ CREATE TABLE IF NOT EXISTS survey_form (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
+  open_at DATETIME NULL,
+  close_at DATETIME NULL,
+  anonymous TINYINT NOT NULL DEFAULT 0,
+  once_only TINYINT NOT NULL DEFAULT 1,
+  target_org VARCHAR(128) NOT NULL DEFAULT '',
+  remind_before_hours INT NOT NULL DEFAULT 0,
+  close_reminded_at DATETIME NULL,
+  target_count INT NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -41,6 +49,11 @@ CREATE TABLE IF NOT EXISTS survey_question (
   stem VARCHAR(2000) NOT NULL,
   sort_no INT NOT NULL DEFAULT 0,
   required TINYINT NOT NULL DEFAULT 1,
+  skip_when_label VARCHAR(8) NOT NULL DEFAULT '',
+  skip_to_sort INT NULL,
+  show_when_qid BIGINT NULL,
+  show_when_label VARCHAR(8) NOT NULL DEFAULT '',
+  matrix_rows VARCHAR(1000) NOT NULL DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -68,6 +81,31 @@ CREATE TABLE IF NOT EXISTS survey_answer (
   question_id BIGINT NOT NULL,
   answer_text VARCHAR(2000) DEFAULT '',
   UNIQUE KEY uk_survey_ans (response_id, question_id)
+);
+
+CREATE TABLE IF NOT EXISTS survey_draft (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  form_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_survey_draft (form_id, username)
+);
+
+CREATE TABLE IF NOT EXISTS survey_draft_answer (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  form_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  question_id BIGINT NOT NULL,
+  answer_text VARCHAR(2000) DEFAULT '',
+  UNIQUE KEY uk_survey_draft_ans (form_id, username, question_id),
+  KEY idx_survey_draft_ans (form_id, username)
+);
+
+CREATE TABLE IF NOT EXISTS survey_audience (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  form_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  UNIQUE KEY uk_survey_audience (form_id, username)
 );
 
 CREATE TABLE IF NOT EXISTS sys_message (

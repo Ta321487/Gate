@@ -30,6 +30,11 @@ public interface ExamMapper {
             + "VALUES (#{subjectId},#{type},#{stem},#{answerKey},#{score},#{explainText})")
     int insertQuestion(Map<String, Object> row);
 
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    @Insert("INSERT INTO exam_question (subject_id,type,stem,answer_key,score,explain_text,mark_rubric) "
+            + "VALUES (#{subjectId},#{type},#{stem},#{answerKey},#{score},#{explainText},#{markRubric})")
+    int insertQuestionWithRubric(Map<String, Object> row);
+
     int updateQuestion(Map<String, Object> row);
 
     @Select("SELECT COUNT(*) FROM exam_paper_question WHERE question_id=#{id}")
@@ -50,9 +55,36 @@ public interface ExamMapper {
     List<Map<String, Object>> listPublishedPapers();
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    @Insert("INSERT INTO exam_paper (title,duration_min,status,subject_id,max_attempts) "
-            + "VALUES (#{title},#{durationMin},#{status},#{subjectId},#{maxAttempts})")
+    @Insert("INSERT INTO exam_paper (title,duration_min,status,subject_id,max_attempts,pass_score,"
+            + "shuffle_questions,shuffle_options,explain_after_score,partial_multi,lock_after_submit,"
+            + "open_at,late_enter_min,entry_code,difficulty) "
+            + "VALUES (#{title},#{durationMin},#{status},#{subjectId},#{maxAttempts},#{passScore},"
+            + "#{shuffleQuestions},#{shuffleOptions},#{explainAfterScore},#{partialMulti},#{lockAfterSubmit},"
+            + "#{openAt},#{lateEnterMin},#{entryCode},#{difficulty})")
     int insertPaper(Map<String, Object> row);
+
+    @Select("SELECT COUNT(*) FROM information_schema.columns "
+            + "WHERE table_schema=DATABASE() AND table_name='exam_paper' AND column_name='entry_code'")
+    Integer countEntryCodeCol();
+
+    @Select("SELECT COUNT(*) FROM information_schema.columns "
+            + "WHERE table_schema=DATABASE() AND table_name='exam_question' AND column_name='mark_rubric'")
+    Integer countMarkRubricCol();
+
+    @Select("SELECT COUNT(*) FROM information_schema.columns "
+            + "WHERE table_schema=DATABASE() AND table_name='exam_attempt' AND column_name='blur_count'")
+    Integer countBlurCol();
+
+    @Select("SELECT COUNT(*) FROM exam_attempt WHERE username=#{username} AND paper_id=#{paperId} "
+            + "AND mode='exam' AND status IN ('submitted','reviewing')")
+    Integer countLockedExam(
+            @Param("username") String username, @Param("paperId") long paperId);
+
+    @Update("UPDATE exam_attempt SET blur_count=IFNULL(blur_count,0)+1 WHERE id=#{id}")
+    int bumpBlur(@Param("id") long id);
+
+    @Select("SELECT label, content FROM exam_option WHERE question_id=#{questionId} ORDER BY sort_no")
+    List<Map<String, Object>> listOptionRows(@Param("questionId") long questionId);
 
     int updatePaper(Map<String, Object> row);
 
@@ -69,6 +101,14 @@ public interface ExamMapper {
             @Param("paperId") long paperId,
             @Param("questionId") long questionId,
             @Param("sortNo") int sortNo);
+
+    @Select("SELECT COALESCE(MAX(sort_no),0) FROM exam_paper_question WHERE paper_id=#{paperId}")
+    Integer maxPaperQuestionSort(@Param("paperId") long paperId);
+
+    List<Long> listRandomQuestionIds(
+            @Param("paperId") long paperId,
+            @Param("type") String type,
+            @Param("count") int count);
 
     List<Map<String, Object>> selectAttempt(@Param("id") long id);
 
@@ -122,6 +162,16 @@ public interface ExamMapper {
             + "LEFT JOIN exam_answer ea ON ea.attempt_id=a.id AND ea.question_id=q.id "
             + "WHERE a.id=#{attemptId} ORDER BY pq.sort_no, pq.id")
     List<Map<String, Object>> listReviewAnswers(@Param("attemptId") long attemptId);
+
+    @Select("SELECT q.id AS questionId, q.type, q.stem, q.answer_key AS answerKey, q.score AS maxScore, "
+            + "q.mark_rubric AS markRubric, "
+            + "ea.answer_text AS userAnswer, ea.is_correct AS isCorrect, ea.score AS earnedScore "
+            + "FROM exam_paper_question pq "
+            + "JOIN exam_question q ON q.id=pq.question_id "
+            + "JOIN exam_attempt a ON a.paper_id=pq.paper_id "
+            + "LEFT JOIN exam_answer ea ON ea.attempt_id=a.id AND ea.question_id=q.id "
+            + "WHERE a.id=#{attemptId} ORDER BY pq.sort_no, pq.id")
+    List<Map<String, Object>> listReviewAnswersWithRubric(@Param("attemptId") long attemptId);
 
     @Select("SELECT type, score FROM exam_question WHERE id=#{id}")
     List<Map<String, Object>> selectQuestionScore(@Param("id") long id);
@@ -180,6 +230,21 @@ public interface ExamMapper {
 
     @Delete("DELETE FROM exam_wrongbook WHERE id=#{id} AND username=#{username}")
     int deleteWrongbook(@Param("username") String username, @Param("id") long id);
+
+    @Select("SELECT w.question_id AS questionId, q.type, q.stem, q.answer_key AS answerKey "
+            + "FROM exam_wrongbook w JOIN exam_question q ON q.id=w.question_id "
+            + "WHERE w.username=#{username} ORDER BY w.id DESC")
+    List<Map<String, Object>> listWrongbookExport(@Param("username") String username);
+
+    @Insert("INSERT INTO exam_attempt (paper_id,username,mode,status,score,total_score,started_at,submitted_at) "
+            + "VALUES (#{paperId},#{username},'exam','submitted',#{score},#{totalScore},#{startedAt},#{submittedAt})")
+    int insertAttemptImported(
+            @Param("paperId") long paperId,
+            @Param("username") String username,
+            @Param("score") int score,
+            @Param("totalScore") int totalScore,
+            @Param("startedAt") java.sql.Timestamp startedAt,
+            @Param("submittedAt") java.sql.Timestamp submittedAt);
 
     @Select("SELECT COUNT(*) FROM exam_paper WHERE status='published' AND gate_ticket=1")
     Integer countGatePapers();

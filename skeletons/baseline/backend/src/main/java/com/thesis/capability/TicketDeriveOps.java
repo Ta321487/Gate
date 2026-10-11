@@ -208,8 +208,16 @@ final class TicketDeriveOps {
                 pass ? "peer_accept" : "peer_reject",
                 username,
                 pass ? "对方确认" : (note.isBlank() ? "对方婉拒" : note));
+        // I-05：车主确认后锁座
+        if (pass && TicketStore.hasColumn("seat_locked")) {
+            try {
+                TicketSql.db().update(
+                        "UPDATE " + TicketStore.TICKET + " SET seat_locked=1 WHERE id=?", ticketId);
+                out = get(ticketId);
+            } catch (Exception ignored) {
+            }
+        }
         return out;
-    
     }
 
     /** 当前用户是否为某单据关联档案的确认人 */
@@ -242,6 +250,392 @@ final class TicketDeriveOps {
             throw new IllegalStateException("审核进度写入失败", e);
         }
     
+    }
+
+    /** I-03：管理端调剂（非档案主人）审核后额外留痕。 */
+    static void maybeAppendAdminAdjust(long ticketId, String operator, boolean pass, String remark) {
+        if (!TicketStore.peerAccept || ticketId <= 0) return;
+        String op = operator == null ? "" : operator.trim();
+        if (op.isBlank() || "system".equals(op)) return;
+        if (isPeerOwnerOf(ticketId, op)) return;
+        String note = remark == null ? "" : remark.trim();
+        appendProgress(
+                ticketId,
+                "admin_adjust",
+                op,
+                pass ? (note.isBlank() ? "调剂确认" : note) : (note.isBlank() ? "调剂驳回" : note));
+    }
+
+    /** I-03：档案是否仍在盲选窗口（有截止且未过）。 */
+    static boolean isBlindPhaseActive(Map<String, Object> item) {
+        if (!TicketStore.blindPhaseUntilDeadline || !TicketStore.peerAccept) return false;
+        if (item == null || !ArchiveStore.hasApplyDeadline()) return false;
+        Object raw = item.get("applyDeadlineAt");
+        if (raw == null || String.valueOf(raw).isBlank()) return false;
+        try {
+            String s = String.valueOf(raw).trim().replace('T', ' ');
+            LocalDateTime deadline;
+            if (s.length() == 10) {
+                deadline = LocalDateTime.parse(s + "T23:59:59");
+            } else {
+                deadline = LocalDateTime.parse(s.substring(0, Math.min(19, s.length())), TicketSql.FMT);
+            }
+            return LocalDateTime.now().isBefore(deadline) || LocalDateTime.now().isEqual(deadline);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** I-03：盲选脱敏 peer-inbox 行。 */
+    static void applyBlindRedaction(List<Map<String, Object>> list) {
+        if (list == null || list.isEmpty() || !TicketStore.blindPhaseUntilDeadline) return;
+        for (Map<String, Object> row : list) {
+            if (row == null) continue;
+            long itemId = TicketSql.toLong(row.get("bookId"));
+            if (itemId <= 0) itemId = TicketSql.toLong(row.get("itemId"));
+            Map<String, Object> item = itemId > 0 ? ArchiveStore.getItemRaw(itemId) : null;
+            if (!isBlindPhaseActive(item)) continue;
+            row.put("username", "");
+            row.put("displayUsername", "盲选申请人");
+            row.put("remark", "");
+            row.put("blindMasked", true);
+        }
+    }
+
+    /** I-03：截止前修改志愿说明/类型。 */
+    public static Map<String, Object> editWishBeforeDeadline(
+            long ticketId, String username, String remark, String contactChannel) {
+        if (!TicketStore.peerAccept || !TicketStore.allowWishEditBeforeDeadline) {
+            throw new IllegalStateException("当前不可修改志愿");
+        }
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (username == null || username.isBlank()
+                || !username.equals(String.valueOf(m.get("username")))) {
+            throw new IllegalStateException("只能修改自己的志愿");
+        }
+        if (!"pending".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅待确认志愿可修改");
+        }
+        long itemId = TicketSql.toLong(m.get("bookId"));
+        if (itemId <= 0) itemId = TicketSql.toLong(m.get("itemId"));
+        Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+        if (item == null) throw new IllegalStateException(TicketCopy.archiveNoun() + "不存在");
+        TicketAsserts.assertApplyDeadline(item);
+        if (remark != null) {
+            String note = remark.trim();
+            com.thesis.service.SensitiveWordGate.assertClean(note);
+            if (note.length() > 255) note = note.substring(0, 255);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET remark=? WHERE id=?", note, ticketId);
+        }
+        if (contactChannel != null && TicketStore.hasColumn("contact_channel")) {
+            String ch = contactChannel.trim();
+            if (ch.length() > 64) ch = ch.substring(0, 64);
+            TicketAsserts.assertAdjustWishCap(username, ch, ticketId);
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET contact_channel=? WHERE id=?", ch, ticketId);
+        }
+        appendProgress(ticketId, "wish_edit", username, "截止前修改志愿");
+        return get(ticketId);
+    }
+
+    /** I-03：待确认超时自动婉拒。 */
+    public static int autoRejectStalePeerPending() {
+        if (!TicketStore.peerAccept || !TicketStore.allowPeerTimeoutReject) return 0;
+        if (TicketStore.peerTimeoutRejectHours <= 0 || !TicketStore.enabled) return 0;
+        List<Long> ids;
+        try {
+            ids = TicketSql.db().query(
+                    "SELECT id FROM " + TicketStore.TICKET
+                            + " WHERE status='pending'"
+                            + " AND created_at <= DATE_SUB(NOW(), INTERVAL ? HOUR) LIMIT 50",
+                    rs -> {
+                        List<Long> list = new ArrayList<>();
+                        while (rs.next()) list.add(rs.getLong("id"));
+                        return list;
+                    },
+                    TicketStore.peerTimeoutRejectHours);
+        } catch (Exception e) {
+            return 0;
+        }
+        int n = 0;
+        for (Long id : ids) {
+            if (id == null || id <= 0) continue;
+            try {
+                Map<String, Object> m = TicketRowMaps.load(id);
+                if (m == null || !"pending".equals(String.valueOf(m.get("status")))) continue;
+                TicketStore.approve(id, false, "确认超时自动婉拒", "system", true);
+                appendProgress(id, "peer_timeout_reject", "system", "确认超时自动婉拒");
+                n++;
+            } catch (Exception ignored) {
+            }
+        }
+        return n;
+    }
+
+    /** I-03：互选结果公示（已通过名单，用户名脱敏）。 */
+    public static List<Map<String, Object>> mutualMatchResult(Long itemId) {
+        if (!TicketStore.peerAccept || TicketStore.MODE != TicketStore.Mode.ARCHIVE) return List.of();
+        StringBuilder sql = new StringBuilder(
+                "SELECT id, username, status, apply_at, " + TicketStore.itemFkColumn()
+                        + " AS item_id FROM " + TicketStore.TICKET
+                        + " WHERE status='approved'");
+        List<Object> args = new ArrayList<>();
+        if (itemId != null && itemId > 0) {
+            sql.append(" AND ").append(TicketStore.itemFkColumn()).append("=?");
+            args.add(itemId);
+        }
+        sql.append(" ORDER BY id DESC LIMIT 200");
+        return TicketSql.db().query(
+                sql.toString(),
+                (rs, i) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("id", rs.getLong("id"));
+                    String u = rs.getString("username");
+                    if (u != null && u.length() > 2) {
+                        u = u.substring(0, 1) + "**";
+                    }
+                    row.put("username", u == null ? "" : u);
+                    row.put("status", rs.getString("status"));
+                    row.put("applyAt", rs.getTimestamp("apply_at"));
+                    row.put("itemId", rs.getLong("item_id"));
+                    return row;
+                },
+                args.toArray());
+    }
+
+    /** I-03：管理端调剂留痕分页。 */
+    public static Map<String, Object> pageAdjustLog(int page, int size) {
+        Map<String, Object> empty = new LinkedHashMap<>();
+        empty.put("list", List.of());
+        empty.put("total", 0);
+        empty.put("page", Math.max(1, page));
+        empty.put("size", Math.max(1, size));
+        if (!TicketStore.peerAccept) return empty;
+        if (TicketStore.PROGRESS == null || TicketStore.PROGRESS.isBlank()) return empty;
+        TicketStore.ensureProgressTable();
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        Integer total = TicketSql.db().queryForObject(
+                "SELECT COUNT(*) FROM " + TicketStore.PROGRESS + " WHERE status='admin_adjust'",
+                Integer.class);
+        int t = total == null ? 0 : total;
+        List<Map<String, Object>> list = TicketSql.db().query(
+                "SELECT id, ticket_id, status, operator, remark, created_at FROM "
+                        + TicketStore.PROGRESS
+                        + " WHERE status='admin_adjust' ORDER BY id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("id", rs.getLong("id"));
+                    row.put("ticketId", rs.getLong("ticket_id"));
+                    row.put("status", rs.getString("status"));
+                    row.put("operator", rs.getString("operator"));
+                    row.put("remark", rs.getString("remark"));
+                    row.put("createdAt", rs.getTimestamp("created_at"));
+                    return row;
+                },
+                size,
+                (page - 1) * size);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    /** I-04 TEAM：向同学发送组队邀请站内信。 */
+    public static Map<String, Object> sendTeamInvite(
+            String fromUser, String toUser, long itemId, String note) {
+        if (!TicketStore.peerAccept) throw new IllegalStateException("当前未开启组队互选");
+        String from = fromUser == null ? "" : fromUser.trim();
+        String to = toUser == null ? "" : toUser.trim();
+        if (from.isBlank() || to.isBlank()) throw new IllegalStateException("请指定邀请对象");
+        if (from.equals(to)) throw new IllegalStateException("不可邀请自己");
+        Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+        if (item == null) throw new IllegalArgumentException("组队资料不存在");
+        String title = TicketSql.str(item.get("title"));
+        if (title.isBlank()) title = "组队资料#" + itemId;
+        String extra = note == null ? "" : note.trim();
+        String body = "邀请你加入「" + title + "」，请到组队资料目录查看并提交志愿。"
+                + (extra.isBlank() ? "" : (" " + extra));
+        com.thesis.service.MessageStore.send(to, "组队邀请", body, "archive", itemId);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("to", to);
+        out.put("itemId", itemId);
+        out.put("ok", true);
+        return out;
+    }
+
+    /** I-04 TEAM：已互选成员申请退出（须队长同意）。 */
+    public static Map<String, Object> requestTeamExit(long ticketId, String username) {
+        if (!TicketStore.peerAccept) throw new IllegalStateException("当前未开启组队互选");
+        if (!TicketStore.hasColumn("exit_request")) {
+            throw new IllegalStateException("系统未配置退出申请字段");
+        }
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (username == null || username.isBlank()
+                || !username.equals(String.valueOf(m.get("username")))) {
+            throw new IllegalStateException("只能申请退出自己的组队");
+        }
+        if (!"approved".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅已互选成员可申请退出");
+        }
+        int prev = m.get("exitRequest") instanceof Number n ? n.intValue() : 0;
+        if (prev > 0) throw new IllegalStateException("退出申请已在处理中");
+        TicketSql.db().update(
+                "UPDATE " + TicketStore.TICKET + " SET exit_request=1 WHERE id=?", ticketId);
+        long itemId = TicketSql.toLong(m.get("bookId"));
+        if (itemId <= 0) itemId = TicketSql.toLong(m.get("itemId"));
+        Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+        String owner = item == null ? "" : TicketSql.str(item.get("ownerUsername"));
+        if (!owner.isBlank()) {
+            try {
+                com.thesis.service.MessageStore.send(
+                        owner,
+                        "退出申请待确认",
+                        com.thesis.service.UserStore.displayName(username)
+                                + " 申请退出「" + subjectOfTicket(m) + "」，请确认或拒绝。",
+                        "ticket",
+                        ticketId);
+            } catch (Exception ignored) {
+            }
+        }
+        appendProgress(ticketId, "exit_request", username, "申请退出");
+        return get(ticketId);
+    }
+
+    /** I-04 TEAM：队长待处理的退出申请列表。 */
+    public static Map<String, Object> pageExitInbox(String ownerUsername, int page, int size) {
+        Map<String, Object> empty = new LinkedHashMap<>();
+        empty.put("list", List.of());
+        empty.put("total", 0);
+        empty.put("page", Math.max(1, page));
+        empty.put("size", Math.max(1, size));
+        if (!TicketStore.peerAccept || !TicketStore.hasColumn("exit_request")) return empty;
+        if (TicketStore.MODE != TicketStore.Mode.ARCHIVE) return empty;
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank()) return empty;
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        String itemTable = ArchiveStore.itemTable();
+        String fk = TicketStore.itemFkColumn();
+        String from = " FROM " + TicketStore.TICKET + " t JOIN " + itemTable + " i ON t." + fk + "=i.id";
+        String where = " WHERE i.owner_username=? AND t.status='approved' AND t.exit_request=1";
+        Integer total = TicketSql.db().queryForObject(
+                "SELECT COUNT(*)" + from + where, Integer.class, owner);
+        int t = total == null ? 0 : total;
+        List<Map<String, Object>> list = TicketSql.db().query(
+                "SELECT t.*" + from + where + " ORDER BY t.id DESC LIMIT ? OFFSET ?",
+                (rs, i) -> TicketStatusOps.enrich(TicketRowMaps.mapRow(rs)),
+                owner,
+                size,
+                (page - 1) * size);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
+    /** I-04 TEAM：队长处理退出申请。 */
+    public static Map<String, Object> peerExitRespond(
+            long ticketId, String ownerUsername, boolean pass, String remark) {
+        if (!TicketStore.peerAccept) throw new IllegalStateException("当前未开启组队互选");
+        if (!TicketStore.hasColumn("exit_request")) {
+            throw new IllegalStateException("系统未配置退出申请字段");
+        }
+        if (!isPeerOwnerOf(ticketId, ownerUsername)) {
+            throw new IllegalStateException("仅队长可处理退出申请");
+        }
+        Map<String, Object> m = TicketRowMaps.load(ticketId);
+        if (m == null) throw new IllegalArgumentException("单据不存在");
+        if (!"approved".equals(String.valueOf(m.get("status")))) {
+            throw new IllegalStateException("仅已互选单据可处理退出");
+        }
+        int req = m.get("exitRequest") instanceof Number n ? n.intValue() : 0;
+        if (req <= 0) throw new IllegalStateException("该成员未申请退出");
+        String note = remark == null ? "" : remark.trim();
+        if (pass) {
+            // 同意退出：回补名额并完结
+            long itemId = TicketSql.toLong(m.get("bookId"));
+            if (itemId <= 0) itemId = TicketSql.toLong(m.get("itemId"));
+            if (TicketStore.MODE == TicketStore.Mode.ARCHIVE && TicketStore.useQuota && itemId > 0) {
+                ArchiveStore.adjustStock(itemId, rowQty(m));
+            }
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET
+                            + " SET status='returned', exit_request=0, remark=? WHERE id=?",
+                    note.isBlank() ? "队长同意退出" : note,
+                    ticketId);
+            appendProgress(ticketId, "exit_accept", ownerUsername, note.isBlank() ? "同意退出" : note);
+            try {
+                String user = TicketSql.str(m.get("username"));
+                if (!user.isBlank()) {
+                    com.thesis.service.MessageStore.send(
+                            user, "退出已同意", "队长已同意你退出组队。", "ticket", ticketId);
+                }
+            } catch (Exception ignored) {
+            }
+        } else {
+            TicketSql.db().update(
+                    "UPDATE " + TicketStore.TICKET + " SET exit_request=0 WHERE id=?", ticketId);
+            appendProgress(ticketId, "exit_reject", ownerUsername, note.isBlank() ? "拒绝退出" : note);
+            try {
+                String user = TicketSql.str(m.get("username"));
+                if (!user.isBlank()) {
+                    com.thesis.service.MessageStore.send(
+                            user,
+                            "退出未通过",
+                            note.isBlank() ? "队长未同意退出申请。" : note,
+                            "ticket",
+                            ticketId);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return get(ticketId);
+    }
+
+    private static String subjectOfTicket(Map<String, Object> ticket) {
+        String subject = TicketSql.str(ticket.get("title"));
+        if (subject.isBlank()) subject = TicketSql.str(ticket.get("bookTitle"));
+        if (subject.isBlank()) subject = "单据#" + ticket.get("id");
+        return subject;
+    }
+
+    /** I-03：向已互选学生发站内通知；返回通知条数。 */
+    public static int notifyMutualMatchResults() {
+        if (!TicketStore.peerAccept) return 0;
+        List<Map<String, Object>> rows = TicketSql.db().query(
+                "SELECT id, username FROM " + TicketStore.TICKET
+                        + " WHERE status='approved' ORDER BY id DESC LIMIT 500",
+                (rs, i) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("id", rs.getLong("id"));
+                    row.put("username", rs.getString("username"));
+                    return row;
+                });
+        int n = 0;
+        for (Map<String, Object> row : rows) {
+            String user = TicketSql.str(row.get("username")).trim();
+            long tid = TicketSql.toLong(row.get("id"));
+            if (user.isBlank() || tid <= 0) continue;
+            try {
+                com.thesis.service.MessageStore.send(
+                        user,
+                        "互选结果通知",
+                        "你的志愿已确认互选，请到「我的志愿」查看详情。",
+                        "ticket",
+                        tid);
+                n++;
+            } catch (Exception ignored) {
+            }
+        }
+        return n;
     }
 
 

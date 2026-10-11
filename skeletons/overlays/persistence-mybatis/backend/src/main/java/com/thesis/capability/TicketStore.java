@@ -76,6 +76,16 @@ public final class TicketStore {
     static boolean allowCheckin = false;
     /** C-05：档案主人可确认/拒绝志愿（互选） */
     static boolean peerAccept = false;
+    /** I-03：截止前允许申请人修改志愿说明/类型 */
+    static boolean allowWishEditBeforeDeadline = false;
+    /** I-03：截止前盲选（确认人侧脱敏申请人） */
+    static boolean blindPhaseUntilDeadline = false;
+    /** I-03：待确认超时自动婉拒 */
+    static boolean allowPeerTimeoutReject = false;
+    /** I-03：待确认超时小时数；≤0 关闭 */
+    static int peerTimeoutRejectHours = 0;
+    /** I-03：进行中的「调剂志愿」上限；≤0 不限 */
+    static int maxAdjustWishes = 0;
     /** C-09：审核通过签发通行码（非真门禁） */
     static boolean issuePassCode = false;
     /** 允许续借（延长 due_at） */
@@ -124,7 +134,7 @@ public final class TicketStore {
 
     private TicketStore() {}
 
-    private static TicketMapper mapper() {
+    static TicketMapper mapper() {
         return MybatisSupport.mapper(TicketMapper.class);
     }
 
@@ -133,7 +143,7 @@ public final class TicketStore {
     }
 
     /** 尚未 Mapper 化的原生 SQL 片段（与 MyBatis 共用库）。 */
-    private static MbSql db() {
+    static MbSql db() {
         return MybatisSupport.db();
     }
 
@@ -625,7 +635,7 @@ public final class TicketStore {
         String joined = String.join(",", names);
         if (hasColumn("cc_usernames")) {
             try {
-                TicketSql.db().update(
+                MybatisSupport.db().update(
                         "UPDATE " + TICKET + " SET cc_usernames=? WHERE id=?",
                         joined.length() > 512 ? joined.substring(0, 512) : joined,
                         ticketId);
@@ -691,7 +701,7 @@ public final class TicketStore {
         if (!untilDt.isAfter(java.time.LocalDateTime.now())) {
             throw new IllegalStateException("代审截止日期须晚于当前时间");
         }
-        TicketSql.db().update(
+        MybatisSupport.db().update(
                 "INSERT INTO approve_delegate (username, delegate_username, until_at) VALUES (?,?,?) "
                         + "ON DUPLICATE KEY UPDATE delegate_username=VALUES(delegate_username), until_at=VALUES(until_at)",
                 u,
@@ -709,7 +719,7 @@ public final class TicketStore {
         String u = username == null ? "" : username.trim();
         if (u.isBlank()) return java.util.Map.of();
         try {
-            return TicketSql.db().query(
+            return MybatisSupport.db().query(
                     "SELECT username, delegate_username, until_at FROM approve_delegate WHERE username=?",
                     rs -> {
                         if (!rs.next()) return java.util.Map.of();
@@ -732,7 +742,7 @@ public final class TicketStore {
         String u = username == null ? "" : username.trim();
         if (u.isBlank()) return;
         try {
-            TicketSql.db().update("DELETE FROM approve_delegate WHERE username=?", u);
+            MybatisSupport.db().update("DELETE FROM approve_delegate WHERE username=?", u);
         } catch (Exception ignored) {
         }
     }
@@ -743,7 +753,7 @@ public final class TicketStore {
         String op = operator == null ? "" : operator.trim();
         if (op.isBlank()) return "";
         try {
-            return TicketSql.db().query(
+            return MybatisSupport.db().query(
                     "SELECT username FROM approve_delegate WHERE delegate_username=? AND until_at > NOW() LIMIT 1",
                     rs -> rs.next() ? TicketSql.str(rs.getString("username")) : "",
                     op);
@@ -782,7 +792,7 @@ public final class TicketStore {
         if (u.isBlank()) return;
         if (u.length() > 255) u = u.substring(0, 255);
         try {
-            TicketSql.db().update("UPDATE " + TICKET + " SET approve_attach_url=? WHERE id=?", u, ticketId);
+            MybatisSupport.db().update("UPDATE " + TICKET + " SET approve_attach_url=? WHERE id=?", u, ticketId);
         } catch (Exception ignored) {
         }
     }
@@ -796,7 +806,7 @@ public final class TicketStore {
         if (!enabled) return 0;
         java.util.List<Long> ids;
         try {
-            ids = TicketSql.db().query(
+            ids = MybatisSupport.db().query(
                     "SELECT id FROM " + TICKET
                             + " WHERE status IN ('pending','pending_mid','pending_final')"
                             + " AND created_at <= DATE_SUB(NOW(), INTERVAL ? HOUR) LIMIT 50",
@@ -1633,7 +1643,7 @@ public final class TicketStore {
     static double sumProcureAmount(long itemId) {
         if (itemId <= 0 || !hasColumn("procure_amount")) return 0;
         try {
-            List<Map<String, Object>> rows = TicketSql.db().query(
+            List<Map<String, Object>> rows = MybatisSupport.db().query(
                     "SELECT IFNULL(SUM(procure_amount),0) AS s FROM " + TICKET
                             + " WHERE " + itemFkColumn() + "=? AND status IN ('approved','pending','pending_mid','pending_final','waitlisted')",
                     (rs, i) -> {
@@ -1809,6 +1819,13 @@ public final class TicketStore {
 
     public static void configurePeerAccept(boolean enabled) {
         peerAccept = enabled;
+        if (enabled) {
+            allowWishEditBeforeDeadline = true;
+            blindPhaseUntilDeadline = true;
+            allowPeerTimeoutReject = true;
+            if (peerTimeoutRejectHours <= 0) peerTimeoutRejectHours = 72;
+            if (maxAdjustWishes <= 0) maxAdjustWishes = 1;
+        }
     }
 
     public static boolean isPeerAccept() {
@@ -2030,6 +2047,81 @@ public final class TicketStore {
         return TicketDeriveOps.peerRespond(ticketId, username, pass, remark);
     }
 
+    /** I-03：截止前修改志愿 */
+    public static Map<String, Object> editWishBeforeDeadline(
+            long ticketId, String username, String remark, String contactChannel) {
+        return TicketDeriveOps.editWishBeforeDeadline(ticketId, username, remark, contactChannel);
+    }
+
+    /** I-03：待确认超时自动婉拒 */
+    public static int autoRejectStalePeerPending() {
+        return TicketDeriveOps.autoRejectStalePeerPending();
+    }
+
+    /** I-03：互选结果公示 */
+    public static List<Map<String, Object>> mutualMatchResult(Long itemId) {
+        return TicketDeriveOps.mutualMatchResult(itemId);
+    }
+
+    /** I-03：调剂留痕分页 */
+    public static Map<String, Object> pageAdjustLog(int page, int size) {
+        return TicketDeriveOps.pageAdjustLog(page, size);
+    }
+
+    /** I-03：互选结果通知信 */
+    public static int notifyMutualMatchResults() {
+        return TicketDeriveOps.notifyMutualMatchResults();
+    }
+
+    /** I-04 TEAM：组队邀请站内信 */
+    public static Map<String, Object> sendTeamInvite(
+            String fromUser, String toUser, long itemId, String note) {
+        return TicketDeriveOps.sendTeamInvite(fromUser, toUser, itemId, note);
+    }
+
+    /** I-04 TEAM：申请退出 */
+    public static Map<String, Object> requestTeamExit(long ticketId, String username) {
+        return TicketDeriveOps.requestTeamExit(ticketId, username);
+    }
+
+    /** I-04 TEAM：队长处理退出 */
+    public static Map<String, Object> peerExitRespond(
+            long ticketId, String ownerUsername, boolean pass, String remark) {
+        return TicketDeriveOps.peerExitRespond(ticketId, ownerUsername, pass, remark);
+    }
+
+    /** I-04 TEAM：退出申请收件箱 */
+    public static Map<String, Object> pageExitInbox(String ownerUsername, int page, int size) {
+        return TicketDeriveOps.pageExitInbox(ownerUsername, page, size);
+    }
+
+    /** I-05：某行程下已确认乘客用户名（出发提醒用）。 */
+    public static List<String> listApprovedUsernamesForItem(long itemId) {
+        if (!enabled || itemId <= 0 || TICKET == null || TICKET.isBlank()) return List.of();
+        try {
+            return db().query(
+                    "SELECT username FROM " + TICKET
+                            + " WHERE " + itemFkColumn() + "=? AND status='approved'",
+                    (rs, i) -> rs.getString("username"),
+                    itemId);
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /** I-05：用户爽约次数（确认后取消累计）。 */
+    public static int countNoShow(String username) {
+        if (!enabled || !hasColumn("no_show") || username == null || username.isBlank()) return 0;
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND no_show=1",
+                    Integer.class, username.trim());
+            return n == null ? 0 : n;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     /** 待我确认：档案 owner_username=我 且待审的志愿单。 */
     public static Map<String, Object> pagePeerInbox(String ownerUsername, String status, int page, int size) {
         if (!peerAccept || MODE != Mode.ARCHIVE) {
@@ -2060,6 +2152,7 @@ public final class TicketStore {
         for (Map<String, Object> raw : pi.getList()) {
             list.add(TicketStatusOps.enrich(TicketRowMaps.shape(raw)));
         }
+        TicketDeriveOps.applyBlindRedaction(list);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
         out.put("total", pi.getTotal());
@@ -2352,7 +2445,7 @@ public final class TicketStore {
         }
         mapper().updateRatingBasic(TICKET, ticketId, overall, note);
         if (hasColumn("rating_anonymous")) {
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TICKET + " SET rating_anonymous=? WHERE id=?",
                     anon ? 1 : 0, ticketId);
         }
@@ -2367,6 +2460,19 @@ public final class TicketStore {
         if (anon) tip = tip + " · 匿名";
         if (!note.isBlank()) tip = tip + " · " + note;
         TicketDeriveOps.appendProgress(ticketId, followPass ? "follow_rated" : "rated", username, tip);
+        // I-05：评价后隐藏联系方式（拼车 seat_locked 列域）
+        if (hasColumn("seat_locked") && hasColumn("contact_channel")) {
+            try {
+                db().update("UPDATE " + TICKET + " SET contact_channel='' WHERE id=?", ticketId);
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasColumn("seat_locked") && hasColumn("contact_phone")) {
+            try {
+                db().update("UPDATE " + TICKET + " SET contact_phone='' WHERE id=?", ticketId);
+            } catch (Exception ignored) {
+            }
+        }
         return TicketDeriveOps.get(ticketId);
     }
 
@@ -2403,12 +2509,12 @@ public final class TicketStore {
         if (!expect.equalsIgnoreCase(got)) {
             throw new IllegalStateException("签到码不正确");
         }
-        TicketSql.db().update(
+        MybatisSupport.db().update(
                 "UPDATE " + TICKET + " SET checked_in_at=NOW(), status='returned' WHERE id=?",
                 ticketId);
         if (allowLateMinutes && lateMinutes != null && hasColumn("late_minutes")) {
             int late = Math.max(0, lateMinutes);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TICKET + " SET late_minutes=? WHERE id=?",
                     late,
                     ticketId);
@@ -2436,12 +2542,12 @@ public final class TicketStore {
         if (prev != null && !String.valueOf(prev).isBlank()) {
             throw new IllegalStateException("已签到，不可重复补签");
         }
-        TicketSql.db().update(
+        MybatisSupport.db().update(
                 "UPDATE " + TICKET + " SET checked_in_at=NOW(), status='returned' WHERE id=?",
                 ticketId);
         if (allowLateMinutes && lateMinutes != null && hasColumn("late_minutes")) {
             int late = Math.max(0, lateMinutes);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TICKET + " SET late_minutes=? WHERE id=?",
                     late,
                     ticketId);
@@ -2470,7 +2576,7 @@ public final class TicketStore {
         }
         int stock = item.get("stock") instanceof Number n ? n.intValue() : 0;
         if (stock <= 0) throw new IllegalStateException("当前无名额可抽");
-        List<Long> pool = TicketSql.db().query(
+        List<Long> pool = MybatisSupport.db().query(
                 "SELECT id FROM " + TICKET + " WHERE " + itemFkColumn()
                         + "=? AND status='lottery' ORDER BY id",
                 (rs, i) -> rs.getLong("id"),
@@ -2492,7 +2598,7 @@ public final class TicketStore {
             int remain = cur != null && cur.get("stock") instanceof Number sn ? sn.intValue() : 0;
             if (remain < need) break;
             ArchiveStore.adjustStock(itemId, -need);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TICKET + " SET status='pending' WHERE id=? AND status='lottery'",
                     tid);
             TicketDeriveOps.appendProgress(tid, "lottery_drawn", op, "抽签录取，转入待审");
@@ -2617,7 +2723,7 @@ public final class TicketStore {
 
     public static List<Map<String, Object>> lotteryResult(long itemId) {
         if (!allowLottery) return List.of();
-        return TicketSql.db().query(
+        return MybatisSupport.db().query(
                 "SELECT id, username, status, apply_at FROM " + TICKET
                         + " WHERE " + itemFkColumn()
                         + "=? AND status IN ('pending','approved','returned') ORDER BY id",
@@ -2683,10 +2789,17 @@ public final class TicketStore {
             throw new IllegalStateException("只能撤销自己的申请");
         }
         String st = String.valueOf(m.get("status"));
+        Object seatLockedObj = m.get("seatLocked");
+        boolean seatLocked = seatLockedObj != null && (
+                "1".equals(String.valueOf(seatLockedObj))
+                        || Boolean.TRUE.equals(seatLockedObj)
+                        || (seatLockedObj instanceof Number n && n.intValue() == 1));
+        boolean lockedCancel = "approved".equals(st) && hasColumn("seat_locked") && seatLocked;
         if (!"pending".equals(st) && !"pending_mid".equals(st)
                 && !"pending_final".equals(st) && !"waitlisted".equals(st)
                 && !"held".equals(st) && !"hold_ready".equals(st)
-                && !"verifying".equals(st)) {
+                && !"verifying".equals(st)
+                && !lockedCancel) {
             throw new IllegalStateException("仅待审核、候补或预约申请可撤销");
         }
         if (maxCancelHolds > 0 && ("held".equals(st) || "hold_ready".equals(st) || "waitlisted".equals(st))) {
@@ -2696,7 +2809,12 @@ public final class TicketStore {
             }
         }
         long itemId = TicketSql.toLong(m.get("bookId"));
+        if (itemId <= 0) itemId = TicketSql.toLong(m.get("itemId"));
         if ("hold_ready".equals(st) && MODE == Mode.ARCHIVE && useQuota && itemId > 0
+                && ArchiveStore.getItemRaw(itemId) != null) {
+            ArchiveStore.adjustStock(itemId, TicketDeriveOps.rowQty(m));
+        }
+        if (lockedCancel && MODE == Mode.ARCHIVE && useQuota && itemId > 0
                 && ArchiveStore.getItemRaw(itemId) != null) {
             ArchiveStore.adjustStock(itemId, TicketDeriveOps.rowQty(m));
         }
@@ -2706,10 +2824,47 @@ public final class TicketStore {
         cancel.put("status", "cancelled");
         cancel.put("clearHoldExpire", hasColumn("hold_expire_at"));
         mapper().updateCancelOrRejectHold(cancel);
-        String progNote = "held".equals(st) ? "用户取消预约"
+        if (lockedCancel) {
+            if (hasColumn("no_show")) {
+                try {
+                    mapper().updateNoShow(TICKET, ticketId, 1);
+                } catch (Exception e) {
+                    try {
+                        db().update("UPDATE " + TICKET + " SET no_show=1 WHERE id=?", ticketId);
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            if (hasColumn("seat_locked")) {
+                try {
+                    mapper().updateSeatLocked(TICKET, ticketId, 0);
+                } catch (Exception e) {
+                    try {
+                        db().update("UPDATE " + TICKET + " SET seat_locked=0 WHERE id=?", ticketId);
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            if (hasColumn("cancel_reason")) {
+                try {
+                    db().update(
+                            "UPDATE " + TICKET + " SET cancel_reason=? WHERE id=?",
+                            "确认后取消", ticketId);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        String progNote = lockedCancel ? "用户取消已锁座同行（计爽约）"
+                : ("held".equals(st) ? "用户取消预约"
                 : ("hold_ready".equals(st) ? "用户放弃取书"
-                : ("waitlisted".equals(st) ? "用户取消候补" : "用户撤销申请"));
+                : ("waitlisted".equals(st) ? "用户取消候补" : "用户撤销申请")));
         TicketDeriveOps.appendProgress(ticketId, "cancelled", username, progNote);
+        if (("approved".equals(st) || lockedCancel) && com.thesis.service.TimebankStore.enabled()) {
+            try {
+                com.thesis.service.TimebankStore.penalizeCredit(username, 5);
+            } catch (Exception ignored) {
+            }
+        }
         if ("hold_ready".equals(st) && itemId > 0) {
             tryPromoteBookHold(itemId);
         }
@@ -3330,7 +3485,7 @@ public final class TicketStore {
         String attach = attachUrl == null ? "" : attachUrl.trim();
         if (allowAttachKeepOld && hasColumn("attach_url") && !attach.isBlank()) {
             TicketGuardOps.keepAttachHistory(ticketId, TicketSql.str(m.get("attachUrl")), attach);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TICKET + " SET status='pending', attach_url=? WHERE id=?",
                     attach.length() > 255 ? attach.substring(0, 255) : attach, ticketId);
         } else {
@@ -3441,7 +3596,7 @@ public final class TicketStore {
         TicketPatchOps.patchTicketExtras(ticketId, body);
     }
 
-    private static void updateTicketColumn(long ticketId, String column, Object value) {
+    static void updateTicketColumn(long ticketId, String column, Object value) {
         String col = column == null ? "" : column.trim().replaceAll("[^a-zA-Z0-9_]", "");
         if (col.isEmpty()) throw new IllegalStateException("无效字段");
         mapper().updateColumnById(TICKET, col, value, ticketId);

@@ -5,9 +5,11 @@ import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
 import com.thesis.service.ExamStore;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -173,10 +175,26 @@ public class ExamController {
         requireExam();
         String uid = AdminAuth.requireLogin(session);
         String mode = body == null ? "exam" : body.getOrDefault("mode", "exam");
+        String entryCode = body == null ? null : body.get("entryCode");
+        if (entryCode == null && body != null) entryCode = body.get("entry_code");
         try {
-            return R.ok(ExamStore.startAttempt(uid, paperId, mode));
+            return R.ok(ExamStore.startAttempt(uid, paperId, mode, entryCode));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/attempts/{attemptId}/blur")
+    public R<Map<String, Object>> blur(
+            @PathVariable long attemptId, HttpSession session) {
+        requireExam();
+        String uid = AdminAuth.requireLogin(session);
+        try {
+            return R.ok(ExamStore.recordBlur(attemptId, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.FORBIDDEN, e.getMessage());
         }
     }
 
@@ -198,8 +216,12 @@ public class ExamController {
             Object paperId = attempt.get("paperId");
             if (paperId != null) {
                 Map<String, Object> paper = ExamStore.getPaper(((Number) paperId).longValue());
-                if (paper != null && paper.get("durationMin") != null) {
-                    durationMin = ((Number) paper.get("durationMin")).intValue();
+                if (paper != null) {
+                    if (paper.get("durationMin") != null) {
+                        durationMin = ((Number) paper.get("durationMin")).intValue();
+                    }
+                    out.put("passScore", paper.get("passScore"));
+                    out.put("shuffleOptions", paper.get("shuffleOptions"));
                 }
             }
             out.put("durationMin", durationMin);
@@ -323,5 +345,113 @@ public class ExamController {
         } catch (IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
+    }
+
+    // --- I-08 ---
+
+    @GetMapping("/wrongbook/export")
+    public void exportWrongbook(HttpSession session, HttpServletResponse response) {
+        requireExam();
+        String uid = AdminAuth.requireLogin(session);
+        try {
+            String csv = ExamStore.exportWrongbookCsv(uid);
+            writeCsv(response, "exam_wrongbook.csv", csv);
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/admin/questions/import-template")
+    public void questionImportTemplate(HttpSession session, HttpServletResponse response) {
+        requireExam();
+        AdminAuth.requireAdmin(session);
+        try {
+            writeCsv(response, "exam_questions_template.csv", ExamStore.questionImportTemplate());
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/admin/questions/import")
+    public R<Map<String, Object>> importQuestions(
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        requireExam();
+        AdminAuth.requireAdmin(session);
+        try {
+            String text = body == null ? "" : String.valueOf(body.getOrDefault("csv", body.getOrDefault("text", "")));
+            return R.ok(ExamStore.importQuestionsCsv(text));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/admin/papers/{id}/random-draw")
+    public R<Map<String, Object>> randomDraw(
+            @PathVariable long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            HttpSession session) {
+        requireExam();
+        AdminAuth.requireAdmin(session);
+        try {
+            int count = 10;
+            String type = null;
+            if (body != null) {
+                if (body.get("count") != null) count = Integer.parseInt(String.valueOf(body.get("count")));
+                if (body.get("type") != null) type = String.valueOf(body.get("type"));
+            }
+            return R.ok(ExamStore.randomDrawToPaper(id, count, type));
+        } catch (NumberFormatException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "数量格式不对");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/admin/scores/import-template")
+    public void scoreImportTemplate(HttpSession session, HttpServletResponse response) {
+        requireExam();
+        AdminAuth.requireAdmin(session);
+        try {
+            writeCsv(response, "exam_scores_template.csv", ExamStore.scoreImportTemplate());
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/admin/scores/import")
+    public R<Map<String, Object>> importScores(
+            @RequestBody Map<String, Object> body, HttpSession session) {
+        requireExam();
+        AdminAuth.requireAdmin(session);
+        try {
+            String text = body == null ? "" : String.valueOf(body.getOrDefault("csv", body.getOrDefault("text", "")));
+            return R.ok(ExamStore.importScoresCsv(text));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @GetMapping("/attempts/{attemptId}/certificate")
+    public R<Map<String, Object>> certificate(
+            @PathVariable long attemptId, HttpSession session) {
+        requireExam();
+        String uid = AdminAuth.requireLogin(session);
+        try {
+            return R.ok(ExamStore.certificatePayload(attemptId, uid));
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.NOT_FOUND, e.getMessage());
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    private static void writeCsv(HttpServletResponse response, String filename, String csv) throws Exception {
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType("text/csv;charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=" + filename);
+        response.getOutputStream().write(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
+        response.getOutputStream().write(csv.getBytes(StandardCharsets.UTF_8));
     }
 }

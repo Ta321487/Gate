@@ -1,10 +1,10 @@
 package com.thesis.capability;
 
 import com.thesis.config.DomainResourceJson;
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
+import com.thesis.config.JpaDb;
+import com.thesis.config.JpaSupport;
+import com.thesis.config.GeneratedKeyHolder;
+import com.thesis.config.KeyHolder;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -43,8 +43,8 @@ public final class CouponStore {
         return enabled;
     }
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static JpaDb db() {
+        return JpaSupport.db();
     }
 
     private static void ensureTables() {

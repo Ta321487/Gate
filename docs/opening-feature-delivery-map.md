@@ -2,7 +2,7 @@
 
 > **本文只负责**：开题常见功能 → 工厂落点与状态（已实现 / 扫词开 / 待补 / 不支持）。非 AI。  
 > **不负责**：cap 定义与挂载细则（[`capabilities.md`](./capabilities.md)）；DOM 分组与域默认能力组合（[`domains.md`](./domains.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；怎么审交付（[`delivery-audit-rules.md`](./delivery-audit-rules.md)）。  
-> **索引**：[README.md](./README.md) · **AI 轴**：[`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md) · **扩岛档案**（已收口）：[`capability-expansion-batch.md`](./capability-expansion-batch.md) · **§1.1～§1.5 加厚复盘**（已收口）：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) · **§1.6 交易加厚**（已收口）：[`trade-thicken-batch.md`](./trade-thicken-batch.md) · **§1.7 预约加厚**（已收口）：[`reserve-thicken-batch.md`](./reserve-thicken-batch.md) · **§1.8 内容加厚**（进行中）：[`content-thicken-batch.md`](./content-thicken-batch.md) · **域组 UI 表面**（加厚后做）：[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)。  
+> **索引**：[README.md](./README.md) · **AI 轴**：[`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md) · **扩岛档案**（已收口）：[`capability-expansion-batch.md`](./capability-expansion-batch.md) · **§1.1～§1.5 加厚复盘**（已收口）：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) · **§1.6 交易加厚**（已收口）：[`trade-thicken-batch.md`](./trade-thicken-batch.md) · **§1.7 预约加厚**（已收口）：[`reserve-thicken-batch.md`](./reserve-thicken-batch.md) · **§1.8 内容加厚**（已收口）：[`content-thicken-batch.md`](./content-thicken-batch.md) · **§1.9 互动加厚**（已收口）：[`interact-thicken-batch.md`](./interact-thicken-batch.md) · **域组 UI 表面**（加厚后做）：[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)。  
 > **覆盖**：全 **68** 域。活表。  
 > **口径**：全国专本科 **Web 管理类毕设**通识可交付（能注册、走主流程、能答辩）。**不**依赖工厂样例库，**不**绑某一所学校课表；按开题常写模块建库存。禁止用「演示级」打发已实现能力。  
 > **库存原则**：工厂先列全「毕设常见且不超纲」功能；域仍用**薄壳架构**（不另起厚包），**薄壳≠功能稀薄**——齐度看本节待补与各组 thicken。开题命中才挂扫词项。挂载细节以 [`capabilities.md`](./capabilities.md) 为准；与本表冲突时只改一处并同步，禁止两套口径。  
@@ -1187,114 +1187,121 @@
 
 #### 本组待补
 
-| 功能 | 建议落域 | 说明 |
-|------|----------|------|
-| 意向人数满自动关闭行程 | CARPOOL | 状态规则 |
-| 拼车出发前提醒站内信 | CARPOOL | 消息模板 |
-| 双选志愿调剂记录留痕列表 | MUTUAL-* | 管理端可查 |
-| 志愿提交后允许在截止前修改 | MUTUAL-* | 规则开关 |
-| 问卷开放/截止自动上下架 | SURVEY | 按日期 |
-| 问卷匿名填写开关 | SURVEY | schema；通识高频 |
-| 投票结果导出 | VOTE | CSV |
-| 考试及格证书页（固定模板 PDF） | EXAM | ≠ CA；可与活动证明同思路 |
-| 练习模式不计分 / 不计次数 | EXAM | 开题常写刷题 |
-| 时间银行时长排行榜 | TIMEBANK | 只读榜；≠复杂经济系统 |
-| 婚恋资料完整度提示 | DATING | 资料页提示条 |
-| 心动列表（收藏对方资料） | DATING | favorites 已可挂；表内钉 |
-| 互选截止倒计时展示 | MUTUAL-* | UI；规则已有可加深 |
-| 导师学生名额占用进度条 | MUTUAL-TUTOR | 配额可视化 |
-| 组队技能标签筛选 | MUTUAL-TEAM | 标签字段 |
-| 拼车费用分摊备注（非支付） | CARPOOL | 文案字段 |
-| 拼车评价 | CARPOOL | allowRating |
-| 时间银行服务评价 | TIMEBANK | allowRating |
-| 兑换记录对账导出 | TIMEBANK | CSV |
-| 考试防切屏提示（文案+失焦计数） | EXAM | 浅；≠锁屏监考 SDK |
-| 成绩公布后可看解析开关 | EXAM | schema |
-| 问卷逻辑跳题（简单若选A则跳） | SURVEY | 浅规则；≠全功能问卷引擎 |
-| 投票防刷：同 IP 提示（仅提示） | VOTE | 浅；≠风控中台 |
-| 十佳结果海报页（静态生成） | VOTE | 结果页美化；≠设计工具 |
-| 试卷题目/选项乱序 | EXAM | 开题常写防抄；浅 |
-| 交卷前答题进度条 | EXAM / SURVEY | UI；通识 |
-| 问卷每人限填一次 | SURVEY | 规则；高频 |
-| 投票候选人图文简介 | VOTE | 档案字段加深 |
-| 双选导师/选题附件简介包 | MUTUAL-* | 附件槽；通识 |
-| 组队邀请站内信 | MUTUAL-TEAM | 消息；浅 |
-| 拼车座位余量展示 | CARPOOL | 名额字段可视化 |
-| 时间银行技能标签认证勾选 | TIMEBANK | 资料字段；浅 |
-| 婚恋互相关注/取消 | DATING | 关系浅表；≠推荐 |
-| 考试及格线可配 | EXAM | schema；通识高频 |
-| 客观题自动判分口径钉死 | EXAM | 已有可钉；表内待补缺口项 |
-| 问卷必答题标记与校验 | SURVEY | 通识高频 |
-| 投票票数定时刷新（轮询） | VOTE | 前端轮询；≠ WebSocket |
-| 双选盲选阶段（截止前互不可见） | MUTUAL-* | 规则开关；通识偶见 |
-| 拼车性别/人数偏好备注 | CARPOOL | 文案字段；浅 |
-| 时间银行兑换商品目录 | TIMEBANK | 浅兑换表；≠商城 |
-| 婚恋见面意向登记（非支付） | DATING | 轻单；浅 |
-| 错题本导出 | EXAM | CSV；刷题齐后加深 |
-| 多选题部分得分规则 | EXAM | schema；通识 |
-| 问卷矩阵题（简单表格题） | SURVEY | 题型加深；浅 |
-| 投票每人每天限票 | VOTE | 规则；防刷加深 |
-| 双选志愿互斥（同志愿不可双报） | MUTUAL-* | 校验；浅 |
-| 时间银行信用分（爽约扣分） | TIMEBANK | 浅分；≠征信 |
-| 拼车途经点文本 | CARPOOL | 多行；≠地图轨迹 |
-| 婚恋举报处理时限提醒 | DATING | 对齐 deadline；浅 |
-| 组队满员自动关招募 | MUTUAL-TEAM | 状态规则 |
-| 考试交卷后不可修改开关 | EXAM | schema；通识 |
-| 考试迟到禁止进入（开考后 N 分） | EXAM | 规则；通识 |
-| 问卷结果图表（柱/饼） | SURVEY | ECharts；通识高频 |
-| 投票匿名开关 | VOTE | schema；浅 |
-| 双选结果公示页 | MUTUAL-* | 只读名单；通识 |
-| 拼车取消惩罚提示（爽约计数） | CARPOOL | 规则；浅 |
-| 时间银行发布须审 | TIMEBANK | 状态机；浅 |
-| 婚恋资料审核驳回理由 | DATING | 审驳字段；通识 |
-| 组队申请附言必填 | MUTUAL-TEAM | 字段；浅 |
-| 考试题目导入 Word/Excel | EXAM | 导入加深；通识 |
-| 问卷截止前提醒站内信 | SURVEY | 消息；浅 |
-| 投票结果对学生延迟公布 | VOTE | 日期开关；浅 |
-| 双选调剂志愿上限 | MUTUAL-* | 规则；浅 |
-| 拼车乘客确认后锁座 | CARPOOL | 状态；浅 |
-| 时间银行时长冻结（纠纷） | TIMEBANK | 状态；浅 |
-| 婚恋理想对象条件筛选加深 | DATING | 筛选字段；浅 |
-| 组队退出须队长同意 | MUTUAL-TEAM | 规则；通识 |
-| 考试多卷随机抽题 | EXAM | 组卷加深；通识 |
-| 问卷填写进度保存草稿 | SURVEY | 草稿；通识 |
-| 投票候选人拉票文案字段 | VOTE | 字段；浅 |
-| 双选导师学生互评 | MUTUAL-TUTOR | allowRating；浅 |
-| 拼车行李件数备注 | CARPOOL | 字段；浅 |
-| 时间银行技能证明附件 | TIMEBANK | requireAttach |
-| 婚恋活动报名入口（叠活动） | DATING / ACTIVITY | 文案交叉；浅 |
-| 考试监考口令（入场码） | EXAM | 字符串；≠人脸 |
-| 问卷逻辑显示（显隐，非跳题） | SURVEY | 浅规则；跳题已有可区分 |
-| 投票禁刷：实名后可投 | VOTE | 对照实名勾选；浅 |
-| 双选面试时段预约叠 | MUTUAL-* / MEETING | 文案交叉；浅 |
-| 拼车起点终点校区字典 | CARPOOL | 字典；浅 |
-| 时间银行申诉单 | TIMEBANK | 轻单；浅 |
-| 婚恋黑名单 | DATING | 轻名单；通识 |
-| 组队技能匹配度提示（计数重合） | MUTUAL-TEAM | 浅计数；≠协同过滤 |
-| 考试主观题评分细则字段 | EXAM | 阅卷备注；浅 |
-| 问卷投放对象按组织 | SURVEY | 组织过滤；浅 |
-| 投票弃权选项 | VOTE | 选项；浅 |
-| 双选结果导出通知信 | MUTUAL-* | CSV+消息；浅 |
-| 拼车评价后不可见对方电话 | CARPOOL | 脱敏规则；浅 |
-| 时间银行时长转让 | TIMEBANK | 流水；浅；≠货币 |
-| 婚恋资料相册审核 | DATING | 附件审；浅 |
-| 考试成绩导入模板 | EXAM | 导入；通识 |
-| 问卷填写后感谢页 | SURVEY | 静态页；浅 |
-| 投票实时榜置顶前三 | VOTE | UI；浅 |
-| 双选确认超时自动婉拒 | MUTUAL-* | 规则；通识偶见 |
-| 拼车行程重复发布检测 | CARPOOL | 校验；浅 |
-| 时间银行时长清零规则说明 | TIMEBANK | 文案；浅 |
-| 考试试卷难度标签 | EXAM | 字段；浅 |
-| 问卷回收率工作台卡片 | SURVEY | 计数；通识 |
-| 双选学生端志愿锁定倒计时 | MUTUAL-* | UI；浅 |
-| 拼车费用AA计算器 | CARPOOL | 前端算；浅；≠支付 |
-| 时间银行星级信誉 | TIMEBANK | allowRating 叠；浅 |
+（本组待补已清。）
 
 不支持边界（不开待补行）：协同过滤匹配 / 恋爱社交推荐算法、真地图导航拼车、人脸监考、实时 IM SDK、投票刷票检测中台。
 
 #### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
 
-（尚未迁行；待 `interact_thicken` I-00 起三绿后写入。）
+> 口径：已齐 = **管理能管 + 用户可产生数据**。I-00～I-12（脚手架 + 半截钉齐 + DATING + MUTUAL + CARPOOL + TIMEBANK + EXAM + SURVEY + VOTE + 能力岛加深 + 扫尾收口）；禁止第二套收藏/评价/判分/互关/互选/占座/时长账户/考试/问卷/投票引擎；未挂 cap 不硬开邻组岛。批次册见 [`interact-thicken-batch.md`](./interact-thicken-batch.md)（已收口档案）。
+
+| 功能 | 落点 | 挂载 |
+|------|------|------|
+| 心动列表（收藏对方资料） | favorites + FavoriteStore；labels.favoritesPageTitle · labels.favoritesVerb · labels.favoritedVerb · labels.favoritesEmptyTitle · labels.favoritesEmptyDesc · labels.favoritesCancelLabel；interactThicken.datingFavorites；ArchiveBrowse 收藏钮（与 ticket 并存）+ MyFavorites | **域默认** DATING |
+| 拼车评价 | ticket.allowRating + TicketStore.rate；labels.ratingLabel · labels.rateInviteHint · labels.avgRatingLabel；MyTickets 评分 + TicketRecordsAdmin / TicketDashboard | **域默认** CARPOOL |
+| 时间银行服务评价 | 同上 allowRating；labels.ratingLabel · labels.rateInviteHint | **域默认** TIMEBANK |
+| 时间银行星级信誉 | allowRating 叠均分；labels.timebankStarReputationLabel · labels.timebankStarReputationHint · labels.avgRatingLabel；TicketDashboard | **域默认** TIMEBANK（叠评价） |
+| 互选截止倒计时展示 | archive.applyDeadlineAt + apply_deadline_at；labels.applyDeadlineLabel · labels.mutualDeadlineCountdownLabel · labels.mutualDeadlinePassedLabel · labels.mutualDeadlineHint；ArchiveBrowse / MyTickets 倒计时；ArchiveAdmin 截止字段 | **域默认** MUTUAL-* |
+| 客观题自动判分口径钉死 | ExamStore.scoreAnswer（三套）；labels.examObjectiveGradeHint · labels.examObjectiveGradedLead；ExamTake 交卷说明；多选部分分归 I-07 | **域默认** EXAM |
+| 婚恋资料完整度提示 | interactThicken.datingProfileCompleteness；labels.profileCompletenessLabel · labels.datingCompletenessHint · labels.datingCompletenessMissingLead；Profile 进度条（计城市/学历/年龄段） | **域默认** DATING |
+| 婚恋互相关注/取消 | UserFollowStore + user_follow；CONTENT_FOLLOWERS_ONLY_COMMENT 启表；labels.followUserLabel · labels.unfollowUserLabel · labels.datingFollowDone · labels.datingUnfollowDone；interactThicken.datingUserFollow；ArchiveBrowse 关注钮 | **域默认** DATING |
+| 婚恋见面意向登记（非支付） | match_apply.meet_intent；TicketPatchOps.meetIntent；labels.meetIntentLabel · labels.meetIntentPlaceholder · labels.meetIntentRequired；ArchiveBrowse 牵线表单 + MyTickets 展示 | **域默认** DATING |
+| 婚恋举报处理时限提醒 | schema.reportHandleDays + labels.reportDeadlineLabel · labels.reportOverdueLabel · labels.datingReportDeadlineHint；interactThicken.datingReportDeadline；ContentReportsAdmin 时限列 | 扫词挂 content_report |
+| 婚恋资料审核驳回理由 | publishReview + reject_reason；ArchiveStore.rejectPublishItem(reason)；labels.rejectReasonLabel · labels.rejectReasonPlaceholder · labels.rejectReasonRequired · labels.datingRejectReasonLead；ArchiveAdmin 驳回填写 + MyArchive 回读 | **域默认** DATING |
+| 婚恋理想对象条件筛选加深 | age_years / ideal_* 列；labels.datingFilterCityPlaceholder · labels.datingFilterAgeMinPlaceholder · labels.datingFilterAgeMaxPlaceholder；ArchiveBrowse 城市/年龄筛 + ArchiveAdmin 扩展字段 | **域默认** DATING |
+| 婚恋黑名单 | schema.applyBlacklist + ApplyBlacklistStore；labels.applyBlacklistTitle · labels.applyBlacklistLead · labels.applyBlacklistDenyMessage；牵线提交拦截 | **域默认** DATING |
+| 婚恋资料相册审核 | gallery + album_audit_status；ArchiveStore.setAlbumAuditStatus；labels.albumAuditLabel · labels.albumAuditPending · labels.albumAuditApproved · labels.albumAuditRejected · labels.albumAuditApproveAction · labels.albumAuditRejectAction · labels.albumAuditHiddenHint；ArchiveAdmin 审图 + 公开侧未过审隐藏 | **域默认** DATING |
+| 婚恋活动报名入口（叠活动） | labels.datingActivityEntryTitle · labels.datingActivityEntryHint · labels.datingActivityEntryCta；ArchiveBrowse 提示链到交友公告；不另起 ACTIVITY 状态机 | 文案交叉 |
+| 双选志愿调剂记录留痕列表 | progress.admin_adjust + TicketStore.pageAdjustLog；labels.mutualAdjustLogTitle · labels.mutualAdjustLogLead · labels.mutualAdjustLogEmpty；TicketRecordsAdmin 调剂记录 | **域默认** MUTUAL-* |
+| 志愿提交后允许在截止前修改 | TicketStore.editWishBeforeDeadline + /edit-wish；labels.mutualEditWishLabel · labels.mutualEditWishHint · labels.mutualEditWishDone；MyTickets 修改志愿 | **域默认** MUTUAL-* |
+| 双选导师/选题附件简介包 | intro_pack_url + archive.introPackUrl；labels.introPackLabel · labels.introPackHint · labels.introPackOpenLabel；ArchiveBrowse 链接 + ArchiveAdmin 字段 | **域默认** MUTUAL-* |
+| 双选盲选阶段（截止前互不可见） | TicketDeriveOps.applyBlindRedaction；labels.mutualBlindPhaseLabel · labels.mutualBlindPhaseHint · labels.mutualBlindMaskedName；PeerTickets 脱敏 | **域默认** MUTUAL-* |
+| 双选志愿互斥（同志愿不可双报） | ticket.forceOnePerArchive；labels.onePerArchiveDenyMessage · labels.mutualWishMutexHint；同对象进行中志愿拦截 | **域默认** MUTUAL-* |
+| 双选结果公示页 | TicketStore.mutualMatchResult + MutualResults.vue；labels.mutualResultTitle · labels.mutualResultLead · labels.mutualResultEmpty · labels.mutualResultHint；菜单 mutual_results | **域默认** MUTUAL-* |
+| 双选调剂志愿上限 | ticket.maxAdjustWishes + TicketAsserts.assertAdjustWishCap；labels.mutualAdjustCapHint · labels.mutualAdjustCapDeny | **域默认** MUTUAL-* |
+| 双选确认超时自动婉拒 | TicketStore.autoRejectStalePeerPending + DemoScheduleJobs；labels.mutualPeerTimeoutHint | **域默认** MUTUAL-* |
+| 双选学生端志愿锁定倒计时 | interactThicken.mutualWishLock；labels.mutualWishLockLabel · labels.mutualWishLockedLabel · labels.mutualWishLockHint；MyTickets 锁定倒计时 | **域默认** MUTUAL-* |
+| 双选结果导出通知信 | CSV + /mutual-result-notify；labels.mutualResultExportLabel · labels.mutualResultNotifyLabel · labels.mutualResultNotifyDone · labels.mutualResultNotifyBody；TicketRecordsAdmin | **域默认** MUTUAL-* |
+| 双选面试时段预约叠 | labels.mutualInterviewEntryTitle · labels.mutualInterviewEntryHint · labels.mutualInterviewEntryCta；ArchiveBrowse 提示链到互选公告；不另起 MEETING 状态机 | 文案交叉 |
+| 导师学生名额占用进度条 | quota_cap + stock；labels.tutorQuotaBarLabel · labels.tutorQuotaBarHint · labels.quotaRemainHint；interactThicken.mutualTutorQuotaBar；ArchiveBrowse 进度条 | **域默认** MUTUAL-TUTOR |
+| 双选导师学生互评 | ticket.allowRating + TicketStore.rate；labels.ratingLabel · labels.rateInviteHint · labels.avgRatingLabel；interactThicken.tutorMutualRating；MyTickets 评分 | **域默认** MUTUAL-TUTOR |
+| 组队技能标签筛选 | skill_tags；labels.skillTagsLabel · labels.skillTagsPlaceholder · labels.skillTagsFilterPlaceholder；ArchiveBrowse 筛选 | **域默认** MUTUAL-TEAM |
+| 组队邀请站内信 | /team-invite + MessageStore；labels.teamInviteLabel · labels.teamInviteHint · labels.teamInviteDone · labels.teamInviteTitle · labels.teamInviteBody；ArchiveBrowse 邀请钮 | **域默认** MUTUAL-TEAM |
+| 组队满员自动关招募 | stage 招募中↔已满员 + syncOccupyStageWithStock；labels.teamFullStageHint；库存扣尽自动关 | **域默认** MUTUAL-TEAM |
+| 组队申请附言必填 | ticket.requireRemark；labels.remarkLabel · labels.teamRemarkRequired | **域默认** MUTUAL-TEAM |
+| 组队退出须队长同意 | exit_request + /request-exit · /exit-inbox · /peer-exit-respond；labels.teamExitRequestLabel · labels.teamExitRequestHint · labels.teamExitRequestDone · labels.teamExitApproveLabel · labels.teamExitRejectLabel · labels.teamExitPendingLabel；MyTickets + PeerTickets | **域默认** MUTUAL-TEAM |
+| 组队技能匹配度提示（计数重合） | labels.teamSkillMatchLabel · labels.teamSkillMatchHint · labels.teamSkillMatchEmpty；ArchiveBrowse 浅计数；≠协同过滤 | **域默认** MUTUAL-TEAM |
+| 意向人数满自动关闭行程 | stage 开放↔已满 + syncOccupyStageWithStock；labels.carpoolFullStageHint；interactThicken.carpoolFullClose | **域默认** CARPOOL |
+| 拼车出发前提醒站内信 | remind_before_minutes + depart_reminded_at + ArchiveStore.remindDepartSweep；labels.carpoolDepartRemindLeadLabel · labels.carpoolDepartRemindHint · labels.carpoolDepartRemindTitle · labels.carpoolDepartRemindBody · labels.carpoolDepartRemindNoneLabel；interactThicken.carpoolDepartRemind | **域默认** CARPOOL |
+| 拼车费用分摊备注（非支付） | share_note；labels.shareNoteLabel · labels.shareNotePlaceholder · labels.shareNoteHint；interactThicken.carpoolShareNote；ArchiveBrowse/ArchiveAdmin | **域默认** CARPOOL |
+| 拼车座位余量展示 | stock；labels.carpoolSeatRemainLabel · labels.carpoolSeatRemainHint；interactThicken.carpoolSeatRemain；ArchiveBrowse | **域默认** CARPOOL |
+| 拼车性别/人数偏好备注 | pref_note；labels.prefNoteLabel · labels.prefNotePlaceholder · labels.prefNoteHint；interactThicken.carpoolPrefNote | **域默认** CARPOOL |
+| 拼车途经点文本 | via_points；labels.viaPointsLabel · labels.viaPointsPlaceholder · labels.viaPointsHint；interactThicken.carpoolViaPoints；≠地图 | **域默认** CARPOOL |
+| 拼车取消惩罚提示（爽约计数） | no_show + withdraw 锁座取消；labels.carpoolCancelPenaltyLabel · labels.carpoolCancelPenaltyHint · labels.carpoolNoShowCountLabel · labels.carpoolNoShowCountHint；interactThicken.carpoolCancelPenalty；MyTickets | **域默认** CARPOOL |
+| 拼车乘客确认后锁座 | seat_locked + peerRespond；labels.carpoolSeatLockedLabel · labels.carpoolSeatLockedHint；interactThicken.carpoolSeatLock | **域默认** CARPOOL |
+| 拼车起点终点校区字典 | start_campus/end_campus；labels.carpoolCampusOptions · labels.carpoolCampusStartLabel · labels.carpoolCampusEndLabel · labels.carpoolCampusPlaceholder · labels.carpoolCampusDictHint；interactThicken.carpoolCampusDict | **域默认** CARPOOL |
+| 拼车费用AA计算器 | fare_total_yuan 落库 + FE 除法；labels.fareTotalLabel · labels.fareTotalHint · labels.carpoolAaLabel · labels.carpoolAaHint；interactThicken.carpoolAaCalc；≠支付 | **域默认** CARPOOL |
+| 拼车行李件数备注 | luggage_count；labels.luggageCountLabel · labels.luggageCountHint；interactThicken.carpoolLuggage | **域默认** CARPOOL |
+| 拼车评价后不可见对方电话 | rate 后清 contact_channel/contact_phone；labels.carpoolPhoneMaskedHint；interactThicken.carpoolPhoneMaskAfterRate | **域默认** CARPOOL |
+| 拼车行程重复发布检测 | assertNoDuplicateCarpoolTrip；labels.carpoolDupTripDeny；interactThicken.carpoolDupTripCheck | **域默认** CARPOOL |
+| 时间银行时长排行榜 | TimebankStore.rankByHours + TimebankRank；labels.tbRankTitle · labels.tbRankLead · labels.tbRankHoursLabel；interactThicken.timebankRank；菜单 tb_rank | **域默认** TIMEBANK |
+| 兑换记录对账导出 | TimebankStore.exportLedgerCsv + TimebankLedger/Admin 导出钮；labels.tbLedgerExportLabel · labels.tbLedgerExportHint；interactThicken.timebankLedgerExport | **域默认** TIMEBANK |
+| 时间银行技能标签认证勾选 | skill_tags + skill_certified；labels.tbSkillTagsLabel · labels.tbSkillCertifiedLabel · labels.tbSkillCertifiedHint；interactThicken.timebankSkillCert；TimebankAccountsAdmin 勾选 | **域默认** TIMEBANK |
+| 时间银行兑换商品目录 | tb_catalog + TimebankCatalog/Admin；labels.tbCatalogTitle · labels.tbCatalogLead · labels.tbCatalogCostLabel · labels.tbCatalogRedeemLabel；interactThicken.timebankCatalog；≠商城 | **域默认** TIMEBANK |
+| 时间银行信用分（爽约扣分） | credit_score + TicketStore 取消时 penalizeCredit；labels.tbCreditScoreLabel · labels.tbCreditScoreHint；interactThicken.timebankCreditScore；≠征信 | **域默认** TIMEBANK |
+| 时间银行发布须审 | archive.publishReview；labels.tbPublishReviewHint；interactThicken.timebankPublishReview | **域默认** TIMEBANK |
+| 时间银行时长冻结（纠纷） | frozen_hours + adjustFreeze；labels.tbFrozenHoursLabel · labels.tbFrozenHoursHint · labels.tbFreezeAction · labels.tbUnfreezeAction；interactThicken.timebankFreeze；TimebankAccountsAdmin | **域默认** TIMEBANK |
+| 时间银行技能证明附件 | ticket.requireAttach；labels.attachLabel · labels.tbSkillAttachHint；interactThicken.timebankSkillAttach | **域默认** TIMEBANK |
+| 时间银行申诉单 | tb_appeal + TimebankAppeal/AppealsAdmin；labels.tbAppealTitle · labels.tbAppealLead · labels.tbAppealReasonLabel；interactThicken.timebankAppeal | **域默认** TIMEBANK |
+| 时间银行时长转让 | TimebankStore.transfer；labels.tbTransferLabel · labels.tbTransferHint · labels.tbTransferToLabel · labels.tbTransferHoursLabel · labels.tbTransferDone；interactThicken.timebankTransfer；≠货币 | **域默认** TIMEBANK |
+| 时间银行时长清零规则说明 | tb_clear_rule + getClearRule/saveClearRule；labels.tbClearRuleTitle · labels.tbClearRuleLead · labels.tbClearRuleSaveLabel；interactThicken.timebankClearRule；TimebankAccountsAdmin 可写、用户端只读 | **域默认** TIMEBANK |
+| 练习模式不计分 / 不计次数 | practice 不计正式 score/次数；labels.examPracticeLead · labels.examPracticeNoScoreHint；interactThicken.examPracticeNoScore；域默认开 practice 菜单 | **域默认** EXAM |
+| 考试防切屏提示（文案+失焦计数） | blur_count + /attempts/{id}/blur；labels.examBlurWarnLead · labels.examBlurCountLabel；interactThicken.examBlurWarn；ExamTake；≠锁屏 SDK | **域默认** EXAM |
+| 成绩公布后可看解析开关 | explain_after_score；labels.examExplainAfterScoreLabel · labels.examExplainAfterScoreHint；interactThicken.examExplainAfterScore；ExamPapersAdmin | **域默认** EXAM |
+| 试卷题目/选项乱序 | shuffle_questions/shuffle_options；labels.examShuffleQuestionsLabel · labels.examShuffleOptionsLabel；interactThicken.examShuffle；作答侧按 attemptId 固定乱序 | **域默认** EXAM |
+| 交卷前答题进度条 | ExamTake 进度条；labels.examProgressLabel · labels.examProgressHint；interactThicken.examAnswerProgress | **域默认** EXAM |
+| 考试及格线可配 | pass_score 双端；labels.examPassScoreLabel · labels.examPassScoreHint；interactThicken.examPassScore；ExamPapersAdmin | **域默认** EXAM |
+| 多选题部分得分规则 | partial_multi + scoreAnswer；labels.examPartialMultiLabel · labels.examPartialMultiHint；interactThicken.examPartialMulti | **域默认** EXAM |
+| 考试交卷后不可修改开关 | lock_after_submit；labels.examLockAfterSubmitLabel · labels.examLockAfterSubmitHint · labels.examLockAfterSubmitDeny；interactThicken.examLockAfterSubmit | **域默认** EXAM |
+| 考试迟到禁止进入（开考后 N 分） | open_at + late_enter_min；labels.examOpenAtLabel · labels.examLateEnterMinLabel · labels.examLateEnterDeny；interactThicken.examLateEnter | **域默认** EXAM |
+| 考试监考口令（入场码） | entry_code；labels.examEntryCodeLabel · labels.examEntryCodePlaceholder · labels.examEntryCodeDeny；interactThicken.examEntryCode；ExamPapers 口令框；≠人脸 | **域默认** EXAM |
+| 考试及格证书页（固定模板 PDF） | ExamCertificate 打印壳 + certificatePayload；labels.examCertificate*；interactThicken.examCertificate；≠ CA | **域默认** EXAM |
+| 错题本导出 | exportWrongbookCsv；labels.examWrongbookExport*；interactThicken.examWrongbookExport；I-08 钉开 wrongbook | **域默认** EXAM |
+| 考试题目导入 Word/Excel | importQuestionsCsv；labels.examQuestionImport*；interactThicken.examQuestionImport；CSV 文本 | **域默认** EXAM |
+| 考试多卷随机抽题 | randomDrawToPaper；labels.examRandomDraw*；interactThicken.examRandomDraw；ExamPapersAdmin | **域默认** EXAM |
+| 考试主观题评分细则字段 | mark_rubric；labels.examMarkRubric*；interactThicken.examMarkRubric；ExamQuestionsAdmin / ExamMarkAdmin | **域默认** EXAM |
+| 考试成绩导入模板 | importScoresCsv；labels.examScoreImport*；interactThicken.examScoreImport | **域默认** EXAM |
+| 考试试卷难度标签 | difficulty；labels.examDifficulty*；interactThicken.examDifficulty；ExamPapersAdmin | **域默认** EXAM |
+| 问卷开放/截止自动上下架 | open_at/close_at + scheduleOpenCloseSweep；labels.surveyOpenAtLabel · labels.surveyCloseAtLabel · labels.surveyScheduleHint；interactThicken.surveySchedule | **域默认** SURVEY |
+| 问卷匿名填写开关 | anonymous；labels.surveyAnonymous*；interactThicken.surveyAnonymous；回收明细脱敏 | **域默认** SURVEY |
+| 问卷逻辑跳题（简单若选A则跳） | skip_when_label/skip_to_sort；labels.surveySkip*；interactThicken.surveySkip；SurveyFill | **域默认** SURVEY |
+| 交卷前答题进度条 | SurveyFill 进度条；labels.surveyProgress*；interactThicken.surveyAnswerProgress | **域默认** SURVEY |
+| 问卷每人限填一次 | once_only；labels.surveyOnceOnly*；interactThicken.surveyOnceOnly | **域默认** SURVEY |
+| 问卷必答题标记与校验 | required 双端；labels.surveyRequired*；interactThicken.surveyRequired | **域默认** SURVEY |
+| 问卷矩阵题（简单表格题） | type=matrix + matrix_rows；labels.surveyMatrix*；interactThicken.surveyMatrix | **域默认** SURVEY |
+| 问卷结果图表（柱/饼） | SurveyStatsAdmin ECharts；labels.surveyChart*；interactThicken.surveyResultCharts | **域默认** SURVEY |
+| 问卷截止前提醒站内信 | remind_before_hours + remindCloseSweep；labels.surveyRemind*；interactThicken.surveyCloseRemind | **域默认** SURVEY |
+| 问卷填写进度保存草稿 | survey_draft；labels.surveyDraft*；interactThicken.surveyDraft | **域默认** SURVEY |
+| 问卷逻辑显示（显隐，非跳题） | show_when_qid/show_when_label；labels.surveyShow*；interactThicken.surveyShowIf | **域默认** SURVEY |
+| 问卷投放对象按组织 | target_org + survey_audience；labels.surveyTargetOrg*；interactThicken.surveyTargetOrg | **域默认** SURVEY |
+| 问卷填写后感谢页 | SurveyThanks.vue；labels.surveyThanks*；interactThicken.surveyThanks | **域默认** SURVEY |
+| 问卷回收率工作台卡片 | recycleCards → TicketDashboard；labels.surveyRecycleCardLabel · labels.surveyTargetCountLabel；interactThicken.surveyRecycleCard | **域默认** SURVEY |
+| 投票结果导出 | VoteStore.exportResultsCsv + VoteResultsAdmin；labels.voteExportLabel · labels.voteExportHint；interactThicken.voteResultExport | **域默认** VOTE |
+| 投票防刷：同 IP 提示（仅提示） | client_ip + cast.ipHint；labels.voteIpHintLead；interactThicken.voteIpHint；≠风控中台 | **域默认** VOTE |
+| 十佳结果海报页（静态生成） | VotePoster.vue；labels.votePosterTitle · labels.votePosterLead · labels.votePosterLinkLabel；interactThicken.votePoster | **域默认** VOTE |
+| 投票候选人图文简介 | intro + avatar_url；labels.voteIntroLabel · labels.voteAvatarLabel；interactThicken.voteCandidateIntro | **域默认** VOTE |
+| 投票票数定时刷新（轮询） | poll_seconds + VoteCast 轮询；labels.votePollSecondsLabel · labels.votePollHint；interactThicken.votePollRefresh；≠ WebSocket | **域默认** VOTE |
+| 投票每人每天限票 | daily_vote_limit；labels.voteDailyLimitLabel · labels.voteDailyLimitHint；interactThicken.voteDailyLimit | **域默认** VOTE |
+| 投票匿名开关 | anonymous；labels.voteAnonymousLabel · labels.voteAnonymousHint；interactThicken.voteAnonymous；明细/导出脱敏 | **域默认** VOTE |
+| 投票结果对学生延迟公布 | results_publish_at；labels.voteResultPublishAtLabel · labels.voteResultDelayHint · labels.voteResultDelayMsg；interactThicken.voteResultDelay | **域默认** VOTE |
+| 投票候选人拉票文案字段 | slogan；labels.voteSloganLabel · labels.voteSloganPlaceholder；interactThicken.voteSlogan | **域默认** VOTE |
+| 投票禁刷：实名后可投 | require_real_name；labels.voteRequireRealNameLabel · labels.voteRealNameWarn；interactThicken.voteRequireRealName | **域默认** VOTE |
+| 投票弃权选项 | allow_abstain + abstain 票；labels.voteAbstainLabel · labels.voteAllowAbstainLabel；interactThicken.voteAbstain | **域默认** VOTE |
+| 投票实时榜置顶前三 | VoteCast/VotePoster top3；labels.voteTop3Hint；interactThicken.voteTop3 | **域默认** VOTE |
+| 收藏岛加深（菜单 + 导出/分享提示） | attach_favorites_menus + labels.favShareHint；interactThicken.favoritesIsland；MyFavorites 导出清单；≠收藏备注子功能 | **已挂 favorites** |
+| 私信岛加深（站内短轮询文案） | labels.dmPageLead · dmEmptyPeers；interactThicken.dmIsland；Dm.vue；禁止第三方 IM SDK | **已挂 dm** |
+| 单据评价岛加深（管理端可见） | labels.ratingAdminLead · ratingFilterRatedLabel；interactThicken.ratingIsland；TicketRecordsAdmin 筛「仅已评分」 | **已开 allowRating** |
+| 举报处理时限提醒（能力岛） | reportHandleDays + labels.datingReportDeadlineHint / reportDeadlineHint；interactThicken.datingReportDeadline · reportDeadlineIsland；ContentReportsAdmin | **已挂 content_report** |
 
 ### 1.10 兜底
 
@@ -1437,4 +1444,17 @@
 | 2026-10-10 | **§1.8 C-08 已齐**：能力岛（积分下载/点券、精华奖分、签到、规则页、举报字典、评论举报、粉丝可见、投稿通知）；无订单壳扫词可挂 points；三套 Store + 双端；八条待补迁已齐 |
 | 2026-10-10 | **§1.8 C-09 收口**：作者主页 FORUM 叠、草稿自动保存；不支持项只留边界；本组待补清零；`content_thicken` 批次改已收口档案 |
 | 2026-10-10 | **§1.9 批次立项**：待补分批规格见 [`interact-thicken-batch.md`](./interact-thicken-batch.md)（I-00～I-12）；表内 2 条不支持迁边界；尚未迁行 |
+| 2026-10-10 | **§1.9 I-00 脚手架已齐**：`interact_thicken` + 注册/`HUB_BYPASS`/特征测；尚不迁待补行 |
+| 2026-10-10 | **§1.9 I-01 已齐**：心动列表 / 拼车·时银评价与星级 / 互选截止倒计时 / 客观题判分口径；六条待补迁已齐 |
+| 2026-10-10 | **§1.9 I-02 已齐**：DATING 完整度/互关/见面意向/举报时限/审驳/筛选/黑名单/相册审/活动入口叠；九条待补迁已齐 |
+| 2026-10-10 | **§1.9 I-03 已齐**：MUTUAL 通识调剂留痕/改志愿/简介包/盲选/互斥/公示/调剂上限/超时婉拒/锁定倒计时/导出通知/面试叠；十一条待补迁已齐 |
+| 2026-10-10 | **§1.9 I-04 已齐**：MUTUAL-TUTOR 名额进度条/师生互评；MUTUAL-TEAM 技能标签/邀请/满员关招募/附言/退出须同意/匹配度；八条待补迁已齐 |
+| 2026-10-11 | **§1.9 I-05 已齐**：CARPOOL 满员关行程/出发提醒/分摊·偏好·途经·行李·校区/余座/锁座/爽约/AA/电话脱敏/重复发布；十三条待补迁已齐（评价已在 I-01） |
+| 2026-10-11 | **§1.9 I-06 已齐**：TIMEBANK 时长榜/兑换导出/技能认证/目录/信用分/发布须审/冻结/证明附件/申诉/转让/清零说明；十一条待补迁已齐（评价/星级已在 I-01） |
+| 2026-10-11 | **§1.9 I-07 已齐**：EXAM 练习不计分次数/防切屏/解析开关/乱序/进度条/及格线/多选部分分/交卷锁/迟到/监考口令；十条待补迁已齐 |
+| 2026-10-11 | **§1.9 I-08 已齐**：EXAM 及格证书打印壳/错题导出/题目·成绩 CSV 导入/随机抽题/评分细则/难度标签；七条待补迁已齐 |
+| 2026-10-11 | **§1.9 I-09 已齐**：SURVEY 开放截止上下架/匿名/跳题/进度/限填/必答/矩阵/图表/截止提醒/草稿/显隐/组织投放/感谢页/回收率卡片；十四条待补迁已齐 |
+| 2026-10-11 | **§1.9 I-10 已齐**：VOTE 结果导出/IP 提示/十佳海报/图文简介/票数轮询/每日限票/匿名/延迟公布/拉票文案/实名可投/弃权/实时榜前三；十二条待补迁已齐 |
+| 2026-10-11 | **§1.9 I-11 已齐**：favorites 导出提示 / dm 文案 / allowRating 管理可见 / content_report 时限；四条待补迁已齐；收藏备注另案 |
+| 2026-10-11 | **§1.9 I-12 收口**：本组待补清零；不支持只留边界；`interact-thicken-batch` 改已收口档案；delivery-audit 互动行已收口 |
 | 2026-10-10 | **§1.1～§1.5 复盘档案**：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md)；domains A–H ↔ §1.x 对照写入 [`domains.md`](./domains.md) |

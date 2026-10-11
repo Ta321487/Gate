@@ -411,7 +411,8 @@ public final class AiBizContext {
 
     private static void appendSurvey(StringBuilder sb, String username) {
         try {
-            List<Map<String, Object>> forms = SurveyStore.listOpenForms();
+            List<Map<String, Object>> forms = SurveyStore.listOpenForms(
+                    username == null ? "" : username);
             sb.append("【开放问卷】");
             if (forms == null || forms.isEmpty()) {
                 sb.append("暂无\n");

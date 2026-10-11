@@ -1,9 +1,9 @@
 package com.thesis.service;
 
-import com.thesis.config.JdbcSupport;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
+import com.thesis.config.JpaDb;
+import com.thesis.config.JpaSupport;
+import com.thesis.config.GeneratedKeyHolder;
+import com.thesis.config.KeyHolder;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -33,8 +33,8 @@ public class GuestbookStore {
     private static Boolean hasChannel;
     private static Boolean hasItemId;
 
-    private static JdbcTemplate db() {
-        return JdbcSupport.jdbc();
+    private static JpaDb db() {
+        return JpaSupport.db();
     }
 
     public static boolean ready() {

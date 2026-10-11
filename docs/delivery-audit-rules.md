@@ -115,7 +115,7 @@
 | **交易** | 换皮已收口；§1.6 加厚 **已收口**（[`trade-thicken-batch.md`](./trade-thicken-batch.md)；待补仅小票打印≠已齐） |
 | **预约** | 换皮已收口；§1.7 加厚 **已收口**（[`reserve-thicken-batch.md`](./reserve-thicken-batch.md)） |
 | **内容** | 换皮已收口；§1.8 加厚 **已收口**（[`content-thicken-batch.md`](./content-thicken-batch.md)） |
-| **互动** | 换皮已收口；§1.9 **仍有待补**（[`interact-thicken-batch.md`](./interact-thicken-batch.md) I-00～I-12；尚未迁行） |
+| **互动** | 换皮已收口；§1.9 加厚 **已收口**（[`interact-thicken-batch.md`](./interact-thicken-batch.md)） |
 | **兜底 GENERIC** | §1.10；导引类待补见地图 |
 | **域组 UI 表面** | 选型见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md)；**加厚后**一组一 plan，不进本表红灯 |
 

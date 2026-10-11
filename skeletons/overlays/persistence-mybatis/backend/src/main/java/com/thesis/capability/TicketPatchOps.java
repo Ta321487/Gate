@@ -1,5 +1,8 @@
 package com.thesis.capability;
 
+
+import com.thesis.config.MbSql;
+import com.thesis.config.MybatisSupport;
 import java.util.*;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -27,6 +30,9 @@ final class TicketPatchOps {
         if (body.containsKey("contactChannel") && !TicketStore.hasColumn("contact_channel")) {
             throw new IllegalStateException("系统未配置联系渠道字段");
         }
+        if (body.containsKey("meetIntent") && !TicketStore.hasColumn("meet_intent")) {
+            throw new IllegalStateException("系统未配置见面意向字段");
+        }
         if (body.containsKey("nextFollowAt") && !TicketStore.hasColumn("next_follow_at")) {
             throw new IllegalStateException("系统未配置下次跟进字段");
         }
@@ -38,7 +44,16 @@ final class TicketPatchOps {
         if (TicketStore.hasColumn("contact_channel") && body.containsKey("contactChannel")) {
             String ch = TicketSql.str(body.get("contactChannel")).trim();
             if (ch.length() > 32) ch = ch.substring(0, 32);
+            Map<String, Object> cur = TicketRowMaps.load(ticketId);
+            String owner = cur == null ? "" : TicketSql.str(cur.get("username"));
+            TicketAsserts.assertAdjustWishCap(owner, ch, ticketId);
             TicketStore.mapper().updateContactChannel(TicketStore.TICKET, ticketId, ch);
+        }
+        // I-02：婚恋见面意向
+        if (TicketStore.hasColumn("meet_intent") && body.containsKey("meetIntent")) {
+            String mi = TicketSql.str(body.get("meetIntent")).trim();
+            if (mi.length() > 32) mi = mi.substring(0, 32);
+            TicketStore.mapper().updateMeetIntent(TicketStore.TICKET, ticketId, mi);
         }
         if (body.containsKey("weekNo")) {
             if (!TicketStore.hasColumn("week_no")) {
@@ -388,14 +403,14 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写证书编号");
             }
             if (certNo.length() > 64) certNo = certNo.substring(0, 64);
-            Integer dup = TicketSql.db().queryForObject(
+            Integer dup = MybatisSupport.db().queryForObject(
                     "SELECT COUNT(*) FROM " + TicketStore.TICKET
                             + " WHERE award_cert_no=? AND id<>?",
                     Integer.class, certNo, ticketId);
             if (dup != null && dup > 0) {
                 throw new IllegalStateException("证书编号已存在，请核对后重填");
             }
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET award_cert_no=? WHERE id=?",
                     certNo, ticketId);
         }
@@ -408,7 +423,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写驾驶员");
             }
             if (dn.length() > 64) dn = dn.substring(0, 64);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET driver_name=? WHERE id=?", dn, ticketId);
         }
         if (TicketStore.allowFleetCrew && body.containsKey("passengerNames")) {
@@ -417,7 +432,7 @@ final class TicketPatchOps {
             }
             String pn = TicketSql.str(body.get("passengerNames")).trim();
             if (pn.length() > 255) pn = pn.substring(0, 255);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET passenger_names=? WHERE id=?", pn, ticketId);
         }
         if ((TicketStore.allowCompHours || body.containsKey("compHours"))
@@ -426,7 +441,7 @@ final class TicketPatchOps {
             double h = TicketSql.toDouble(body.get("compHours"));
             if (h < 0) h = 0;
             if (h > 9999) h = 9999;
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET comp_hours=? WHERE id=?", h, ticketId);
         }
         if ((TicketStore.allowReturnFuel || body.containsKey("returnFuel"))
@@ -435,7 +450,7 @@ final class TicketPatchOps {
             double fuel = TicketSql.toDouble(body.get("returnFuel"));
             if (fuel < 0) fuel = 0;
             if (fuel > 100) fuel = 100;
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET return_fuel=? WHERE id=?", fuel, ticketId);
         }
         if (TicketStore.allowLaborPlace && body.containsKey("laborPlace")) {
@@ -447,7 +462,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写劳动地点");
             }
             if (lp.length() > 128) lp = lp.substring(0, 128);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET labor_place=? WHERE id=?", lp, ticketId);
         }
         if (TicketStore.allowEffectiveOn && body.containsKey("effectiveOn")) {
@@ -459,7 +474,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请选择生效日期");
             }
             if (eo.length() > 32) eo = eo.substring(0, 32);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET effective_on=? WHERE id=?", eo, ticketId);
         }
         if (TicketStore.allowDocRev) {
@@ -471,7 +486,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写正文版本号");
             }
             if (rev.length() > 32) rev = rev.substring(0, 32);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET doc_rev=? WHERE id=?", rev, ticketId);
         }
         if (TicketStore.allowFitoutQuiet) {
@@ -482,7 +497,7 @@ final class TicketPatchOps {
             String we = TicketSql.str(body.get("workEnd")).trim();
             if (ws.length() > 8) ws = ws.substring(0, 8);
             if (we.length() > 8) we = we.substring(0, 8);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET work_start=?, work_end=? WHERE id=?",
                     ws, we, ticketId);
         }
@@ -494,7 +509,7 @@ final class TicketPatchOps {
             if (n < 1) {
                 throw new IllegalStateException("请填写开具份数（至少 1 份）");
             }
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET issue_copies=? WHERE id=?", n, ticketId);
         }
         if (TicketStore.allowSignParties) {
@@ -506,7 +521,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请勾选签署方");
             }
             if (sp.length() > 255) sp = sp.substring(0, 255);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET sign_parties=? WHERE id=?", sp, ticketId);
         }
         if (TicketStore.allowTrainHours) {
@@ -517,7 +532,7 @@ final class TicketPatchOps {
             if (!(hours > 0)) {
                 throw new IllegalStateException("请填写大于 0 的培训学时");
             }
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET train_hours=? WHERE id=?", hours, ticketId);
         }
         if (TicketStore.allowMemberChange) {
@@ -529,7 +544,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写成员变更说明");
             }
             if (note.length() > 512) note = note.substring(0, 512);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET member_change_note=? WHERE id=?", note, ticketId);
         }
         if (TicketStore.allowProcureBudget) {
@@ -540,7 +555,7 @@ final class TicketPatchOps {
             if (!(amt > 0)) {
                 throw new IllegalStateException("请填写大于 0 的申购金额");
             }
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET procure_amount=? WHERE id=?", amt, ticketId);
         }
         if (TicketStore.allowCheckinException) {
@@ -552,7 +567,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请选择异常类型");
             }
             if (et.length() > 32) et = et.substring(0, 32);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET exception_type=? WHERE id=?", et, ticketId);
         }
         if (TicketStore.allowVisitPurpose) {
@@ -564,7 +579,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请选择来访目的");
             }
             if (vp.length() > 32) vp = vp.substring(0, 32);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET visit_purpose=? WHERE id=?", vp, ticketId);
         }
         if (TicketStore.allowFitoutRectify) {
@@ -576,7 +591,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写整改说明");
             }
             if (rn.length() > 512) rn = rn.substring(0, 512);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET rectify_note=? WHERE id=?", rn, ticketId);
         }
         if (TicketStore.allowProjFundUse) {
@@ -592,7 +607,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写经费使用说明");
             }
             if (fn.length() > 512) fn = fn.substring(0, 512);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET fund_use_yuan=?, fund_use_note=? WHERE id=?",
                     yuan, fn, ticketId);
         }
@@ -605,7 +620,7 @@ final class TicketPatchOps {
             if (vo.isBlank()) {
                 throw new IllegalStateException("请选择来访日期");
             }
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET visit_on=? WHERE id=?", vo, ticketId);
         }
         if (TicketStore.allowPlagiarismUrl) {
@@ -617,7 +632,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写以 http:// 或 https:// 开头的查重报告链接");
             }
             if (url.length() > 512) url = url.substring(0, 512);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET plagiarism_url=? WHERE id=?", url, ticketId);
         }
         if (TicketStore.allowPartyStage) {
@@ -631,7 +646,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请选择发展阶段并填写进入日期");
             }
             if (ps.length() > 32) ps = ps.substring(0, 32);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET party_stage=?, stage_on=? WHERE id=?",
                     ps, so, ticketId);
         }
@@ -646,7 +661,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写听课日期和记录");
             }
             if (on.length() > 512) on = on.substring(0, 512);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET observe_on=?, observe_note=? WHERE id=?",
                     oo, on, ticketId);
         }
@@ -659,7 +674,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写对课表的影响");
             }
             if (si.length() > 512) si = si.substring(0, 512);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET schedule_impact_note=? WHERE id=?", si, ticketId);
         }
         if (TicketStore.allowContractAmount) {
@@ -670,7 +685,7 @@ final class TicketPatchOps {
             if (!(amt > 0)) {
                 throw new IllegalStateException("请填写大于 0 的合同金额");
             }
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET contract_amount=? WHERE id=?", amt, ticketId);
         }
         if (TicketStore.allowExpenseLines) {
@@ -693,7 +708,7 @@ final class TicketPatchOps {
             }
             long itemId = 0;
             try {
-                Long iid = TicketSql.db().queryForObject(
+                Long iid = MybatisSupport.db().queryForObject(
                         "SELECT " + TicketStore.itemFkColumn() + " FROM " + TicketStore.TICKET + " WHERE id=?",
                         Long.class,
                         ticketId);
@@ -701,7 +716,7 @@ final class TicketPatchOps {
             } catch (Exception ignored) {
             }
             TicketGuardOps.assertParkingMutexIfRequired(itemId, po, ticketId);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET parking_on=? WHERE id=?", po, ticketId);
         }
         if (TicketStore.allowContractRenew) {
@@ -715,19 +730,19 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写续签日期和说明");
             }
             if (rn.length() > 512) rn = rn.substring(0, 512);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET renew_on=?, renew_note=? WHERE id=?",
                     ro, rn, ticketId);
         }
         if (TicketStore.allowVisitWalkIn && body.containsKey("walkIn") && TicketStore.hasColumn("walk_in")) {
             boolean wi = TicketNotifyOps.truthy(body.get("walkIn"));
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET walk_in=? WHERE id=?", wi ? 1 : 0, ticketId);
             if (wi && TicketStore.hasColumn("visit_on")) {
                 String vo = TicketSql.str(body.get("visitOn")).trim();
                 if (vo.length() >= 10) vo = vo.substring(0, 10);
                 if (!vo.isBlank()) {
-                    TicketSql.db().update(
+                    MybatisSupport.db().update(
                             "UPDATE " + TicketStore.TICKET + " SET visit_on=? WHERE id=?", vo, ticketId);
                 }
             }
@@ -736,7 +751,7 @@ final class TicketPatchOps {
                 && TicketStore.hasColumn("checkin_proxy_by")) {
             String by = TicketSql.str(body.get("checkinProxyBy")).trim();
             if (by.length() > 64) by = by.substring(0, 64);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET checkin_proxy_by=? WHERE id=?", by, ticketId);
         }
         if (TicketStore.allowProjChangeLog) {
@@ -748,7 +763,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写变更摘要");
             }
             if (note.length() > 512) note = note.substring(0, 512);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET change_log_note=? WHERE id=?", note, ticketId);
         }
         if (TicketStore.allowProcureReturn
@@ -761,11 +776,11 @@ final class TicketPatchOps {
             }
             if (rn2.length() > 512) rn2 = rn2.substring(0, 512);
             if (TicketStore.hasColumn("return_note")) {
-                TicketSql.db().update(
+                MybatisSupport.db().update(
                         "UPDATE " + TicketStore.TICKET + " SET return_fail=?, return_note=? WHERE id=?",
                         fail ? 1 : 0, rn2, ticketId);
             } else {
-                TicketSql.db().update(
+                MybatisSupport.db().update(
                         "UPDATE " + TicketStore.TICKET + " SET return_fail=? WHERE id=?",
                         fail ? 1 : 0, ticketId);
             }
@@ -778,7 +793,7 @@ final class TicketPatchOps {
                 throw new IllegalStateException("请填写违章责任人");
             }
             if (vp.length() > 64) vp = vp.substring(0, 64);
-            TicketSql.db().update(
+            MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET violation_person=? WHERE id=?", vp, ticketId);
         }
         if ((TicketStore.allowVendorQuotes || TicketStore.minVendorQuotes > 0)

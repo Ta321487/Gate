@@ -8,6 +8,15 @@
           <p v-if="ticketNoHint" class="page-hint">{{ ticketNoHint }}</p>
           <p v-if="allowCheckinSpot && spotCheckToday" class="page-hint">{{ checkinSpotHint }}</p>
           <p v-if="slaPageHint" class="page-hint">{{ slaPageHint }}</p>
+          <p v-if="mutualWishLockOn && mutualWishLockHint" class="page-hint">{{ mutualWishLockHint }}</p>
+          <p v-if="mutualWishMutexHint" class="page-hint">{{ mutualWishMutexHint }}</p>
+          <p v-if="mutualAdjustCapHint" class="page-hint">{{ mutualAdjustCapHint }}</p>
+          <p v-if="mutualPeerTimeoutHint" class="page-hint">{{ mutualPeerTimeoutHint }}</p>
+          <p v-if="carpoolCancelPenaltyOn && carpoolNoShowCountHint" class="page-hint">
+            {{ carpoolNoShowCountLabel }}：{{ myNoShowCount }}
+            <template v-if="carpoolNoShowCountHint"> · {{ carpoolNoShowCountHint }}</template>
+          </p>
+          <p v-if="carpoolSeatLockOn && carpoolSeatLockedHint" class="page-hint">{{ carpoolSeatLockedHint }}</p>
           <p v-if="creditFromActivityHint" class="page-hint">{{ creditFromActivityHint }}</p>
           <p v-if="creditWritebackHint && requireCreditWritebackAck" class="page-hint">{{ creditWritebackHint }}</p>
           <SchemaLabelHints :keys="myTicketHintKeys" />
@@ -68,6 +77,14 @@
                 :class="{ 'cd-urgent': isUrgentCountdown(holdSecondsLeft(row), 3600) }"
               >（{{ holdCountdownText(row) }}）</span>
             </template>
+            <template v-if="mutualDeadlineCountdownOn && row.applyDeadlineAt">
+              · {{ applyDeadlineLabel }} {{ row.applyDeadlineAt }}
+              <span
+                v-if="mutualWishLockOn ? mutualWishLockText(row) : mutualDeadlineText(row)"
+                class="hold-cd"
+                :class="{ 'cd-urgent': isUrgentCountdown(mutualDeadlineSeconds(row), 3600) }"
+              >（{{ mutualWishLockOn ? mutualWishLockText(row) : mutualDeadlineText(row) }}）</span>
+            </template>
             <template v-if="row.typeName"> · {{ row.typeName }}</template>
             <template v-if="row.location"> · {{ row.location }}</template>
             <template v-if="showPriorityCols && row.priority"> · {{ row.priority }}</template>
@@ -113,13 +130,49 @@
           @click="resubmitTicket(row)"
         >重新提交</el-button>
             <el-button
+              v-if="canEditWish(row)"
+              type="primary"
+              size="small"
+              plain
+              :title="mutualEditWishHint"
+              @click="editWish(row)"
+            >{{ mutualEditWishLabel }}</el-button>
+            <el-button
+              v-if="canRequestTeamExit(row)"
+              type="warning"
+              size="small"
+              plain
+              :title="teamExitRequestHint"
+              @click="requestTeamExit(row)"
+            >{{ teamExitRequestLabel }}</el-button>
+            <el-tag
+              v-if="teamExitNeedOwnerOn && Number(row.exitRequest) > 0 && row.status === 'approved'"
+              size="small"
+              type="warning"
+              effect="plain"
+            >{{ teamExitPendingLabel }}</el-tag>
+            <el-tag
+              v-if="carpoolSeatLockOn && Number(row.seatLocked) > 0 && row.status === 'approved'"
+              size="small"
+              type="success"
+              effect="plain"
+            >{{ carpoolSeatLockedLabel }}</el-tag>
+            <el-button
               v-if="canWithdraw(row)"
               type="danger"
               size="small"
               plain
-              :title="withdrawHint"
+              :title="canCancelLockedSeat(row) ? carpoolCancelPenaltyHint : withdrawHint"
               @click="withdraw(row)"
-            >撤销</el-button>
+            >{{ canCancelLockedSeat(row) ? carpoolCancelPenaltyLabel : '撤销' }}</el-button>
+            <p
+              v-if="carpoolCancelPenaltyOn && canCancelLockedSeat(row)"
+              class="sub"
+            >{{ carpoolCancelPenaltyHint }}</p>
+            <p
+              v-if="carpoolPhoneMaskAfterRateOn && row.ratedAt && carpoolPhoneMaskedHint"
+              class="sub"
+            >{{ carpoolPhoneMaskedHint }}</p>
             <el-button
               v-if="canMoralObjection(row)"
               type="warning"
@@ -173,7 +226,7 @@
               size="small"
               plain
               @click="openRate(row, false)"
-            >评分</el-button>
+            >{{ ratingLabel }}</el-button>
             <el-button
               v-else-if="canFollowRate(row)"
               type="warning"
@@ -277,6 +330,7 @@
             {{ fineLabel }} ¥{{ row.fineYuan }}
             <template v-if="row.fineStatus"> · {{ row.fineStatus === 'paid' ? '已结清' : row.fineStatus }}</template>
           </p>
+          <p v-if="row.meetIntent" class="sub">{{ meetIntentLabel }} {{ row.meetIntent }}</p>
           <p v-if="row.contactChannel || row.nextFollowAt" class="sub">
             <template v-if="row.contactChannel">{{ channelLabel }} {{ row.contactChannel }}</template>
             <template v-if="row.nextFollowAt"> · {{ nextAtLabel }} {{ row.nextFollowAt }}</template>
@@ -2328,6 +2382,7 @@ const fineLabel = computed(() => ticketFineLabel())
 const checkinLabel = computed(() => ticketCheckinLabel())
 const channelLabel = computed(() => followChannelLabel())
 const nextAtLabel = computed(() => nextFollowLabel())
+const meetIntentLabel = computed(() => labels.value.meetIntentLabel || '见面意向')
 const richRemark = computed(() => !!ticket.richRemark)
 const attachByLeaveTypeOn = computed(() => !!ticket.attachByLeaveType)
 const sickAttachHint = computed(() => labels.value.sickAttachHint || '')
@@ -2423,6 +2478,7 @@ const slaPageHint = computed(() => labels.value.slaPageHint || '')
 const selfHelpHint = computed(() => labels.value.selfHelpHint || '')
 const addressReuseHint = computed(() => labels.value.addressReuseHint || '')
 const rateInviteHint = computed(() => labels.value.rateInviteHint || '办结后可对本次服务评分。')
+const ratingLabel = computed(() => labels.value.ratingLabel || '评分')
 const myTicketHintKeys = MY_TICKETS_HINT_KEYS
 const rankSwitchHint = computed(() => labels.value.rankSwitchHint || '')
 const rankSwitchOn = computed(() => !!rankSwitchHint.value)
@@ -2703,8 +2759,18 @@ function leaveSplitText(row) {
   return `${da} 至 ${db}`
 }
 
+function canCancelLockedSeat(row) {
+  return !!(
+    carpoolSeatLockOn.value
+    && row
+    && row.status === 'approved'
+    && Number(row.seatLocked) > 0
+  )
+}
+
 function canWithdraw(row) {
   if (!row) return false
+  if (canCancelLockedSeat(row)) return true
   if (row.status === 'pending' || row.status === 'pending_mid'
     || row.status === 'pending_final' || row.status === 'waitlisted'
     || row.status === 'verifying') return true
@@ -2874,6 +2940,181 @@ function holdCountdownText(row) {
   if (sec == null) return ''
   if (sec <= 0) return '已过期'
   return `剩 ${formatCountdownClock(sec)}`
+}
+
+const mutualDeadlineCountdownOn = computed(
+  () => !!getSchema()?.interactThicken?.mutualDeadlineCountdown,
+)
+const mutualWishLockOn = computed(() => !!getSchema()?.interactThicken?.mutualWishLock)
+const mutualEditBeforeDeadlineOn = computed(
+  () => !!getSchema()?.interactThicken?.mutualEditBeforeDeadline,
+)
+const applyDeadlineLabel = computed(
+  () => labels.value.applyDeadlineLabel || '志愿截止',
+)
+const mutualDeadlineCountdownLabel = computed(
+  () => labels.value.mutualDeadlineCountdownLabel || '距志愿截止',
+)
+const mutualDeadlinePassedLabel = computed(
+  () => labels.value.mutualDeadlinePassedLabel || '志愿已截止',
+)
+const mutualWishLockLabel = computed(
+  () => labels.value.mutualWishLockLabel || '志愿锁定倒计时',
+)
+const mutualWishLockedLabel = computed(
+  () => labels.value.mutualWishLockedLabel || '志愿已锁定',
+)
+const mutualEditWishLabel = computed(
+  () => labels.value.mutualEditWishLabel || '修改志愿',
+)
+const mutualEditWishHint = computed(
+  () => labels.value.mutualEditWishHint || '志愿截止前可修改说明与志愿类型。',
+)
+const mutualWishLockHint = computed(
+  () => labels.value.mutualWishLockHint || '截止前可修改；截止后志愿锁定，不可再改。',
+)
+const mutualWishMutexHint = computed(
+  () => labels.value.mutualWishMutexHint || '',
+)
+const mutualAdjustCapHint = computed(
+  () => labels.value.mutualAdjustCapHint || '',
+)
+const mutualPeerTimeoutHint = computed(
+  () => labels.value.mutualPeerTimeoutHint || '',
+)
+
+function mutualDeadlineSeconds(row) {
+  if (!row?.applyDeadlineAt) return null
+  return secondsUntil(row.applyDeadlineAt, nowMs.value)
+}
+
+function mutualDeadlineText(row) {
+  const sec = mutualDeadlineSeconds(row)
+  if (sec == null) return ''
+  if (sec <= 0) return mutualDeadlinePassedLabel.value
+  return `${mutualDeadlineCountdownLabel.value} ${formatCountdownClock(sec)}`
+}
+
+function mutualWishLockText(row) {
+  const sec = mutualDeadlineSeconds(row)
+  if (sec == null) return ''
+  if (sec <= 0) return mutualWishLockedLabel.value
+  return `${mutualWishLockLabel.value} ${formatCountdownClock(sec)}`
+}
+
+function canEditWish(row) {
+  if (!mutualEditBeforeDeadlineOn.value || !row) return false
+  if (row.status !== 'pending') return false
+  const sec = mutualDeadlineSeconds(row)
+  if (sec != null && sec <= 0) return false
+  return true
+}
+
+const teamExitNeedOwnerOn = computed(
+  () => !!getSchema()?.interactThicken?.mutualTeamExitNeedOwner,
+)
+const teamExitRequestLabel = computed(
+  () => labels.value.teamExitRequestLabel || '申请退出',
+)
+const teamExitRequestHint = computed(
+  () => labels.value.teamExitRequestHint || '退出须队长同意后生效。',
+)
+const teamExitPendingLabel = computed(
+  () => labels.value.teamExitPendingLabel || '退出待确认',
+)
+const carpoolSeatLockOn = computed(
+  () => !!getSchema()?.interactThicken?.carpoolSeatLock,
+)
+const carpoolCancelPenaltyOn = computed(
+  () => !!getSchema()?.interactThicken?.carpoolCancelPenalty,
+)
+const carpoolPhoneMaskAfterRateOn = computed(
+  () => !!getSchema()?.interactThicken?.carpoolPhoneMaskAfterRate,
+)
+const carpoolSeatLockedLabel = computed(
+  () => labels.value.carpoolSeatLockedLabel || '已锁座',
+)
+const carpoolCancelPenaltyLabel = computed(
+  () => labels.value.carpoolCancelPenaltyLabel || '取消同行',
+)
+const carpoolCancelPenaltyHint = computed(
+  () => labels.value.carpoolCancelPenaltyHint || '确认后取消将记一次爽约，请尽量守约。',
+)
+const carpoolPhoneMaskedHint = computed(
+  () => labels.value.carpoolPhoneMaskedHint || '',
+)
+const carpoolNoShowCountLabel = computed(
+  () => labels.value.carpoolNoShowCountLabel || '爽约次数',
+)
+const carpoolNoShowCountHint = computed(
+  () => labels.value.carpoolNoShowCountHint || '',
+)
+const carpoolSeatLockedHint = computed(
+  () => labels.value.carpoolSeatLockedHint || '',
+)
+const myNoShowCount = computed(() => {
+  if (!carpoolCancelPenaltyOn.value) return 0
+  return (list.value || []).filter((r) => Number(r?.noShow) > 0).length
+})
+
+function canRequestTeamExit(row) {
+  if (!teamExitNeedOwnerOn.value || !row) return false
+  if (row.status !== 'approved') return false
+  if (Number(row.exitRequest) > 0) return false
+  return true
+}
+
+async function requestTeamExit(row) {
+  await ElMessageBox.confirm(teamExitRequestHint.value, teamExitRequestLabel.value, {
+    type: 'warning',
+  })
+  await http.post(`/api/tickets/${row.id}/request-exit`)
+  ElMessage.success(labels.value.teamExitRequestDone || '已提交退出申请，等待队长处理')
+  await load()
+}
+
+async function editWish(row) {
+  const channelOpts = ticket.contactChannelOptions || []
+  let remark = String(row.remark || '')
+  try {
+    const { value } = await ElMessageBox.prompt(
+      mutualEditWishHint.value,
+      mutualEditWishLabel.value,
+      {
+        confirmButtonText: '保存',
+        cancelButtonText: '取消',
+        inputValue: remark,
+        inputPlaceholder: labels.value.remarkLabel || '志愿说明',
+      },
+    )
+    remark = value
+  } catch {
+    return
+  }
+  let contactChannel = row.contactChannel || ''
+  if (channelOpts.length) {
+    try {
+      const { value } = await ElMessageBox.prompt(
+        '请填写志愿类型（如：第一志愿 / 第二志愿 / 调剂志愿）',
+        mutualEditWishLabel.value,
+        {
+          confirmButtonText: '保存',
+          cancelButtonText: '跳过类型',
+          inputValue: contactChannel,
+        },
+      )
+      contactChannel = value
+    } catch {
+      contactChannel = null
+    }
+  } else {
+    contactChannel = null
+  }
+  const body = { remark }
+  if (contactChannel != null) body.contactChannel = contactChannel
+  await http.post(`/api/tickets/${row.id}/edit-wish`, body)
+  ElMessage.success(labels.value.mutualEditWishDone || '志愿已更新')
+  await load()
 }
 
 async function copyPass(code) {
@@ -4044,9 +4285,15 @@ async function submit(asDraft = false) {
 }
 
 async function withdraw(row) {
-  await ElMessageBox.confirm(`确认撤销「${row.title || ('编号 ' + row.id)}」？`, '确认撤销')
+  const locked = canCancelLockedSeat(row)
+  await ElMessageBox.confirm(
+    locked
+      ? `确认取消「${row.title || ('编号 ' + row.id)}」？${carpoolCancelPenaltyHint.value}`
+      : `确认撤销「${row.title || ('编号 ' + row.id)}」？`,
+    locked ? carpoolCancelPenaltyLabel.value : '确认撤销',
+  )
   await http.post(`/api/tickets/${row.id}/withdraw`)
-  ElMessage.success('已撤销')
+  ElMessage.success(locked ? '已取消同行' : '已撤销')
   load()
 }
 

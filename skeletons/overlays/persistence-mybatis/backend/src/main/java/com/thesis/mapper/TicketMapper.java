@@ -138,6 +138,23 @@ public interface TicketMapper {
     int updateContactChannel(
             @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("channel") String channel);
 
+    @Update("UPDATE `${ticketTable}` SET meet_intent=#{meetIntent} WHERE id=#{id}")
+    int updateMeetIntent(
+            @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("meetIntent") String meetIntent);
+
+    // I-05 CARPOOL：取消原因 / 爽约标记 / 锁座标记
+    @Update("UPDATE `${ticketTable}` SET cancel_reason=#{reason} WHERE id=#{id}")
+    int updateCancelReason(
+            @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("reason") String reason);
+
+    @Update("UPDATE `${ticketTable}` SET no_show=#{noShow} WHERE id=#{id}")
+    int updateNoShow(
+            @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("noShow") int noShow);
+
+    @Update("UPDATE `${ticketTable}` SET seat_locked=#{seatLocked} WHERE id=#{id}")
+    int updateSeatLocked(
+            @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("seatLocked") int seatLocked);
+
     @Update("UPDATE `${ticketTable}` SET next_follow_at=#{nextFollowAt} WHERE id=#{id}")
     int updateNextFollowAt(
             @Param("ticketTable") String ticketTable,

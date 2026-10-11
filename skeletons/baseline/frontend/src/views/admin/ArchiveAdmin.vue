@@ -150,6 +150,19 @@
             type="warning"
             @click="reject(row)"
           >驳回</el-button>
+          <span v-if="datingAlbumAuditOn && row.albumAuditStatus" class="muted">{{ albumAuditStatusText(row) }}</span>
+          <el-button
+            v-if="datingAlbumAuditOn && isSuper && String(row.albumAuditStatus || '') === 'pending'"
+            link
+            type="success"
+            @click="albumAudit(row, 'approved')"
+          >{{ albumAuditApproveAction }}</el-button>
+          <el-button
+            v-if="datingAlbumAuditOn && isSuper && String(row.albumAuditStatus || '') === 'pending'"
+            link
+            type="warning"
+            @click="albumAudit(row, 'rejected')"
+          >{{ albumAuditRejectAction }}</el-button>
           <el-button v-if="softDelete && row.deleted" link type="success" @click="restore(row)">恢复</el-button>
           <el-button v-else link type="danger" @click="remove(row)">{{ softDelete ? softCopy.verb : '删除' }}</el-button>
           </div>
@@ -346,6 +359,78 @@
             <el-option v-for="n in equipOptions" :key="n" :label="n" :value="n" />
           </el-select>
         </el-form-item>
+        <template v-if="carpoolCampusDictOn">
+          <el-form-item :label="carpoolCampusStartLabel">
+            <el-select
+              v-model="form.startCampus"
+              filterable
+              allow-create
+              default-first-option
+              clearable
+              :placeholder="carpoolCampusPlaceholder"
+              style="width:100%"
+            >
+              <el-option v-for="c in carpoolCampusOptions" :key="'cs' + c" :label="c" :value="c" />
+            </el-select>
+          </el-form-item>
+          <el-form-item :label="carpoolCampusEndLabel">
+            <el-select
+              v-model="form.endCampus"
+              filterable
+              allow-create
+              default-first-option
+              clearable
+              :placeholder="carpoolCampusPlaceholder"
+              style="width:100%"
+            >
+              <el-option v-for="c in carpoolCampusOptions" :key="'ce' + c" :label="c" :value="c" />
+            </el-select>
+          </el-form-item>
+          <p v-if="carpoolCampusDictHint" class="form-hint">{{ carpoolCampusDictHint }}</p>
+        </template>
+        <el-form-item v-if="carpoolViaPointsOn" :label="carpoolViaPointsLabel">
+          <el-input
+            v-model="form.viaPoints"
+            type="textarea"
+            :rows="2"
+            :placeholder="carpoolViaPointsPlaceholder"
+          />
+          <p v-if="carpoolViaPointsHint" class="form-hint">{{ carpoolViaPointsHint }}</p>
+        </el-form-item>
+        <el-form-item v-if="carpoolShareNoteOn" :label="carpoolShareNoteLabel">
+          <el-input
+            v-model="form.shareNote"
+            type="textarea"
+            :rows="2"
+            :placeholder="carpoolShareNotePlaceholder"
+          />
+          <p v-if="carpoolShareNoteHint" class="form-hint">{{ carpoolShareNoteHint }}</p>
+        </el-form-item>
+        <el-form-item v-if="carpoolPrefNoteOn" :label="carpoolPrefNoteLabel">
+          <el-input v-model="form.prefNote" :placeholder="carpoolPrefNotePlaceholder" />
+          <p v-if="carpoolPrefNoteHint" class="form-hint">{{ carpoolPrefNoteHint }}</p>
+        </el-form-item>
+        <el-form-item v-if="carpoolLuggageOn" :label="carpoolLuggageCountLabel">
+          <el-input-number v-model="form.luggageCount" :min="0" :max="99" controls-position="right" />
+          <p v-if="carpoolLuggageCountHint" class="form-hint">{{ carpoolLuggageCountHint }}</p>
+        </el-form-item>
+        <el-form-item v-if="carpoolDepartRemindOn" :label="carpoolDepartRemindLeadLabel">
+          <el-input-number
+            v-model="form.remindBeforeMinutes"
+            :min="0"
+            :max="1440"
+            controls-position="right"
+          />
+          <p v-if="carpoolDepartRemindHint" class="form-hint">{{ carpoolDepartRemindHint }}</p>
+          <p class="form-hint">
+            {{ carpoolDepartRemindTitle }}：
+            <template v-if="Number(form.remindBeforeMinutes) > 0">
+              出发前 {{ form.remindBeforeMinutes }} 分钟
+              <template v-if="carpoolDepartRemindBody"> · {{ carpoolDepartRemindBody }}</template>
+            </template>
+            <template v-else>{{ carpoolDepartRemindNoneLabel }}</template>
+          </p>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="visible = false">取消</el-button>
@@ -455,6 +540,82 @@ const archiveAdminHintKeys = ARCHIVE_ADMIN_HINT_KEYS
 const adminLabels = computed(() => getSchema()?.labels || {})
 const thicken = computed(() => getSchema()?.tradeThicken || {})
 const contentThicken = computed(() => getSchema()?.contentThicken || {})
+const interactThicken = computed(() => getSchema()?.interactThicken || {})
+const datingRejectReasonOn = computed(() => !!interactThicken.value.datingRejectReason)
+const datingAlbumAuditOn = computed(() => !!interactThicken.value.datingAlbumAudit)
+// —— 拼车（DOM-CARPOOL）互动加厚：校区字典 / 途经点 / 拼车说明 / 同行偏好 / 行李 / 出发提醒 ——
+const carpoolCampusDictOn = computed(() => !!interactThicken.value.carpoolCampusDict)
+const carpoolViaPointsOn = computed(() => !!interactThicken.value.carpoolViaPoints)
+const carpoolShareNoteOn = computed(() => !!interactThicken.value.carpoolShareNote)
+const carpoolPrefNoteOn = computed(() => !!interactThicken.value.carpoolPrefNote)
+const carpoolLuggageOn = computed(() => !!interactThicken.value.carpoolLuggage)
+const carpoolDepartRemindOn = computed(() => !!interactThicken.value.carpoolDepartRemind)
+const carpoolCampusStartLabel = computed(
+  () => adminLabels.value.carpoolCampusStartLabel || '出发校区',
+)
+const carpoolCampusEndLabel = computed(
+  () => adminLabels.value.carpoolCampusEndLabel || '到达校区',
+)
+const carpoolCampusPlaceholder = computed(
+  () => adminLabels.value.carpoolCampusPlaceholder || '选择校区',
+)
+const carpoolCampusDictHint = computed(() => adminLabels.value.carpoolCampusDictHint || '')
+const carpoolViaPointsLabel = computed(() => adminLabels.value.viaPointsLabel || '途经点')
+const carpoolViaPointsPlaceholder = computed(
+  () => adminLabels.value.viaPointsPlaceholder || '多个途经点用逗号或换行分隔',
+)
+const carpoolViaPointsHint = computed(() => adminLabels.value.viaPointsHint || '')
+const carpoolShareNoteLabel = computed(() => adminLabels.value.shareNoteLabel || '拼车说明')
+const carpoolShareNotePlaceholder = computed(
+  () => adminLabels.value.shareNotePlaceholder || '',
+)
+const carpoolShareNoteHint = computed(() => adminLabels.value.shareNoteHint || '')
+const carpoolPrefNoteLabel = computed(() => adminLabels.value.prefNoteLabel || '同行偏好')
+const carpoolPrefNotePlaceholder = computed(
+  () => adminLabels.value.prefNotePlaceholder || '',
+)
+const carpoolPrefNoteHint = computed(() => adminLabels.value.prefNoteHint || '')
+const carpoolLuggageCountLabel = computed(
+  () => adminLabels.value.luggageCountLabel || '行李件数',
+)
+const carpoolLuggageCountHint = computed(() => adminLabels.value.luggageCountHint || '')
+const carpoolDepartRemindLeadLabel = computed(
+  () => adminLabels.value.carpoolDepartRemindLeadLabel || '出发前提醒',
+)
+const carpoolDepartRemindHint = computed(
+  () => adminLabels.value.carpoolDepartRemindHint || '',
+)
+const carpoolDepartRemindTitle = computed(
+  () => adminLabels.value.carpoolDepartRemindTitle || '出发提醒',
+)
+const carpoolDepartRemindBody = computed(
+  () => adminLabels.value.carpoolDepartRemindBody || '',
+)
+const carpoolDepartRemindNoneLabel = computed(
+  () => adminLabels.value.carpoolDepartRemindNoneLabel || '未设置出发提醒',
+)
+const carpoolCampusOptions = computed(() => {
+  const set = new Set()
+  const seeded = String(adminLabels.value.carpoolCampusOptions || '')
+    .split(/[,，]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  for (const c of seeded) set.add(c)
+  for (const r of list.value || []) {
+    const s = String(r?.startCampus ?? '').trim()
+    const e = String(r?.endCampus ?? '').trim()
+    if (s) set.add(s)
+    if (e) set.add(e)
+  }
+  return Array.from(set)
+})
+const labels = adminLabels
+const albumAuditApproveAction = computed(
+  () => adminLabels.value.albumAuditApproveAction || '通过相册',
+)
+const albumAuditRejectAction = computed(
+  () => adminLabels.value.albumAuditRejectAction || '驳回相册',
+)
 const viewCountOn = computed(() => !!contentThicken.value.viewCount)
 const viewCountLabel = computed(() => adminLabels.value.viewCountLabel || '阅读数')
 const downloadCountOn = computed(() => !!contentThicken.value.hotByDownload)
@@ -779,6 +940,13 @@ const form = reactive({
   mutexCode: '',
   checkinCode: '',
   tagIds: [],
+  viaPoints: '',
+  shareNote: '',
+  prefNote: '',
+  luggageCount: null,
+  startCampus: '',
+  endCampus: '',
+  remindBeforeMinutes: null,
 })
 
 function toggleHotMode() {
@@ -865,6 +1033,13 @@ function openEdit(row) {
       mutexCode: row.mutexCode || '',
       checkinCode: row.checkinCode || '',
       tagIds: [...(row.tagIds || [])],
+      viaPoints: row.viaPoints || '',
+      shareNote: row.shareNote || '',
+      prefNote: row.prefNote || '',
+      luggageCount: row.luggageCount ?? null,
+      startCampus: row.startCampus || '',
+      endCampus: row.endCampus || '',
+      remindBeforeMinutes: row.remindBeforeMinutes ?? null,
       ...extras,
     })
   } else {
@@ -888,6 +1063,13 @@ function openEdit(row) {
       mutexCode: '',
       checkinCode: hasCheckin.value ? `ACT${Math.floor(1000 + Math.random() * 9000)}` : '',
       tagIds: [],
+      viaPoints: '',
+      shareNote: '',
+      prefNote: '',
+      luggageCount: null,
+      startCampus: '',
+      endCampus: '',
+      remindBeforeMinutes: null,
       ...extras,
     })
   }
@@ -1009,10 +1191,42 @@ async function approve(row) {
 }
 
 async function reject(row) {
-  await ElMessageBox.confirm(`驳回「${row.title}」？驳回后不公开展示。`, publishReview.value ? '投稿审核' : '商品审核')
-  await http.post(`/api/archive/${row.id}/reject`)
+  const title = publishReview.value ? '投稿审核' : '商品审核'
+  let reason = ''
+  if (datingRejectReasonOn.value) {
+    const { value } = await ElMessageBox.prompt(
+      labels.value.rejectReasonPlaceholder || '请填写驳回理由，便于对方修改后再提交',
+      title,
+      {
+        confirmButtonText: '驳回',
+        cancelButtonText: '取消',
+        inputPlaceholder: labels.value.rejectReasonLabel || '驳回理由',
+        inputValidator: (v) => (!!String(v || '').trim() ? true : (labels.value.rejectReasonRequired || '请填写驳回理由')),
+      },
+    )
+    reason = String(value || '').trim()
+  } else {
+    await ElMessageBox.confirm(`驳回「${row.title}」？驳回后不公开展示。`, title)
+  }
+  await http.post(`/api/archive/${row.id}/reject`, reason ? { rejectReason: reason } : {})
   ElMessage.success('已驳回')
   load()
+}
+
+async function albumAudit(row, status) {
+  const tip = status === 'approved' ? `通过「${row.title}」的相册？` : `驳回「${row.title}」的相册？`
+  await ElMessageBox.confirm(tip, labels.value.albumAuditLabel || '相册审核')
+  await http.post(`/api/archive/${row.id}/album-audit`, { status })
+  ElMessage.success(status === 'approved' ? '相册已通过' : '相册已驳回')
+  load()
+}
+
+function albumAuditStatusText(row) {
+  const st = String(row?.albumAuditStatus || '')
+  if (st === 'pending') return adminLabels.value.albumAuditPending || '相册待审'
+  if (st === 'approved') return adminLabels.value.albumAuditApproved || '相册已通过'
+  if (st === 'rejected') return adminLabels.value.albumAuditRejected || '相册未通过'
+  return ''
 }
 
 async function onCover(opt) {

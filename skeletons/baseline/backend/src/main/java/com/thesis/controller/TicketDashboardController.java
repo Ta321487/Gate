@@ -10,6 +10,8 @@ import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
 import com.thesis.service.StockIoStore;
+import com.thesis.service.SurveyStore;
+import com.thesis.service.SurveyStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -126,6 +128,13 @@ public class TicketDashboardController {
         if (ArchiveLogStore.enabled()) {
             m.put("missingCheckinToday", ArchiveLogStore.countMissingToday("checkin"));
         }
+        if (SurveyStore.enabled()) {
+            try {
+                m.put("surveyRecycleCards", SurveyStore.recycleCards());
+            } catch (Exception ignored) {
+                m.put("surveyRecycleCards", List.of());
+            }
+        }
         if (ArchiveStore.shopMarketplaceEnabled()) {
             boolean superAdmin = AdminAuth.isSuperAdmin(session);
             String uid = AdminAuth.requireLogin(session);
@@ -141,6 +150,13 @@ public class TicketDashboardController {
             // 商家工作台商品数须按店主过滤，禁止显示全站 bookTotal
             if (!superAdmin) {
                 m.put("bookTotal", ArchiveStore.countItems(uid));
+            }
+        }
+        if (SurveyStore.ready()) {
+            try {
+                m.put("surveyRecycleCards", SurveyStore.recycleCards());
+            } catch (Exception ignored) {
+                m.put("surveyRecycleCards", List.of());
             }
         }
         m.put("charts", charts);

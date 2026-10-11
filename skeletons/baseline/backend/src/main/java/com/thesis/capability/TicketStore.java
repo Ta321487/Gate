@@ -75,6 +75,16 @@ public final class TicketStore {
     static boolean allowCheckin = false;
     /** C-05：档案主人可确认/拒绝志愿（互选） */
     static boolean peerAccept = false;
+    /** I-03：截止前允许申请人修改志愿说明/类型 */
+    static boolean allowWishEditBeforeDeadline = false;
+    /** I-03：截止前盲选（确认人侧脱敏申请人） */
+    static boolean blindPhaseUntilDeadline = false;
+    /** I-03：待确认超时自动婉拒 */
+    static boolean allowPeerTimeoutReject = false;
+    /** I-03：待确认超时小时数；≤0 关闭 */
+    static int peerTimeoutRejectHours = 0;
+    /** I-03：进行中的「调剂志愿」上限；≤0 不限 */
+    static int maxAdjustWishes = 0;
     /** C-09：审核通过签发通行码（非真门禁） */
     static boolean issuePassCode = false;
     /** C-14：核销审批通过时扣减时长账户 */
@@ -1873,7 +1883,7 @@ public final class TicketStore {
     }
 
     public static void configurePeerAccept(boolean enabled) {
-        peerAccept = enabled;
+        TicketCfgOps.configurePeerAccept(enabled);
     }
 
     public static boolean isPeerAccept() {
@@ -2095,6 +2105,81 @@ public final class TicketStore {
         return TicketDeriveOps.peerRespond(ticketId, username, pass, remark);
     }
 
+    /** I-03：截止前修改志愿 */
+    public static Map<String, Object> editWishBeforeDeadline(
+            long ticketId, String username, String remark, String contactChannel) {
+        return TicketDeriveOps.editWishBeforeDeadline(ticketId, username, remark, contactChannel);
+    }
+
+    /** I-03：待确认超时自动婉拒 */
+    public static int autoRejectStalePeerPending() {
+        return TicketDeriveOps.autoRejectStalePeerPending();
+    }
+
+    /** I-03：互选结果公示 */
+    public static List<Map<String, Object>> mutualMatchResult(Long itemId) {
+        return TicketDeriveOps.mutualMatchResult(itemId);
+    }
+
+    /** I-03：调剂留痕分页 */
+    public static Map<String, Object> pageAdjustLog(int page, int size) {
+        return TicketDeriveOps.pageAdjustLog(page, size);
+    }
+
+    /** I-03：互选结果通知信 */
+    public static int notifyMutualMatchResults() {
+        return TicketDeriveOps.notifyMutualMatchResults();
+    }
+
+    /** I-04 TEAM：组队邀请站内信 */
+    public static Map<String, Object> sendTeamInvite(
+            String fromUser, String toUser, long itemId, String note) {
+        return TicketDeriveOps.sendTeamInvite(fromUser, toUser, itemId, note);
+    }
+
+    /** I-04 TEAM：申请退出 */
+    public static Map<String, Object> requestTeamExit(long ticketId, String username) {
+        return TicketDeriveOps.requestTeamExit(ticketId, username);
+    }
+
+    /** I-04 TEAM：队长处理退出 */
+    public static Map<String, Object> peerExitRespond(
+            long ticketId, String ownerUsername, boolean pass, String remark) {
+        return TicketDeriveOps.peerExitRespond(ticketId, ownerUsername, pass, remark);
+    }
+
+    /** I-04 TEAM：退出申请收件箱 */
+    public static Map<String, Object> pageExitInbox(String ownerUsername, int page, int size) {
+        return TicketDeriveOps.pageExitInbox(ownerUsername, page, size);
+    }
+
+    /** I-05：某行程下已确认乘客用户名（出发提醒用）。 */
+    public static List<String> listApprovedUsernamesForItem(long itemId) {
+        if (!enabled || itemId <= 0 || TICKET == null || TICKET.isBlank()) return List.of();
+        try {
+            return TicketSql.db().query(
+                    "SELECT username FROM " + TICKET
+                            + " WHERE " + itemFkColumn() + "=? AND status='approved'",
+                    (rs, i) -> rs.getString("username"),
+                    itemId);
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /** I-05：用户爽约次数（确认后取消累计）。 */
+    public static int countNoShow(String username) {
+        if (!enabled || !hasColumn("no_show") || username == null || username.isBlank()) return 0;
+        try {
+            Integer n = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TICKET + " WHERE username=? AND no_show=1",
+                    Integer.class, username.trim());
+            return n == null ? 0 : n;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     /** 待我确认：档案 owner_username=我 且待审的志愿单。 */
     public static Map<String, Object> pagePeerInbox(String ownerUsername, String status, int page, int size) {
         if (!peerAccept || MODE != Mode.ARCHIVE) {
@@ -2138,6 +2223,7 @@ public final class TicketStore {
                 "SELECT t.*" + from + where + " ORDER BY t.id DESC LIMIT ? OFFSET ?",
                 (rs, i) -> TicketStatusOps.enrich(TicketRowMaps.mapRow(rs)),
                 args.toArray());
+        TicketDeriveOps.applyBlindRedaction(list);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", list);
         out.put("total", t);
@@ -2456,6 +2542,21 @@ public final class TicketStore {
         if (anon) tip = tip + " · 匿名";
         if (!note.isBlank()) tip = tip + " · " + note;
         TicketDeriveOps.appendProgress(ticketId, followPass ? "follow_rated" : "rated", username, tip);
+        // I-05：评价后隐藏联系方式（拼车 seat_locked 列域）
+        if (hasColumn("seat_locked") && hasColumn("contact_channel")) {
+            try {
+                TicketSql.db().update(
+                        "UPDATE " + TICKET + " SET contact_channel='' WHERE id=?", ticketId);
+            } catch (Exception ignored) {
+            }
+        }
+        if (hasColumn("seat_locked") && hasColumn("contact_phone")) {
+            try {
+                TicketSql.db().update(
+                        "UPDATE " + TICKET + " SET contact_phone='' WHERE id=?", ticketId);
+            } catch (Exception ignored) {
+            }
+        }
         return TicketDeriveOps.get(ticketId);
     }
 
@@ -2780,11 +2881,20 @@ public final class TicketStore {
             throw new IllegalStateException("只能撤销自己的申请");
         }
         String st = String.valueOf(m.get("status"));
+        Object seatLockedObj = m.get("seatLocked");
+        boolean seatLocked = seatLockedObj != null && (
+                "1".equals(String.valueOf(seatLockedObj))
+                        || Boolean.TRUE.equals(seatLockedObj)
+                        || (seatLockedObj instanceof Number n && n.intValue() == 1));
+        boolean lockedCancel = "approved".equals(st) && hasColumn("seat_locked") && seatLocked;
         if (!"pending".equals(st) && !"pending_mid".equals(st)
                 && !"pending_final".equals(st) && !"waitlisted".equals(st)
                 && !"held".equals(st) && !"hold_ready".equals(st)
-                && !"verifying".equals(st)) {
-            throw new IllegalStateException("仅待审核、候补或预约申请可撤销");
+                && !"verifying".equals(st)
+                && !lockedCancel) {
+            throw new IllegalStateException(
+                    lockedCancel ? "仅待审核、候补或已锁座同行可取消"
+                            : "仅待审核、候补或预约申请可撤销");
         }
         if (maxCancelHolds > 0 && ("held".equals(st) || "hold_ready".equals(st) || "waitlisted".equals(st))) {
             Integer n = TicketSql.db().queryForObject(
@@ -2795,19 +2905,35 @@ public final class TicketStore {
             }
         }
         long itemId = TicketSql.toLong(m.get("bookId"));
+        if (itemId <= 0) itemId = TicketSql.toLong(m.get("itemId"));
         if ("hold_ready".equals(st) && MODE == Mode.ARCHIVE && useQuota && itemId > 0
                 && ArchiveStore.getItemRaw(itemId) != null) {
             ArchiveStore.adjustStock(itemId, TicketDeriveOps.rowQty(m));
         }
-        TicketSql.db().update(
-                "UPDATE " + TICKET + " SET status='cancelled'"
-                        + (hasColumn("hold_expire_at") ? ", hold_expire_at=NULL" : "")
-                        + " WHERE id=?",
-                ticketId);
-        String progNote = "held".equals(st) ? "用户取消预约"
+        // I-05：锁座后取消 → 回补座位 + 记爽约
+        if (lockedCancel && MODE == Mode.ARCHIVE && useQuota && itemId > 0
+                && ArchiveStore.getItemRaw(itemId) != null) {
+            ArchiveStore.adjustStock(itemId, TicketDeriveOps.rowQty(m));
+        }
+        StringBuilder sql = new StringBuilder("UPDATE " + TICKET + " SET status='cancelled'");
+        if (hasColumn("hold_expire_at")) sql.append(", hold_expire_at=NULL");
+        if (lockedCancel && hasColumn("no_show")) sql.append(", no_show=1");
+        if (lockedCancel && hasColumn("seat_locked")) sql.append(", seat_locked=0");
+        if (lockedCancel && hasColumn("cancel_reason")) sql.append(", cancel_reason='确认后取消'");
+        sql.append(" WHERE id=?");
+        TicketSql.db().update(sql.toString(), ticketId);
+        String progNote = lockedCancel ? "用户取消已锁座同行（计爽约）"
+                : ("held".equals(st) ? "用户取消预约"
                 : ("hold_ready".equals(st) ? "用户放弃取书"
-                : ("waitlisted".equals(st) ? "用户取消候补" : "用户撤销申请"));
+                : ("waitlisted".equals(st) ? "用户取消候补" : "用户撤销申请")));
         TicketDeriveOps.appendProgress(ticketId, "cancelled", username, progNote);
+        // I-06：时间银行确认后取消 → 扣信用分
+        if (("approved".equals(st) || lockedCancel) && com.thesis.service.TimebankStore.enabled()) {
+            try {
+                com.thesis.service.TimebankStore.penalizeCredit(username, 5);
+            } catch (Exception ignored) {
+            }
+        }
         if ("hold_ready".equals(st) && itemId > 0) {
             tryPromoteBookHold(itemId);
         }

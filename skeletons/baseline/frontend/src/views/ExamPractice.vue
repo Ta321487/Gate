@@ -26,7 +26,9 @@ const list = ref([])
 const labels = computed(() => getSchema().labels || {})
 const pageTitle = computed(() => labels.value.examPracticeTitle || '刷题练习')
 const pageLead = computed(
-  () => labels.value.examPracticeLead || '练习模式不计排行；可反复作答。',
+  () =>
+    labels.value.examPracticeLead ||
+    '练习模式不计正式得分、不计考试次数，可反复作答；成绩不进排行。',
 )
 
 async function load() {

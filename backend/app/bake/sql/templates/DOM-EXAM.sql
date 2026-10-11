@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS exam_question (
   answer_key VARCHAR(500) NOT NULL,
   score INT NOT NULL DEFAULT 5,
   explain_text VARCHAR(2000) NULL,
+  mark_rubric VARCHAR(1000) NOT NULL DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -64,6 +65,15 @@ CREATE TABLE IF NOT EXISTS exam_paper (
   max_attempts INT NOT NULL DEFAULT 0,
   gate_ticket TINYINT NOT NULL DEFAULT 0,
   pass_score INT NOT NULL DEFAULT 60,
+  shuffle_questions TINYINT NOT NULL DEFAULT 0,
+  shuffle_options TINYINT NOT NULL DEFAULT 0,
+  explain_after_score TINYINT NOT NULL DEFAULT 1,
+  partial_multi TINYINT NOT NULL DEFAULT 0,
+  lock_after_submit TINYINT NOT NULL DEFAULT 0,
+  open_at DATETIME NULL,
+  late_enter_min INT NOT NULL DEFAULT 0,
+  entry_code VARCHAR(64) NOT NULL DEFAULT '',
+  difficulty VARCHAR(32) NOT NULL DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -85,7 +95,8 @@ CREATE TABLE IF NOT EXISTS exam_attempt (
   total_score INT NOT NULL DEFAULT 0,
   started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   submitted_at DATETIME NULL,
-  timed_out TINYINT NOT NULL DEFAULT 0
+  timed_out TINYINT NOT NULL DEFAULT 0,
+  blur_count INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS exam_answer (

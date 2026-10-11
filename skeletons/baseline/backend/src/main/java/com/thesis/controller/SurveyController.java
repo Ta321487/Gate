@@ -24,8 +24,38 @@ public class SurveyController {
     @GetMapping("/forms")
     public R<List<Map<String, Object>>> forms(HttpSession session) {
         requireSurvey();
+        String uid = AdminAuth.requireLogin(session);
+        return R.ok(SurveyStore.listOpenForms(uid));
+    }
+
+    @GetMapping("/admin/forms")
+    public R<List<Map<String, Object>>> adminForms(HttpSession session) {
+        requireSurvey();
+        AdminAuth.requireAdmin(session);
+        return R.ok(SurveyStore.listAdminForms());
+    }
+
+    @GetMapping("/forms/{id}")
+    public R<Map<String, Object>> form(@PathVariable long id, HttpSession session) {
+        requireSurvey();
         AdminAuth.requireLogin(session);
-        return R.ok(SurveyStore.listOpenForms());
+        Map<String, Object> form = SurveyStore.getForm(id);
+        if (form == null) throw new BizException(ErrorCode.NOT_FOUND, "问卷不存在");
+        return R.ok(form);
+    }
+
+    @PatchMapping("/admin/forms/{id}")
+    public R<Map<String, Object>> patchForm(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireSurvey();
+        AdminAuth.requireAdmin(session);
+        try {
+            return R.ok(SurveyStore.updateFormSettings(id, body == null ? Map.of() : body));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @GetMapping("/forms/{id}/questions")
@@ -33,6 +63,32 @@ public class SurveyController {
         requireSurvey();
         AdminAuth.requireLogin(session);
         return R.ok(SurveyStore.listQuestions(id));
+    }
+
+    @GetMapping("/forms/{id}/draft")
+    public R<Map<String, Object>> loadDraft(@PathVariable long id, HttpSession session) {
+        requireSurvey();
+        String uid = AdminAuth.requireLogin(session);
+        return R.ok(SurveyStore.loadDraft(uid, id));
+    }
+
+    @PutMapping("/forms/{id}/draft")
+    public R<Void> saveDraft(
+            @PathVariable long id,
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        requireSurvey();
+        String uid = AdminAuth.requireLogin(session);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> answers = body == null
+                ? List.of()
+                : (List<Map<String, Object>>) body.get("answers");
+        try {
+            SurveyStore.saveDraft(uid, id, answers == null ? List.of() : answers);
+            return R.ok(null);
+        } catch (IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @PostMapping("/forms/{id}/submit")
@@ -113,5 +169,12 @@ public class SurveyController {
         requireSurvey();
         AdminAuth.requireAdmin(session);
         return R.ok(SurveyStore.stats(formId));
+    }
+
+    @GetMapping("/admin/recycle-cards")
+    public R<List<Map<String, Object>>> recycleCards(HttpSession session) {
+        requireSurvey();
+        AdminAuth.requireAdmin(session);
+        return R.ok(SurveyStore.recycleCards());
     }
 }

@@ -14,6 +14,7 @@ USER_MENU_PATHS: dict[str, str] = {
     "my_archive": "/my-archive",
     "my_tickets": "/tickets",
     "peer_tickets": "/peer-tickets",
+    "mutual_results": "/mutual-results",
     "content": "/notices",
     "guestbook": "/guestbook",
     "book_suggest": "/book-suggest",
@@ -33,6 +34,9 @@ USER_MENU_PATHS: dict[str, str] = {
     "doc_browse": "/doc/browse",
     "doc_mine": "/doc/mine",
     "tb_account": "/tb/account",
+    "tb_rank": "/tb/rank",
+    "tb_catalog": "/tb/catalog",
+    "tb_appeal": "/tb/appeal",
     "tb_ledger": "/tb/ledger",
     "seat_shows": "/seats/shows",
     "e_sign_mine": "/e-sign",
@@ -41,6 +45,9 @@ USER_MENU_PATHS: dict[str, str] = {
     "favorites": "/favorites",
     "browse_history": "/browse-history",
     "coupons": "/coupons",
+    "blind_draws": "/blind-draws",
+    "points_ledger": "/points-ledger",
+    "points_rules": "/points-rules",
     "cart": "/cart",
     "my_orders": "/orders",
     "my_consigns": "/consigns",
@@ -55,6 +62,9 @@ USER_MENU_PATHS: dict[str, str] = {
     "addresses": "/addresses",
     "my_reservations": "/reservations",
     "slots": "/slots",
+    "reserve_blacklist_appeal": "/reserve/blacklist-appeal",
+    "patient_profile": "/patient-profiles",
+    "parking_pass": "/parking-passes",
     "week_calendar": "/week",
     "balance_mine": "/balance/mine",
     "balance_ledger_mine": "/balance/ledger",
@@ -73,6 +83,7 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "guestbook": "/admin/guestbook",
     "item_comments": "/admin/item-comments",
     "content_reports": "/admin/content-reports",
+    "blog_friend_links": "/admin/blog-friend-links",
     "audit_logs": "/admin/audit-logs",
     "message_templates": "/admin/message-templates",
     "staff_roster": "/admin/staff-roster",
@@ -92,6 +103,8 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "doc_logs": "/admin/doc/logs",
     "tb_accounts": "/admin/tb/accounts",
     "tb_ledger_admin": "/admin/tb/ledger",
+    "tb_catalog_admin": "/admin/tb/catalog",
+    "tb_appeal_admin": "/admin/tb/appeals",
     "stock_moves": "/admin/stock/moves",
     "stock_ledger": "/admin/stock/ledger",
     "balance_accounts": "/admin/balance/accounts",
@@ -100,7 +113,7 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "material_checklist": "/admin/material/checklist",
     "apply_blacklist": "/admin/apply/blacklist",
     "reserve_blacklist": "/admin/reserve/blacklist",
-    "reserve_blacklist_appeal": "/reserve/blacklist-appeal",
+    "parking_pass_admin": "/admin/parking-passes",
     "lost_clues": "/admin/lost/clues",
     "e_sign_admin": "/admin/e-sign",
     "grade_scores_admin": "/admin/grade/scores",
@@ -178,6 +191,7 @@ _ARCHIVE_TICKET_SHELL = frozenset(
         "/archive",
         "/tickets",
         "/peer-tickets",
+        "/mutual-results",
         "/week",
         "/admin/archive",
         "/admin/categories",
@@ -364,14 +378,23 @@ def effective_paths(
             }
         )
     if "timebank" in cap_set:
+        # 与 withTimebankRoutes 对齐（含加厚 rank/catalog/appeal）
         paths.update(
             {
                 "/tb/account",
                 "/tb/ledger",
+                "/tb/rank",
+                "/tb/catalog",
+                "/tb/appeal",
                 "/admin/tb/accounts",
                 "/admin/tb/ledger",
+                "/admin/tb/catalog",
+                "/admin/tb/appeals",
             }
         )
+    # 博客友情链接：与 withBlogFriendLinkRoutes（contentThicken.friendLinks）对齐
+    if isinstance(schema, dict) and (schema.get("contentThicken") or {}).get("friendLinks"):
+        paths.add("/admin/blog-friend-links")
     if "seat_select" in cap_set:
         paths.update({"/seats/shows", "/seats/map"})
     if "stock_io" in cap_set:
@@ -391,6 +414,12 @@ def effective_paths(
         paths.add("/admin/material/checklist")
     if isinstance(schema, dict) and schema.get("applyBlacklist"):
         paths.add("/admin/apply/blacklist")
+    if isinstance(schema, dict) and schema.get("reserveBlacklist"):
+        paths.update({"/admin/reserve/blacklist", "/reserve/blacklist-appeal"})
+    if isinstance(schema, dict) and schema.get("patientProfile"):
+        paths.add("/patient-profiles")
+    if isinstance(schema, dict) and schema.get("parkingPass"):
+        paths.update({"/parking-passes", "/admin/parking-passes"})
     if "lost_clue" in cap_set:
         paths.add("/admin/lost/clues")
     if "e_sign" in cap_set:

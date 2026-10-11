@@ -2,6 +2,7 @@ package com.thesis.service;
 
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.ExamMapper;
+import com.thesis.service.UserStore;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -167,6 +168,9 @@ public class ExamStore {
         if (admin) {
             m.put("answerKey", str(col(raw, "answer_key", "answerKey")));
             if (explainEnabled) m.put("explainText", str(col(raw, "explain_text", "explainText")));
+            if (hasI08Cols()) {
+                m.put("markRubric", str(col(raw, "mark_rubric", "markRubric")));
+            }
         }
         return m;
     }
@@ -179,6 +183,19 @@ public class ExamStore {
         m.put("status", str(col(raw, "status")));
         m.put("subjectId", col(raw, "subject_id", "subjectId"));
         m.put("maxAttempts", toInt(col(raw, "max_attempts", "maxAttempts"), 0));
+        m.put("gateTicket", toInt(col(raw, "gate_ticket", "gateTicket"), 0) == 1);
+        m.put("passScore", toInt(col(raw, "pass_score", "passScore"), 60));
+        m.put("shuffleQuestions", toInt(col(raw, "shuffle_questions", "shuffleQuestions"), 0) == 1);
+        m.put("shuffleOptions", toInt(col(raw, "shuffle_options", "shuffleOptions"), 0) == 1);
+        m.put("explainAfterScore", toInt(col(raw, "explain_after_score", "explainAfterScore"), 1) == 1);
+        m.put("partialMulti", toInt(col(raw, "partial_multi", "partialMulti"), 0) == 1);
+        m.put("lockAfterSubmit", toInt(col(raw, "lock_after_submit", "lockAfterSubmit"), 0) == 1);
+        m.put("openAt", fmt(col(raw, "open_at", "openAt")));
+        m.put("lateEnterMin", toInt(col(raw, "late_enter_min", "lateEnterMin"), 0));
+        String code = str(col(raw, "entry_code", "entryCode"));
+        m.put("entryCode", code);
+        m.put("hasEntryCode", !code.isBlank());
+        m.put("difficulty", str(col(raw, "difficulty")));
         m.put("createdAt", fmt(col(raw, "created_at", "createdAt")));
         return m;
     }
@@ -195,7 +212,43 @@ public class ExamStore {
         m.put("startedAt", fmt(col(raw, "started_at", "startedAt")));
         m.put("submittedAt", fmt(col(raw, "submitted_at", "submittedAt")));
         m.put("timedOut", toInt(col(raw, "timed_out", "timedOut"), 0) == 1);
+        m.put("blurCount", toInt(col(raw, "blur_count", "blurCount"), 0));
         return m;
+    }
+
+    private static boolean boolFlag(Object o, boolean def) {
+        if (o == null) return def;
+        if (o instanceof Boolean b) return b;
+        String s = String.valueOf(o).trim().toLowerCase(Locale.ROOT);
+        if (s.isBlank()) return def;
+        return s.equals("1") || s.equals("true") || s.equals("yes");
+    }
+
+    private static boolean hasI07Cols() {
+        try {
+            Integer n = mapper().countEntryCodeCol();
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean hasI08Cols() {
+        try {
+            Integer n = mapper().countMarkRubricCol();
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean hasBlurCol() {
+        try {
+            Integer n = mapper().countBlurCol();
+            return n != null && n > 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static String normalizeType(String type) {
@@ -242,7 +295,13 @@ public class ExamStore {
         String explain = clip(str(body.get("explainText")), 2000);
         if (explain.isBlank()) explain = clip(str(body.get("explain_text")), 2000);
         row.put("explainText", explain.isBlank() ? null : explain);
-        mapper().insertQuestion(row);
+        String rubric = clip(str(body.containsKey("markRubric") ? body.get("markRubric") : body.get("mark_rubric")), 1000);
+        if (hasI08Cols()) {
+            row.put("markRubric", rubric);
+            mapper().insertQuestionWithRubric(row);
+        } else {
+            mapper().insertQuestion(row);
+        }
         long qid = toLong(row.get("id")) == null ? 0L : toLong(row.get("id"));
         ChoiceOptionMb.replaceExam(qid, optionsJson);
         return getQuestion(qid);
@@ -277,6 +336,9 @@ public class ExamStore {
                     : clip(str(body.get("explain_text")), 2000);
             row.put("explainText", v.isBlank() ? null : v);
         }
+        if (hasI08Cols() && (body.containsKey("markRubric") || body.containsKey("mark_rubric"))) {
+            row.put("markRubric", clip(str(body.containsKey("markRubric") ? body.get("markRubric") : body.get("mark_rubric")), 1000));
+        }
         if (row.size() > 1) mapper().updateQuestion(row);
         return getQuestion(id);
     }
@@ -309,7 +371,11 @@ public class ExamStore {
     public static List<Map<String, Object>> listPublishedPapers() {
         require();
         List<Map<String, Object>> list = new ArrayList<>();
-        for (Map<String, Object> r : mapper().listPublishedPapers()) list.add(mapPaper(r));
+        for (Map<String, Object> r : mapper().listPublishedPapers()) {
+            Map<String, Object> p = mapPaper(r);
+            p.remove("entryCode");
+            list.add(p);
+        }
         return list;
     }
 
@@ -327,6 +393,17 @@ public class ExamStore {
         if (subjectId == null) subjectId = toLong(body.get("subject_id"));
         row.put("subjectId", subjectId);
         row.put("maxAttempts", toInt(body.get("maxAttempts"), toInt(body.get("max_attempts"), 0)));
+        row.put("passScore", toInt(body.get("passScore"), toInt(body.get("pass_score"), 60)));
+        row.put("shuffleQuestions", boolFlag(body.get("shuffleQuestions"), boolFlag(body.get("shuffle_questions"), false)) ? 1 : 0);
+        row.put("shuffleOptions", boolFlag(body.get("shuffleOptions"), boolFlag(body.get("shuffle_options"), false)) ? 1 : 0);
+        row.put("explainAfterScore", boolFlag(body.get("explainAfterScore"), boolFlag(body.get("explain_after_score"), true)) ? 1 : 0);
+        row.put("partialMulti", boolFlag(body.get("partialMulti"), boolFlag(body.get("partial_multi"), false)) ? 1 : 0);
+        row.put("lockAfterSubmit", boolFlag(body.get("lockAfterSubmit"), boolFlag(body.get("lock_after_submit"), false)) ? 1 : 0);
+        row.put("openAt", str(body.get("openAt") != null ? body.get("openAt") : body.get("open_at")));
+        if (str(row.get("openAt")).isBlank()) row.put("openAt", null);
+        row.put("lateEnterMin", Math.max(0, toInt(body.get("lateEnterMin"), toInt(body.get("late_enter_min"), 0))));
+        row.put("entryCode", clip(str(body.containsKey("entryCode") ? body.get("entryCode") : body.get("entry_code")), 64));
+        row.put("difficulty", clip(str(body.get("difficulty")), 32));
         mapper().insertPaper(row);
         return getPaper(toLong(row.get("id")) == null ? 0L : toLong(row.get("id")));
     }
@@ -352,6 +429,41 @@ public class ExamStore {
             row.put("maxAttempts", body.containsKey("maxAttempts")
                     ? toInt(body.get("maxAttempts"), 0)
                     : toInt(body.get("max_attempts"), 0));
+        }
+        if (body.containsKey("passScore") || body.containsKey("pass_score")) {
+            row.put("passScore", toInt(body.get("passScore"), toInt(body.get("pass_score"), 60)));
+        }
+        if (body.containsKey("shuffleQuestions") || body.containsKey("shuffle_questions")) {
+            row.put("shuffleQuestions", boolFlag(body.get("shuffleQuestions"), boolFlag(body.get("shuffle_questions"), false)) ? 1 : 0);
+        }
+        if (body.containsKey("shuffleOptions") || body.containsKey("shuffle_options")) {
+            row.put("shuffleOptions", boolFlag(body.get("shuffleOptions"), boolFlag(body.get("shuffle_options"), false)) ? 1 : 0);
+        }
+        if (body.containsKey("explainAfterScore") || body.containsKey("explain_after_score")) {
+            row.put("explainAfterScore", boolFlag(body.get("explainAfterScore"), boolFlag(body.get("explain_after_score"), true)) ? 1 : 0);
+        }
+        if (body.containsKey("partialMulti") || body.containsKey("partial_multi")) {
+            row.put("partialMulti", boolFlag(body.get("partialMulti"), boolFlag(body.get("partial_multi"), false)) ? 1 : 0);
+        }
+        if (body.containsKey("lockAfterSubmit") || body.containsKey("lock_after_submit")) {
+            row.put("lockAfterSubmit", boolFlag(body.get("lockAfterSubmit"), boolFlag(body.get("lock_after_submit"), false)) ? 1 : 0);
+        }
+        if (body.containsKey("openAt") || body.containsKey("open_at")) {
+            String od = str(body.get("openAt") != null ? body.get("openAt") : body.get("open_at"));
+            row.put("openAt", od.isBlank() ? null : od);
+            row.put("clearOpenAt", od.isBlank());
+        }
+        if (body.containsKey("lateEnterMin") || body.containsKey("late_enter_min")) {
+            row.put("lateEnterMin", Math.max(0, toInt(body.get("lateEnterMin"), toInt(body.get("late_enter_min"), 0))));
+        }
+        if (body.containsKey("entryCode") || body.containsKey("entry_code")) {
+            row.put("entryCode", clip(str(body.containsKey("entryCode") ? body.get("entryCode") : body.get("entry_code")), 64));
+        }
+        if (body.containsKey("difficulty")) {
+            row.put("difficulty", clip(str(body.get("difficulty")), 32));
+        }
+        if (body.containsKey("gateTicket") || body.containsKey("gate_ticket")) {
+            row.put("gateTicket", boolFlag(body.get("gateTicket"), boolFlag(body.get("gate_ticket"), false)) ? 1 : 0);
         }
         if (row.size() > 1) mapper().updatePaper(row);
         return getPaper(id);
@@ -397,6 +509,10 @@ public class ExamStore {
     }
 
     public static Map<String, Object> startAttempt(String username, long paperId, String mode) {
+        return startAttempt(username, paperId, mode, null);
+    }
+
+    public static Map<String, Object> startAttempt(String username, long paperId, String mode, String entryCode) {
         require();
         Map<String, Object> paper = getPaper(paperId);
         if (paper == null || !"published".equals(str(paper.get("status")))) {
@@ -406,8 +522,17 @@ public class ExamStore {
         if ("practice".equals(m) && !practiceEnabled) {
             throw new IllegalStateException("未开通刷题练习");
         }
+        if ("exam".equals(m)) {
+            assertCanEnterExam(paper, entryCode);
+        }
         List<Map<String, Object>> prog = mapper().findInProgress(username, paperId);
         if (!prog.isEmpty()) return mapAttempt(prog.get(0));
+        if ("exam".equals(m) && Boolean.TRUE.equals(paper.get("lockAfterSubmit"))) {
+            Integer done = mapper().countLockedExam(username, paperId);
+            if (done != null && done > 0) {
+                throw new IllegalStateException("本卷已交卷，不可再次开考。");
+            }
+        }
         if ("exam".equals(m) && attemptLimitEnabled) {
             int max = toInt(paper.get("maxAttempts"), 0);
             if (max > 0) {
@@ -423,6 +548,51 @@ public class ExamStore {
         return getAttempt(toLong(row.get("id")) == null ? 0L : toLong(row.get("id")));
     }
 
+    private static void assertCanEnterExam(Map<String, Object> paper, String entryCode) {
+        if (!hasI07Cols()) return;
+        String expect = str(paper.get("entryCode"));
+        if (!expect.isBlank()) {
+            String got = entryCode == null ? "" : entryCode.trim();
+            if (!expect.equals(got)) {
+                throw new IllegalStateException("入场口令不正确");
+            }
+        }
+        String openRaw = str(paper.get("openAt"));
+        if (openRaw.isBlank()) return;
+        try {
+            String s = openRaw.replace('T', ' ');
+            if (s.length() == 16) s = s + ":00";
+            LocalDateTime openAt = LocalDateTime.parse(s, FMT);
+            LocalDateTime now = LocalDateTime.now();
+            if (now.isBefore(openAt)) {
+                throw new IllegalStateException("未到开考时间，请稍后再试。");
+            }
+            int late = toInt(paper.get("lateEnterMin"), 0);
+            if (late > 0 && now.isAfter(openAt.plusMinutes(late))) {
+                throw new IllegalStateException("已超过允许迟到时间，无法进入考试。");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception ignored) {
+        }
+    }
+
+    public static Map<String, Object> recordBlur(long attemptId, String username) {
+        require();
+        Map<String, Object> attempt = getAttempt(attemptId);
+        if (attempt == null) throw new IllegalArgumentException("答卷不存在");
+        if (!username.equals(str(attempt.get("username")))) {
+            throw new IllegalStateException("无权操作");
+        }
+        if (!"in_progress".equals(str(attempt.get("status")))) {
+            return attempt;
+        }
+        if (hasBlurCol()) {
+            mapper().bumpBlur(attemptId);
+        }
+        return getAttempt(attemptId);
+    }
+
     public static List<Map<String, Object>> listAttemptQuestions(long attemptId, String username, boolean afterSubmit) {
         require();
         Map<String, Object> attempt = getAttempt(attemptId);
@@ -430,25 +600,60 @@ public class ExamStore {
         if (!username.equals(str(attempt.get("username")))) {
             throw new IllegalStateException("无权查看该答卷");
         }
-        boolean adminView = afterSubmit;
+        String st = str(attempt.get("status"));
+        boolean closed = "submitted".equals(st) || "reviewing".equals(st);
+        boolean reveal = "submitted".equals(st);
+        Map<String, Object> paper = getPaper(toLong(attempt.get("paperId")));
+        boolean shuffleQ = paper != null && Boolean.TRUE.equals(paper.get("shuffleQuestions"));
+        boolean shuffleO = paper != null && Boolean.TRUE.equals(paper.get("shuffleOptions"));
+        boolean explainAfter = paper == null || !Boolean.FALSE.equals(paper.get("explainAfterScore"));
+        boolean adminView = afterSubmit || closed;
         List<Map<String, Object>> list = new ArrayList<>();
         for (Map<String, Object> r : mapper().listAttemptQuestions(attemptId)) {
-            Map<String, Object> q = mapQuestion(r, adminView);
+            Map<String, Object> q = mapQuestion(r, adminView && reveal);
             q.put("paperId", attempt.get("paperId"));
+            Long qid = toLong(q.get("id"));
+            if (!closed && !afterSubmit && shuffleO && qid != null) {
+                q.put("optionsJson", loadShuffledOptions(qid, attemptId));
+            }
+            if (!(explainEnabled && reveal && explainAfter)) {
+                q.remove("explainText");
+            }
             list.add(q);
+        }
+        if (shuffleQ && !closed && !afterSubmit) {
+            Collections.shuffle(list, new Random(attemptId * 31L + 7L));
         }
         return list;
     }
 
-    private static int scoreAnswer(String type, String key, String answer) {
+    private static String loadShuffledOptions(long questionId, long attemptId) {
+        try {
+            List<Map<String, Object>> rows = mapper().listOptionRows(questionId);
+            List<Map<String, String>> opts = new ArrayList<>();
+            for (Map<String, Object> r : rows) {
+                Map<String, String> o = new LinkedHashMap<>();
+                o.put("label", str(col(r, "label")));
+                o.put("content", str(col(r, "content")));
+                opts.add(o);
+            }
+            Collections.shuffle(opts, new Random(attemptId * 17L + questionId));
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(opts);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    /**
+     * 客观题判分口径（I-01；I-07 可开多选部分分）：返回得分。
+     * single/judge 全等满分；multi 默认全对满分，partialMulti 时无错选按比例。
+     */
+    private static int scoreAnswer(String type, String key, String answer, int maxScore, boolean partialMulti) {
         String t = type == null ? "" : type.toLowerCase(Locale.ROOT);
         String k = str(key);
         String a = str(answer);
-        if ("single".equals(t)) {
-            return k.equalsIgnoreCase(a) ? 1 : 0;
-        }
-        if ("judge".equals(t)) {
-            return k.equalsIgnoreCase(a) ? 1 : 0;
+        if ("single".equals(t) || "judge".equals(t)) {
+            return k.equalsIgnoreCase(a) ? maxScore : 0;
         }
         if ("multi".equals(t)) {
             Set<String> ks = new TreeSet<>();
@@ -461,7 +666,13 @@ public class ExamStore {
                 String x = p.trim().toUpperCase(Locale.ROOT);
                 if (!x.isEmpty()) as.add(x);
             }
-            return ks.equals(as) ? 1 : 0;
+            if (ks.equals(as)) return maxScore;
+            if (!partialMulti || ks.isEmpty()) return 0;
+            for (String x : as) {
+                if (!ks.contains(x)) return 0;
+            }
+            if (as.isEmpty()) return 0;
+            return (int) Math.round(maxScore * (as.size() * 1.0 / ks.size()));
         }
         return 0;
     }
@@ -505,6 +716,8 @@ public class ExamStore {
         int total = 0;
         int got = 0;
         boolean pendingSubjective = false;
+        boolean partialMulti = paper != null && Boolean.TRUE.equals(paper.get("partialMulti"));
+        boolean practice = "practice".equals(str(attempt.get("mode")));
         for (Map<String, Object> raw : qs) {
             Map<String, Object> q = mapQuestion(raw, true);
             long qid = toLong(q.get("id"));
@@ -517,11 +730,11 @@ public class ExamStore {
                 mapper().insertAnswer(attemptId, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX), PENDING_MARK, 0);
                 continue;
             }
-            int ok = scoreAnswer(qType, str(q.get("answerKey")), userAns);
-            int sc = ok == 1 ? full : 0;
+            int sc = scoreAnswer(qType, str(q.get("answerKey")), userAns, full, partialMulti);
+            int ok = (full > 0 && sc == full) ? 1 : 0;
             got += sc;
             mapper().insertAnswer(attemptId, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX), ok, sc);
-            if (wrongbookEnabled && ok == 0) {
+            if (wrongbookEnabled && ok == 0 && !practice) {
                 Integer has = mapper().countWrongbookTable();
                 if (has == null || has == 0) {
                     throw new IllegalStateException("错题本表未就绪");
@@ -529,13 +742,20 @@ public class ExamStore {
                 mapper().upsertWrongbook(username, qid, clip(userAns, SUBJECTIVE_ANSWER_MAX));
             }
         }
+        int publishedScore = practice ? 0 : (pendingSubjective ? 0 : got);
+        int publishedTotal = practice ? 0 : total;
         mapper().submitAttempt(
                 attemptId,
                 pendingSubjective ? "reviewing" : "submitted",
-                pendingSubjective ? 0 : got,
-                total,
+                publishedScore,
+                publishedTotal,
                 timedOut);
         Map<String, Object> out = getAttempt(attemptId);
+        out.put("practice", practice);
+        if (practice) {
+            out.put("selfCheckScore", got);
+            out.put("selfCheckTotal", total);
+        }
         out.put("questions", listAttemptQuestions(attemptId, username, true));
         return out;
     }
@@ -558,8 +778,12 @@ public class ExamStore {
     public static List<Map<String, Object>> reviewDetail(long attemptId) {
         require();
         if (getAttempt(attemptId) == null) throw new IllegalArgumentException("答卷不存在");
+        boolean withRubric = hasI08Cols();
+        List<Map<String, Object>> rows = withRubric
+                ? mapper().listReviewAnswersWithRubric(attemptId)
+                : mapper().listReviewAnswers(attemptId);
         List<Map<String, Object>> list = new ArrayList<>();
-        for (Map<String, Object> r : mapper().listReviewAnswers(attemptId)) {
+        for (Map<String, Object> r : rows) {
             Map<String, Object> m = new LinkedHashMap<>();
             String type = str(col(r, "type"));
             int markFlag = toInt(col(r, "isCorrect", "is_correct"), 0);
@@ -570,6 +794,9 @@ public class ExamStore {
             m.put("answerKey", str(col(r, "answerKey", "answer_key")));
             m.put("maxScore", toInt(col(r, "maxScore", "score"), 0));
             m.put("userAnswer", str(col(r, "userAnswer", "answer_text")));
+            if (withRubric) {
+                m.put("markRubric", str(col(r, "markRubric", "mark_rubric")));
+            }
             m.put("pending", pending);
             m.put("earnedScore", pending ? null : toInt(col(r, "earnedScore", "score"), 0));
             list.add(m);
@@ -673,6 +900,216 @@ public class ExamStore {
         require();
         if (!wrongbookEnabled) throw new IllegalStateException("未开通错题本");
         return mapper().deleteWrongbook(username, id) > 0;
+    }
+
+    // --- I-08 ---
+
+    public static String exportWrongbookCsv(String username) {
+        require();
+        if (!wrongbookEnabled) throw new IllegalStateException("错题本未开通");
+        List<Map<String, Object>> list = mapper().listWrongbookExport(username);
+        StringBuilder sb = new StringBuilder("questionId,type,stem,answerKey\n");
+        for (Map<String, Object> r : list) {
+            sb.append(csvCell(col(r, "questionId", "question_id"))).append(',')
+                    .append(csvCell(col(r, "type"))).append(',')
+                    .append(csvCell(col(r, "stem"))).append(',')
+                    .append(csvCell(col(r, "answerKey", "answer_key"))).append('\n');
+        }
+        return sb.toString();
+    }
+
+    public static String questionImportTemplate() {
+        return "type,stem,options,answer_key,score,explain,mark_rubric\n"
+                + "single,示例单选题,选项A|选项B|选项C|选项D,A,5,解析说明,\n"
+                + "subjective,示例主观题,,参考要点,10,,要点齐全满分\n";
+    }
+
+    public static Map<String, Object> importQuestionsCsv(String csvText) {
+        require();
+        if (csvText == null || csvText.isBlank()) throw new IllegalArgumentException("导入内容为空");
+        String[] lines = csvText.replace("\r\n", "\n").replace('\r', '\n').split("\n");
+        int ok = 0;
+        int skip = 0;
+        for (String line : lines) {
+            String t = line.trim();
+            if (t.isBlank() || t.toLowerCase(Locale.ROOT).startsWith("type,")) {
+                continue;
+            }
+            List<String> cells = splitCsvLine(t);
+            if (cells.size() < 2) {
+                skip++;
+                continue;
+            }
+            try {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("type", cells.get(0));
+                body.put("stem", cells.size() > 1 ? cells.get(1) : "");
+                String opts = cells.size() > 2 ? cells.get(2) : "";
+                if (!opts.isBlank()) {
+                    String[] parts = opts.split("\\|");
+                    List<String> arr = new ArrayList<>();
+                    for (String p : parts) {
+                        if (!p.isBlank()) arr.add(p.trim());
+                    }
+                    body.put("optionsJson", new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(arr));
+                } else {
+                    body.put("optionsJson", "[]");
+                }
+                body.put("answerKey", cells.size() > 3 ? cells.get(3) : "");
+                body.put("score", cells.size() > 4 && !cells.get(4).isBlank() ? cells.get(4) : "5");
+                body.put("explainText", cells.size() > 5 ? cells.get(5) : "");
+                body.put("markRubric", cells.size() > 6 ? cells.get(6) : "");
+                createQuestion(body);
+                ok++;
+            } catch (Exception e) {
+                skip++;
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("imported", ok);
+        out.put("skipped", skip);
+        return out;
+    }
+
+    public static Map<String, Object> randomDrawToPaper(long paperId, int count, String typeFilter) {
+        require();
+        if (getPaper(paperId) == null) throw new IllegalArgumentException("试卷不存在");
+        if (count < 1) throw new IllegalArgumentException("抽取数量至少为 1");
+        if (count > 100) count = 100;
+        String type = typeFilter == null ? "" : typeFilter.trim().toLowerCase(Locale.ROOT);
+        if (type.isBlank() || !Set.of("single", "multi", "judge", "subjective").contains(type)) {
+            type = null;
+        }
+        List<Long> ids = mapper().listRandomQuestionIds(paperId, type, count);
+        Integer maxSort = mapper().maxPaperQuestionSort(paperId);
+        int sort = maxSort == null ? 0 : maxSort;
+        int added = 0;
+        if (ids != null) {
+            for (Long qid : ids) {
+                if (qid == null) continue;
+                sort++;
+                mapper().insertPaperQuestion(paperId, qid, sort);
+                added++;
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("added", added);
+        out.put("paperId", paperId);
+        return out;
+    }
+
+    public static String scoreImportTemplate() {
+        return "username,paper_id,score,total_score\nuser,1,80,100\n";
+    }
+
+    public static Map<String, Object> importScoresCsv(String csvText) {
+        require();
+        if (csvText == null || csvText.isBlank()) throw new IllegalArgumentException("导入内容为空");
+        String[] lines = csvText.replace("\r\n", "\n").replace('\r', '\n').split("\n");
+        int ok = 0;
+        int skip = 0;
+        for (String line : lines) {
+            String t = line.trim();
+            if (t.isBlank() || t.toLowerCase(Locale.ROOT).startsWith("username,")) continue;
+            List<String> cells = splitCsvLine(t);
+            if (cells.size() < 4) {
+                skip++;
+                continue;
+            }
+            try {
+                String username = cells.get(0).trim();
+                long paperId = Long.parseLong(cells.get(1).trim());
+                int score = Integer.parseInt(cells.get(2).trim());
+                int total = Integer.parseInt(cells.get(3).trim());
+                if (username.isBlank() || getPaper(paperId) == null) {
+                    skip++;
+                    continue;
+                }
+                Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+                mapper().insertAttemptImported(paperId, username, score, total, now, now);
+                ok++;
+            } catch (Exception e) {
+                skip++;
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("imported", ok);
+        out.put("skipped", skip);
+        return out;
+    }
+
+    public static Map<String, Object> certificatePayload(long attemptId, String username) {
+        require();
+        Map<String, Object> attempt = getAttempt(attemptId);
+        if (attempt == null) throw new IllegalArgumentException("答卷不存在");
+        if (!username.equals(String.valueOf(attempt.get("username")))) {
+            throw new IllegalStateException("无权查看");
+        }
+        if (!"submitted".equals(String.valueOf(attempt.get("status")))) {
+            throw new IllegalStateException("成绩尚未公布");
+        }
+        long paperId = ((Number) attempt.get("paperId")).longValue();
+        Map<String, Object> paper = getPaper(paperId);
+        if (paper == null) throw new IllegalArgumentException("试卷不存在");
+        int score = attempt.get("score") instanceof Number n ? n.intValue() : 0;
+        int total = attempt.get("totalScore") instanceof Number n ? n.intValue() : 0;
+        int pass = paper.get("passScore") instanceof Number n ? n.intValue() : 60;
+        if (pass <= 0) pass = 60;
+        boolean passed = total > 0 && score * 100 >= pass * total;
+        if (!passed) throw new IllegalStateException("未达到及格线，暂无证书。");
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("attemptId", attemptId);
+        out.put("username", username);
+        try {
+            out.put("displayName", UserStore.displayName(username));
+        } catch (Exception e) {
+            out.put("displayName", username);
+        }
+        out.put("paperTitle", paper.get("title"));
+        out.put("score", score);
+        out.put("totalScore", total);
+        out.put("passScore", pass);
+        out.put("submittedAt", attempt.get("submittedAt"));
+        out.put("difficulty", paper.get("difficulty"));
+        return out;
+    }
+
+    private static String csvCell(Object o) {
+        String s = o == null ? "" : String.valueOf(o);
+        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
+            return "\"" + s.replace("\"", "\"\"") + "\"";
+        }
+        return s;
+    }
+
+    private static List<String> splitCsvLine(String line) {
+        List<String> out = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        boolean inQ = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (inQ) {
+                if (c == '"') {
+                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        cur.append('"');
+                        i++;
+                    } else {
+                        inQ = false;
+                    }
+                } else {
+                    cur.append(c);
+                }
+            } else if (c == '"') {
+                inQ = true;
+            } else if (c == ',') {
+                out.add(cur.toString().trim());
+                cur.setLength(0);
+            } else {
+                cur.append(c);
+            }
+        }
+        out.add(cur.toString().trim());
+        return out;
     }
 }
 

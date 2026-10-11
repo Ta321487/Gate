@@ -23,7 +23,8 @@ CONTENT_REPORT_CAP = "content_report"
 _FAVORITES_SIGNALS = re.compile(
     r"收藏夹|我的收藏|商品收藏|加入收藏|收藏功能|wishlist|favorite|"
     r"收藏活动|收藏线路|收藏课程|活动收藏|线路收藏|课程收藏|收藏启事|"
-    r"岗位收藏|职位收藏|房源收藏|收藏岗位|收藏职位|收藏房源"
+    r"岗位收藏|职位收藏|房源收藏|收藏岗位|收藏职位|收藏房源|"
+    r"心动列表|心动收藏|心仪对象|收藏心仪|加入心动"
 )
 
 _LIKE_TERMS = ("点赞", "点个赞", "帖子点赞", "一键点赞", "点赞功能")
@@ -236,9 +237,22 @@ def apply_favorites_to_spec(spec: dict[str, Any], proposal_text: str = "") -> di
         lead = None
         if domain in _CONTENT_FAVORITE_DOMAINS:
             lead = "收藏感兴趣的内容，方便随时回看。"
+        elif domain == "DOM-DATING":
+            lead = "收藏心仪的交友资料，方便再次查看与牵线。"
         elif domain in _PROFILE_SCAN_FAVORITE_DOMAINS:
             lead = "收藏感兴趣的资料，便于再次牵线。"
         attach_favorites_menus(schema, page_lead=lead)
+        if domain == "DOM-DATING":
+            labels = schema.setdefault("labels", {})
+            labels.setdefault("favoritesPageTitle", "心动列表")
+            labels.setdefault("favoritesVerb", "心动")
+            labels.setdefault("favoritedVerb", "已心动")
+            labels.setdefault("favoritesEmptyTitle", "暂无心动")
+            labels.setdefault(
+                "favoritesEmptyDesc",
+                "去资料浏览里点心动，感兴趣的人会出现在这里。",
+            )
+            labels.setdefault("favoritesCancelLabel", "取消心动")
         from app.bake.gate_contracts import merge_favorites_gate
 
         gate = dict(spec.get("gate") or {})
