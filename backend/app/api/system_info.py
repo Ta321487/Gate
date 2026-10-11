@@ -174,7 +174,29 @@ async def system_info(db: AsyncSession = Depends(get_db)):
         workspace=str(s.workspace_dir.resolve()),
         uploads=str(s.uploads_dir.resolve()),
         skeletons=str(s.skeletons_dir.resolve()),
+        cache=str(s.cache_dir.resolve()),
     )
+
+
+@router.get("/system/cache", response_model=ApiOk, tags=["系统"], summary="共享缓存占用")
+async def system_cache_status():
+    """data/cache 与工作区 .runtime-tmp 占用；有预览在跑时 can_purge=false。"""
+    from app.services import factory_cache_purge as cache_purge
+
+    data = await asyncio.to_thread(cache_purge.cache_status)
+    return ApiOk(ok=True, message="ok", data=data)
+
+
+@router.post("/system/cache/purge", response_model=ApiOk, tags=["系统"], summary="清理共享缓存")
+async def system_cache_purge():
+    """删除 data/cache 内容，并清各工作区 .runtime-tmp。不动开题/工程/骨架/本机 Maven 仓库。
+
+    有预览进程在跑时拒绝，避免弄坏联接中的前端依赖。
+    """
+    from app.services import factory_cache_purge as cache_purge
+
+    data = await asyncio.to_thread(cache_purge.purge_factory_cache)
+    return ApiOk(ok=bool(data.get("ok")), message=str(data.get("message") or ""), data=data)
 
 
 @router.post("/system/free-ports", response_model=ApiOk, tags=["系统"], summary="释放僵尸端口")

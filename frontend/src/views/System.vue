@@ -60,7 +60,48 @@
               <div><span class="muted">骨架</span><br /><span class="mono">{{ info.skeletons }}</span></div>
               <CopyIconButton v-if="info.skeletons" :text="info.skeletons" tip="复制路径" />
             </div>
+            <div class="small path-row">
+              <div><span class="muted">共享缓存</span><br /><span class="mono">{{ info.cache || '—' }}</span></div>
+              <CopyIconButton v-if="info.cache" :text="info.cache" tip="复制路径" />
+            </div>
           </div>
+        </div>
+      </div>
+      <div class="panel mt-16">
+        <div class="panel-hd">
+          <h3>共享缓存</h3>
+          <n-button size="small" :loading="cacheLoading" @click="loadCache">刷新占用</n-button>
+        </div>
+        <div class="panel-bd">
+          <p class="small muted mb-12">
+            这里主要是各题共用的前端依赖（baseline-frontend）和配图缓存。清理后下次预览会重新装依赖，可能多等几分钟。
+            不会动开题材料、项目工程、骨架和本机 Maven 仓库。有预览在跑时不能清。
+          </p>
+          <template v-if="cacheInfo">
+            <div class="small mb-8">
+              <span class="muted">合计</span> {{ cacheInfo.total_label || '0 MB' }}
+              <span v-if="cacheInfo.runtime_tmp_dirs" class="muted">
+                · 另有 {{ cacheInfo.runtime_tmp_dirs }} 个工作区临时目录 {{ cacheInfo.runtime_tmp_label }}
+              </span>
+            </div>
+            <ul v-if="cacheInfo.buckets?.length" class="cache-list small mb-12">
+              <li v-for="b in cacheInfo.buckets" :key="b.key">
+                <span class="mono">{{ b.key }}</span>
+                <span class="muted">{{ b.size_label }}</span>
+              </li>
+            </ul>
+            <p v-if="cacheInfo.block_reason" class="small warn mb-12">{{ cacheInfo.block_reason }}</p>
+          </template>
+          <p v-else-if="!cacheLoading" class="small muted mb-12">尚未读取占用</p>
+          <n-button
+            size="small"
+            type="warning"
+            :loading="purging"
+            :disabled="!cacheInfo?.can_purge"
+            @click="purgeCache"
+          >
+            清理共享缓存
+          </n-button>
         </div>
       </div>
     </template>
@@ -77,7 +118,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { api, message } from '../api'
+import { api, confirm, message } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import ErrorPage from './ErrorPage.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
@@ -86,6 +127,9 @@ const info = ref(null)
 const freeing = ref(false)
 const loading = ref(false)
 const booted = ref(false)
+const cacheInfo = ref(null)
+const cacheLoading = ref(false)
+const purging = ref(false)
 
 function formatPorts(ports) {
   return (ports && ports.length) ? ports.join(', ') : '无'
@@ -96,10 +140,23 @@ const idleCount = computed(
 )
 const hasIdle = computed(() => idleCount.value > 0)
 
+async function loadCache() {
+  cacheLoading.value = true
+  try {
+    const res = await api.systemCache()
+    cacheInfo.value = res?.data || null
+  } catch {
+    cacheInfo.value = null
+  } finally {
+    cacheLoading.value = false
+  }
+}
+
 async function load() {
   loading.value = true
   try {
     info.value = await api.system()
+    await loadCache()
   } catch {
     info.value = null
   } finally {
@@ -121,6 +178,25 @@ async function free() {
   }
 }
 
+async function purgeCache() {
+  const ok = await confirm(
+    '将删除 data/cache（含共用前端依赖与配图缓存），并清掉各工作区的 .runtime-tmp。下次预览会重新装依赖。开题、工程、骨架和本机 Maven 仓库不会动。',
+    { title: '清理共享缓存？', positiveText: '清理', type: 'warning' },
+  )
+  if (!ok) return
+  purging.value = true
+  try {
+    const res = await api.purgeSystemCache()
+    if (res?.ok) message.success(res.message || '已清理')
+    else message.warning(res?.message || '未能清理')
+    await loadCache()
+  } catch (e) {
+    message.error(e?.message || '清理失败')
+  } finally {
+    purging.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -130,5 +206,16 @@ onMounted(load)
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+}
+.cache-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cache-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
 }
 </style>
