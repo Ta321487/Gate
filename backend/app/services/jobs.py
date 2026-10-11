@@ -446,15 +446,20 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 await set_step(2, "done", f"{meta} · 写入={written_n}")
                 await asyncio.sleep(0.2)
 
-            # 4 构建验证 + Fix Agent
+            # 4 构建验证 + Fix Agent（编译中通过 meta 刷新子进度文案）
             if from_step <= 3:
-                await set_step(3, "run", "构建与修复")
+                await set_step(3, "run", "准备编译…")
+
+                async def _build_status(msg: str) -> None:
+                    await set_step(3, "run", msg)
+
                 build_ok, build_meta = await run_fix_agent(
                     db,
                     llm_rt,
                     project_id=project.id,
                     workspace=workspace,
                     spec=project.spec,
+                    on_status=_build_status,
                 )
                 if not build_ok:
                     raise RuntimeError(build_meta or "构建验证失败")

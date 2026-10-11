@@ -482,6 +482,23 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
     env = os.environ.copy()
     # Maven 启动器 JVM 只负责等子进程，默认堆可达 ~378 MB/预览；限堆避免白占
     env.setdefault("MAVEN_OPTS", "-Xmx192m")
+    # Windows 系统 Temp 偶发 AccessDenied（杀软/残留 tomcat.*）；改用项目本地临时目录
+    run_tmp = (workspace / ".runtime-tmp").resolve()
+    try:
+        run_tmp.mkdir(parents=True, exist_ok=True)
+        probe = run_tmp / ".write_probe"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        env["TMP"] = str(run_tmp)
+        env["TEMP"] = str(run_tmp)
+        env["TMPDIR"] = str(run_tmp)
+        # 覆盖而非追加，避免叠多层 JAVA_TOOL_OPTIONS
+        env["JAVA_TOOL_OPTIONS"] = f"-Djava.io.tmpdir={run_tmp}"
+        log_f.write(f"tmpdir: {run_tmp}\n")
+        log_f.flush()
+    except OSError as e:
+        log_f.write(f"WARN local tmpdir unavailable ({e}); fallback to system TEMP\n")
+        log_f.flush()
     if db_name:
         from app.services.student_db import datasource_env
 
@@ -519,20 +536,23 @@ def start_backend(project_id: str, workspace: Path, port: int, db_name: str = ""
                 f"--server.address={bind}",
                 "--thesis.local-dev.captcha-plain=true",
             ]
+            jvm_bits = [
+                "-Xmx320m",
+                "-XX:MaxMetaspaceSize=192m",
+                "-XX:TieredStopAtLevel=1",
+                f"-Djava.io.tmpdir={run_tmp}",
+            ]
             cmd = [
                 mvn,
                 "-q",
                 "spring-boot:run",
                 f"-Dspring-boot.run.arguments={' '.join(args)}",
                 # 应用 JVM 限堆；必须保留 -XX:TieredStopAtLevel=1（不加会显著拖慢启动）
-                (
-                    "-Dspring-boot.run.jvmArguments="
-                    "-Xmx320m -XX:MaxMetaspaceSize=192m -XX:TieredStopAtLevel=1"
-                ),
+                "-Dspring-boot.run.jvmArguments=" + " ".join(jvm_bits),
             ]
             log_f.write(
                 f"cmd: {cmd[0]} spring-boot:run port={port} address={bind} captcha-plain=on\n"
-                f"jvm: -Xmx320m -XX:MaxMetaspaceSize=192m · MAVEN_OPTS={env.get('MAVEN_OPTS')}\n"
+                f"jvm: {' '.join(jvm_bits)} · MAVEN_OPTS={env.get('MAVEN_OPTS')}\n"
             )
             log_f.flush()
             p = _popen(cmd, cwd=be, log_f=log_f, env=env)

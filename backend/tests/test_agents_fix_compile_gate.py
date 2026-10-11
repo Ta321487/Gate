@@ -107,6 +107,30 @@ class AgentsFixCompileGateTests(unittest.TestCase):
             self.assertTrue(ok)
             self.assertIn("skip", meta)
 
+    def test_on_status_reports_compile_phase(self):
+        with tempfile.TemporaryDirectory() as td:
+            ws = _ws(Path(td))
+            db = AsyncMock()
+            msgs: list[str] = []
+
+            async def _status(msg: str) -> None:
+                msgs.append(msg)
+
+            with patch("app.llm.agents_fix._mvn_compile", return_value=(True, "compile ok")):
+                ok, _meta = asyncio.run(
+                    run_fix_agent(
+                        db,
+                        _rt(auto_fix=False),
+                        project_id="p1",
+                        workspace=ws,
+                        spec={},
+                        on_status=_status,
+                    )
+                )
+            self.assertTrue(ok)
+            self.assertTrue(msgs)
+            self.assertTrue(any("编译" in m for m in msgs), msgs)
+
 
 if __name__ == "__main__":
     unittest.main()

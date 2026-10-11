@@ -188,6 +188,112 @@ def dedupe_out_scope_vs_features(
     return outs
 
 
+# 已挂能力的「主路径」表面词：out_scope 若把整条主路径标成非本期 → 与交付打架。
+# 只覆盖 LLM 常误划的壳能力；硬边界（人脸/真支付/CA…）不在此表，原样保留。
+_CAP_CORE_SIGNALS: dict[str, tuple[str, ...]] = {
+    "occupy_span": ("占用时段", "占用日历", "占用明细", "时段占用", "占用台账", "我的占用"),
+    "time_conflict": ("时段冲突", "时间冲突", "冲突检测", "冲突校验", "冲突提示"),
+    "slot_reserve": ("时段预约", "占坑", "资源时段", "选时段"),
+    "quota": ("名额占用", "库存占用", "余量占用"),
+    "deadline": ("逾期催", "到期催", "应还日", "处理时限"),
+    "checkin": ("口令签到", "活动签到"),
+    "waitlist": ("候补排队", "候补递补"),
+    "loan_renew": ("续借",),
+    "pass_code": ("通行码", "访客码"),
+    "e_sign": ("签章留痕", "勾选同意留痕"),
+    "balance_ledger": ("余额流水", "账户扣减"),
+    "material_check": ("材料清单", "必传附件"),
+    "exam": ("题库组卷", "在线作答", "客观题判分"),
+    "survey": ("问卷填写", "问卷回收"),
+    "vote": ("投票计票", "候选投票"),
+}
+
+# 时段簇：域默认常同时挂 occupy_span + time_conflict（用车/请假/出差等）
+_TIME_PATH_CAPS = frozenset({"occupy_span", "time_conflict", "slot_reserve"})
+_TIME_PATH_RE = re.compile(
+    r"(用车|请假|出差|装修|宣传|学籍|活动|选课)?.{0,6}"
+    r"(时段|时间段|起止时间|用车时间|请假时间|开考时间)|"
+    r"时段字段|时间字段|占用冲突|时段选择"
+)
+_HARD_BOUNDARY_KEEP_RE = re.compile(
+    r"人脸|指纹|GPS|真门禁|闸机|微信支付|支付宝|真支付|法大大|上上签|CA\s*证书|"
+    r"RFID|多仓|ERP|短信网关|地图\s*SDK|实时\s*IM"
+)
+_EXTENSION_HINT_RE = re.compile(r"扩展|视进度|加价|后续|加深|可选字段|附加字段")
+
+
+def _hit_caps_for_line(line: str, cap_set: set[str]) -> list[str]:
+    hits: list[str] = []
+    for cap, signals in _CAP_CORE_SIGNALS.items():
+        if cap not in cap_set:
+            continue
+        if any(s in line for s in signals):
+            hits.append(cap)
+    return hits
+
+
+def sanitize_out_scope_vs_capabilities(
+    out_scope_lines: list[str] | None,
+    capabilities: list[str] | tuple[str, ...] | set[str] | None,
+    *,
+    limit: int = 5,
+) -> list[str]:
+    """已挂能力的主路径不得整段标「非本期」；可保留「扩展字段视进度补充」。
+
+    通用：按 capabilities 集合判定，不绑死某一 DOM。时段簇（占用/冲突/预约）
+    合并改写为一句诚实口径，避免用车/请假等同构域反复误报。
+    """
+    cap_set = {str(c).strip() for c in (capabilities or []) if str(c).strip()}
+    outs: list[str] = []
+    time_rewrite_used = False
+    for raw in out_scope_lines or []:
+        line = str(raw).strip()
+        if not line:
+            continue
+        if _HARD_BOUNDARY_KEEP_RE.search(line):
+            outs.append(line[:80])
+            if len(outs) >= limit:
+                break
+            continue
+        hits = _hit_caps_for_line(line, cap_set)
+        time_hit = bool(cap_set & _TIME_PATH_CAPS) and bool(_TIME_PATH_RE.search(line))
+        if time_hit or (hits and set(hits) & _TIME_PATH_CAPS):
+            if time_rewrite_used:
+                continue
+            outs.append("时段冲突校验为本期，时段相关扩展字段视进度补充"[:80])
+            time_rewrite_used = True
+            if len(outs) >= limit:
+                break
+            continue
+        if hits:
+            if _EXTENSION_HINT_RE.search(line):
+                # 已区分扩展 → 压成通用诚实句，去掉「整能力非本期」歧义
+                label = "、".join(hits[:2])
+                outs.append(f"{label} 为本期主路径，相关扩展字段视进度补充"[:80])
+            else:
+                # 整段排除已挂主路径 → 丢弃（禁止与交付文案打架）
+                continue
+            if len(outs) >= limit:
+                break
+            continue
+        outs.append(line[:80])
+        if len(outs) >= limit:
+            break
+    return outs
+
+
+def normalize_out_scope_lines(
+    feature_lines: list[str] | None,
+    out_scope_lines: list[str] | None,
+    capabilities: list[str] | tuple[str, ...] | set[str] | None = None,
+    *,
+    limit: int = 5,
+) -> list[str]:
+    """功能点互斥 + 已挂能力主路径消毒（Spec / QA 共用）。"""
+    step = dedupe_out_scope_vs_features(feature_lines, out_scope_lines, limit=limit * 2)
+    return sanitize_out_scope_vs_capabilities(step, capabilities, limit=limit)
+
+
 def hints_mentioned(
     text: str,
     hints: tuple[str, ...],

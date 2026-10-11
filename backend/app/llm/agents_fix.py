@@ -7,7 +7,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -93,18 +93,29 @@ async def run_fix_agent(
     project_id: str,
     workspace: Path,
     spec: dict[str, Any],
+    on_status: Callable[[str], Awaitable[None]] | None = None,
 ) -> tuple[bool, str]:
     """
     结构校验后尝试 mvn compile；编译失败硬拦交付（ok=False）。
     开了 auto_fix 时：LLM 诊断 + 重放确定性/LLM 填岛（不改业务源码）后重编；仍失败则 ok=False。
     本机未装 mvn 时跳过编译（无法验），不挡交付。
+    on_status：可选，用于工厂页步骤文案（如「正在编译后端…」）；勿传内部日志。
     返回 (ok, meta)。
     """
+    async def _status(msg: str) -> None:
+        if on_status is None:
+            return
+        try:
+            await on_status(msg)
+        except Exception:  # noqa: BLE001
+            pass
+
     ok_be = (workspace / "backend").exists()
     ok_fe = (workspace / "frontend").exists()
     if not (ok_be and ok_fe):
         return False, "骨架不完整"
 
+    await _status("正在编译后端，大约需要 1～3 分钟…")
     # mvn compile 可长达数分钟，必须进线程，否则工厂 API 整体假死
     compile_ok, log = await asyncio.to_thread(_mvn_compile, workspace)
     if not (rt.stage_on("auto_fix") and rt.configured):
@@ -129,6 +140,7 @@ async def run_fix_agent(
     for i in range(rounds):
         if not await budget_ok(db, project_id, rt):
             break
+        await _status(f"编译未过，正在尝试自动修复（第 {i + 1} 轮）…")
         messages = [
             {
                 "role": "system",
@@ -154,6 +166,7 @@ async def run_fix_agent(
             await asyncio.to_thread(emit_schema_to_workspace, workspace, spec)
         except Exception:  # noqa: BLE001
             await asyncio.to_thread(llm_fill_islands, workspace, spec, True)
+        await _status(f"正在重新编译（第 {i + 1} 轮）…")
         compile_ok, last = await asyncio.to_thread(_mvn_compile, workspace)
         if compile_ok:
             await record_call(

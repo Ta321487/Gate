@@ -436,6 +436,7 @@ class SystemInfo(BaseModel):
     workspace: str = Field(description="工作区目录")
     uploads: str = Field(description="上传目录")
     skeletons: str = Field(description="骨架目录")
+    cache: str = Field(default="", description="共享缓存目录（data/cache）")
 
 
 class RuntimeState(BaseModel):

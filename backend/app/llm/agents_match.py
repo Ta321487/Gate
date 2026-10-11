@@ -18,7 +18,7 @@ from app.bake.domain_schema import (
     validate_schema,
 )
 from app.bake.engine import emit_schema_to_workspace, llm_fill_islands
-from app.bake.proposal_lexicon import dedupe_out_scope_vs_features
+from app.bake.proposal_lexicon import normalize_out_scope_lines
 from app.bake.schema.er import (
     apply_er_label_patch,
     build_schema_model,
@@ -218,6 +218,9 @@ async def run_spec_agent(
                 "字段：title, background, feature_lines(≤8), out_scope_lines(≤5), summary；中文短句。\n"
                 "feature←开题肯定要做；out_scope←开题明确否定；禁止臆造排除项。"
                 "互斥与去重由服务端处理。\n"
+                "诚实划界：已匹配领域的域默认/已挂主路径（如时段冲突校验、名额占用、口令签到等）"
+                "不得整段写入 out_scope；若仅扩展字段视进度，须写成"
+                "「某某主路径为本期，相关扩展字段视进度补充」，勿写成「某某非本期」。\n"
             ),
         },
         {
@@ -258,9 +261,10 @@ async def run_spec_agent(
     if isinstance(data.get("feature_lines"), list):
         prop["feature_lines"] = [str(x)[:80] for x in data["feature_lines"][:8]]
     if isinstance(data.get("out_scope_lines"), list):
-        prop["out_scope_lines"] = dedupe_out_scope_vs_features(
+        prop["out_scope_lines"] = normalize_out_scope_lines(
             prop.get("feature_lines"),
             data["out_scope_lines"],
+            spec.get("capabilities") or [],
             limit=5,
         )
     prop["llm_enriched"] = True

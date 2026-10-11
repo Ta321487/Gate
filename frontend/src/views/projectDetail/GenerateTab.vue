@@ -7,8 +7,12 @@
           <div class="small muted">任务 #{{ currentJob?.id }} · {{ currentJob?.progress || 0 }}%</div>
         </div>
         <div class="progress" style="height:8px"><i :style="{ width: (currentJob?.progress || 0) + '%' }" /></div>
-        <p v-if="pollSyncHint" class="small muted mt-12">{{ pollSyncHint }}</p>
+    <p v-if="pollSyncHint" class="small muted mt-12">{{ pollSyncHint }}</p>
         <p v-if="fillLiveSummary" class="small muted mt-8">{{ fillLiveSummary }}</p>
+        <template v-if="buildLiveHint">
+          <p class="small muted mt-8">{{ buildLiveHint }}</p>
+          <div class="sub-progress mt-8" aria-hidden="true"><i /></div>
+        </template>
         <div v-if="fillLiveVisible" class="mt-12">
           <n-data-table
             size="small"
@@ -72,6 +76,11 @@
             <div class="step-body">
               <div class="step-title">{{ s.title }}</div>
               <div class="meta">{{ s.meta || stepStatusLabel(s.status) }}</div>
+              <div
+                v-if="normalizeStepStatus(s.status) === 'run' && s.key === 'build_verify'"
+                class="sub-progress mt-8"
+                aria-hidden="true"
+              ><i /></div>
             </div>
           </li>
         </ol>
@@ -238,6 +247,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import DefensePptLaunchPanel from '../../components/defensePpt/DefensePptLaunchPanel.vue'
 import { bindPd } from './bindPd'
 const {
@@ -275,4 +285,13 @@ const {
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
 } = bindPd()
+
+/** 构建验证进行中：顶栏展示编译子进度文案（轮询 steps.meta） */
+const buildLiveHint = computed(() => {
+  const steps = currentJob.value?.steps || []
+  const s = steps.find(
+    (x) => x?.key === 'build_verify' && normalizeStepStatus(x.status) === 'run',
+  )
+  return (s?.meta || '').trim()
+})
 </script>
