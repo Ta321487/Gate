@@ -12,6 +12,7 @@ data/uploads/*
 data/workspace/*
 data/logs/*
 data/cache/*
+data/probe_run/
 !data/uploads/.gitkeep
 !data/workspace/.gitkeep
 !data/logs/.gitkeep
