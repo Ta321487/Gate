@@ -8,7 +8,11 @@
         :class="{ on: i === index }"
         :aria-hidden="i !== index"
       >
-        <div class="photo" :style="{ backgroundImage: `url('${s.src}')` }" />
+        <div
+          class="photo"
+          :class="{ 'photo--plain': !s.src }"
+          :style="s.src ? { backgroundImage: `url('${s.src}')` } : undefined"
+        />
         <div class="veil" />
         <div class="copy">
           <p class="kicker">{{ brand }}</p>
@@ -35,6 +39,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import http from '../api/http'
 import { APP_DELIVERED } from '../appDelivered.js'
 import { schemaLabels } from '../utils/domainSchema.js'
 
@@ -42,9 +47,16 @@ const props = defineProps({
   intervalMs: { type: Number, default: 5600 },
 })
 
+/** bake 静态图 + 管理端 sys_banner（有图才进轮播） */
+const apiBanners = ref([])
 const raw = computed(() => {
-  const list = APP_DELIVERED?.portalBanners
-  return Array.isArray(list) ? list.filter((x) => x && x.src) : []
+  const baked = Array.isArray(APP_DELIVERED?.portalBanners) ? APP_DELIVERED.portalBanners : []
+  const fromApi = apiBanners.value.map((b) => ({
+    src: b.src || b.imageUrl || '',
+    title: b.title || '',
+    lead: b.lead || '',
+  }))
+  return [...fromApi, ...baked].filter((x) => x && x.src)
 })
 const slides = ref([])
 const index = ref(0)
@@ -86,6 +98,15 @@ function orderSlides(list) {
   return [...welcome, ...rest]
 }
 
+async function loadApi() {
+  try {
+    const res = await http.get('/api/banners', { params: { slot: 'home' } })
+    apiBanners.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    apiBanners.value = []
+  }
+}
+
 async function probe() {
   const ok = []
   for (const s of raw.value) {
@@ -97,14 +118,28 @@ async function probe() {
     })
     if (pass) ok.push(s)
   }
-  slides.value = orderSlides(ok)
+  // 无图但有标题：用纯色底仍展示文案
+  if (!ok.length && apiBanners.value.length) {
+    slides.value = orderSlides(
+      apiBanners.value.map((b) => ({
+        src: b.src || b.imageUrl || '',
+        title: b.title || '',
+        lead: b.lead || '',
+      })).filter((x) => x.title),
+    )
+  } else {
+    slides.value = orderSlides(ok)
+  }
   index.value = 0
   restart()
 }
 
 watch(raw, () => probe(), { deep: true })
 
-onMounted(probe)
+onMounted(async () => {
+  await loadApi()
+  await probe()
+})
 onUnmounted(() => {
   if (timer) clearInterval(timer)
 })
@@ -132,6 +167,10 @@ onUnmounted(() => {
   background-position: center;
   transform: scale(1.04);
   transition: transform 7s ease-out;
+}
+.photo--plain {
+  background:
+    linear-gradient(135deg, #1e293b 0%, #0f766e 55%, #134e4a 100%);
 }
 .slide.on .photo { transform: scale(1.12); }
 .veil {

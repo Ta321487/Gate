@@ -18,6 +18,28 @@ public interface UserMapper {
     @Update("UPDATE sys_user SET password=#{password} WHERE username=#{username}")
     int updatePassword(@Param("username") String username, @Param("password") String password);
 
+    @Update("UPDATE sys_user SET failed_login_count=#{count}, lock_until=#{lockUntil} WHERE username=#{username}")
+    int updateLoginLock(@Param("username") String username, @Param("count") int count, @Param("lockUntil") String lockUntil);
+
+    @Update("UPDATE sys_user SET failed_login_count=#{count} WHERE username=#{username}")
+    int updateFailedLoginCount(@Param("username") String username, @Param("count") int count);
+
+    @Update("UPDATE sys_user SET failed_login_count=0, lock_until=NULL WHERE username=#{username}")
+    int clearLoginFailures(@Param("username") String username);
+
+    @Update("UPDATE sys_user SET password=#{password}, must_change_password=0, password_changed_at=#{changedAt}, "
+            + "failed_login_count=0, lock_until=NULL WHERE username=#{username}")
+    int updatePasswordChanged(@Param("username") String username, @Param("password") String password,
+                              @Param("changedAt") String changedAt);
+
+    @Update("UPDATE sys_user SET password=#{password}, must_change_password=1, password_changed_at=NULL, "
+            + "failed_login_count=0, lock_until=NULL WHERE username=#{username}")
+    int updatePasswordForceChange(@Param("username") String username, @Param("password") String password);
+
+    @Update("UPDATE sys_user SET security_question=#{question}, security_answer_hash=#{answerHash} WHERE username=#{username}")
+    int updateSecurityQuestion(@Param("username") String username, @Param("question") String question,
+                               @Param("answerHash") String answerHash);
+
     @Update("UPDATE sys_user SET post_mute_until=#{until} WHERE username=#{username}")
     int updatePostMuteUntil(@Param("username") String username, @Param("until") String until);
 

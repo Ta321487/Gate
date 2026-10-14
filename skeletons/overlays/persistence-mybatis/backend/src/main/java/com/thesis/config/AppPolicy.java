@@ -66,6 +66,12 @@ public final class AppPolicy {
     public static final int HOSPITAL_ID_LIMIT_PER_DAY = 0;
     /** 论坛每日发帖上限；0 表示不限制 */
     public static final int FORUM_DAILY_POST_LIMIT = 0;
+    /** 文库每日下载上限；0 表示不限制 */
+    public static final int DOCLIB_DAILY_DOWNLOAD_LIMIT = 0;
+    /** 标精华时奖励作者的积分；0 表示不奖 */
+    public static final int ESSENCE_POINTS_REWARD = 0;
+    /** 每日登录奖励积分数 */
+    public static final int POINTS_CHECK_IN_AMOUNT = 10;
     /** 内容举报处理时限（天）；0 表示不设时限 */
     public static final int REPORT_HANDLE_DAYS = 0;
     /** 车位小时费率（元）；0 表示未启用时长计费 */
@@ -82,6 +88,24 @@ public final class AppPolicy {
     public static final int CARRENT_MILEAGE_OVER_FEE_YUAN = 0;
     /** 仪器机时超时加收默认金额（元）；0 表示未启用 */
     public static final int INSTRUMENT_OVERTIME_YUAN = 0;
+    /** 连续登录失败达此次数后进入冷却 */
+    public static final int AUTH_LOCK_MAX_ATTEMPTS = 5;
+    /** 登录失败冷却时长（分钟） */
+    public static final int AUTH_LOCK_MINUTES = 15;
+    /** 密码最长有效天数；0 表示不强制定期更换 */
+    public static final int AUTH_PASSWORD_MAX_DAYS = 0;
+    /** 勾选记住登录时会话延长天数 */
+    public static final int AUTH_REMEMBER_DAYS = 7;
+    /** 注册与改密的最短密码长度 */
+    public static final int AUTH_PASSWORD_MIN_LENGTH = 6;
+    /** 前端闲置超时提示参考（分钟） */
+    public static final int AUTH_SESSION_IDLE_MINUTES = 30;
+    /** 同账号同时有效会话上限；超出踢最旧 */
+    public static final int AUTH_MAX_SESSIONS = 5;
+    /** 注册是否必须邀请码；1=必须 */
+    public static final int AUTH_REQUIRE_INVITE = 0;
+    /** 注册后是否须站内激活码；1=必须 */
+    public static final int AUTH_REQUIRE_EMAIL_ACTIVATE = 1;
 
     // ---------- 能力开关（按开题启用） ----------
     /** 档案软删除（标记删除，不物理抹掉） */
@@ -153,12 +177,8 @@ public final class AppPolicy {
     public static final boolean CONTENT_DOCLIB_POINTS_DOWNLOAD = false;
     /** 精华帖奖励积分 */
     public static final boolean CONTENT_ESSENCE_POINTS_REWARD = false;
-    /** 标精华时奖励作者的积分；0 表示不奖 */
-    public static final int ESSENCE_POINTS_REWARD = 0;
     /** 每日登录奖励积分 */
     public static final boolean POINTS_CHECK_IN_ENABLED = false;
-    /** 每日登录奖励积分数 */
-    public static final int POINTS_CHECK_IN_AMOUNT = 10;
     /** 内容举报原因字典 */
     public static final boolean CONTENT_REPORT_REASON_DICT = false;
     /** 评论举报 */
@@ -167,8 +187,6 @@ public final class AppPolicy {
     public static final boolean CONTENT_FOLLOWERS_ONLY_COMMENT = false;
     /** 投稿审过站内信通知 */
     public static final boolean CONTENT_PUBLISH_APPROVE_NOTIFY = false;
-    /** 文库每日下载上限；0 表示不限制 */
-    public static final int DOCLIB_DAILY_DOWNLOAD_LIMIT = 0;
     /** 私信走店铺客服（买家只能选商家） */
     public static final boolean DM_SHOP_CS = false;
     /** 本地签章 */

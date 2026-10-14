@@ -3799,6 +3799,11 @@ public final class TicketStore {
         return TicketDashOps.dashboard(readerRole);
     }
 
+    /** XD-01：非超管处理中/逾期按 assignee 过滤。 */
+    public static Map<String, Object> dashboard(String readerRole, String scopeUid, boolean superAdmin) {
+        return TicketDashOps.dashboard(readerRole, scopeUid, superAdmin);
+    }
+
     /** 工作台图表：状态分布 + 近 7 日趋势（按 apply_at）+ 跟进渠道饼图。 */
     public static Map<String, Object> chartStats() {
         return TicketDashOps.chartStats();

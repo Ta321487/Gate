@@ -6,6 +6,8 @@ import com.thesis.common.ErrorCode;
 import com.thesis.common.PasswordHashes;
 import com.thesis.common.R;
 import com.thesis.config.UploadStorage;
+import com.thesis.service.AccountCancelStore;
+import com.thesis.service.AuthSessionStore;
 import com.thesis.service.ProfileFields;
 import com.thesis.service.UserStore;
 import jakarta.servlet.http.HttpSession;
@@ -42,45 +44,86 @@ public class ProfileController {
             throw new BizException(ErrorCode.FORBIDDEN, "顶级管理员不提供个人资料修改");
         }
         if (body.containsKey("nickname")) p.nickname = str(body.get("nickname"));
-        if (body.containsKey("phone")) p.phone = str(body.get("phone"));
+        // 手机号/邮箱改绑走 /change-contact；此处禁止静默改 phone
+        if (body.containsKey("phone")) {
+            String next = str(body.get("phone"));
+            String cur = p.phone == null ? "" : p.phone.trim();
+            if (!next.equals(cur)) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "修改手机号请使用改绑入口并填写验证码");
+            }
+        }
         if (body.containsKey("extras") || hasExtraKeys(body)) {
             Map<String, String> merged = new LinkedHashMap<>(p.extras == null ? Map.of() : p.extras);
-            merged.putAll(AuthController.extractExtras(body));
+            Map<String, String> incoming = AuthController.extractExtras(body);
+            String oldEmail = p.extras == null ? "" : String.valueOf(p.extras.getOrDefault("email", "")).trim();
+            String newEmail = incoming.getOrDefault("email", oldEmail);
+            if (newEmail == null) newEmail = "";
+            if (!oldEmail.equals(newEmail.trim()) && body.containsKey("extras")) {
+                // 扁平/extras 里改邮箱：拒，走改绑
+                if (incoming.containsKey("email") && !oldEmail.equals(incoming.get("email").trim())) {
+                    throw new BizException(ErrorCode.BAD_REQUEST, "修改邮箱请使用改绑入口并填写验证码");
+                }
+            }
+            merged.putAll(incoming);
+            if (incoming.containsKey("email") && !oldEmail.equals(String.valueOf(incoming.get("email")).trim())) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "修改邮箱请使用改绑入口并填写验证码");
+            }
             p.extras = ProfileFields.filterExtras(merged);
+        }
+        if (body.containsKey("realNameAcked") || body.containsKey("real_name_acked")) {
+            Object raw = body.containsKey("realNameAcked") ? body.get("realNameAcked") : body.get("real_name_acked");
+            p.realNameAcked = Boolean.parseBoolean(String.valueOf(raw));
         }
 
         boolean passwordChanged = false;
         String newPassword = str(body.get("newPassword"));
         if (newPassword.isBlank()) newPassword = str(body.get("password"));
+        String oldPassword = str(body.get("oldPassword"));
+        String confirmPassword = str(body.get("confirmPassword"));
         if (!newPassword.isBlank()) {
-            String oldPassword = str(body.get("oldPassword"));
-            String confirmPassword = str(body.get("confirmPassword"));
-            if (oldPassword.isBlank()) {
+            boolean forced = UserStore.effectiveMustChange(p);
+            if (!forced && oldPassword.isBlank()) {
                 throw new BizException(ErrorCode.BAD_REQUEST, "请填写原密码");
             }
-            if (!PasswordHashes.matches(oldPassword, p.password)) {
+            if (!forced && !PasswordHashes.matches(oldPassword, p.password)) {
                 throw new BizException(ErrorCode.BAD_REQUEST, "原密码不正确");
             }
             if (!newPassword.equals(confirmPassword)) {
                 throw new BizException(ErrorCode.BAD_REQUEST, "两次输入的新密码不一致");
             }
-            if (newPassword.equals(oldPassword)) {
+            if (!oldPassword.isBlank() && newPassword.equals(oldPassword)) {
                 throw new BizException(ErrorCode.BAD_REQUEST, "新密码不能与原密码相同");
             }
-            if (newPassword.length() < 6) {
-                throw new BizException(ErrorCode.BAD_REQUEST, "新密码至少 6 位");
-            }
-            p.password = PasswordHashes.encode(newPassword);
-            passwordChanged = true;
         }
         try {
             UserStore.saveProfile(p);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
-        Map<String, Object> out = new LinkedHashMap<>(p.toMap());
+        if (!newPassword.isBlank()) {
+            try {
+                UserStore.forceChangePassword(p.username, newPassword);
+            } catch (IllegalArgumentException e) {
+                throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+            }
+            passwordChanged = true;
+        }
+        String sq = str(body.get("securityQuestion"));
+        String sa = str(body.get("securityAnswer"));
+        if (!sq.isBlank() && !sa.isBlank()) {
+            try {
+                UserStore.setSecurityQuestion(p.username, sq, sa);
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+            }
+        }
+        p = UserStore.get(p.username);
+        Map<String, Object> out = new LinkedHashMap<>(p == null ? Map.of() : p.toMap());
         if (passwordChanged) {
-            // 改密后作废当前会话，须用新密码重新登录
+            try {
+                AuthSessionStore.invalidate(session.getId());
+            } catch (Exception ignored) {
+            }
             try {
                 session.invalidate();
             } catch (IllegalStateException ignored) {
@@ -88,6 +131,46 @@ public class ProfileController {
             out.put("requireRelogin", true);
         }
         return R.ok(out);
+    }
+
+    @PostMapping("/change-contact")
+    public R<Map<String, Object>> changeContact(@RequestBody Map<String, Object> body, HttpSession session) {
+        UserStore.Profile p = requireUser(session);
+        if (!p.profileEditable) {
+            throw new BizException(ErrorCode.FORBIDDEN, "顶级管理员不提供资料修改");
+        }
+        AuthController.verifyCaptchaForProfile(body, session);
+        String field = str(body.get("field"));
+        String value = str(body.get("value"));
+        if (value.isBlank()) value = str(body.get("newValue"));
+        try {
+            UserStore.changeContact(p.username, field, value);
+            return R.ok(UserStore.get(p.username).toMap());
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/cancel-request")
+    public R<Map<String, Object>> cancelRequest(@RequestBody Map<String, Object> body, HttpSession session) {
+        UserStore.Profile p = requireUser(session);
+        try {
+            return R.ok(AccountCancelStore.submit(p.username, str(body.get("reason"))));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    @PostMapping("/real-name-ack")
+    public R<Map<String, Object>> realNameAck(@RequestBody Map<String, Object> body, HttpSession session) {
+        UserStore.Profile p = requireUser(session);
+        boolean acked = Boolean.parseBoolean(String.valueOf(body.getOrDefault("acked", body.getOrDefault("realNameAcked", "true"))));
+        try {
+            UserStore.setRealNameAcked(p.username, acked);
+            return R.ok(UserStore.get(p.username).toMap());
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
     }
 
     @PostMapping("/avatar")

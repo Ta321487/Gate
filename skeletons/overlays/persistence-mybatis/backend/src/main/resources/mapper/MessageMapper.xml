@@ -2,7 +2,51 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.thesis.mapper.MessageMapper">
+    <sql id="alive">
+        <if test="hasDeletedAt">
+            AND deleted_at IS NULL
+        </if>
+    </sql>
+    <sql id="kindFilter">
+        <choose>
+            <when test="kind == 'system'">
+                AND (IFNULL(ref_type,'')='' OR ref_type IN ('system','auth'))
+            </when>
+            <when test="kind == 'biz'">
+                AND IFNULL(ref_type,'')&lt;&gt;'' AND ref_type NOT IN ('system','auth')
+            </when>
+        </choose>
+    </sql>
+
     <select id="selectByUsername" resultType="map">
-        SELECT * FROM sys_message WHERE username=#{username} ORDER BY id DESC
+        SELECT * FROM sys_message
+        WHERE username=#{username}
+        <include refid="alive"/>
+        <include refid="kindFilter"/>
+        ORDER BY id DESC
     </select>
+
+    <select id="countUnread" resultType="int">
+        SELECT COUNT(*) FROM sys_message
+        WHERE username=#{username} AND read_at IS NULL
+        <include refid="alive"/>
+    </select>
+
+    <select id="countOwned" resultType="int">
+        SELECT COUNT(*) FROM sys_message
+        WHERE id=#{id} AND username=#{username}
+        <include refid="alive"/>
+    </select>
+
+    <update id="markRead">
+        UPDATE sys_message SET read_at=#{readAt}
+        WHERE id=#{id} AND username=#{username} AND read_at IS NULL
+        <include refid="alive"/>
+    </update>
+
+    <update id="markAllRead">
+        UPDATE sys_message SET read_at=#{readAt}
+        WHERE username=#{username} AND read_at IS NULL
+        <include refid="alive"/>
+    </update>
 </mapper>

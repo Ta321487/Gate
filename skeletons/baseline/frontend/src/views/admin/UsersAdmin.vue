@@ -1,18 +1,36 @@
 <template>
   <div>
     <div class="toolbar">
-      <el-radio-group v-model="scope" size="default" @change="load">
+      <el-radio-group v-model="scope" size="default" @change="onScopeChange">
         <el-radio-button value="users">用户管理</el-radio-button>
         <el-radio-button v-if="marketplace" value="merchants">商家管理</el-radio-button>
         <el-radio-button v-else value="subadmins">{{ subLabel }}</el-radio-button>
         <el-radio-button v-if="!marketplace" value="all">全部</el-radio-button>
+        <el-radio-button value="cancels">注销申请</el-radio-button>
       </el-radio-group>
       <el-input v-model="keyword" clearable placeholder="用户名 / 昵称 / 手机 / 资料" style="width:240px" @keyup.enter="load" />
       <el-button type="primary" @click="load">查询</el-button>
       <el-button @click="load">刷新</el-button>
     </div>
-    <p v-if="marketplace && adminLead" class="page-lead">{{ adminLead }}</p>
-    <div class="table-scroll">
+    <p v-if="marketplace && adminLead && scope !== 'cancels'" class="page-lead">{{ adminLead }}</p>
+    <div v-if="scope === 'cancels'" class="table-scroll">
+      <el-table :data="cancelList" stripe v-loading="loading">
+        <el-table-column prop="username" label="用户名" width="120" />
+        <el-table-column prop="reason" label="原因" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="status" label="状态" width="100" />
+        <el-table-column prop="createdAt" label="申请时间" width="170" />
+        <el-table-column label="操作" width="160" fixed="right">
+          <template #default="{ row }">
+            <template v-if="row.status === 'pending'">
+              <el-button link type="danger" @click="reviewCancel(row, true)">通过并停用</el-button>
+              <el-button link @click="reviewCancel(row, false)">驳回</el-button>
+            </template>
+            <span v-else>—</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
+    <div v-else class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column label="" width="56">
         <template #default="{ row }">
@@ -274,7 +292,13 @@ async function toggle(row) {
         : '停用后将无法登录，确认？'
   await ElMessageBox.confirm(tip, '状态')
   await http.put(`/api/admin/users/${row.username}`, { enabled: next })
-  ElMessage.success(next && marketplace.value && isMerchant(row) ? '已审核通过' : '已更新')
+  ElMessage.success(
+    next && marketplace.value && isMerchant(row)
+      ? '已审核通过'
+      : next
+        ? '已更新'
+        : '已停用，对方将被强制下线',
+  )
   load()
 }
 
@@ -294,6 +318,8 @@ function onIdentityMaybe(f) {
 }
 
 const list = ref([])
+const cancelList = ref([])
+const loading = ref(false)
 const keyword = ref('')
 const scope = ref('users')
 const visible = ref(false)
@@ -329,7 +355,33 @@ function extraOf(row, key) {
   return row[key] || ''
 }
 
+function onScopeChange() {
+  load()
+}
+
+async function loadCancels() {
+  loading.value = true
+  try {
+    const res = await http.get('/api/admin/cancel-requests', { params: { status: 'pending' } })
+    cancelList.value = res.data || []
+  } finally {
+    loading.value = false
+  }
+}
+
+async function reviewCancel(row, approve) {
+  const tip = approve ? '通过后将停用账号并踢下线，确认？' : '确认驳回该注销申请？'
+  await ElMessageBox.confirm(tip, '注销申请')
+  await http.post(`/api/admin/cancel-requests/${row.id}/review`, { approve })
+  ElMessage.success(approve ? '已通过并停用' : '已驳回')
+  loadCancels()
+}
+
 async function load() {
+  if (scope.value === 'cancels') {
+    await loadCancels()
+    return
+  }
   const res = await http.get('/api/admin/users', {
     params: { keyword: keyword.value || undefined, scope: scope.value },
   })
@@ -368,7 +420,7 @@ async function resetPwd(row) {
     inputErrorMessage: '至少 6 位',
   })
   await http.post(`/api/admin/users/${row.username}/reset-password`, { password: value })
-  ElMessage.success('已重置，对方需用新密码重新登录')
+  ElMessage.success('已重置，对方下次登录需修改密码')
 }
 
 function muteUntilLabel(row) {

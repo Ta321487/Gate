@@ -10,6 +10,12 @@
       </div>
     </section>
 
+    <el-radio-group v-model="kind" class="kind-tabs" size="small" @change="onKindChange">
+      <el-radio-button value="all">{{ labels.messageKindAll || '全部' }}</el-radio-button>
+      <el-radio-button value="system">{{ labels.messageKindSystem || '系统' }}</el-radio-button>
+      <el-radio-button value="biz">{{ labels.messageKindBiz || '业务' }}</el-radio-button>
+    </el-radio-group>
+
     <PageSkeleton v-if="loading" variant="list" :rows="5" />
     <EmptyHint v-else-if="!list.length" title="暂无消息" :desc="emptyDesc" mark="信" />
     <ul v-else class="list">
@@ -17,14 +23,20 @@
         v-for="m in list"
         :key="m.id"
         :class="{ unread: !m.read }"
-        @click="openMsg(m)"
       >
         <span class="msg-kind" aria-hidden="true">{{ messageKindMark(m.refType) }}</span>
-        <div class="body">
+        <div class="body" @click="openMsg(m)">
           <div class="t">{{ m.title }}</div>
           <div class="b">{{ m.body }}</div>
           <div class="tm" :title="m.createdAt || ''">{{ formatRelative(m.createdAt) }}</div>
         </div>
+        <el-button
+          class="del"
+          link
+          type="danger"
+          size="small"
+          @click.stop="removeMsg(m)"
+        >{{ labels.messageDeleteLabel || '删除' }}</el-button>
       </li>
     </ul>
 
@@ -47,7 +59,7 @@
 /** 基线消息：用户端与管理端导语都读 Domain Schema，禁止写死订单/预约/申请等借用域词 */
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import EmptyHint from '../../components/EmptyHint.vue'
 import PageSkeleton from '../../components/PageSkeleton.vue'
@@ -84,12 +96,13 @@ const total = ref(0)
 const unread = ref(0)
 const page = ref(1)
 const size = ref(20)
+const kind = ref('all')
 
 async function load() {
   loading.value = true
   try {
     const res = await http.get('/api/messages', {
-      params: { page: page.value, size: size.value },
+      params: { page: page.value, size: size.value, kind: kind.value },
     })
     list.value = res.data?.list || []
     total.value = Number(res.data?.total || list.value.length)
@@ -100,6 +113,11 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function onKindChange() {
+  page.value = 1
+  load()
 }
 
 async function openMsg(m) {
@@ -118,6 +136,27 @@ async function openMsg(m) {
     return
   }
   if (m.body) ElMessage.info(m.body)
+}
+
+async function removeMsg(m) {
+  try {
+    await ElMessageBox.confirm('删除后不再显示这条消息', '删除消息', {
+      type: 'warning',
+      confirmButtonText: labels.value.messageDeleteLabel || '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    await http.delete(`/api/messages/${m.id}`)
+    list.value = list.value.filter((x) => x.id !== m.id)
+    total.value = Math.max(0, total.value - 1)
+    if (!m.read) unread.value = Math.max(0, unread.value - 1)
+    ElMessage.success(labels.value.messageDeletedHint || '已删除')
+  } catch {
+    /* http 已提示 */
+  }
 }
 
 async function readAll() {
@@ -148,6 +187,7 @@ onMounted(load)
   font-size: 14px;
   color: var(--portal-muted, #5b6b76);
 }
+.kind-tabs { margin-bottom: 14px; }
 .list {
   list-style: none;
   margin: 0;
@@ -162,7 +202,6 @@ onMounted(load)
   box-shadow: var(--portal-shadow, none);
   padding: 12px 14px;
   background: var(--portal-surface, #fff);
-  cursor: pointer;
   display: flex;
   gap: 10px;
   align-items: flex-start;
@@ -171,7 +210,7 @@ onMounted(load)
   border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, var(--portal-line, #d5dde3));
   background: var(--portal-accent-soft, #d7eef0);
 }
-.body { min-width: 0; flex: 1; }
+.body { min-width: 0; flex: 1; cursor: pointer; }
 .t { font-weight: 650; font-size: 14px; margin-bottom: 4px; }
 .b {
   font-size: 13px;
@@ -180,11 +219,6 @@ onMounted(load)
   white-space: pre-wrap;
 }
 .tm { margin-top: 6px; font-size: 12px; color: var(--portal-muted, #8a97a3); }
-.empty {
-  padding: 28px;
-  text-align: center;
-  color: var(--portal-muted, #5b6b76);
-  font-size: 14px;
-}
+.del { flex-shrink: 0; margin-top: 2px; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

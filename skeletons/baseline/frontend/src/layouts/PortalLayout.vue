@@ -54,15 +54,18 @@
       </div>
     </footer>
     <AiAssistantFloat />
+    <ForceNoticeGate />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import http from '../api/http'
 import { APP_DELIVERED } from '../appDelivered.js'
 import AiAssistantFloat from '../components/AiAssistantFloat.vue'
 import CartBadge from '../components/CartBadge.vue'
+import ForceNoticeGate from '../components/ForceNoticeGate.vue'
 import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { portalFooterCopy } from '../utils/domainFlavor.js'
@@ -97,15 +100,20 @@ onMounted(() => {
     nickname.value = n || ''
     avatarUrl.value = a || ''
   })
+  // XD-02：本标签页只计一次门户 PV，避免路由乱跳刷爆
+  const k = 'gf_pv_bumped'
+  if (!sessionStorage.getItem(k)) {
+    sessionStorage.setItem(k, '1')
+    http.post('/api/site-stat/pv').catch(() => {})
+  }
 })
 onUnmounted(() => offProfileDisplay?.())
 
 const displayName = computed(() => nickname.value || username.value)
 const hasStage = computed(() => {
   const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
-  if (style === 'editorial' || style === 'mall') return false
-  const list = APP_DELIVERED?.portalBanners
-  return Array.isArray(list) && list.some((x) => x && x.src)
+  // editorial/mall 自带首页视觉；其余壳保留轮播位（bake 图或管理端广告位）
+  return style !== 'editorial' && style !== 'mall'
 })
 
 const GUEST_MENU_KEYS = new Set(['home', 'archive', 'content', 'guestbook', 'slots'])
@@ -125,7 +133,10 @@ const nav = computed(() => {
     return [{ to: '/notices', label: menuLabel('user', 'content', '公告') }]
   }
   return list
-    .map((m) => ({ to: userMenuPath(m.key), label: m.label }))
+    .map((m) => ({
+      to: userMenuPath(m.key),
+      label: m.navSection ? `${m.navSection} · ${m.label}` : m.label,
+    }))
     .filter((m) => m.to)
 })
 
@@ -139,8 +150,10 @@ const moreActive = computed(() =>
 /** 品牌点击：与登录「返回首页」、初启动同一路径 */
 const homePath = computed(() => portalBrandHomePath())
 
-function logout() {
-  localStorage.clear()
+async function logout() {
+  const { logoutOnServer, clearAuthStorage } = await import('../utils/session.js')
+  await logoutOnServer()
+  clearAuthStorage()
   router.push('/login')
 }
 </script>

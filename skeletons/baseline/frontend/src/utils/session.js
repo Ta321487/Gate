@@ -9,6 +9,8 @@ let kicking = false
 /** @type {boolean|null} null=未探测 */
 let sessionCache = null
 let sessionProbe = null
+let idleTimer = null
+let idleBound = false
 
 export function clearAuthStorage() {
   localStorage.removeItem('token')
@@ -20,21 +22,117 @@ export function clearAuthStorage() {
   localStorage.removeItem('superAdmin')
   localStorage.removeItem('staffPost')
   localStorage.removeItem('staffKind')
+  localStorage.removeItem('mustChangePassword')
+  localStorage.removeItem('mustActivateEmail')
+  stopIdleWatch()
   sessionCache = null
 }
 
-/** 业务码 40100 = 未登录 / 会话失效（验证码错误 40101 不踢；停用 40102 另判） */
+/** 业务码 40100 = 未登录 / 会话失效（验证码 40101 / 停用 40102 / 锁定 40103 不踢） */
 export function isUnauthorizedPayload(body) {
   if (!body || typeof body !== 'object') return false
   const code = Number(body.code)
   if (code === 40100) return true
-  return code !== 40101 && code !== 40102 && String(body.message || '') === '未登录'
+  return code !== 40101 && code !== 40102 && code !== 40103 && String(body.message || '') === '未登录'
 }
 
 export function isAccountDisabledPayload(body) {
   if (!body || typeof body !== 'object') return false
   if (Number(body.code) === 40102) return true
   return String(body.message || '').includes('停用')
+}
+
+export function isAccountLockedPayload(body) {
+  if (!body || typeof body !== 'object') return false
+  return Number(body.code) === 40103
+}
+
+export function authPolicy() {
+  const fromSchema = APP_DELIVERED?.schema?.authPolicy
+  if (fromSchema && typeof fromSchema === 'object') return fromSchema
+  return {
+    lockMaxAttempts: 5,
+    lockMinutes: 15,
+    passwordMaxDays: 0,
+    rememberDays: 7,
+    passwordMinLength: 6,
+    sessionIdleMinutes: 30,
+    maxSessions: 5,
+    requireInvite: 0,
+    requireEmailActivate: 1,
+  }
+}
+
+export function setMustChangePassword(flag) {
+  if (flag) localStorage.setItem('mustChangePassword', '1')
+  else localStorage.removeItem('mustChangePassword')
+}
+
+export function mustChangePassword() {
+  return localStorage.getItem('mustChangePassword') === '1'
+}
+
+export function setMustActivateEmail(flag) {
+  if (flag) localStorage.setItem('mustActivateEmail', '1')
+  else localStorage.removeItem('mustActivateEmail')
+}
+
+export function mustActivateEmail() {
+  return localStorage.getItem('mustActivateEmail') === '1'
+}
+
+export async function logoutOnServer() {
+  try {
+    await axios.post('/api/auth/logout', {}, { withCredentials: true, timeout: 8000 })
+  } catch {
+    /* 会话可能已失效 */
+  }
+}
+
+function idleHint() {
+  const fromLabels = (schemaLabels()?.sessionIdleHint || '').trim()
+  return fromLabels || '登录已超时，请重新登录'
+}
+
+function onIdleActivity() {
+  if (!localStorage.getItem('token')) return
+  bumpIdleTimer()
+}
+
+function bumpIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer)
+  const mins = Number(authPolicy().sessionIdleMinutes) || 30
+  idleTimer = setTimeout(() => {
+    import('../router').then((mod) => {
+      const router = mod.default
+      kickToLogin(router, idleHint())
+    }).catch(() => {})
+  }, Math.max(1, mins) * 60 * 1000)
+}
+
+export function startIdleWatch() {
+  if (typeof window === 'undefined' || idleBound) {
+    bumpIdleTimer()
+    return
+  }
+  idleBound = true
+  ;['click', 'keydown', 'mousemove', 'touchstart'].forEach((ev) => {
+    window.addEventListener(ev, onIdleActivity, { passive: true })
+  })
+  bumpIdleTimer()
+}
+
+export function stopIdleWatch() {
+  if (idleTimer) {
+    clearTimeout(idleTimer)
+    idleTimer = null
+  }
+  if (typeof window !== 'undefined' && idleBound) {
+    ;['click', 'keydown', 'mousemove', 'touchstart'].forEach((ev) => {
+      window.removeEventListener(ev, onIdleActivity)
+    })
+    idleBound = false
+  }
 }
 
 export function loginPathForRole(role, staffKind = '') {
@@ -110,6 +208,9 @@ export async function probeSession() {
         if (u.staffPost != null) localStorage.setItem('staffPost', u.staffPost || '')
         if (u.staffKind != null) localStorage.setItem('staffKind', u.staffKind || '')
         if (u.superAdmin != null) localStorage.setItem('superAdmin', String(!!u.superAdmin))
+        if (u.mustChangePassword != null) setMustChangePassword(!!u.mustChangePassword)
+        if (u.mustActivateEmail != null) setMustActivateEmail(!!u.mustActivateEmail)
+        startIdleWatch()
       }
       return ok
     })
@@ -126,6 +227,7 @@ export async function probeSession() {
 
 export function markSessionOk() {
   sessionCache = true
+  startIdleWatch()
 }
 
 const PROFILE_DISPLAY_EVENT = 'gf-profile-display'
@@ -174,34 +276,37 @@ export function kickToLogin(router, message) {
   kicking = true
   const role = localStorage.getItem('role')
   const staffKind = localStorage.getItem('staffKind') || ''
-  clearAuthStorage()
-  const path = loginPathForRole(role, staffKind)
-  const disabled = String(message || '').includes('停用')
-  const go = () => {
-    const cur = router.currentRoute?.value?.path
-    if (
-      cur === path
-      || cur === '/login'
-      || cur === '/admin/login'
-      || cur === '/staff/login'
-      || cur === '/register'
-    ) {
-      kicking = false
-      return
-    }
-    const query = disabled ? { reason: 'disabled' } : undefined
-    router.replace({ path, query }).finally(() => {
-      kicking = false
-    })
-  }
-  if (message) {
-    import('element-plus')
-      .then(({ ElMessage }) => {
-        ElMessage.error(message)
-        go()
+  logoutOnServer().finally(() => {
+    clearAuthStorage()
+    const path = loginPathForRole(role, staffKind)
+    const disabled = String(message || '').includes('停用')
+    const go = () => {
+      const cur = router.currentRoute?.value?.path
+      if (
+        cur === path
+        || cur === '/login'
+        || cur === '/admin/login'
+        || cur === '/staff/login'
+        || cur === '/register'
+        || cur === '/forgot-password'
+      ) {
+        kicking = false
+        return
+      }
+      const query = disabled ? { reason: 'disabled' } : undefined
+      router.replace({ path, query }).finally(() => {
+        kicking = false
       })
-      .catch(go)
-  } else {
-    go()
-  }
+    }
+    if (message) {
+      import('element-plus')
+        .then(({ ElMessage }) => {
+          ElMessage.error(message)
+          go()
+        })
+        .catch(go)
+    } else {
+      go()
+    }
+  })
 }

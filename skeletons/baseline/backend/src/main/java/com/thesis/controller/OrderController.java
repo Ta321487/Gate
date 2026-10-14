@@ -508,12 +508,20 @@ public class OrderController {
         }
     }
 
-    /** 多店：非超管商家须拥有订单中至少一行本店商品。 */
+    /**
+     * 多店：非超管商家改态须整单均为本店商品。
+     * 仅「含本店一行」不够——跨店合单发货会把别家明细一并改状态。
+     */
     private static void requireMerchantOrderAccess(HttpSession session, String uid, long orderId) {
         if (!ArchiveStore.shopMarketplaceEnabled()) return;
         if (AdminAuth.isSuperAdmin(session)) return;
         if (!OrderStore.merchantOwnsOrder(uid, orderId)) {
             throw new BizException(ErrorCode.FORBIDDEN, "无权操作该订单");
+        }
+        if (!OrderStore.merchantSolelyOwnsOrder(uid, orderId)) {
+            throw new BizException(
+                    ErrorCode.BAD_REQUEST,
+                    "这张订单里还有别家店铺的商品，没法单独处理，请联系平台");
         }
     }
 

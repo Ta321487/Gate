@@ -17,6 +17,7 @@ public class MessageStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static Boolean tableReady;
+    private static Boolean hasDeletedAt;
 
     private static JpaDb db() {
         return JpaSupport.db();
@@ -36,6 +37,50 @@ public class MessageStore {
         return tableReady;
     }
 
+    /** XM-01：旧库无 deleted_at 时运行时补列。 */
+    private static boolean hasDeletedAt() {
+        if (!ready()) return false;
+        if (hasDeletedAt != null) return hasDeletedAt;
+        try {
+            Integer n = db().queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.columns "
+                            + "WHERE table_schema=DATABASE() AND table_name='sys_message' AND column_name='deleted_at'",
+                    Integer.class);
+            if (n != null && n > 0) {
+                hasDeletedAt = true;
+                return true;
+            }
+            db().execute("ALTER TABLE sys_message ADD COLUMN deleted_at DATETIME NULL");
+            hasDeletedAt = true;
+        } catch (Exception e) {
+            hasDeletedAt = false;
+        }
+        return Boolean.TRUE.equals(hasDeletedAt);
+    }
+
+    private static String aliveClause() {
+        return hasDeletedAt() ? " AND deleted_at IS NULL" : "";
+    }
+
+    /** 系统=空 ref 或 system/auth；业务=其余非空 ref。 */
+    private static String kindClause(String kind) {
+        String k = kind == null ? "all" : kind.trim().toLowerCase();
+        if ("system".equals(k)) {
+            return " AND (IFNULL(ref_type,'')='' OR ref_type IN ('system','auth'))";
+        }
+        if ("biz".equals(k) || "business".equals(k)) {
+            return " AND IFNULL(ref_type,'')<>'' AND ref_type NOT IN ('system','auth')";
+        }
+        return "";
+    }
+
+    static String normalizeKind(String kind) {
+        String k = kind == null ? "all" : kind.trim().toLowerCase();
+        if ("biz".equals(k) || "business".equals(k)) return "biz";
+        if ("system".equals(k)) return "system";
+        return "all";
+    }
+
     private static String fmt(Timestamp ts) {
         return ts == null ? null : ts.toLocalDateTime().format(FMT);
     }
@@ -52,6 +97,9 @@ public class MessageStore {
         m.put("readAt", fmt(rs.getTimestamp("read_at")));
         m.put("createdAt", fmt(rs.getTimestamp("created_at")));
         m.put("read", rs.getTimestamp("read_at") != null);
+        String rt = rs.getString("ref_type");
+        boolean system = rt == null || rt.isBlank() || "system".equals(rt) || "auth".equals(rt);
+        m.put("kind", system ? "system" : "biz");
         return m;
     }
 
@@ -119,20 +167,26 @@ public class MessageStore {
     }
 
     public static Map<String, Object> page(String username, int page, int size) {
+        return page(username, page, size, "all");
+    }
+
+    public static Map<String, Object> page(String username, int page, int size, String kind) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", List.of());
         out.put("total", 0);
         out.put("page", page);
         out.put("size", size);
         out.put("unread", 0);
+        out.put("kind", normalizeKind(kind));
         if (!ready() || username == null || username.isBlank()) return out;
         if (page < 1) page = 1;
         if (size < 1) size = 10;
+        String where = "username=?" + aliveClause() + kindClause(kind);
         Integer total = db().queryForObject(
-                "SELECT COUNT(*) FROM sys_message WHERE username=?", Integer.class, username);
+                "SELECT COUNT(*) FROM sys_message WHERE " + where, Integer.class, username);
         int t = total == null ? 0 : total;
         List<Map<String, Object>> list = db().query(
-                "SELECT * FROM sys_message WHERE username=? ORDER BY id DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM sys_message WHERE " + where + " ORDER BY id DESC LIMIT ? OFFSET ?",
                 (rs, i) -> row(rs), username, size, (page - 1) * size);
         out.put("list", list);
         out.put("total", t);
@@ -145,7 +199,7 @@ public class MessageStore {
     public static int unreadCount(String username) {
         if (!ready() || username == null || username.isBlank()) return 0;
         Integer n = db().queryForObject(
-                "SELECT COUNT(*) FROM sys_message WHERE username=? AND read_at IS NULL",
+                "SELECT COUNT(*) FROM sys_message WHERE username=? AND read_at IS NULL" + aliveClause(),
                 Integer.class, username);
         return n == null ? 0 : n;
     }
@@ -153,11 +207,11 @@ public class MessageStore {
     public static boolean markRead(String username, long id) {
         if (!ready() || username == null || username.isBlank()) return false;
         Integer exists = db().queryForObject(
-                "SELECT COUNT(*) FROM sys_message WHERE id=? AND username=?",
+                "SELECT COUNT(*) FROM sys_message WHERE id=? AND username=?" + aliveClause(),
                 Integer.class, id, username);
         if (exists == null || exists == 0) return false;
         db().update(
-                "UPDATE sys_message SET read_at=? WHERE id=? AND username=? AND read_at IS NULL",
+                "UPDATE sys_message SET read_at=? WHERE id=? AND username=? AND read_at IS NULL" + aliveClause(),
                 Timestamp.valueOf(LocalDateTime.now()), id, username);
         return true;
     }
@@ -165,8 +219,22 @@ public class MessageStore {
     public static int markAllRead(String username) {
         if (!ready() || username == null || username.isBlank()) return 0;
         return db().update(
-                "UPDATE sys_message SET read_at=? WHERE username=? AND read_at IS NULL",
+                "UPDATE sys_message SET read_at=? WHERE username=? AND read_at IS NULL" + aliveClause(),
                 Timestamp.valueOf(LocalDateTime.now()), username);
+    }
+
+    /** XM-01：用户软删自己的站内信。 */
+    public static boolean softDelete(String username, long id) {
+        if (!ready() || username == null || username.isBlank()) return false;
+        if (!hasDeletedAt()) return false;
+        Integer exists = db().queryForObject(
+                "SELECT COUNT(*) FROM sys_message WHERE id=? AND username=? AND deleted_at IS NULL",
+                Integer.class, id, username);
+        if (exists == null || exists == 0) return false;
+        int n = db().update(
+                "UPDATE sys_message SET deleted_at=? WHERE id=? AND username=? AND deleted_at IS NULL",
+                Timestamp.valueOf(LocalDateTime.now()), id, username);
+        return n > 0;
     }
 
     private static boolean templateEnabled = false;
@@ -341,5 +409,6 @@ public class MessageStore {
         m.put("updatedAt", fmt(u));
         return m;
     }
+
 
 }

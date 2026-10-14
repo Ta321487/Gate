@@ -1037,8 +1037,12 @@ async function submitOrder() {
     } else if (packagingFeeOn.value) {
       payload.packagingFee = !!form.packagingFee
     }
-    await http.post('/api/orders', payload)
-    ElMessage.success(demoPay.value ? '支付成功，已下单' : '下单成功')
+    const placed = await http.post('/api/orders', payload)
+    const splitMsg =
+      placed?.data && typeof placed.data.message === 'string' ? placed.data.message.trim() : ''
+    ElMessage.success(
+      splitMsg || (demoPay.value ? '支付成功，已下单' : '下单成功'),
+    )
     checkoutVisible.value = false
     form.payPassword = ''
     router.push('/orders')

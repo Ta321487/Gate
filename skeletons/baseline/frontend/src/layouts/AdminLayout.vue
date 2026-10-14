@@ -7,27 +7,42 @@
       </div>
       <div class="wb-menu-scroll">
         <el-menu :default-active="active" router class="wb-menu">
-          <el-menu-item
-            v-for="item in menuItems"
-            :key="item.index"
-            :index="item.index"
-            :title="item.label"
-          >
-            <span>{{ item.label }}</span>
-            <el-badge
-              v-if="item.key === 'ticket_pending' && pendingTickets > 0"
-              :value="pendingTickets"
-              :max="99"
-              class="menu-badge"
-            />
-            <el-badge
-              v-else-if="(item.key === 'archive_logs' || item.key === 'archive_log') && missingCheckin > 0"
-              :value="missingCheckin"
-              :max="99"
-              class="menu-badge"
-              type="danger"
-            />
-          </el-menu-item>
+          <template v-for="group in menuGroups" :key="group.title || '_flat'">
+            <el-menu-item-group v-if="group.title" :title="group.title">
+              <el-menu-item
+                v-for="item in group.items"
+                :key="item.index"
+                :index="item.index"
+                :title="item.label"
+              >
+                <span>{{ item.label }}</span>
+                <el-badge
+                  v-if="menuBadge(item.key)"
+                  :value="menuBadge(item.key)"
+                  :max="99"
+                  class="menu-badge"
+                  :type="menuBadgeType(item.key)"
+                />
+              </el-menu-item>
+            </el-menu-item-group>
+            <template v-else>
+              <el-menu-item
+                v-for="item in group.items"
+                :key="item.index"
+                :index="item.index"
+                :title="item.label"
+              >
+                <span>{{ item.label }}</span>
+                <el-badge
+                  v-if="menuBadge(item.key)"
+                  :value="menuBadge(item.key)"
+                  :max="99"
+                  class="menu-badge"
+                  :type="menuBadgeType(item.key)"
+                />
+              </el-menu-item>
+            </template>
+          </template>
           <el-menu-item v-if="profileEditable" index="/admin/profile">个人资料</el-menu-item>
         </el-menu>
       </div>
@@ -45,12 +60,14 @@
         <router-view />
       </el-main>
     </el-container>
+    <ForceNoticeGate />
   </el-container>
 </template>
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import ForceNoticeGate from '../components/ForceNoticeGate.vue'
 import http from '../api/http'
 import MessageBell from '../components/MessageBell.vue'
 import { APP_DELIVERED } from '../appDelivered.js'
@@ -77,18 +94,37 @@ const staffPost = currentStaffPost()
 const displayName = computed(() => nickname.value || username)
 const active = computed(() => route.path)
 const pendingTickets = ref(0)
+const pendingOrders = ref(0)
+const pendingReservations = ref(0)
 const missingCheckin = ref(0)
 
 let offProfileDisplay
 let dashTimer = null
 
+function menuBadge(key) {
+  if (key === 'ticket_pending') return pendingTickets.value || 0
+  if (key === 'orders') return pendingOrders.value || 0
+  if (key === 'reservations') return pendingReservations.value || 0
+  if (key === 'archive_logs' || key === 'archive_log') return missingCheckin.value || 0
+  return 0
+}
+
+function menuBadgeType(key) {
+  if (key === 'archive_logs' || key === 'archive_log') return 'danger'
+  return undefined
+}
+
 async function refreshPending() {
   try {
-    const res = await http.get('/api/admin/dashboard')
+    const res = await http.get('/api/admin/dashboard/counts')
     pendingTickets.value = Number(res.data?.pendingTickets || 0)
+    pendingOrders.value = Number(res.data?.pendingOrders || 0)
+    pendingReservations.value = Number(res.data?.pendingReservations || 0)
     missingCheckin.value = Number(res.data?.missingCheckinToday || 0)
   } catch {
     pendingTickets.value = 0
+    pendingOrders.value = 0
+    pendingReservations.value = 0
     missingCheckin.value = 0
   }
 }
@@ -118,17 +154,18 @@ const menuItems = computed(() => {
         key: m.key,
         index: adminMenuPath(m.key),
         label: m.label,
+        navSection: m.navSection || '',
         superOnly: isSuperOnlyMenu(m),
       })).filter((m) => m.index)
     : [
-        { key: 'dashboard', index: '/admin/dashboard', label: '工作台', superOnly: false },
-        { key: 'ticket_pending', index: '/admin/tickets', label: '待办受理', superOnly: false },
-        { key: 'ticket_records', index: '/admin/ticket-records', label: '办理记录', superOnly: false },
-        { key: 'lookup_site', index: '/admin/sites', label: '楼栋房间', superOnly: true },
-        { key: 'lookup_type', index: '/admin/types', label: '类型管理', superOnly: true },
-        { key: 'users', index: '/admin/users', label: '用户管理', superOnly: true },
-        { key: 'guestbook', index: '/admin/guestbook', label: '留言管理', superOnly: true },
-        { key: 'content', index: '/admin/notices', label: '公告管理', superOnly: true },
+        { key: 'dashboard', index: '/admin/dashboard', label: '工作台', navSection: '', superOnly: false },
+        { key: 'ticket_pending', index: '/admin/tickets', label: '待办受理', navSection: '', superOnly: false },
+        { key: 'ticket_records', index: '/admin/ticket-records', label: '办理记录', navSection: '', superOnly: false },
+        { key: 'lookup_site', index: '/admin/sites', label: '楼栋房间', navSection: '', superOnly: true },
+        { key: 'lookup_type', index: '/admin/types', label: '类型管理', navSection: '', superOnly: true },
+        { key: 'users', index: '/admin/users', label: '用户管理', navSection: '', superOnly: true },
+        { key: 'guestbook', index: '/admin/guestbook', label: '留言管理', navSection: '', superOnly: true },
+        { key: 'content', index: '/admin/notices', label: '公告管理', navSection: '', superOnly: true },
       ]
   let items = raw.filter((m) => superAdmin || !m.superOnly)
   if (!superAdmin) {
@@ -145,18 +182,39 @@ const menuItems = computed(() => {
       key: 'messages',
       index: '/admin/messages',
       label: '消息',
+      navSection: '',
       superOnly: false,
     })
   }
   return items
 })
 
+/** 真交叉 GENERIC：按 navSection 分区；无分区时保持扁平 */
+const menuGroups = computed(() => {
+  const items = menuItems.value
+  const hasSection = items.some((m) => m.navSection)
+  if (!hasSection) return [{ title: '', items }]
+  const order = []
+  const buckets = new Map()
+  for (const item of items) {
+    const title = item.navSection || ''
+    if (!buckets.has(title)) {
+      buckets.set(title, [])
+      order.push(title)
+    }
+    buckets.get(title).push(item)
+  }
+  return order.map((title) => ({ title, items: buckets.get(title) }))
+})
+
 const asideDense = computed(() =>
   adminAsideDense(menuItems.value.length + (profileEditable ? 1 : 0)),
 )
 
-function logout() {
-  localStorage.clear()
+async function logout() {
+  const { logoutOnServer, clearAuthStorage } = await import('../utils/session.js')
+  await logoutOnServer()
+  clearAuthStorage()
   router.push(adminLoginPath())
 }
 </script>

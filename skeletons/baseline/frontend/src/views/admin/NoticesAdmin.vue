@@ -28,6 +28,15 @@
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
+      <el-table-column label="强制弹窗" width="100">
+        <template #default="{ row }">
+          <el-tag v-if="row.forceAck" size="small" type="danger" effect="plain">强制</el-tag>
+          <span v-else class="muted">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="expireAt" :label="labels.noticeExpireLabel || '过期时间'" width="170">
+        <template #default="{ row }">{{ row.expireAt || '—' }}</template>
+      </el-table-column>
       <el-table-column prop="createdAt" label="发布时间" width="170" />
       <el-table-column prop="content" label="摘要" min-width="180" show-overflow-tooltip />
       <el-table-column label="操作" width="220" fixed="right">
@@ -59,15 +68,39 @@
     <el-dialog v-model="viewVisible" title="详情" width="560px">
       <p class="view-meta">{{ viewRow.publisherName || '—' }} · {{ viewRow.createdAt || '—' }}</p>
       <h3 class="view-title">{{ viewRow.title }}</h3>
-      <div class="view-body">{{ viewRow.content || '（无正文）' }}</div>
+      <div v-if="viewRow.contentFmt === 'html'" class="view-body html" v-html="viewRow.content || '（无正文）'" />
+      <div v-else class="view-body">{{ viewRow.content || '（无正文）' }}</div>
       <template #footer>
         <el-button type="primary" @click="viewVisible = false">关闭</el-button>
       </template>
     </el-dialog>
     <el-dialog v-model="visible" :title="form.id ? '编辑' : createLabel" width="560px">
-      <el-form :model="form" label-width="72px" require-asterisk-position="right">
+      <el-form :model="form" label-width="96px" require-asterisk-position="right">
         <el-form-item label="标题" required><el-input v-model="form.title" maxlength="128" show-word-limit /></el-form-item>
-        <el-form-item label="内容" required><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
+        <el-form-item :label="labels.noticeContentFmtLabel || '正文格式'">
+          <el-radio-group v-model="form.contentFmt">
+            <el-radio-button value="text">纯文本</el-radio-button>
+            <el-radio-button value="html">浅 HTML</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="内容" required>
+          <el-input v-model="form.content" type="textarea" :rows="6" />
+          <p v-if="form.contentFmt === 'html'" class="form-hint">{{ labels.noticeRichHtmlHint || '可选基础 HTML（加粗/换行/链接）；勿贴脚本' }}</p>
+        </el-form-item>
+        <el-form-item :label="labels.noticeExpireLabel || '过期时间'">
+          <el-date-picker
+            v-model="form.expireAt"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="不填则不过期"
+            style="width: 100%"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item :label="labels.noticeForceAckLabel || '强制阅读弹窗'">
+          <el-switch v-model="form.forceAck" />
+          <p class="form-hint">{{ labels.noticeForceAckHint || '登录后须确认阅读才能关闭' }}</p>
+        </el-form-item>
         <el-form-item v-if="showPinInForm" label="置顶">
           <el-switch v-model="form.pinned" />
         </el-form-item>
@@ -86,16 +119,26 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
-import { getSchema } from '../../utils/domainSchema.js'
+import { getSchema, schemaLabels } from '../../utils/domainSchema.js'
 
+const labels = schemaLabels()
 const list = ref([])
 const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 const visible = ref(false)
 const viewVisible = ref(false)
-const viewRow = reactive({ title: '', content: '', publisherName: '', createdAt: '' })
-const form = reactive({ id: null, title: '', content: '', pinned: false, auditStatus: '' })
+const viewRow = reactive({ title: '', content: '', publisherName: '', createdAt: '', contentFmt: 'text' })
+const form = reactive({
+  id: null,
+  title: '',
+  content: '',
+  pinned: false,
+  auditStatus: '',
+  expireAt: null,
+  forceAck: false,
+  contentFmt: 'text',
+})
 
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const auditOn = computed(() => marketplace.value)
@@ -160,6 +203,7 @@ function openView(row) {
     content: row.content || '',
     publisherName: row.publisherName || '',
     createdAt: row.createdAt || '',
+    contentFmt: row.contentFmt || 'text',
   })
   viewVisible.value = true
 }
@@ -172,9 +216,21 @@ function openEdit(row) {
       content: row.content,
       pinned: !!row.pinned,
       auditStatus: row.auditStatus || '',
+      expireAt: row.expireAt || null,
+      forceAck: !!row.forceAck,
+      contentFmt: row.contentFmt || 'text',
     })
   } else {
-    Object.assign(form, { id: null, title: '', content: '', pinned: false, auditStatus: '' })
+    Object.assign(form, {
+      id: null,
+      title: '',
+      content: '',
+      pinned: false,
+      auditStatus: '',
+      expireAt: null,
+      forceAck: false,
+      contentFmt: 'text',
+    })
   }
   visible.value = true
 }
@@ -195,14 +251,20 @@ async function save() {
     ElMessage.warning('请填写标题')
     return
   }
+  const payload = {
+    title: form.title,
+    content: form.content,
+    expireAt: form.expireAt || '',
+    forceAck: !!form.forceAck,
+    contentFmt: form.contentFmt || 'text',
+  }
   if (form.id) {
     await http.put(`/api/notices/${form.id}`, {
-      title: form.title,
-      content: form.content,
+      ...payload,
       pinned: !!form.pinned,
     })
   } else {
-    const res = await http.post('/api/notices', { title: form.title, content: form.content })
+    const res = await http.post('/api/notices', payload)
     const id = res.data?.id
     if (id && form.pinned) {
       await http.post(`/api/notices/${id}/pin`, { pinned: true })
@@ -240,4 +302,5 @@ onMounted(load)
 .view-meta { margin: 0 0 8px; color: var(--portal-muted, #909399); font-size: 13px; }
 .view-title { margin: 0 0 12px; font-size: 18px; }
 .view-body { white-space: pre-wrap; line-height: 1.6; }
+.view-body.html { white-space: normal; }
 </style>

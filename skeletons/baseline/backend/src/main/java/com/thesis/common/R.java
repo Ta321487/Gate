@@ -16,6 +16,11 @@ public class R<T> {
         return r;
     }
 
+    /** 无返回体成功（踢会话 / 改开关等）。 */
+    public static <T> R<T> ok() {
+        return ok(null);
+    }
+
     public static <T> R<T> fail(ErrorCode code, String message) {
         R<T> r = new R<>();
         r.code = code.getCode();

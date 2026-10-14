@@ -23,7 +23,8 @@
 
       <section class="card body-block">
         <h2>{{ bodyHeading }}</h2>
-        <div class="body">{{ notice.content || '（无正文）' }}</div>
+        <div v-if="isHtml" class="body html" v-html="safeHtml" />
+        <div v-else class="body">{{ notice.content || '（无正文）' }}</div>
       </section>
     </template>
   </div>
@@ -43,6 +44,14 @@ const bodyHeading = computed(() => schemaLabels().noticeBodyHeading || '正文')
 const route = useRoute()
 const notice = ref(null)
 const loading = ref(true)
+const isHtml = computed(() => String(notice.value?.contentFmt || '') === 'html')
+const safeHtml = computed(() => {
+  const raw = String(notice.value?.content || '')
+  return raw
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '')
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, '')
+})
 
 async function load() {
   loading.value = true
@@ -112,6 +121,8 @@ onMounted(load)
   font-size: 15px;
   color: var(--portal-ink, #15202b);
 }
+.body.html { white-space: normal; }
+.body.html :deep(a) { color: var(--portal-accent, #0b6e75); }
 @media (max-width: 560px) {
   .hero h1 { font-size: 22px; }
 }

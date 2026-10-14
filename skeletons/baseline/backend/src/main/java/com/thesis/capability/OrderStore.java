@@ -36,6 +36,8 @@ public final class OrderStore {
     private static int afterSaleDays = 0;
     private static final ThreadLocal<Set<Long>> CART_ITEM_FILTER = new ThreadLocal<>();
     private static final ThreadLocal<Map<String, Object>> PLACE_EXTRAS = new ThreadLocal<>();
+    /** 多店按商家拆单时防止 placeOrder 递归再拆。 */
+    private static final ThreadLocal<Boolean> MARKETPLACE_SPLITTING = new ThreadLocal<>();
     private static double packagingFeeYuan = 0;
     private static double deliveryFeeBaseYuan = 0;
     private static double deliveryFeeFreeYuan = 0;
@@ -497,13 +499,14 @@ public final class OrderStore {
                 || boolPlace(placeX.get("wantPackaging"));
         assertStallOpenForCart(cart);
         assertRequiredCategoryInCart(cart);
+        boolean suppressFees = boolPlace(placeX.get("suppressFulfillmentFees"));
         double packagingFee = 0;
-        if (wantPackaging && hasOrderColumn("packaging_fee_yuan") && packagingFeeYuan > 0) {
+        if (!suppressFees && wantPackaging && hasOrderColumn("packaging_fee_yuan") && packagingFeeYuan > 0) {
             packagingFee = packagingFeeYuan;
         }
         double deliveryFee = 0;
         boolean isDelivery = dtype.contains("配送") || dtype.contains("外卖");
-        if (isDelivery && hasOrderColumn("delivery_fee_yuan") && deliveryFeeBaseYuan > 0) {
+        if (!suppressFees && isDelivery && hasOrderColumn("delivery_fee_yuan") && deliveryFeeBaseYuan > 0) {
             if (deliveryFeeFreeYuan <= 0 || payable < deliveryFeeFreeYuan) {
                 deliveryFee = deliveryFeeBaseYuan;
             }
@@ -512,10 +515,36 @@ public final class OrderStore {
             throw new IllegalArgumentException("请填写桌号");
         }
         String etaText = "";
-        if (isDelivery && hasOrderColumn("eta_text") && etaMinutes > 0) {
+        if (!suppressFees && isDelivery && hasOrderColumn("eta_text") && etaMinutes > 0) {
             etaText = "约 " + etaMinutes + " 分钟送达";
         }
         payable = round2(payable + packagingFee + deliveryFee);
+        // 多店：购物车跨店 → 按商家拆成多笔订单，避免一店发货整单变已发货
+        if (!Boolean.TRUE.equals(MARKETPLACE_SPLITTING.get())
+                && ArchiveStore.shopMarketplaceEnabled()
+                && ArchiveStore.hasOwnerUsername()
+                && (campaignId == null || campaignId <= 0)) {
+            LinkedHashMap<String, List<Map<String, Object>>> byOwner = groupCartLinesByOwner(cart);
+            if (byOwner.size() > 1) {
+                return placeOrdersSplitByMerchant(
+                        byOwner,
+                        username,
+                        remark,
+                        addressId,
+                        receiverName,
+                        receiverPhone,
+                        addressLine,
+                        deliveryType,
+                        tasteNote,
+                        couponCode,
+                        payChannel,
+                        payPassword,
+                        lineExtras,
+                        deliveryOn,
+                        slotId,
+                        payable);
+            }
+        }
         KeyHolder kh = new GeneratedKeyHolder();
         double finalTotal = payable;
         String fName = rName, fPhone = rPhone, fAddr = addr, fType = dtype, fTaste = taste;
@@ -1066,6 +1095,138 @@ public final class OrderStore {
                         + " p ON p.id=l.item_id WHERE l.order_id=? AND p.owner_username=?",
                 Integer.class, orderId, owner);
         return n != null && n > 0;
+    }
+
+    /**
+     * 订单全部明细均属本店（无其他商家行）。
+     * 商家发货/改态必须整单本店，否则会误伤同单其他店铺。
+     */
+    public static boolean merchantSolelyOwnsOrder(String ownerUsername, long orderId) {
+        requireEnabled();
+        String owner = ownerUsername == null ? "" : ownerUsername.trim();
+        if (owner.isBlank() || orderId <= 0) return false;
+        if (!ArchiveStore.hasOwnerUsername()) return merchantOwnsOrder(owner, orderId);
+        String item = ArchiveStore.itemTable();
+        Integer total = db().queryForObject(
+                "SELECT COUNT(*) FROM " + LINE + " WHERE order_id=?", Integer.class, orderId);
+        if (total == null || total <= 0) return false;
+        Integer mine = db().queryForObject(
+                "SELECT COUNT(*) FROM " + LINE + " l JOIN " + item
+                        + " p ON p.id=l.item_id WHERE l.order_id=? AND p.owner_username=?",
+                Integer.class, orderId, owner);
+        return mine != null && mine.intValue() == total.intValue();
+    }
+
+    /** 购物车行按商品 owner_username 分组（空归属归入平台键）。 */
+    private static LinkedHashMap<String, List<Map<String, Object>>> groupCartLinesByOwner(
+            List<Map<String, Object>> cart) {
+        LinkedHashMap<String, List<Map<String, Object>>> byOwner = new LinkedHashMap<>();
+        for (Map<String, Object> line : cart) {
+            long itemId = ((Number) line.get("itemId")).longValue();
+            Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
+            String owner = "";
+            if (item != null && item.get("ownerUsername") != null) {
+                owner = String.valueOf(item.get("ownerUsername")).trim();
+            }
+            if (owner.isBlank() && line.get("ownerUsername") != null) {
+                owner = String.valueOf(line.get("ownerUsername")).trim();
+            }
+            if (owner.isBlank()) owner = "_platform";
+            byOwner.computeIfAbsent(owner, k -> new ArrayList<>()).add(line);
+        }
+        return byOwner;
+    }
+
+    /**
+     * 多店跨店结算：按商家各下一单。运费/打包费挂第一笔；券与积分抵扣跨店暂不支持。
+     */
+    private static Map<String, Object> placeOrdersSplitByMerchant(
+            LinkedHashMap<String, List<Map<String, Object>>> byOwner,
+            String username,
+            String remark,
+            Long addressId,
+            String receiverName,
+            String receiverPhone,
+            String addressLine,
+            String deliveryType,
+            String tasteNote,
+            String couponCode,
+            String payChannel,
+            String payPassword,
+            List<Map<String, Object>> lineExtras,
+            String deliveryOn,
+            Long slotId,
+            double fullPayable) {
+        String coupon = couponCode == null ? "" : couponCode.trim();
+        if (!coupon.isBlank()) {
+            throw new IllegalArgumentException("一次下单多家店铺时不能用优惠券，请先去掉优惠券，或分开下单");
+        }
+        Integer offsetPts = LoyaltyStore.peekOffsetPoints();
+        if (offsetPts != null && offsetPts > 0) {
+            throw new IllegalArgumentException("一次下单多家店铺时不能用积分抵扣，请先取消抵扣，或分开下单");
+        }
+        if (LoyaltyStore.anyEnabled() && LoyaltyStore.isWalletEnabled()) {
+            double bal = ((Number) LoyaltyStore.getAccount(username).get("balanceYuan")).doubleValue();
+            if (bal + 1e-9 < fullPayable) {
+                throw new IllegalStateException(
+                        "账户余额不足，请先充值（当前 ¥"
+                                + round2(bal)
+                                + "，跨店合计需 ¥"
+                                + round2(fullPayable)
+                                + "）");
+            }
+        }
+        Set<Long> savedFilter =
+                CART_ITEM_FILTER.get() == null ? null : new LinkedHashSet<>(CART_ITEM_FILTER.get());
+        Map<String, Object> savedExtras =
+                PLACE_EXTRAS.get() == null ? null : new LinkedHashMap<>(PLACE_EXTRAS.get());
+        List<Map<String, Object>> placed = new ArrayList<>();
+        MARKETPLACE_SPLITTING.set(Boolean.TRUE);
+        try {
+            boolean first = true;
+            for (List<Map<String, Object>> lines : byOwner.values()) {
+                Set<Long> ids = new LinkedHashSet<>();
+                for (Map<String, Object> line : lines) {
+                    ids.add(((Number) line.get("itemId")).longValue());
+                }
+                beginCartItemFilter(ids);
+                Map<String, Object> extras =
+                        savedExtras == null ? new LinkedHashMap<>() : new LinkedHashMap<>(savedExtras);
+                if (!first) {
+                    extras.put("suppressFulfillmentFees", true);
+                }
+                beginPlaceExtras(extras);
+                placed.add(
+                        placeOrder(
+                                username,
+                                remark,
+                                addressId,
+                                receiverName,
+                                receiverPhone,
+                                addressLine,
+                                deliveryType,
+                                tasteNote,
+                                null,
+                                payChannel,
+                                payPassword,
+                                lineExtras,
+                                deliveryOn,
+                                slotId,
+                                null));
+                first = false;
+            }
+        } finally {
+            MARKETPLACE_SPLITTING.remove();
+            if (savedFilter != null) beginCartItemFilter(savedFilter);
+            else endCartItemFilter();
+            if (savedExtras != null) beginPlaceExtras(savedExtras);
+            else endPlaceExtras();
+        }
+        Map<String, Object> firstOrder = placed.get(0);
+        Map<String, Object> out = new LinkedHashMap<>(firstOrder);
+        out.put("splitCount", placed.size());
+        out.put("splitOrders", placed);
+        return out;
     }
 
     /** 宾馆等：预约办结时把关联订单一并完成 */

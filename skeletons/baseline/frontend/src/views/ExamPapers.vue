@@ -57,7 +57,7 @@ const labels = computed(() => schema.value.labels || {})
 const thicken = computed(() => schema.value.interactThicken || {})
 const pageTitle = computed(() => labels.value.examPapersTitle || '在线考试')
 const pageLead = computed(
-  () => labels.value.examPapersLead || '选择已发布试卷开考；客观题交卷自动判分，主观题由教师阅卷。',
+  () => labels.value.examPapersLead || '选择已发布试卷开考；客观题交卷自动判分，主观题由教务主管阅卷。',
 )
 const passScoreOn = computed(() => !!thicken.value.examPassScore)
 const passScoreLabel = computed(() => labels.value.examPassScoreLabel || '及格线')

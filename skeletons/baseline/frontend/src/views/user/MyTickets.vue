@@ -2405,7 +2405,9 @@ const requireAttach = computed(() => {
   if (!attachByLeaveTypeOn.value) return false
   return /病假|医疗|住院/.test(selectedTypeName.value)
 })
-const requireMaterial = computed(() => !!ticket.requireMaterialChecklist)
+const requireMaterial = computed(
+  () => !!ticket.requireMaterialChecklist || hasCap('material_check'),
+)
 const requireClaimProof = computed(() => !!ticket.requireClaimProof || hasCap('claim_proof'))
 const matRef = ref(null)
 const proofRef = ref(null)

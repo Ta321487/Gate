@@ -20,6 +20,7 @@ public class MessageStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static Boolean tableReady;
+    private static Boolean hasDeletedAt;
 
     private static MessageMapper mapper() {
         return MybatisSupport.mapper(MessageMapper.class);
@@ -34,6 +35,30 @@ public class MessageStore {
             tableReady = false;
         }
         return tableReady;
+    }
+
+    private static boolean hasDeletedAt() {
+        if (!ready()) return false;
+        if (hasDeletedAt != null) return hasDeletedAt;
+        try {
+            Integer n = mapper().countDeletedAtColumn();
+            if (n != null && n > 0) {
+                hasDeletedAt = true;
+                return true;
+            }
+            mapper().addDeletedAtColumn();
+            hasDeletedAt = true;
+        } catch (Exception e) {
+            hasDeletedAt = false;
+        }
+        return Boolean.TRUE.equals(hasDeletedAt);
+    }
+
+    private static String normalizeKind(String kind) {
+        String k = kind == null ? "all" : kind.trim().toLowerCase();
+        if ("biz".equals(k) || "business".equals(k)) return "biz";
+        if ("system".equals(k)) return "system";
+        return "all";
     }
 
     private static String fmt(Object o) {
@@ -51,12 +76,16 @@ public class MessageStore {
         m.put("username", raw.get("username"));
         m.put("title", raw.get("title"));
         m.put("body", raw.get("body"));
-        m.put("refType", raw.get("refType"));
-        m.put("refId", raw.get("refId"));
-        Object readAt = raw.get("readAt");
+        Object refType = raw.get("refType") != null ? raw.get("refType") : raw.get("ref_type");
+        m.put("refType", refType);
+        m.put("refId", raw.get("refId") != null ? raw.get("refId") : raw.get("ref_id"));
+        Object readAt = raw.get("readAt") != null ? raw.get("readAt") : raw.get("read_at");
         m.put("readAt", fmt(readAt));
-        m.put("createdAt", fmt(raw.get("createdAt")));
+        m.put("createdAt", fmt(raw.get("createdAt") != null ? raw.get("createdAt") : raw.get("created_at")));
         m.put("read", readAt != null);
+        String rt = refType == null ? "" : String.valueOf(refType).trim();
+        boolean system = rt.isEmpty() || "system".equals(rt) || "auth".equals(rt);
+        m.put("kind", system ? "system" : "biz");
         return m;
     }
 
@@ -112,17 +141,24 @@ public class MessageStore {
     }
 
     public static Map<String, Object> page(String username, int page, int size) {
+        return page(username, page, size, "all");
+    }
+
+    public static Map<String, Object> page(String username, int page, int size, String kind) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", List.of());
         out.put("total", 0);
         out.put("page", page);
         out.put("size", size);
         out.put("unread", 0);
+        String nk = normalizeKind(kind);
+        out.put("kind", nk);
         if (!ready() || username == null || username.isBlank()) return out;
         if (page < 1) page = 1;
         if (size < 1) size = 10;
+        boolean del = hasDeletedAt();
         PageHelper.startPage(page, size);
-        List<Map<String, Object>> raw = mapper().selectByUsername(username);
+        List<Map<String, Object>> raw = mapper().selectByUsername(username, nk, del);
         PageInfo<Map<String, Object>> pi = new PageInfo<>(raw);
         List<Map<String, Object>> list = new ArrayList<>();
         for (Map<String, Object> r : raw) {
@@ -138,19 +174,27 @@ public class MessageStore {
 
     public static int unreadCount(String username) {
         if (!ready() || username == null || username.isBlank()) return 0;
-        return mapper().countUnread(username);
+        return mapper().countUnread(username, hasDeletedAt());
     }
 
     public static boolean markRead(String username, long id) {
         if (!ready() || username == null || username.isBlank()) return false;
-        if (mapper().countOwned(id, username) == 0) return false;
-        mapper().markRead(Timestamp.valueOf(LocalDateTime.now()), id, username);
+        boolean del = hasDeletedAt();
+        if (mapper().countOwned(id, username, del) == 0) return false;
+        mapper().markRead(Timestamp.valueOf(LocalDateTime.now()), id, username, del);
         return true;
     }
 
     public static int markAllRead(String username) {
         if (!ready() || username == null || username.isBlank()) return 0;
-        return mapper().markAllRead(Timestamp.valueOf(LocalDateTime.now()), username);
+        return mapper().markAllRead(Timestamp.valueOf(LocalDateTime.now()), username, hasDeletedAt());
+    }
+
+    public static boolean softDelete(String username, long id) {
+        if (!ready() || username == null || username.isBlank()) return false;
+        if (!hasDeletedAt()) return false;
+        if (mapper().countOwned(id, username, true) == 0) return false;
+        return mapper().softDelete(Timestamp.valueOf(LocalDateTime.now()), id, username) > 0;
     }
 
     private static boolean templateEnabled = false;

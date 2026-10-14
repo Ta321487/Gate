@@ -1,4 +1,6 @@
 <template>
+  <p v-if="loadError" class="field-hint">{{ loadError }}</p>
+  <p v-else-if="loaded && !items.length" class="field-hint">暂无材料清单项，请联系管理员配置。</p>
   <template v-if="items.length">
     <el-form-item v-for="item in items" :key="item.id" :label="item.title" :required="!!item.required">
       <div class="attach-row">
@@ -18,10 +20,20 @@ import http from '../api/http'
 
 const items = ref([])
 const files = reactive({})
+const loaded = ref(false)
+const loadError = ref('')
 
 async function load() {
-  const res = await http.get('/api/material/checklist')
-  items.value = Array.isArray(res.data) ? res.data : []
+  loadError.value = ''
+  try {
+    const res = await http.get('/api/material/checklist')
+    items.value = Array.isArray(res.data) ? res.data : []
+  } catch (e) {
+    items.value = []
+    loadError.value = e?.response?.data?.message || e?.message || '材料清单加载失败'
+  } finally {
+    loaded.value = true
+  }
 }
 
 async function onUpload(item, opt) {

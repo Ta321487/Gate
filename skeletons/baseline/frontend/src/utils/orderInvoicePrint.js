@@ -1,5 +1,5 @@
 /**
- * 订单发票演示壳：浏览器开窗打印。≠ 税控 / 电子发票平台。
+ * 订单发票打印页（浏览器开窗）。非税控电子发票通道。
  */
 
 function esc(v) {
@@ -33,13 +33,13 @@ h1 { font-size: 18px; text-align: center; margin: 0 0 12px; }
 .meta { margin: 6px 0; }
 .muted { color: #555; font-size: 12px; margin-top: 16px; }
 </style></head><body>
-<h1>增值税普通发票（演示）</h1>
+<h1>增值税普通发票</h1>
 <div class="meta">购方名称：${dash(row.invoiceTitle)}</div>
 <div class="meta">${esc(noun)}编号：${esc(row.id)}</div>
 <div class="meta">金额合计：¥${Number(row.totalYuan || 0).toFixed(2)}</div>
 <div class="meta">开票状态：${dash(st)}</div>
 <div class="meta">下单时间：${dash(row.createdAt)}</div>
-<p class="muted">${esc(labels.invoiceDownloadHint || '本页为系统内演示模板，可打印或另存为 PDF；不对接税控。')}</p>
+<p class="muted">${esc(labels.invoiceDownloadHint || '可用固定模板下载后打印或保存；非税控电子发票。')}</p>
 <script>window.onload=function(){window.print()}<\/script>
 </body></html>`
   const w = window.open('', '_blank')

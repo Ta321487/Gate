@@ -23,6 +23,14 @@ final class TicketDashOps {
     private TicketDashOps() {}
 
     static Map<String, Object> dashboard(String readerRole) {
+        return dashboard(readerRole, null, true);
+    }
+
+    /**
+     * @param scopeUid 非超管时：处理中/逾期只计本人 assignee（待办池仍全员可见）
+     * @param superAdmin 超管不过滤
+     */
+    static Map<String, Object> dashboard(String readerRole, String scopeUid, boolean superAdmin) {
         if (!TicketStore.enabled) {
             Map<String, Object> empty = new LinkedHashMap<>();
             empty.put("pendingTickets", 0);
@@ -30,6 +38,7 @@ final class TicketDashOps {
             empty.put("completedTickets", 0);
             empty.put("rejectedTickets", 0);
             empty.put("approveEndsFlow", TicketStore.approveEndsFlow);
+            empty.put("todoScopedByRole", false);
             empty.put("userTotal", UserStore.countByRole(
                     readerRole == null || readerRole.isBlank() ? TicketStore.userRole : readerRole));
             empty.put("bookTotal", ArchiveStore.countItems());
@@ -38,22 +47,45 @@ final class TicketDashOps {
             return empty;
         }
         String role = readerRole == null || readerRole.isBlank() ? TicketStore.userRole : readerRole;
+        boolean scopeActive = !superAdmin
+                && scopeUid != null
+                && !scopeUid.isBlank()
+                && TicketStore.hasColumn("assignee_username");
         if (TicketStore.useDeadline) {
-            List<Map<String, Object>> open = TicketStore.mapper().selectOpenApprovedOverdue(TicketStore.TICKET);
-            if (open != null) {
-                for (Map<String, Object> raw : open) {
-                    Map<String, Object> b = TicketRowMaps.shape(raw);
-                    TicketStatusOps.refreshOverdue(b);
-                }
-            }
+            TicketSql.db().query("SELECT * FROM " + TicketStore.TICKET + " WHERE status IN ('approved','overdue')",
+                    (rs, i) -> {
+                        Map<String, Object> b = TicketRowMaps.mapRow(rs);
+                        TicketStatusOps.refreshOverdue(b);
+                        return b;
+                    });
         }
-        Long pending = TicketStore.mapper().countPending(TicketStore.TICKET);
-        Long approved = TicketStore.mapper().countByStatus(TicketStore.TICKET, "approved");
-        Long overdue = TicketStore.useDeadline || TicketStore.noShowAfterEnd
-                ? TicketStore.mapper().countByStatus(TicketStore.TICKET, "overdue")
-                : 0L;
-        Long returned = TicketStore.mapper().countByStatus(TicketStore.TICKET, "returned");
-        Long rejected = TicketStore.mapper().countByStatus(TicketStore.TICKET, "rejected");
+        Long pending = TicketSql.db().queryForObject(
+                "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status IN ('pending','pending_mid','pending_final')", Long.class);
+        Long approved;
+        if (scopeActive) {
+            approved = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='approved' AND assignee_username=?",
+                    Long.class, scopeUid.trim());
+        } else {
+            approved = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='approved'", Long.class);
+        }
+        Long overdue;
+        if (TicketStore.useDeadline || TicketStore.noShowAfterEnd) {
+            if (scopeActive) {
+                overdue = TicketSql.db().queryForObject(
+                        "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='overdue' AND assignee_username=?",
+                        Long.class, scopeUid.trim());
+            } else {
+                overdue = TicketSql.db().queryForObject(
+                        "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='overdue'", Long.class);
+            }
+        } else {
+            overdue = 0L;
+        }
+        Long returned = TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='returned'", Long.class);
+        Long rejected = TicketSql.db().queryForObject(
+                "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='rejected'", Long.class);
         Long completed;
         Long active;
         if (TicketStore.approveEndsFlow) {
@@ -74,6 +106,7 @@ final class TicketDashOps {
         m.put("completedTickets", completed);
         m.put("rejectedTickets", rejected == null ? 0 : rejected);
         m.put("approveEndsFlow", TicketStore.approveEndsFlow);
+        m.put("todoScopedByRole", scopeActive);
         m.put("userTotal", UserStore.countByRole(role));
         m.put("pendingBorrow", pending == null ? 0 : pending);
         m.put("onLoan", TicketStore.approveEndsFlow ? 0 : (approved == null ? 0 : approved));
@@ -88,7 +121,8 @@ final class TicketDashOps {
             m.put("stockTotal", ArchiveStore.sumStock());
             m.put("categoryTotal", ArchiveStore.countCategories());
             if (TicketStore.useDeadline && TicketStore.hasColumn("fine_yuan")) {
-                Double fineOpen = TicketStore.mapper().sumOpenFine(TicketStore.TICKET);
+                Double fineOpen = TicketSql.db().queryForObject(
+                        "SELECT COALESCE(SUM(fine_yuan),0) FROM " + TicketStore.TICKET + " WHERE status='overdue'", Double.class);
                 m.put("openFineYuan", Math.round((fineOpen == null ? 0 : fineOpen) * 10.0) / 10.0);
             } else {
                 m.put("openFineYuan", 0);
@@ -106,14 +140,18 @@ final class TicketDashOps {
             m.put("finePerDay", TicketStore.finePerDay());
         }
         if (TicketStore.allowRating && TicketStore.hasColumn("rating")) {
-            Double avg = TicketStore.mapper().avgRating(TicketStore.TICKET);
-            Long ratedCnt = TicketStore.mapper().countRated(TicketStore.TICKET);
+            Double avg = TicketSql.db().queryForObject(
+                    "SELECT AVG(rating) FROM " + TicketStore.TICKET + " WHERE rating IS NOT NULL AND rating > 0",
+                    Double.class);
+            Long ratedCnt = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE rating IS NOT NULL AND rating > 0",
+                    Long.class);
             m.put("avgRating", avg == null ? 0 : Math.round(avg * 10.0) / 10.0);
             m.put("ratedCount", ratedCnt == null ? 0 : ratedCnt);
         }
         if (TicketStore.repairThicken && TicketStore.hasColumn("assignee_username")) {
             try {
-                Long rejectCnt = TicketStore.db().queryForObject(
+                Long rejectCnt = TicketSql.db().queryForObject(
                         "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE remark LIKE '拒单%' OR remark LIKE '%拒单回池%'",
                         Long.class);
                 m.put("rejectAssignmentCount", rejectCnt == null ? 0 : rejectCnt);
@@ -131,22 +169,57 @@ final class TicketDashOps {
         out.put("channelSeries", List.of());
         if (!TicketStore.enabled) return out;
         try {
-            List<Map<String, Object>> status = TicketStore.mapper().selectStatusSeries(TicketStore.TICKET);
-            out.put("statusSeries", status == null ? List.of() : status);
-            List<Map<String, Object>> trend = TicketStore.mapper().selectTrendSeries(TicketStore.TICKET);
-            out.put("trendSeries", trend == null ? List.of() : trend);
+            List<Map<String, Object>> status = TicketSql.db().query(
+                    "SELECT status AS name, COUNT(*) AS value FROM " + TicketStore.TICKET + " GROUP BY status",
+                    (rs, i) -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("name", rs.getString("name"));
+                        row.put("value", rs.getLong("value"));
+                        return row;
+                    });
+            out.put("statusSeries", status);
+            List<Map<String, Object>> trend = TicketSql.db().query(
+                    "SELECT DATE_FORMAT(apply_at,'%Y-%m-%d') AS day, COUNT(*) AS value FROM " + TicketStore.TICKET
+                            + " WHERE apply_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)"
+                            + " GROUP BY DATE_FORMAT(apply_at,'%Y-%m-%d') ORDER BY day",
+                    (rs, i) -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("day", rs.getString("day"));
+                        row.put("value", rs.getLong("value"));
+                        return row;
+                    });
+            out.put("trendSeries", trend);
             if (TicketStore.hasColumn("contact_channel")) {
-                List<Map<String, Object>> channel = TicketStore.mapper().selectChannelSeries(TicketStore.TICKET);
-                out.put("channelSeries", channel == null ? List.of() : channel);
+                List<Map<String, Object>> channel = TicketSql.db().query(
+                        "SELECT COALESCE(NULLIF(TRIM(contact_channel),''),'未填') AS name, COUNT(*) AS value FROM "
+                                + TicketStore.TICKET
+                                + " GROUP BY COALESCE(NULLIF(TRIM(contact_channel),''),'未填') ORDER BY value DESC LIMIT 12",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        });
+                out.put("channelSeries", channel);
             }
             // 热借/热办排行：按档案条目聚合（图书借阅量等）
             if (TicketStore.MODE == TicketStore.Mode.ARCHIVE && TicketStore.hasColumn(TicketStore.itemFkColumn())) {
                 String itemTable = ArchiveStore.itemTable();
-                List<Map<String, Object>> hot = TicketStore.mapper().selectHotItemSeries(TicketStore.TICKET, itemTable, TicketStore.itemFkColumn());
-                out.put("hotItemSeries", hot == null ? List.of() : hot);
+                List<Map<String, Object>> hot = TicketSql.db().query(
+                        "SELECT COALESCE(i.title, CONCAT('编号', t." + TicketStore.itemFkColumn() + ")) AS name, COUNT(*) AS value "
+                                + "FROM " + TicketStore.TICKET + " t LEFT JOIN " + itemTable + " i ON t." + TicketStore.itemFkColumn() + "=i.id "
+                                + "WHERE t.status IN ('approved','overdue','returned','lost','compensated') "
+                                + "GROUP BY t." + TicketStore.itemFkColumn() + ", i.title ORDER BY value DESC LIMIT 8",
+                        (rs, i) -> {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("name", rs.getString("name"));
+                            row.put("value", rs.getLong("value"));
+                            return row;
+                        });
+                out.put("hotItemSeries", hot);
             }
             if (TicketStore.repairThicken && TicketStore.hasColumn("assignee_username")) {
-                List<Map<String, Object>> workers = TicketStore.db().query(
+                List<Map<String, Object>> workers = TicketSql.db().query(
                         "SELECT COALESCE(NULLIF(TRIM(assignee_username),''),'未派') AS name,"
                                 + " SUM(CASE WHEN status IN ('approved','overdue','paused') THEN 1 ELSE 0 END) AS active,"
                                 + " SUM(CASE WHEN status='returned' THEN 1 ELSE 0 END) AS done"
@@ -164,7 +237,7 @@ final class TicketDashOps {
                 out.put("workerSeries", workers);
             }
             if (TicketStore.repairThicken && TicketStore.MODE == TicketStore.Mode.STANDALONE && TicketStore.hasColumn("location")) {
-                List<Map<String, Object>> heat = TicketStore.db().query(
+                List<Map<String, Object>> heat = TicketSql.db().query(
                         "SELECT COALESCE(NULLIF(TRIM(location),''),'未填地点') AS name, COUNT(*) AS value FROM "
                                 + TicketStore.TICKET
                                 + " WHERE status IN ('pending','pending_final','pending_mid','approved','overdue','paused')"
@@ -178,7 +251,7 @@ final class TicketDashOps {
                 out.put("locationHeatSeries", heat);
             }
             if (TicketStore.repairThicken && TicketStore.hasColumn("fault_reason")) {
-                List<Map<String, Object>> faults = TicketStore.db().query(
+                List<Map<String, Object>> faults = TicketSql.db().query(
                         "SELECT COALESCE(NULLIF(TRIM(fault_reason),''),'未填') AS name, COUNT(*) AS value FROM "
                                 + TicketStore.TICKET
                                 + " WHERE fault_reason IS NOT NULL AND TRIM(fault_reason)<>''"

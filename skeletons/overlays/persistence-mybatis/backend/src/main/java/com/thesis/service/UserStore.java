@@ -3,6 +3,7 @@ package com.thesis.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thesis.common.PasswordHashes;
+import com.thesis.config.AppPolicy;
 import com.thesis.config.MbSql;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.SchemaMapper;
@@ -10,6 +11,7 @@ import com.thesis.mapper.UserMapper;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,6 +24,7 @@ public class UserStore {
     private static Boolean staffColsReady;
 
     private static final DateTimeFormatter MUTE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter AUTH_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static boolean postMuteEnabled = false;
 
     public static void configurePostMute(boolean on) {
@@ -132,6 +135,17 @@ public class UserStore {
         public String staffPost = "";
         public String staffKind = "";
         public String postMuteUntil = "";
+        /** §0 X-AUTH：连续失败次数（旧库无列时为 0） */
+        public int failedLoginCount;
+        public String lockUntil = "";
+        public boolean mustChangePassword;
+        public String passwordChangedAt = "";
+        public String securityQuestion = "";
+        /** 仅内部校验，不进 toMap */
+        public String securityAnswerHash = "";
+        public boolean emailActivated;
+        public String activationCode = "";
+        public boolean realNameAcked;
 
         public Map<String, Object> toMap() {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -147,6 +161,12 @@ public class UserStore {
             m.put("staffPost", staffPost == null ? "" : staffPost);
             m.put("staffKind", staffKind == null ? "" : staffKind);
             m.put("postMuteUntil", postMuteUntil == null ? "" : postMuteUntil);
+            m.put("mustChangePassword", effectiveMustChange(this));
+            m.put("passwordChangedAt", passwordChangedAt == null ? "" : passwordChangedAt);
+            m.put("hasSecurityQuestion", securityQuestion != null && !securityQuestion.isBlank());
+            m.put("emailActivated", emailActivated);
+            m.put("mustActivateEmail", effectiveMustActivate(this));
+            m.put("realNameAcked", realNameAcked);
             if (extras != null) {
                 for (Map.Entry<String, String> e : extras.entrySet()) {
                     m.putIfAbsent(e.getKey(), e.getValue());
@@ -188,6 +208,17 @@ public class UserStore {
             p.staffPost = str(col(raw, "staffPost", "staff_post")).trim();
             p.staffKind = str(col(raw, "staffKind", "staff_kind")).trim();
         }
+        Object flc = col(raw, "failedLoginCount", "failed_login_count");
+        p.failedLoginCount = flc instanceof Number n ? n.intValue() : 0;
+        p.lockUntil = str(col(raw, "lockUntil", "lock_until")).trim();
+        p.mustChangePassword = flag(col(raw, "mustChangePassword", "must_change_password"));
+        p.passwordChangedAt = str(col(raw, "passwordChangedAt", "password_changed_at")).trim();
+        p.securityQuestion = str(col(raw, "securityQuestion", "security_question")).trim();
+        p.securityAnswerHash = str(col(raw, "securityAnswerHash", "security_answer_hash")).trim();
+        Object ea = col(raw, "emailActivated", "email_activated");
+        p.emailActivated = ea == null || flag(ea);
+        p.activationCode = str(col(raw, "activationCode", "activation_code")).trim();
+        p.realNameAcked = flag(col(raw, "realNameAcked", "real_name_acked"));
         return p;
     }
 
@@ -330,12 +361,141 @@ public class UserStore {
             mapper().updatePassword(username, encoded);
             p.password = encoded;
         }
-        return p;
+        clearLoginFailures(username);
+        Profile fresh = get(username);
+        return fresh == null ? p : fresh;
     }
 
     /** 仅校验口令（不论是否停用），供登录区分「错密」与「已停用」。 */
     public static boolean passwordMatches(Profile p, String password) {
         return p != null && PasswordHashes.matches(password, p.password);
+    }
+
+/** 冷却剩余分钟；未锁定返回 0。旧库无列时视为未锁定。 */
+    public static int lockRemainMinutes(Profile p) {
+        if (p == null || p.lockUntil == null || p.lockUntil.isBlank()) return 0;
+        LocalDateTime until = parseAuthDateTime(p.lockUntil);
+        if (until == null) return 0;
+        LocalDateTime now = LocalDateTime.now();
+        if (!now.isBefore(until)) return 0;
+        long mins = ChronoUnit.MINUTES.between(now, until);
+        return (int) Math.max(1, mins + (ChronoUnit.SECONDS.between(now, until) % 60 == 0 ? 0 : 1));
+    }
+
+    public static void recordFailedLogin(String username) {
+        if (username == null || username.isBlank()) return;
+        if (!columnExists("failed_login_count")) return;
+        String un = username.trim();
+        Profile p = get(un);
+        if (p == null) return;
+        int n = p.failedLoginCount + 1;
+        int max = Math.max(1, AppPolicy.AUTH_LOCK_MAX_ATTEMPTS);
+        if (n >= max && columnExists("lock_until")) {
+            LocalDateTime until = LocalDateTime.now().plusMinutes(Math.max(1, AppPolicy.AUTH_LOCK_MINUTES));
+            mapper().updateLoginLock(un, 0, until.format(AUTH_FMT));
+        } else {
+            mapper().updateFailedLoginCount(un, n);
+        }
+    }
+
+    public static void clearLoginFailures(String username) {
+        if (username == null || username.isBlank()) return;
+        if (!columnExists("failed_login_count") && !columnExists("lock_until")) return;
+        try {
+            mapper().clearLoginFailures(username.trim());
+        } catch (Exception ignored) {
+        }
+    }
+
+    public static boolean effectiveMustActivate(Profile p) {
+        if (p == null) return false;
+        if (AppPolicy.AUTH_REQUIRE_EMAIL_ACTIVATE <= 0) return false;
+        return !p.emailActivated;
+    }
+
+    public static boolean effectiveMustChange(Profile p) {
+        if (p == null) return false;
+        if (p.mustChangePassword) return true;
+        int maxDays = AppPolicy.AUTH_PASSWORD_MAX_DAYS;
+        if (maxDays <= 0) return false;
+        if (p.passwordChangedAt == null || p.passwordChangedAt.isBlank()) return true;
+        LocalDateTime changed = parseAuthDateTime(p.passwordChangedAt);
+        if (changed == null) return true;
+        return changed.plusDays(maxDays).isBefore(LocalDateTime.now());
+    }
+
+    public static void assertPasswordStrength(String password) {
+        int min = Math.max(1, AppPolicy.AUTH_PASSWORD_MIN_LENGTH);
+        if (password == null || password.length() < min) {
+            throw new IllegalArgumentException("密码至少 " + min + " 位");
+        }
+    }
+
+    public static void forceChangePassword(String username, String newPassword) {
+        assertPasswordStrength(newPassword);
+        Profile p = get(username);
+        if (p == null) throw new IllegalArgumentException("用户不存在");
+        String encoded = PasswordHashes.encode(newPassword);
+        String now = LocalDateTime.now().format(AUTH_FMT);
+        if (columnExists("must_change_password") && columnExists("password_changed_at")) {
+            mapper().updatePasswordChanged(username.trim(), encoded, now);
+        } else {
+            mapper().updatePassword(username.trim(), encoded);
+        }
+    }
+
+    public static void setSecurityQuestion(String username, String question, String answer) {
+        if (!columnExists("security_question")) {
+            throw new IllegalStateException("当前系统未启用密保");
+        }
+        String q = question == null ? "" : question.trim();
+        String a = answer == null ? "" : answer.trim();
+        if (q.isBlank() || a.isBlank()) {
+            throw new IllegalArgumentException("请填写密保问题与答案");
+        }
+        if (q.length() > 128) throw new IllegalArgumentException("密保问题过长");
+        mapper().updateSecurityQuestion(
+                username.trim(), q, PasswordHashes.encode(a.toLowerCase(Locale.ROOT)));
+    }
+
+    /** 匿名查询：无用户或无密保时返回空串（防枚举）。 */
+    public static String publicSecurityQuestion(String username) {
+        if (username == null || username.isBlank() || !columnExists("security_question")) return "";
+        Profile p = get(username.trim());
+        if (p == null) return "";
+        return p.securityQuestion == null ? "" : p.securityQuestion.trim();
+    }
+
+    public static void resetPasswordBySecurity(String username, String answer, String newPassword) {
+        assertPasswordStrength(newPassword);
+        if (!columnExists("security_answer_hash")) {
+            throw new IllegalStateException("当前系统未启用密保");
+        }
+        Profile p = get(username == null ? "" : username.trim());
+        if (p == null
+                || p.securityAnswerHash == null
+                || p.securityAnswerHash.isBlank()
+                || answer == null
+                || !PasswordHashes.matches(answer.trim().toLowerCase(Locale.ROOT), p.securityAnswerHash)) {
+            throw new IllegalArgumentException("密保答案不正确");
+        }
+        forceChangePassword(p.username, newPassword);
+    }
+
+    private static LocalDateTime parseAuthDateTime(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String s = raw.trim().replace('T', ' ');
+        if (s.length() == 10) s = s + " 00:00:00";
+        if (s.length() > 19) s = s.substring(0, 19);
+        try {
+            return LocalDateTime.parse(s, AUTH_FMT);
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(s, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            } catch (Exception e2) {
+                return null;
+            }
+        }
     }
 
     public static Profile register(
@@ -348,9 +508,7 @@ public class UserStore {
         if (username == null || !username.matches("^[a-zA-Z0-9_]{3,32}$")) {
             throw new IllegalArgumentException("用户名需为 3–32 位字母/数字/下划线");
         }
-        if (password == null || password.length() < 6) {
-            throw new IllegalArgumentException("密码至少 6 位");
-        }
+        assertPasswordStrength(password);
         if (get(username) != null) {
             throw new IllegalStateException("用户名已存在");
         }
@@ -362,6 +520,8 @@ public class UserStore {
         String ph = phone == null ? "" : phone.trim();
         Map<String, String> ex = ProfileFields.filterExtras(extras);
         ProfileFields.requireFilled(ph, ex, true);
+        assertPhoneUnique(ph, null);
+        assertIdExtraUnique(ex, null);
         requireProfileJsonIfExtras(ex);
         String encoded = PasswordHashes.encode(password);
         ensureStaffColumns();
@@ -372,6 +532,9 @@ public class UserStore {
         row.put("nickname", nick);
         row.put("phone", ph);
         row.put("avatarUrl", "");
+        if (columnExists("password_changed_at")) {
+            row.put("passwordChangedAt", LocalDateTime.now().format(AUTH_FMT));
+        }
         if (hasProfileJson()) {
             row.put("profileJson", writeExtras(ex));
             mapper().insertWithProfile(row);
@@ -397,9 +560,7 @@ public class UserStore {
         if (username == null || !username.matches("^[a-zA-Z0-9_]{3,32}$")) {
             throw new IllegalArgumentException("用户名需为 3–32 位字母/数字/下划线");
         }
-        if (password == null || password.length() < 6) {
-            throw new IllegalArgumentException("密码至少 6 位");
-        }
+        assertPasswordStrength(password);
         if (get(username) != null) {
             throw new IllegalStateException("用户名已存在");
         }
@@ -523,12 +684,15 @@ public class UserStore {
         return adminUpdate(username, nickname, phone, enabled, null, false);
     }
 
-    public static void adminResetPassword(String username, String newPassword) {
+        public static void adminResetPassword(String username, String newPassword) {
         requireManaged(username);
-        if (newPassword == null || newPassword.length() < 6) {
-            throw new IllegalArgumentException("密码至少 6 位");
+        assertPasswordStrength(newPassword);
+        String encoded = PasswordHashes.encode(newPassword);
+        if (columnExists("must_change_password")) {
+            mapper().updatePasswordForceChange(username, encoded);
+        } else {
+            mapper().updatePassword(username, encoded);
         }
-        mapper().updatePassword(username, PasswordHashes.encode(newPassword));
     }
 
     public static Profile appointSubAdmin(String username, String staffPost, String staffKind) {
@@ -604,9 +768,134 @@ public class UserStore {
         return p;
     }
 
+    private static final String[] ID_EXTRA_KEYS = {
+        "studentNo", "studentId", "jobNo", "workNo", "employeeNo", "staffNo", "readerNo"
+    };
+
+    public static void assertPhoneUnique(String phone, String excludeUsername) {
+        String ph = phone == null ? "" : phone.trim();
+        if (ph.isBlank()) return;
+        String sql = "SELECT COUNT(*) FROM sys_user WHERE phone=?";
+        Object[] args;
+        if (excludeUsername != null && !excludeUsername.isBlank()) {
+            sql += " AND username<>?";
+            args = new Object[] {ph, excludeUsername.trim()};
+        } else {
+            args = new Object[] {ph};
+        }
+        Integer n = db().queryForObject(sql, Integer.class, args);
+        if (n != null && n > 0) {
+            throw new IllegalStateException("该手机号已被使用，请更换");
+        }
+    }
+
+    public static void assertIdExtraUnique(Map<String, String> extras, String excludeUsername) {
+        if (extras == null || extras.isEmpty() || !hasProfileJson()) return;
+        for (String key : ID_EXTRA_KEYS) {
+            String val = extras.get(key);
+            if (val == null || val.isBlank()) continue;
+            String v = val.trim();
+            for (Map<String, Object> raw : mapper().selectAll()) {
+                Profile other = fromMap(raw);
+                if (other == null) continue;
+                if (excludeUsername != null && excludeUsername.equals(other.username)) continue;
+                if (other.extras == null) continue;
+                String ov = other.extras.get(key);
+                if (ov != null && v.equals(ov.trim())) {
+                    throw new IllegalStateException("该学号或工号已被绑定，请核对");
+                }
+            }
+        }
+    }
+
+    public static String issueActivationCode(String username) {
+        if (username == null || username.isBlank() || !columnExists("activation_code")) return "";
+        String code = String.format("%06d", new java.util.Random().nextInt(1_000_000));
+        if (columnExists("email_activated")) {
+            db().update(
+                    "UPDATE sys_user SET activation_code=?, email_activated=0 WHERE username=?",
+                    code, username.trim());
+        } else {
+            db().update("UPDATE sys_user SET activation_code=? WHERE username=?", code, username.trim());
+        }
+        return code;
+    }
+
+    public static void activateByCode(String username, String code) {
+        Profile p = get(username);
+        if (p == null) throw new IllegalArgumentException("账号不存在或激活码不正确");
+        String expect = p.activationCode == null ? "" : p.activationCode.trim();
+        String got = code == null ? "" : code.trim();
+        if (expect.isBlank() || !expect.equalsIgnoreCase(got)) {
+            throw new IllegalArgumentException("账号不存在或激活码不正确");
+        }
+        if (columnExists("email_activated") && columnExists("activation_code")) {
+            db().update(
+                    "UPDATE sys_user SET email_activated=1, activation_code=NULL WHERE username=?",
+                    username.trim());
+        } else if (columnExists("email_activated")) {
+            db().update("UPDATE sys_user SET email_activated=1 WHERE username=?", username.trim());
+        }
+    }
+
+    public static void changeContact(String username, String field, String value) {
+        Profile p = get(username);
+        if (p == null) throw new IllegalArgumentException("用户不存在");
+        String f = field == null ? "" : field.trim().toLowerCase(Locale.ROOT);
+        String v = value == null ? "" : value.trim();
+        if ("phone".equals(f)) {
+            if (!v.isBlank() && !v.matches("^1[3-9]\\d{9}$")) {
+                throw new IllegalArgumentException("手机号格式不正确（11 位）");
+            }
+            assertPhoneUnique(v, username);
+            db().update("UPDATE sys_user SET phone=? WHERE username=?", v, username.trim());
+            return;
+        }
+        if ("email".equals(f)) {
+            if (!v.isBlank() && !v.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+                throw new IllegalArgumentException("邮箱格式不正确");
+            }
+            Map<String, String> ex = new LinkedHashMap<>(p.extras == null ? Map.of() : p.extras);
+            if (v.isBlank()) ex.remove("email");
+            else ex.put("email", v);
+            requireProfileJsonIfExtras(ex);
+            if (!hasProfileJson()) {
+                throw new IllegalStateException("系统未配置扩展资料字段，无法保存邮箱");
+            }
+            db().update(
+                    "UPDATE sys_user SET profile_json=? WHERE username=?",
+                    writeExtras(ex),
+                    username.trim());
+            return;
+        }
+        throw new IllegalArgumentException("仅支持修改手机号或邮箱");
+    }
+
+    public static void setRealNameAcked(String username, boolean acked) {
+        Profile p = get(username);
+        if (p == null) throw new IllegalArgumentException("用户不存在");
+        if (acked) {
+            String rn = "";
+            if (p.extras != null) {
+                rn = p.extras.getOrDefault("realName", "");
+                if (rn == null || rn.isBlank()) rn = p.extras.getOrDefault("name", "");
+            }
+            if ((rn == null || rn.isBlank()) && (p.nickname == null || p.nickname.isBlank())) {
+                throw new IllegalArgumentException("请先填写姓名后再确认实名");
+            }
+        }
+        if (!columnExists("real_name_acked")) return;
+        db().update(
+                "UPDATE sys_user SET real_name_acked=? WHERE username=?",
+                acked ? 1 : 0,
+                username.trim());
+    }
+
     public static void saveProfile(Profile p) {
         String audience = isStaffAccount(p) ? "staff" : "user";
         ProfileFields.requireFilled(p.phone, p.extras, false, audience);
+        assertPhoneUnique(p.phone, p.username);
+        assertIdExtraUnique(p.extras, p.username);
         requireProfileJsonIfExtras(p.extras);
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("username", p.username);
@@ -619,6 +908,12 @@ public class UserStore {
             mapper().saveProfileWithJson(row);
         } else {
             mapper().saveProfilePlain(row);
+        }
+        if (columnExists("real_name_acked")) {
+            db().update(
+                    "UPDATE sys_user SET real_name_acked=? WHERE username=?",
+                    p.realNameAcked ? 1 : 0,
+                    p.username);
         }
     }
 

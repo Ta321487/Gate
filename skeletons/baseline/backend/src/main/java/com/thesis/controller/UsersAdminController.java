@@ -5,6 +5,7 @@ import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
+import com.thesis.service.AuthSessionStore;
 import com.thesis.service.UserStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,6 +52,9 @@ public class UsersAdminController {
             if (extras.isEmpty() && !body.containsKey("extras")) extras = null;
             boolean protectLast = !allowAppointFromUsers;
             var updated = UserStore.adminUpdate(username, nick, phone, enabled, extras, protectLast);
+            if (enabled != null && !enabled) {
+                AuthSessionStore.kickAll(username);
+            }
             String op = AdminAuth.requireLogin(session);
             AuditLogStore.record(op, "user_update", "user", username, "更新用户资料或启用状态");
             return R.ok(updated.toMap());

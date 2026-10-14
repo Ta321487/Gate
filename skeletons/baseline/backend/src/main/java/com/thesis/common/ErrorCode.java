@@ -7,6 +7,8 @@ public enum ErrorCode {
     CAPTCHA_INVALID(40101),
     /** 账号被管理员停用：登录拒绝 / 已登录会话立即失效 */
     ACCOUNT_DISABLED(40102),
+    /** 登录失败次数过多：冷却锁定中 */
+    ACCOUNT_LOCKED(40103),
     FORBIDDEN(40300),
     NOT_FOUND(40400),
     INTERNAL(50000);

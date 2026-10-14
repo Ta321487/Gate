@@ -9,8 +9,8 @@ import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
+import com.thesis.service.SiteStatStore;
 import com.thesis.service.StockIoStore;
-import com.thesis.service.SurveyStore;
 import com.thesis.service.SurveyStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +24,7 @@ import java.util.Map;
 
 /**
  * 薄领域工作台（archive / standalone / LIBRARY）。
+ * XD-01：/counts 轻量角标；dashboard 按角色收窄处理中计数。
  */
 @RestController
 @RequestMapping("/api/admin/dashboard")
@@ -32,9 +33,30 @@ public class TicketDashboardController {
     @Value("${thesis.register-role:user}")
     private String userRole;
 
+    /** 侧栏角标轮询：只返回待办数字，避免拉全量图表。 */
+    @GetMapping("/counts")
+    public R<Map<String, Object>> counts(HttpSession session) {
+        requireAdmin(session);
+        Map<String, Object> full = buildDashboard(session);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("pendingTickets", num(full.get("pendingTickets")));
+        out.put("activeTickets", num(full.get("activeTickets")));
+        out.put("pendingOrders", num(full.get("pendingOrders")));
+        out.put("pendingReservations", num(full.get("pendingReservations")));
+        out.put("confirmedReservations", num(full.get("confirmedReservations")));
+        out.put("missingCheckinToday", num(full.get("missingCheckinToday")));
+        out.put("lowStockCount", num(full.get("lowStockCount")));
+        out.put("todoScopedByRole", Boolean.TRUE.equals(full.get("todoScopedByRole")));
+        return R.ok(out);
+    }
+
     @GetMapping
     public R<Map<String, Object>> dashboard(HttpSession session) {
         requireAdmin(session);
+        return R.ok(buildDashboard(session));
+    }
+
+    private Map<String, Object> buildDashboard(HttpSession session) {
         Map<String, Object> m = new LinkedHashMap<>();
         Map<String, Object> charts = new LinkedHashMap<>();
         charts.put("statusSeries", List.of());
@@ -42,30 +64,32 @@ public class TicketDashboardController {
         charts.put("monthSeries", List.of());
         charts.put("stockSeries", List.of());
 
+        boolean superAdmin = AdminAuth.isSuperAdmin(session);
+        String uid = AdminAuth.requireLogin(session);
+
         if (TicketStore.enabled()) {
             try {
-                m.putAll(TicketStore.dashboard(userRole));
+                m.putAll(TicketStore.dashboard(userRole, uid, superAdmin));
                 charts.putAll(TicketStore.chartStats());
             } catch (Exception ignored) {
                 m.put("pendingTickets", 0);
                 m.put("activeTickets", 0);
                 m.put("completedTickets", 0);
                 m.put("rejectedTickets", 0);
+                m.put("todoScopedByRole", false);
             }
         } else {
             try {
-                m.putAll(TicketStore.dashboard(userRole));
+                m.putAll(TicketStore.dashboard(userRole, uid, superAdmin));
             } catch (Exception ignored) {
                 m.putIfAbsent("userTotal", 0);
                 m.putIfAbsent("bookTotal", 0);
+                m.putIfAbsent("todoScopedByRole", false);
             }
         }
 
         if (OrderStore.enabled()) {
             boolean mp = ArchiveStore.shopMarketplaceEnabled();
-            boolean superAdmin = AdminAuth.isSuperAdmin(session);
-            // 会话登录名在 uid（AuthController），没有 username 属性
-            String uid = AdminAuth.requireLogin(session);
             String ownerFilter = (mp && !superAdmin) ? uid : null;
             m.putAll(OrderStore.dashboard(ownerFilter));
             Map<String, Object> oc = OrderStore.chartStats(ownerFilter);
@@ -84,7 +108,6 @@ public class TicketDashboardController {
                 charts.put("refundReasonSeries", oc.get("refundReasonSeries"));
             }
         }
-        // 借阅/办理热门：TicketStore 已填 hotItemSeries；订单热销优先覆盖
         if (StockIoStore.enabled()) {
             try {
                 charts.put("stockIoSeries", StockIoStore.typeSeries());
@@ -102,8 +125,8 @@ public class TicketDashboardController {
         }
         try {
             String stockOwner = null;
-            if (ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
-                stockOwner = AdminAuth.requireLogin(session);
+            if (ArchiveStore.shopMarketplaceEnabled() && !superAdmin) {
+                stockOwner = uid;
             }
             charts.put("stockSeries", ArchiveStore.stockByCategory(8, stockOwner));
         } catch (Exception ignored) {
@@ -136,18 +159,14 @@ public class TicketDashboardController {
             }
         }
         if (ArchiveStore.shopMarketplaceEnabled()) {
-            boolean superAdmin = AdminAuth.isSuperAdmin(session);
-            String uid = AdminAuth.requireLogin(session);
             int warn = 10;
             try {
-                // schema 默认 10；前端亦有 stockWarnBelow
                 Object w = m.get("stockWarnBelow");
                 if (w instanceof Number n) warn = n.intValue();
             } catch (Exception ignored) {
             }
             m.put("lowStockCount", ArchiveStore.countLowStock(warn, superAdmin ? null : uid));
             m.put("stockWarnBelow", warn);
-            // 商家工作台商品数须按店主过滤，禁止显示全站 bookTotal
             if (!superAdmin) {
                 m.put("bookTotal", ArchiveStore.countItems(uid));
             }
@@ -159,8 +178,24 @@ public class TicketDashboardController {
                 m.put("surveyRecycleCards", List.of());
             }
         }
+        try {
+            m.putAll(SiteStatStore.snapshot());
+        } catch (Exception ignored) {
+            m.putIfAbsent("pvToday", 0);
+            m.putIfAbsent("pvTotal", 0);
+        }
         m.put("charts", charts);
-        return R.ok(m);
+        return m;
+    }
+
+    private static long num(Object o) {
+        if (o instanceof Number n) return n.longValue();
+        if (o == null) return 0L;
+        try {
+            return Long.parseLong(String.valueOf(o).trim());
+        } catch (Exception e) {
+            return 0L;
+        }
     }
 
     private static boolean isEmptySeries(Object series) {

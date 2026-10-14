@@ -885,6 +885,14 @@ const searchPlaceholder = computed(() => {
   if (isbnF && isbnF.type !== 'richtext' && isbnF.type !== 'hidden') {
     parts.push(isbnF.label || '编号')
   }
+  const regionF = fields.value.find((x) => x.key === 'region')
+  if (regionF && regionF.type !== 'hidden') {
+    parts.push(regionF.label || '产地')
+  }
+  const harvestF = fields.value.find((x) => x.key === 'harvest_on')
+  if (harvestF && harvestF.type !== 'hidden') {
+    parts.push(harvestF.label || '采摘时间')
+  }
   return `搜索${parts.join(' / ')}`
 })
 function pickerProps(key) {

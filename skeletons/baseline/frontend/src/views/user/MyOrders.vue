@@ -477,9 +477,15 @@ const inviteReviewHint = computed(() => {
 const refundTypeOn = computed(() => !!thicken.value.refundType)
 const refundTrackingOn = computed(() => !!thicken.value.refundTracking)
 const refundTraceOn = computed(() => !!thicken.value.refundTrace)
+/** 与 bake trade_thicken.DEFAULT_REFUND_REASONS 对齐；schema 漏写时仍出下拉 */
+const DEFAULT_REFUND_REASONS = ['质量问题', '少件/错发', '描述不符', '物流损坏', '其他']
 const refundReasonOptions = computed(() => {
   const opts = getSchema()?.entities?.order?.refundReasonOptions
-  return Array.isArray(opts) ? opts.map((x) => String(x)).filter(Boolean) : []
+  const fromSchema = Array.isArray(opts) ? opts.map((x) => String(x)).filter(Boolean) : []
+  if (fromSchema.length) return fromSchema
+  // 影票退票可纯手填；商城/餐饮售后弹窗不得半残
+  if (isCinema.value) return []
+  return DEFAULT_REFUND_REASONS
 })
 const refundReasonLabel = computed(() => getSchema()?.labels?.refundReasonLabel || '售后原因')
 const refundReasonHint = computed(() => getSchema()?.labels?.refundReasonHint || '')

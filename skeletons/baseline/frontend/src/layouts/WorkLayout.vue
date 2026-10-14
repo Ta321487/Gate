@@ -69,8 +69,10 @@ const menuItems = computed(() => {
   return items.length ? items : [{ index: '/staff/tickets', label: '作业台' }]
 })
 
-function logout() {
-  localStorage.clear()
+async function logout() {
+  const { logoutOnServer, clearAuthStorage } = await import('../utils/session.js')
+  await logoutOnServer()
+  clearAuthStorage()
   router.push(staffLoginPath())
 }
 </script>

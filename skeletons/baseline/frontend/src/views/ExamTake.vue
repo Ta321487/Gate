@@ -35,7 +35,7 @@
         </p>
       </template>
       <template v-else-if="result.status === 'reviewing'">
-        <h2>已交卷，主观题待教师阅卷</h2>
+        <h2>已交卷，主观题待教务主管阅卷</h2>
         <p>{{ examObjectiveGradedLead }}</p>
         <p v-if="examObjectiveGradeHint" class="grade-hint">{{ examObjectiveGradeHint }}</p>
       </template>

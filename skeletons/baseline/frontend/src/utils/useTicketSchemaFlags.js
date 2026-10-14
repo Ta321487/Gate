@@ -16,7 +16,13 @@ export function useTicketSchemaFlags() {
   const applyFromList = computed(() => !!ticket.applyFromList)
   const autoApprove = computed(() => !!ticket.autoApprove)
   const requireAttach = computed(() => !!ticket.requireAttach)
-  const requireMaterial = computed(() => !!ticket.requireMaterialChecklist)
+  const requireMaterial = computed(
+    () => !!ticket.requireMaterialChecklist || hasCap('material_check'),
+  )
+  // 硬拦 ↔ 必收集：cap 开了后端硬拦，前端必须能收集（不限申请页）
+  const requireClaimProof = computed(
+    () => !!ticket.requireClaimProof || hasCap('claim_proof'),
+  )
   const requireRemark = computed(() => !!ticket.requireRemark)
   const remarkLabel = computed(() => ticket.remarkLabel || '说明')
   const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
@@ -75,6 +81,7 @@ export function useTicketSchemaFlags() {
     autoApprove,
     requireAttach,
     requireMaterial,
+    requireClaimProof,
     requireRemark,
     remarkLabel,
     pickLoanPeriod,

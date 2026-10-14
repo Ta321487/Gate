@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 基线公告（MySQL sys_notice）。
+ * 基线公告（MySQL sys_notice）。XM-02：过期下架 / 强制弹窗 / 浅富文本格式。
  */
 public class NoticeStore {
 
@@ -21,6 +21,10 @@ public class NoticeStore {
     private static Boolean hasAuditStatus;
     private static Boolean hasSubmitterUsername;
     private static Boolean hasPinned;
+    private static Boolean hasExpireAt;
+    private static Boolean hasForceAck;
+    private static Boolean hasContentFmt;
+    private static Boolean hasAckTable;
 
     private static JdbcTemplate db() {
         return JdbcSupport.jdbc();
@@ -32,6 +36,17 @@ public class NoticeStore {
         if (o instanceof LocalDateTime ldt) return ldt.format(FMT);
         String s = String.valueOf(o);
         return s.isBlank() ? null : s;
+    }
+
+    private static Timestamp parseTs(String s) {
+        if (s == null || s.isBlank()) return null;
+        String t = s.trim().replace('T', ' ');
+        if (t.length() == 16) t = t + ":00";
+        try {
+            return Timestamp.valueOf(LocalDateTime.parse(t, FMT));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static Map<String, Object> row(java.sql.ResultSet rs) throws java.sql.SQLException {
@@ -51,6 +66,34 @@ public class NoticeStore {
             }
         } else {
             m.put("pinned", false);
+        }
+        if (hasExpireAt()) {
+            try {
+                m.put("expireAt", fmt(rs.getTimestamp("expire_at")));
+            } catch (Exception ignored) {
+                m.put("expireAt", null);
+            }
+        } else {
+            m.put("expireAt", null);
+        }
+        if (hasForceAck()) {
+            try {
+                m.put("forceAck", rs.getInt("force_ack") > 0);
+            } catch (Exception ignored) {
+                m.put("forceAck", false);
+            }
+        } else {
+            m.put("forceAck", false);
+        }
+        if (hasContentFmt()) {
+            try {
+                String cf = rs.getString("content_fmt");
+                m.put("contentFmt", cf == null || cf.isBlank() ? "text" : cf.trim());
+            } catch (Exception ignored) {
+                m.put("contentFmt", "text");
+            }
+        } else {
+            m.put("contentFmt", "text");
         }
         if (hasAuditStatus()) {
             try {
@@ -81,10 +124,24 @@ public class NoticeStore {
         return hasSubmitterUsername;
     }
 
-    /** 运行时补列：旧库无 pinned 时 ALTER，避免改全厂 SQL 模板 */
     public static boolean hasPinned() {
         ensurePinnedColumn();
         return hasPinned != null && hasPinned;
+    }
+
+    public static boolean hasExpireAt() {
+        ensureXm02Columns();
+        return hasExpireAt != null && hasExpireAt;
+    }
+
+    public static boolean hasForceAck() {
+        ensureXm02Columns();
+        return hasForceAck != null && hasForceAck;
+    }
+
+    public static boolean hasContentFmt() {
+        ensureXm02Columns();
+        return hasContentFmt != null && hasContentFmt;
     }
 
     private static synchronized void ensurePinnedColumn() {
@@ -101,6 +158,55 @@ public class NoticeStore {
         }
     }
 
+    private static synchronized void ensureXm02Columns() {
+        if (hasExpireAt != null && hasForceAck != null && hasContentFmt != null) return;
+        if (hasExpireAt == null) {
+            if (!hasNoticeColumn("expire_at")) {
+                try {
+                    db().execute("ALTER TABLE sys_notice ADD COLUMN expire_at DATETIME NULL");
+                } catch (Exception ignored) {
+                }
+            }
+            hasExpireAt = hasNoticeColumn("expire_at");
+        }
+        if (hasForceAck == null) {
+            if (!hasNoticeColumn("force_ack")) {
+                try {
+                    db().execute("ALTER TABLE sys_notice ADD COLUMN force_ack TINYINT NOT NULL DEFAULT 0");
+                } catch (Exception ignored) {
+                }
+            }
+            hasForceAck = hasNoticeColumn("force_ack");
+        }
+        if (hasContentFmt == null) {
+            if (!hasNoticeColumn("content_fmt")) {
+                try {
+                    db().execute("ALTER TABLE sys_notice ADD COLUMN content_fmt VARCHAR(16) NOT NULL DEFAULT 'text'");
+                } catch (Exception ignored) {
+                }
+            }
+            hasContentFmt = hasNoticeColumn("content_fmt");
+        }
+        ensureAckTable();
+    }
+
+    private static synchronized void ensureAckTable() {
+        if (hasAckTable != null) return;
+        try {
+            db().execute(
+                    "CREATE TABLE IF NOT EXISTS sys_notice_ack ("
+                            + "notice_id BIGINT NOT NULL,"
+                            + "username VARCHAR(64) NOT NULL,"
+                            + "acked_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
+                            + "PRIMARY KEY (notice_id, username),"
+                            + "KEY idx_notice_ack_user (username)"
+                            + ")");
+            hasAckTable = true;
+        } catch (Exception e) {
+            hasAckTable = false;
+        }
+    }
+
     private static boolean hasNoticeColumn(String col) {
         try {
             Integer n = db().queryForObject(
@@ -113,8 +219,19 @@ public class NoticeStore {
         }
     }
 
+    /** 门户可见：未过期（无 expire_at 列则不过滤）。 */
+    public static boolean isPortalVisible(Map<String, Object> m) {
+        if (m == null) return false;
+        if (!hasExpireAt()) return true;
+        String exp = m.get("expireAt") == null ? null : String.valueOf(m.get("expireAt"));
+        if (exp == null || exp.isBlank() || "null".equals(exp)) return true;
+        Timestamp ts = parseTs(exp);
+        if (ts == null) return true;
+        return ts.after(new Timestamp(System.currentTimeMillis()));
+    }
+
     public static Map<String, Object> add(String title, String content, String publisherUsername, String publisherName) {
-        return add(title, content, publisherUsername, publisherName, null, null);
+        return add(title, content, publisherUsername, publisherName, null, null, null, null, null);
     }
 
     public static Map<String, Object> add(
@@ -124,6 +241,19 @@ public class NoticeStore {
             String publisherName,
             String auditStatus,
             String submitterUsername) {
+        return add(title, content, publisherUsername, publisherName, auditStatus, submitterUsername, null, null, null);
+    }
+
+    public static Map<String, Object> add(
+            String title,
+            String content,
+            String publisherUsername,
+            String publisherName,
+            String auditStatus,
+            String submitterUsername,
+            String expireAt,
+            Boolean forceAck,
+            String contentFmt) {
         String name = publisherName == null || publisherName.isBlank()
                 ? (publisherUsername == null ? "系统" : publisherUsername)
                 : publisherName;
@@ -131,9 +261,27 @@ public class NoticeStore {
         boolean withAudit = hasAuditStatus();
         String audit = auditStatus == null || auditStatus.isBlank() ? "approved" : auditStatus.trim();
         String submitter = submitterUsername == null ? "" : submitterUsername.trim();
+        String fmtVal = normalizeContentFmt(contentFmt);
+        Timestamp exp = parseTs(expireAt);
+        int force = Boolean.TRUE.equals(forceAck) ? 1 : 0;
+        ensureXm02Columns();
         db().update(con -> {
             PreparedStatement ps;
-            if (withAudit && hasSubmitterUsername()) {
+            if (withAudit && hasSubmitterUsername() && hasExpireAt() && hasForceAck() && hasContentFmt()) {
+                ps = con.prepareStatement(
+                        "INSERT INTO sys_notice (title,content,publisher_username,publisher_name,audit_status,submitter_username,"
+                                + "expire_at,force_ack,content_fmt) VALUES (?,?,?,?,?,?,?,?,?)",
+                        Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, title == null ? "" : title);
+                ps.setString(2, content == null ? "" : content);
+                ps.setString(3, publisherUsername == null ? "" : publisherUsername);
+                ps.setString(4, name);
+                ps.setString(5, audit);
+                ps.setString(6, submitter);
+                ps.setTimestamp(7, exp);
+                ps.setInt(8, force);
+                ps.setString(9, fmtVal);
+            } else if (withAudit && hasSubmitterUsername()) {
                 ps = con.prepareStatement(
                         "INSERT INTO sys_notice (title,content,publisher_username,publisher_name,audit_status,submitter_username) "
                                 + "VALUES (?,?,?,?,?,?)",
@@ -154,6 +302,18 @@ public class NoticeStore {
                 ps.setString(3, publisherUsername == null ? "" : publisherUsername);
                 ps.setString(4, name);
                 ps.setString(5, audit);
+            } else if (hasExpireAt() && hasForceAck() && hasContentFmt()) {
+                ps = con.prepareStatement(
+                        "INSERT INTO sys_notice (title,content,publisher_username,publisher_name,expire_at,force_ack,content_fmt) "
+                                + "VALUES (?,?,?,?,?,?,?)",
+                        Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, title == null ? "" : title);
+                ps.setString(2, content == null ? "" : content);
+                ps.setString(3, publisherUsername == null ? "" : publisherUsername);
+                ps.setString(4, name);
+                ps.setTimestamp(5, exp);
+                ps.setInt(6, force);
+                ps.setString(7, fmtVal);
             } else {
                 ps = con.prepareStatement(
                         "INSERT INTO sys_notice (title,content,publisher_username,publisher_name) VALUES (?,?,?,?)",
@@ -167,6 +327,12 @@ public class NoticeStore {
         }, kh);
         Number key = kh.getKey();
         return get(key == null ? 0L : key.longValue());
+    }
+
+    private static String normalizeContentFmt(String contentFmt) {
+        if (contentFmt == null || contentFmt.isBlank()) return "text";
+        String s = contentFmt.trim().toLowerCase(Locale.ROOT);
+        return "html".equals(s) ? "html" : "text";
     }
 
     /** 领域启动时追加种子；表内已有同标题则跳过。 */
@@ -184,13 +350,27 @@ public class NoticeStore {
     }
 
     public static Map<String, Object> update(long id, String title, String content) {
-        return update(id, title, content, null);
+        return update(id, title, content, null, null, null, null);
+    }
+
+    public static Map<String, Object> update(long id, String title, String content, Boolean pinned) {
+        return update(id, title, content, pinned, null, null, null);
     }
 
     /**
      * @param pinned null=不改置顶；true/false=写入 pinned（须有 pinned 列）
+     * @param expireAt 非 null 时写入（空串清过期）
+     * @param forceAck null=不改
+     * @param contentFmt null=不改
      */
-    public static Map<String, Object> update(long id, String title, String content, Boolean pinned) {
+    public static Map<String, Object> update(
+            long id,
+            String title,
+            String content,
+            Boolean pinned,
+            String expireAt,
+            Boolean forceAck,
+            String contentFmt) {
         Map<String, Object> m = get(id);
         if (m == null) return null;
         String t = title != null ? title : String.valueOf(m.get("title"));
@@ -201,15 +381,32 @@ public class NoticeStore {
         if (Boolean.TRUE.equals(pinned)) {
             assertCanPinForDisplay(m);
         }
+        ensureXm02Columns();
+        List<String> sets = new ArrayList<>();
+        List<Object> args = new ArrayList<>();
+        sets.add("title=?");
+        args.add(t);
+        sets.add("content=?");
+        args.add(c);
         if (pinned != null) {
-            db().update(
-                    "UPDATE sys_notice SET title=?, content=?, pinned=?, updated_at=NOW() WHERE id=?",
-                    t, c, pinned ? 1 : 0, id);
-        } else {
-            db().update(
-                    "UPDATE sys_notice SET title=?, content=?, updated_at=NOW() WHERE id=?",
-                    t, c, id);
+            sets.add("pinned=?");
+            args.add(pinned ? 1 : 0);
         }
+        if (expireAt != null && hasExpireAt()) {
+            sets.add("expire_at=?");
+            args.add(expireAt.isBlank() ? null : parseTs(expireAt));
+        }
+        if (forceAck != null && hasForceAck()) {
+            sets.add("force_ack=?");
+            args.add(forceAck ? 1 : 0);
+        }
+        if (contentFmt != null && hasContentFmt()) {
+            sets.add("content_fmt=?");
+            args.add(normalizeContentFmt(contentFmt));
+        }
+        sets.add("updated_at=NOW()");
+        args.add(id);
+        db().update("UPDATE sys_notice SET " + String.join(", ", sets) + " WHERE id=?", args.toArray());
         return get(id);
     }
 
@@ -217,7 +414,6 @@ public class NoticeStore {
         if (!hasPinned()) throw new IllegalStateException("当前公告不支持置顶");
         Map<String, Object> m = get(id);
         if (m == null) return null;
-        // 置顶是公开展示强化：待审/驳回不得置顶（取消置顶仍允许）
         if (pinned) {
             assertCanPinForDisplay(m);
         }
@@ -225,7 +421,6 @@ public class NoticeStore {
         return get(id);
     }
 
-    /** 有审核列时，仅已通过（或历史空状态）可置顶。 */
     private static void assertCanPinForDisplay(Map<String, Object> m) {
         if (!hasAuditStatus()) return;
         String as = String.valueOf(m.getOrDefault("auditStatus", "")).trim();
@@ -247,14 +442,41 @@ public class NoticeStore {
         return db().update("DELETE FROM sys_notice WHERE id=?", id) > 0;
     }
 
+    /** 登录用户待强制确认的公告（最多 5 条）。 */
+    public static List<Map<String, Object>> listForcePending(String username) {
+        if (username == null || username.isBlank() || !hasForceAck()) return List.of();
+        ensureAckTable();
+        StringBuilder sql = new StringBuilder(
+                "SELECT n.* FROM sys_notice n WHERE n.force_ack=1");
+        if (hasAuditStatus()) {
+            sql.append(" AND (n.audit_status='approved' OR n.audit_status IS NULL OR n.audit_status='')");
+        }
+        if (hasExpireAt()) {
+            sql.append(" AND (n.expire_at IS NULL OR n.expire_at > NOW())");
+        }
+        if (hasAckTable != null && hasAckTable) {
+            sql.append(" AND NOT EXISTS (SELECT 1 FROM sys_notice_ack a WHERE a.notice_id=n.id AND a.username=?)");
+        }
+        sql.append(hasPinned() ? " ORDER BY n.pinned DESC, n.id DESC LIMIT 5" : " ORDER BY n.id DESC LIMIT 5");
+        if (hasAckTable != null && hasAckTable) {
+            return db().query(sql.toString(), (rs, i) -> row(rs), username.trim());
+        }
+        return db().query(sql.toString(), (rs, i) -> row(rs));
+    }
+
+    public static void ackForce(long noticeId, String username) {
+        if (username == null || username.isBlank()) return;
+        ensureAckTable();
+        if (hasAckTable == null || !hasAckTable) return;
+        db().update(
+                "INSERT IGNORE INTO sys_notice_ack (notice_id, username, acked_at) VALUES (?,?,NOW())",
+                noticeId, username.trim());
+    }
+
     public static Map<String, Object> page(int page, int size) {
         return page(page, size, false, null);
     }
 
-    /**
-     * @param approvedOnly 门户：仅已通过或无审核列/空状态；管理端传 false 看全部
-     * @param submitterOnly 非空时仅该提交人的公告（多店商家管理端）
-     */
     public static Map<String, Object> page(int page, int size, boolean approvedOnly) {
         return page(page, size, approvedOnly, null);
     }
@@ -266,6 +488,11 @@ public class NoticeStore {
         List<Object> args = new ArrayList<>();
         if (approvedOnly && hasAuditStatus()) {
             where.append(" WHERE (audit_status='approved' OR audit_status IS NULL OR audit_status='')");
+        }
+        if (approvedOnly && hasExpireAt()) {
+            if (where.length() == 0) where.append(" WHERE ");
+            else where.append(" AND ");
+            where.append("(expire_at IS NULL OR expire_at > NOW())");
         }
         if (submitterOnly != null && !submitterOnly.isBlank() && hasSubmitterUsername()) {
             if (where.length() == 0) where.append(" WHERE ");

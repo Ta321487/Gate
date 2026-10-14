@@ -1129,10 +1129,7 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "hireDept", "hire_dept", 64);
         patchOptStr(id, patch, "priceHistory", "price_history", 255);
         patchOptStr(id, patch, "vrUrl", "vr_url", 255);
-        if (patch.containsKey("foundAt")) {
-            if (!hasItemColumn("found_at")) {
-                throw new IllegalStateException("系统未配置该字段");
-            }
+        if (patch.containsKey("foundAt") && hasItemColumn("found_at")) {
             Timestamp ts = parseTs(patch.get("foundAt"));
             try {
                 db().update("UPDATE " + ITEM + " SET found_at=? WHERE id=?", ts, id);
@@ -1193,9 +1190,8 @@ public final class ArchiveStore {
 
     private static void patchOptStr(long id, Map<String, Object> patch, String key, String col, int max) {
         if (!patch.containsKey(key)) return;
-        if (!hasItemColumn(col)) {
-            throw new IllegalStateException("系统未配置该字段");
-        }
+        // 管理端常整表提交；本域未开的列直接忽略，禁止「系统未配置该字段」打断保存
+        if (!hasItemColumn(col)) return;
         String v = str(patch.get(key)).trim();
         if (max > 0 && v.length() > max) v = v.substring(0, max);
         try {
@@ -1207,9 +1203,7 @@ public final class ArchiveStore {
 
     private static void patchOptInt(long id, Map<String, Object> patch, String key, String col) {
         if (!patch.containsKey(key)) return;
-        if (!hasItemColumn(col)) {
-            throw new IllegalStateException("系统未配置该字段");
-        }
+        if (!hasItemColumn(col)) return;
         try {
             db().update("UPDATE " + ITEM + " SET `" + col + "`=? WHERE id=?", toInt(patch.get(key)), id);
         } catch (Exception e) {
@@ -1219,9 +1213,7 @@ public final class ArchiveStore {
 
     private static void patchOptNum(long id, Map<String, Object> patch, String key, String col) {
         if (!patch.containsKey(key)) return;
-        if (!hasItemColumn(col)) {
-            throw new IllegalStateException("系统未配置该字段");
-        }
+        if (!hasItemColumn(col)) return;
         try {
             double v = 0;
             Object raw = patch.get(key);
@@ -1239,6 +1231,13 @@ public final class ArchiveStore {
         if (softDeleteEnabled) {
             if (!hasDeletedAt()) {
                 throw new IllegalStateException("系统未配置下架字段，无法软删除");
+            }
+            // 手动下架同时记下 shelf_off，便于列表/编辑看到实际下架时刻
+            if (hasItemColumn("shelf_off")) {
+                return db().update(
+                                "UPDATE " + ITEM + " SET deleted_at=NOW(), shelf_off=NOW() WHERE id=? AND deleted_at IS NULL",
+                                id)
+                        > 0;
             }
             return db().update("UPDATE " + ITEM + " SET deleted_at=NOW() WHERE id=? AND deleted_at IS NULL", id) > 0;
         }
@@ -1259,6 +1258,19 @@ public final class ArchiveStore {
 
     public static boolean restoreItem(long id) {
         if (!hasDeletedAt()) return false;
+        // 重新上架：清软删；有定时列则记上架时刻并清已到期的下架预约，避免立刻再被扫下架
+        if (hasItemColumn("shelf_on") && hasItemColumn("shelf_off")) {
+            return db().update(
+                            "UPDATE " + ITEM
+                                    + " SET deleted_at=NULL, shelf_on=NOW(), shelf_off=NULL WHERE id=?",
+                            id)
+                    > 0;
+        }
+        if (hasItemColumn("shelf_on")) {
+            return db().update(
+                            "UPDATE " + ITEM + " SET deleted_at=NULL, shelf_on=NOW() WHERE id=?", id)
+                    > 0;
+        }
         return db().update("UPDATE " + ITEM + " SET deleted_at=NULL WHERE id=?", id) > 0;
     }
 
@@ -1612,13 +1624,7 @@ public final class ArchiveStore {
             where.append(" AND category_id=?");
             args.add(categoryId);
         }
-        if (keyword != null && !keyword.isBlank()) {
-            where.append(" AND (title LIKE ? OR " + authorColumn() + " LIKE ? OR " + isbnColumn() + " LIKE ?)");
-            String like = "%" + keyword.trim() + "%";
-            args.add(like);
-            args.add(like);
-            args.add(like);
-        }
+        appendKeywordSearch(where, args, keyword);
         if (artist != null && !artist.isBlank() && hasItemColumn("artist")) {
             where.append(" AND artist LIKE ?");
             args.add("%" + artist.trim() + "%");
@@ -2251,12 +2257,7 @@ public final class ArchiveStore {
             where.append(" AND category_id=?");
             args.add(categoryId);
         }
-        if (keyword != null && !keyword.isBlank()) {
-            where.append(" AND (title LIKE ? OR ").append(authorColumn()).append(" LIKE ?)");
-            String like = "%" + keyword.trim() + "%";
-            args.add(like);
-            args.add(like);
-        }
+        appendKeywordSearch(where, args, keyword);
         Integer total = db().queryForObject(
                 "SELECT COUNT(*) FROM " + ITEM + where, Integer.class, args.toArray());
         int t = total == null ? 0 : total;
@@ -3116,6 +3117,25 @@ public final class ArchiveStore {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** 关键词：名称/作者列/编号列；有产地、采摘日列时一并纳入（农产等开题可按产地/采摘检索）。 */
+    private static void appendKeywordSearch(StringBuilder where, List<Object> args, String keyword) {
+        if (keyword == null || keyword.isBlank()) return;
+        String like = "%" + keyword.trim() + "%";
+        List<String> cols = new ArrayList<>();
+        cols.add("title");
+        cols.add(authorColumn());
+        cols.add(isbnColumn());
+        if (hasItemColumn("region")) cols.add("region");
+        if (hasItemColumn("harvest_on")) cols.add("CAST(harvest_on AS CHAR)");
+        StringBuilder or = new StringBuilder();
+        for (String c : cols) {
+            if (or.length() > 0) or.append(" OR ");
+            or.append(c).append(" LIKE ?");
+            args.add(like);
+        }
+        where.append(" AND (").append(or).append(")");
     }
 
     private static boolean hasItemColumn(String col) {

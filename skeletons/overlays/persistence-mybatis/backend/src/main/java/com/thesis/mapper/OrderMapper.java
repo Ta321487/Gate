@@ -119,6 +119,9 @@ public interface OrderMapper {
             @Param("orderId") long orderId,
             @Param("ownerUsername") String ownerUsername);
 
+    @Select("SELECT COUNT(*) FROM `${lineTable}` WHERE order_id=#{orderId}")
+    int countOrderLines(@Param("lineTable") String lineTable, @Param("orderId") long orderId);
+
     List<Long> selectIdsByReservation(
             @Param("orderTable") String orderTable, @Param("reservationId") long reservationId);
 

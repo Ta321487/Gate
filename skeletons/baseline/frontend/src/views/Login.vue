@@ -51,14 +51,22 @@
             type="button"
             class="captcha-btn"
             :class="{ spinning: captchaSpin }"
-            title="点击刷新"
+            :title="labels.captchaRefreshHint || '点击刷新验证码'"
+            :aria-label="labels.captchaRefreshHint || '点击刷新验证码'"
             @click="loadCaptcha"
           >
-            <img v-if="captchaImg" :src="captchaImg" alt="验证码" />
+            <img v-if="captchaImg" :src="captchaImg" alt="验证码图片，点击可刷新" />
             <span v-else>加载中</span>
           </button>
         </div>
+        <p v-if="captchaFailHintOn" class="field-hint warn">{{ labels.captchaFailHint || '验证码多次错误，请看清后重试' }}</p>
       </label>
+      <div class="extras-row">
+        <el-checkbox v-model="form.remember">{{ labels.rememberLoginLabel || '记住登录' }}</el-checkbox>
+        <button type="button" class="linkish" @click="fillTrial">
+          {{ labels.trialLoginFillLabel || '填入试用账号' }}
+        </button>
+      </div>
       <el-button class="submit" type="primary" size="large" native-type="submit" :loading="loading">
         登录
       </el-button>
@@ -81,6 +89,8 @@
           <router-link :to="backHomePath">{{ backHomeLabel }}</router-link>
           <span class="sep">·</span>
         </template>
+        <router-link to="/forgot-password">{{ labels.forgotPasswordLink || '忘记密码' }}</router-link>
+        <span class="sep">·</span>
         <span>还没有账号？</span>
         <router-link to="/register">立即注册</router-link>
         <template v-if="orderShareOn">
@@ -118,7 +128,7 @@ import { APP_DELIVERED } from '../appDelivered.js'
 import { roleLabel, schemaLabels, getSchema } from '../utils/domainSchema.js'
 import { portalBrandHomePath } from '../utils/menuRoutes.js'
 import { homePathAfterLogin } from '../utils/staffPosts.js'
-import { isGuestBrowseEnabled } from '../utils/session.js'
+import { isGuestBrowseEnabled, setMustActivateEmail, setMustChangePassword } from '../utils/session.js'
 
 const props = defineProps({
   /** portal | admin | staff */
@@ -233,8 +243,9 @@ const authPoints = computed(() => {
 
 const captchaImg = ref('')
 const captchaSpin = ref(false)
+const captchaFailHintOn = ref(false)
 const loading = ref(false)
-const form = reactive({ username: '', password: '', captcha: '', loginAs: '' })
+const form = reactive({ username: '', password: '', captcha: '', loginAs: '', remember: false })
 
 watch(
   roleOptions,
@@ -262,7 +273,15 @@ function persist(user) {
   localStorage.setItem('superAdmin', String(!!user.superAdmin))
   localStorage.setItem('staffPost', user.staffPost || '')
   localStorage.setItem('staffKind', user.staffKind || '')
+  setMustChangePassword(!!user.mustChangePassword)
+  setMustActivateEmail(!!user.mustActivateEmail)
   import('../utils/session.js').then((m) => m.markSessionOk?.())
+}
+
+function fillTrial() {
+  form.username = 'user'
+  form.password = 'user123'
+  ElMessage.success(labels.trialLoginFillLabel || '已填入试用账号')
 }
 
 function defaultLoginAs() {
@@ -327,6 +346,7 @@ async function onLogin() {
       username: form.username,
       password: form.password,
       captcha: form.captcha,
+      remember: form.remember ? 'true' : 'false',
     }
     if (needLoginAs.value) {
       // split 门户无选择器时仍带 loginAs，防止跨端误登
@@ -334,6 +354,21 @@ async function onLogin() {
     }
     const res = await http.post('/api/auth/login', payload)
     persist(res.data)
+    captchaFailHintOn.value = false
+    if (res.data?.mustActivateEmail) {
+      ElMessage.warning(labels.mustActivateEmailHint || '请先用站内激活码完成账号激活')
+      router.replace({ path: '/activate', query: { u: form.username } })
+      return
+    }
+    if (res.data?.mustChangePassword) {
+      ElMessage.warning(labels.mustChangePasswordHint || '请先修改密码后再使用系统')
+      const redir = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+      router.replace({
+        path: '/force-change-password',
+        query: redir ? { redirect: redir } : {},
+      })
+      return
+    }
     ElMessage.success('登录成功')
     const redir = typeof route.query.redirect === 'string' ? route.query.redirect : ''
     if (
@@ -347,7 +382,11 @@ async function onLogin() {
       return
     }
     router.push(homePathAfterLogin(res.data))
-  } catch {
+  } catch (e) {
+    const msg = String(e?.response?.data?.message || e?.message || '')
+    if (msg.includes('多次') || msg.includes('验证码')) {
+      captchaFailHintOn.value = msg.includes('多次')
+    }
     form.captcha = ''
     loadCaptcha()
   } finally {
@@ -409,6 +448,21 @@ onMounted(async () => {
 <style scoped>
 .form { display: flex; flex-direction: column; gap: 14px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
+.extras-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.linkish {
+  border: 0;
+  background: transparent;
+  color: var(--portal-accent, #0b6e75);
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+}
 .lab {
   font-size: 13px;
   font-weight: 500;
@@ -438,6 +492,8 @@ onMounted(async () => {
   margin-right: 0;
   border-radius: var(--portal-radius-sm, 10px);
 }
+.field-hint { font-size: 0.8rem; color: var(--el-text-color-secondary); margin: 4px 0 0; }
+.field-hint.warn { color: var(--el-color-danger, #f56c6c); }
 .captcha-row { display: flex; gap: 10px; align-items: stretch; }
 .captcha-btn {
   width: 112px;

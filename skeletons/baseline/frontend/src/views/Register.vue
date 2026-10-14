@@ -46,8 +46,9 @@
               type="password"
               show-password
               autocomplete="new-password"
-              placeholder="至少 6 位"
+              :placeholder="strengthHint"
             />
+            <span class="field-hint">{{ strengthHint }}</span>
           </label>
           <label class="field">
             <span class="lab">确认密码<i class="req" aria-hidden="true">*</i></span>
@@ -59,6 +60,18 @@
               placeholder="再次输入密码"
             />
           </label>
+          <label class="field">
+            <span class="lab">{{ labels.securityQuestionLabel || '密保问题' }}</span>
+            <el-input v-model="form.securityQuestion" placeholder="选填，用于找回密码" />
+          </label>
+          <label class="field">
+            <span class="lab">{{ labels.securityAnswerLabel || '密保答案' }}</span>
+            <el-input v-model="form.securityAnswer" placeholder="选填" autocomplete="off" />
+          </label>
+          <label v-if="requireInvite" class="field">
+            <span class="lab">{{ labels.inviteCodeLabel || '邀请码' }}<i class="req" aria-hidden="true">*</i></span>
+            <el-input v-model="form.inviteCode" :placeholder="labels.inviteCodeHint || '请填写本校邀请码'" />
+          </label>
           <label class="field wide">
             <span class="lab">验证码<i class="req" aria-hidden="true">*</i></span>
             <div class="captcha-row">
@@ -67,13 +80,25 @@
                 type="button"
                 class="captcha-btn"
                 :class="{ spinning: captchaSpin }"
-                title="点击刷新"
+                :title="labels.captchaRefreshHint || '点击刷新验证码'"
+                :aria-label="labels.captchaRefreshHint || '点击刷新验证码'"
                 @click="loadCaptcha"
               >
-                <img v-if="captchaImg" :src="captchaImg" alt="验证码" />
+                <img v-if="captchaImg" :src="captchaImg" alt="验证码图片，点击可刷新" />
                 <span v-else>加载中</span>
               </button>
             </div>
+            <span v-if="captchaFailHintOn" class="field-hint warn">{{ labels.captchaFailHint || '验证码多次错误，请看清后重试' }}</span>
+          </label>
+          <label class="field wide agree">
+            <el-checkbox v-model="form.agreeTerms">
+              {{ labels.agreeTermsLabel || '我已阅读并同意用户协议与隐私政策' }}
+            </el-checkbox>
+            <span class="agree-links">
+              <router-link to="/agreement" target="_blank">用户协议</router-link>
+              ·
+              <router-link to="/privacy" target="_blank">隐私政策</router-link>
+            </span>
           </label>
         </div>
       </div>
@@ -125,14 +150,15 @@ import ProfileFieldInputs from '../components/ProfileFieldInputs.vue'
 import { pickAuthTemplate } from '../utils/authTemplates'
 import { APP_DELIVERED } from '../appDelivered.js'
 import { portalBrandHomePath } from '../utils/menuRoutes.js'
-import { isGuestBrowseEnabled } from '../utils/session.js'
+import { authPolicy, isGuestBrowseEnabled } from '../utils/session.js'
+import { checkPhone, validateProfileFormats as validateFormats } from '../utils/profileValidate.js'
 import {
   emptyProfileExtras,
   profileFieldsOnRegister,
   roleLabel,
   schemaLabels,
 } from '../utils/domainSchema.js'
-import { validateProfileFormats, isProfileFieldRequired, isProfileFieldVisible } from '../utils/profileValidate.js'
+import { isProfileFieldRequired, isProfileFieldVisible } from '../utils/profileValidate.js'
 
 const router = useRouter()
 const template = ref(pickAuthTemplate())
@@ -148,7 +174,9 @@ const title = ref(
 )
 const captchaImg = ref('')
 const captchaSpin = ref(false)
+const captchaFailHintOn = ref(false)
 const loading = ref(false)
+const requireInvite = computed(() => Number(authPolicy().requireInvite) > 0)
 const step = ref(1)
 const shopMarketplace = ref(false)
 const registerAudience = computed(() =>
@@ -174,6 +202,10 @@ const primaryLabel = computed(() => {
   if (hasProfileStep.value && step.value === 1) return '下一步'
   return '注册并去登录'
 })
+const minPwdLen = computed(() => Math.max(1, Number(authPolicy().passwordMinLength) || 6))
+const strengthHint = computed(
+  () => labels.passwordStrengthHint || `密码至少 ${minPwdLen.value} 位，建议包含字母和数字`,
+)
 
 const form = reactive({
   accountType: 'buyer',
@@ -182,7 +214,11 @@ const form = reactive({
   phone: '',
   password: '',
   confirmPassword: '',
+  securityQuestion: '',
+  securityAnswer: '',
   captcha: '',
+  inviteCode: '',
+  agreeTerms: false,
   extras: emptyProfileExtras(profileFieldsOnRegister()),
 })
 
@@ -222,12 +258,28 @@ function validateAccount() {
     ElMessage.warning('请填写用户名和密码')
     return false
   }
+  if (form.password.length < minPwdLen.value) {
+    ElMessage.warning(strengthHint.value)
+    return false
+  }
   if (form.password !== form.confirmPassword) {
     ElMessage.warning('两次密码不一致')
     return false
   }
+  if ((form.securityQuestion && !form.securityAnswer) || (!form.securityQuestion && form.securityAnswer)) {
+    ElMessage.warning('密保问题与答案需同时填写')
+    return false
+  }
+  if (requireInvite.value && !form.inviteCode.trim()) {
+    ElMessage.warning(labels.inviteCodeHint || '请填写本校邀请码')
+    return false
+  }
   if (!form.captcha) {
     ElMessage.warning('请填写验证码')
+    return false
+  }
+  if (!form.agreeTerms) {
+    ElMessage.warning('请先阅读并同意用户协议与隐私政策')
     return false
   }
   return true
@@ -247,9 +299,14 @@ function validateProfile() {
       return false
     }
   }
-  const fmt = validateProfileFormats(form.phone, form.extras)
+  const phoneErr = checkPhone(form.phone)
+  if (phoneErr) {
+    ElMessage.warning(labels.phoneFormatHint || phoneErr)
+    return false
+  }
+  const fmt = validateFormats(form.phone, form.extras)
   if (fmt) {
-    ElMessage.warning(fmt)
+    ElMessage.warning(fmt.includes('邮箱') ? (labels.emailFormatHint || fmt) : (labels.phoneFormatHint || fmt))
     return false
   }
   return true
@@ -273,19 +330,42 @@ async function onPrimary() {
       password: form.password,
       confirmPassword: form.confirmPassword,
       captcha: form.captcha,
+      inviteCode: form.inviteCode,
+      agreeTerms: form.agreeTerms ? 'true' : 'false',
       extras: form.extras,
+      securityQuestion: form.securityQuestion,
+      securityAnswer: form.securityAnswer,
     }
     if (shopMarketplace.value) {
       payload.accountType = form.accountType === 'merchant' ? 'merchant' : 'buyer'
     }
-    await http.post('/api/auth/register', payload)
+    const res = await http.post('/api/auth/register', payload)
+    captchaFailHintOn.value = false
     if (shopMarketplace.value && form.accountType === 'merchant') {
       ElMessage.success('已提交，待平台审核开通')
+    } else if (res.data?.mustActivateEmail || res.data?.activationCode) {
+      ElMessage.success(
+        res.data?.activationCode
+          ? `注册成功，站内激活码：${res.data.activationCode}`
+          : '注册成功，请使用站内激活码激活',
+      )
+      router.push({
+        path: '/activate',
+        query: {
+          u: form.username,
+          ...(res.data?.activationCode ? { code: res.data.activationCode } : {}),
+        },
+      })
+      return
     } else {
       ElMessage.success('注册成功，请登录')
     }
     router.push({ path: '/login', query: { u: form.username } })
-  } catch {
+  } catch (e) {
+    const msg = String(e?.response?.data?.message || e?.message || '')
+    if (msg.includes('手机号已被')) ElMessage.warning(labels.phoneDupHint || msg)
+    else if (msg.includes('学号') || msg.includes('工号')) ElMessage.warning(labels.studentNoDupHint || msg)
+    if (msg.includes('多次')) captchaFailHintOn.value = true
     form.captcha = ''
     step.value = 1
     loadCaptcha()
@@ -360,6 +440,11 @@ onMounted(async () => {
   grid-column: 1 / -1;
 }
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field-hint { font-size: 0.8rem; color: var(--el-text-color-secondary); }
+.field-hint.warn { color: var(--el-color-danger, #f56c6c); }
+.agree { gap: 6px; }
+.agree-links { font-size: 12px; color: var(--el-text-color-secondary); }
+.agree-links a { color: var(--portal-accent, #0b6e75); }
 .lab {
   font-size: 12px;
   font-weight: 500;

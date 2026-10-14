@@ -1538,7 +1538,9 @@ const bodyRich = computed(() => {
 const richRemark = computed(() => !!ticket.richRemark)
 const autoApprove = computed(() => !!ticket.autoApprove)
 const requireAttach = computed(() => !!ticket.requireAttach)
-const requireMaterial = computed(() => !!ticket.requireMaterialChecklist)
+const requireMaterial = computed(
+  () => !!ticket.requireMaterialChecklist || hasCap('material_check'),
+)
 const matRef = ref(null)
 const requireRemark = computed(() => !!ticket.requireRemark)
 const remarkLabel = computed(() => ticket.remarkLabel || '说明')
@@ -1583,6 +1585,7 @@ const needApplyDialog = computed(
   () =>
     richRemark.value
     || requireAttach.value
+    || requireMaterial.value
     || requireRemark.value
     || pickLoanPeriod.value
     || pickDateRange.value
@@ -1685,6 +1688,14 @@ const searchPlaceholder = computed(() => {
   const isbnF = fields.value.find((x) => x.key === 'isbn')
   if (isbnF && isbnF.type !== 'richtext' && isbnF.type !== 'hidden' && playUrlField.value !== 'isbn') {
     parts.push(isbnF.label || '编号')
+  }
+  const regionF = fields.value.find((x) => x.key === 'region')
+  if (regionF && regionF.type !== 'hidden') {
+    parts.push(regionF.label || '产地')
+  }
+  const harvestF = fields.value.find((x) => x.key === 'harvest_on')
+  if (harvestF && harvestF.type !== 'hidden') {
+    parts.push(harvestF.label || '采摘时间')
   }
   const base = `搜索${parts.join(' / ')}`
   if (titleSuggestOn.value && searchSuggestHint.value) {

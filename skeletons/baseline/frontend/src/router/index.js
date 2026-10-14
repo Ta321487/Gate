@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
+import ForgotPassword from '../views/ForgotPassword.vue'
+import ForceChangePassword from '../views/ForceChangePassword.vue'
 import Home from '../views/Home.vue'
 import Profile from '../views/Profile.vue'
 import Notices from '../views/Notices.vue'
@@ -1054,6 +1056,10 @@ const ticketRoutes = [
       { path: 'tickets', component: () => import('../views/admin/TicketsAdmin.vue') },
       { path: 'ticket-records', component: () => import('../views/admin/TicketRecordsAdmin.vue') },
       { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
+      { path: 'online-sessions', component: () => import('../views/admin/OnlineSessionsAdmin.vue') },
+      { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
+      { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
+      { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'sites', component: () => import('../views/admin/LookupSitesAdmin.vue') },
       { path: 'types', component: () => import('../views/admin/LookupTypesAdmin.vue') },
@@ -1095,6 +1101,10 @@ const archiveTicketRoutes = [
       { path: 'ticket-records', component: () => import('../views/admin/TicketRecordsAdmin.vue') },
       { path: 'overdue', component: () => import('../views/admin/OverdueAdmin.vue') },
       { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
+      { path: 'online-sessions', component: () => import('../views/admin/OnlineSessionsAdmin.vue') },
+      { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
+      { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
+      { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
@@ -1131,6 +1141,10 @@ const orderRoutes = [
       { path: 'categories', component: () => import('../views/admin/CategoriesAdmin.vue') },
       { path: 'orders', component: () => import('../views/admin/OrdersAdmin.vue') },
       { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
+      { path: 'online-sessions', component: () => import('../views/admin/OnlineSessionsAdmin.vue') },
+      { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
+      { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
+      { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
@@ -1173,6 +1187,10 @@ const slotRoutes = [
       { path: 'parking-passes', component: () => import('../views/admin/ParkingPassAdmin.vue') },
       { path: 'orders', component: () => import('../views/admin/OrdersAdmin.vue') },
       { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
+      { path: 'online-sessions', component: () => import('../views/admin/OnlineSessionsAdmin.vue') },
+      { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
+      { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
+      { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
@@ -1205,6 +1223,10 @@ const archiveOnlyRoutes = [
       { path: 'archive', component: () => import('../views/admin/ArchiveAdmin.vue') },
       { path: 'categories', component: () => import('../views/admin/CategoriesAdmin.vue') },
       { path: 'users', component: () => import('../views/admin/UsersAdmin.vue') },
+      { path: 'online-sessions', component: () => import('../views/admin/OnlineSessionsAdmin.vue') },
+      { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
+      { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
+      { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
@@ -1522,6 +1544,11 @@ const router = createRouter({
   routes: [
     { path: '/admin/login', component: Login, props: { entrySide: 'admin' } },
     { path: '/staff/login', component: Login, props: { entrySide: 'staff' } },
+    { path: '/forgot-password', component: ForgotPassword },
+    { path: '/force-change-password', component: ForceChangePassword },
+    { path: '/activate', component: () => import('../views/ActivateAccount.vue') },
+    { path: '/agreement', component: () => import('../views/Agreement.vue') },
+    { path: '/privacy', component: () => import('../views/Privacy.vue') },
     ...pickRoutes(),
     ...specialRoutes,
   ],
@@ -1532,6 +1559,7 @@ const publicPaths = new Set([
   '/admin/login',
   '/staff/login',
   '/register',
+  '/forgot-password',
   '/cert-verify',
   '/error',
   '/loading',
@@ -1598,6 +1626,21 @@ router.beforeEach(async (to, _from, next) => {
       return
     }
     next(loginPathForRole(role, staffKind))
+    return
+  }
+  const { mustChangePassword, mustActivateEmail } = await import('../utils/session.js')
+  if (mustChangePassword() && to.path !== '/force-change-password') {
+    next({
+      path: '/force-change-password',
+      query: to.path === '/force-change-password' ? {} : { redirect: to.fullPath },
+    })
+    return
+  }
+  if (mustActivateEmail() && to.path !== '/activate') {
+    next({
+      path: '/activate',
+      query: { u: localStorage.getItem('username') || '' },
+    })
     return
   }
   next()

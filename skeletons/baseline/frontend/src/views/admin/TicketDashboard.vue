@@ -4,7 +4,20 @@
       <h2>工作台</h2>
       <p>{{ adminLabel }}概览、待办与统计分析。</p>
       <p v-if="configHint" class="cfg-hint">{{ configHint }}</p>
+      <p v-if="scopedHint" class="cfg-hint">{{ scopedHint }}</p>
     </header>
+
+    <section v-if="shortcuts.length" class="shortcuts card">
+      <h3>{{ shortcutsTitle }}</h3>
+      <div class="shortcut-row">
+        <el-button
+          v-for="s in shortcuts"
+          :key="s.key"
+          plain
+          @click="go(s.to)"
+        >{{ s.label }}</el-button>
+      </div>
+    </section>
 
     <div class="stats" :style="{ gridTemplateColumns: `repeat(${Math.min(cards.length, 4)}, 1fr)` }">
       <div
@@ -161,6 +174,7 @@ import { useRouter } from 'vue-router'
 import http from '../../api/http'
 import { getSchema, menuLabel, roleLabel, ticketCopy, reservationCopy, orderStatusLabel, reservationStatusLabel, ticketStatusLabel } from '../../utils/domainSchema.js'
 import { adminNavPath, currentStaffPost, staffPostLabel } from '../../utils/staffPosts.js'
+import { adminMenuPath } from '../../utils/menuRoutes.js'
 import DashboardCharts from '../../components/DashboardCharts.vue'
 import { downloadCsv } from '../../utils/csvDownload.js'
 
@@ -186,6 +200,26 @@ function go(path) {
 const missingCheckinLabel = computed(
   () => getSchema()?.labels?.archiveLogMissingTitle || '今日未登记',
 )
+const shortcutsTitle = computed(
+  () => getSchema()?.labels?.dashShortcutsTitle || '常用入口',
+)
+const scopedHint = computed(() => {
+  if (!data.value?.todoScopedByRole) return ''
+  return getSchema()?.labels?.dashScopedHint || '当前账号仅统计本人相关处理中单据'
+})
+const shortcuts = computed(() => {
+  const raw = getSchema()?.workbench?.shortcuts
+  if (!Array.isArray(raw) || !raw.length) return []
+  return raw
+    .map((s) => {
+      const key = String(s?.key || '')
+      const path = adminMenuPath(key)
+      const to = path ? adminNavPath(path) : ''
+      if (!to) return null
+      return { key, label: s.label || key, to }
+    })
+    .filter(Boolean)
+})
 const showOverdue = computed(() => caps.value.includes('deadline'))
 const showArchive = computed(() => caps.value.includes('archive') && data.value.bookTotal != null)
 const ticket = computed(() => ticketCopy() || {})
@@ -275,7 +309,12 @@ const cards = computed(() => {
   const list = []
     if (caps.value.includes('order_lines')) {
     list.push(
-      { key: 'op', label: orderPendingLabel.value, value: data.value.pendingOrders ?? '—' },
+      {
+        key: 'op',
+        label: orderPendingLabel.value,
+        value: data.value.pendingOrders ?? '—',
+        ...withNav('/admin/orders'),
+      },
       { key: 'oc', label: orderConfirmedLabel.value, value: data.value.confirmedOrders ?? '—' },
       { key: 'os', label: orderShippedLabel.value, value: data.value.shippedOrders ?? '—' },
       { key: 'od', label: orderCompletedLabel.value, value: data.value.completedOrders ?? '—' },
@@ -301,11 +340,13 @@ const cards = computed(() => {
         key: 'rp',
         label: reservationStatusLabel('pending', `待确认${reservationLabel.value}`),
         value: data.value.pendingReservations ?? '—',
+        ...withNav('/admin/reservations'),
       },
       {
         key: 'rc',
         label: reservationStatusLabel('confirmed', `已确认${reservationLabel.value}`),
         value: data.value.confirmedReservations ?? '—',
+        ...withNav('/admin/reservations'),
       },
       {
         key: 'rd',
@@ -315,10 +356,20 @@ const cards = computed(() => {
     )
   } else if (caps.value.includes('ticket_flow')) {
     list.push(
-      { key: 'pending', label: ticketPendingLabel.value, value: data.value.pendingTickets ?? '—' },
+      {
+        key: 'pending',
+        label: ticketPendingLabel.value,
+        value: data.value.pendingTickets ?? '—',
+        ...withNav('/admin/tickets'),
+      },
     )
     if (!approveEndsFlow.value) {
-      list.push({ key: 'active', label: ticketActiveLabel.value, value: data.value.activeTickets ?? '—' })
+      list.push({
+        key: 'active',
+        label: ticketActiveLabel.value,
+        value: data.value.activeTickets ?? '—',
+        ...withNav('/admin/ticket-records'),
+      })
       list.push({ key: 'done', label: ticketDoneLabel.value, value: data.value.completedTickets ?? '—' })
       list.push({
         key: 'rejected',
@@ -328,7 +379,12 @@ const cards = computed(() => {
       })
     } else {
       list.push(
-        { key: 'approved', label: ticketApprovedLabel.value, value: data.value.approvedTickets ?? '—' },
+        {
+          key: 'approved',
+          label: ticketApprovedLabel.value,
+          value: data.value.approvedTickets ?? '—',
+          ...withNav('/admin/ticket-records'),
+        },
         {
           key: 'rejected',
           label: rejectedLabel.value,
@@ -340,8 +396,25 @@ const cards = computed(() => {
     }
     if (showOverdue.value && Number(data.value.overdueBorrow) > 0) {
       const insertAt = approveEndsFlow.value ? 1 : 2
-      list.splice(insertAt, 0, { key: 'overdue', label: '逾期', value: data.value.overdueBorrow })
+      list.splice(insertAt, 0, {
+        key: 'overdue',
+        label: '逾期',
+        value: data.value.overdueBorrow,
+        ...withNav('/admin/overdue'),
+      })
     }
+  }
+  if (data.value.pvToday != null || data.value.pvTotal != null) {
+    list.push({
+      key: 'pvToday',
+      label: getSchema()?.labels?.dashPvTitle || '今日访问',
+      value: data.value.pvToday ?? 0,
+    })
+    list.push({
+      key: 'pvTotal',
+      label: getSchema()?.labels?.dashPvTotalLabel || '累计访问',
+      value: data.value.pvTotal ?? 0,
+    })
   }
   list.push({ key: 'users', label: userLabel.value + '数', value: data.value.userTotal ?? '—' })
   if (ticket.value.allowRating && data.value.avgRating != null) {
@@ -392,6 +465,9 @@ onMounted(load)
 .hd h2 { margin: 0 0 6px; font-size: 20px; }
 .hd p { margin: 0; color: var(--portal-muted, #8a9aa6); font-size: 13px; }
 .hd .cfg-hint { margin-top: 6px; font-size: 12px; color: var(--portal-accent, #0b6e75); }
+.shortcuts { margin-bottom: 14px; }
+.shortcuts h3 { margin: 0 0 10px; font-size: 15px; }
+.shortcut-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

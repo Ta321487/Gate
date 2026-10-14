@@ -17,7 +17,7 @@
     </el-table>
     <p v-if="!queue.length" class="empty">暂无待阅答卷。</p>
 
-    <el-dialog v-model="visible" title="教师打分" width="640px">
+    <el-dialog v-model="visible" title="教务主管打分" width="640px">
       <div v-for="q in questions" :key="q.questionId" class="q">
         <p><strong>[{{ typeLabel(q.type) }}]</strong> {{ q.stem }}（满分 {{ q.maxScore }}）</p>
         <p v-if="q.type === 'subjective'" class="ref">参考答案：{{ q.answerKey || '（无）' }}</p>

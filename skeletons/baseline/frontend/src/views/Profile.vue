@@ -116,8 +116,16 @@
             <el-input
               v-else-if="f.storage === 'phone'"
               v-model="form.phone"
+              disabled
               :maxlength="f.maxLength || 20"
               :placeholder="f.placeholder || '手机号'"
+            />
+            <el-input
+              v-else-if="f.key === 'email'"
+              v-model="form.extras[f.key]"
+              disabled
+              :maxlength="f.maxLength || 64"
+              :placeholder="f.placeholder || f.label"
             />
             <el-input
               v-else
@@ -180,7 +188,7 @@
               type="password"
               show-password
               autocomplete="new-password"
-              placeholder="至少 6 位"
+              :placeholder="strengthHint"
             />
           </el-form-item>
           <el-form-item label="确认密码">
@@ -192,13 +200,109 @@
               placeholder="再次输入"
             />
           </el-form-item>
+          <p class="pwd-hint">{{ strengthHint }}</p>
         </div>
+      </section>
+
+      <section class="card block">
+        <h2 class="block-title">
+          {{ labels.securityQuestionLabel || '密保问题' }}
+          <span class="hint">用于找回密码；不改请留空</span>
+        </h2>
+        <div class="grid">
+          <el-form-item :label="labels.securityQuestionLabel || '密保问题'" class="wide">
+            <el-input v-model="form.securityQuestion" :placeholder="hasSecurityQuestion ? '已设置，填写则覆盖' : '选填'" />
+          </el-form-item>
+          <el-form-item :label="labels.securityAnswerLabel || '密保答案'" class="wide">
+            <el-input v-model="form.securityAnswer" placeholder="填写问题后必填" autocomplete="off" />
+          </el-form-item>
+        </div>
+      </section>
+
+      <section v-if="form.profileEditable" class="card block">
+        <h2 class="block-title">改绑手机 / 邮箱 <span class="hint">{{ labels.changeContactHint || '修改手机号或邮箱需填写验证码' }}</span></h2>
+        <div class="grid">
+          <el-form-item label="改绑字段">
+            <el-select v-model="contactField" style="width: 100%">
+              <el-option label="手机号" value="phone" />
+              <el-option label="邮箱" value="email" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="新值">
+            <el-input v-model="contactValue" :placeholder="contactField === 'phone' ? (labels.phoneFormatHint || '11 位手机号') : (labels.emailFormatHint || '邮箱')" />
+          </el-form-item>
+          <el-form-item label="验证码" class="wide">
+            <div class="captcha-row">
+              <el-input v-model="contactCaptcha" maxlength="4" placeholder="验证码" />
+              <button
+                type="button"
+                class="captcha-btn"
+                :aria-label="labels.captchaRefreshHint || '点击刷新验证码'"
+                @click="loadContactCaptcha"
+              >
+                <img v-if="contactCaptchaImg" :src="contactCaptchaImg" alt="验证码图片，点击可刷新" />
+                <span v-else>加载</span>
+              </button>
+            </div>
+          </el-form-item>
+        </div>
+        <el-button type="primary" plain :loading="contactSaving" @click="submitContact">提交改绑</el-button>
+      </section>
+
+      <section v-if="form.profileEditable" class="card block">
+        <h2 class="block-title">实名确认</h2>
+        <el-checkbox v-model="form.realNameAcked" :label="labels.realNameAckLabel || '我确认以上姓名信息属实'" />
+        <p class="hint">非公安核验，仅本系统内勾选确认。</p>
       </section>
 
       <div v-if="form.profileEditable" class="actions">
         <el-button type="primary" size="large" :loading="saving" @click="save">保存修改</el-button>
       </div>
     </el-form>
+
+    <section v-if="myDocLinks.length" class="card block">
+      <h2 class="block-title">{{ labels.myDocsTitle || '我的单据' }}</h2>
+      <div class="doc-links">
+        <el-button
+          v-for="d in myDocLinks"
+          :key="d.key"
+          plain
+          @click="router.push(d.to)"
+        >{{ d.label }}</el-button>
+      </div>
+      <p v-if="!myDocLinks.length" class="hint">{{ labels.myDocsEmptyHint || '暂无关联业务入口' }}</p>
+    </section>
+
+    <section class="card block">
+      <h2 class="block-title">最近登录 <span class="hint">{{ labels.remoteLoginHint || '' }}</span></h2>
+      <el-table :data="loginLogs" size="small" stripe empty-text="暂无登录记录">
+        <el-table-column prop="createdAt" label="时间" width="170" />
+        <el-table-column prop="geoHint" label="来源" width="100" />
+        <el-table-column prop="ip" label="IP" width="130" />
+        <el-table-column prop="userAgent" label="设备" min-width="160" show-overflow-tooltip />
+      </el-table>
+    </section>
+
+    <section class="card block">
+      <h2 class="block-title">登录设备</h2>
+      <el-table :data="mySessions" size="small" stripe empty-text="暂无在线会话">
+        <el-table-column prop="createdAt" label="登录时间" width="170" />
+        <el-table-column prop="ip" label="IP" width="130" />
+        <el-table-column prop="userAgent" label="设备" min-width="160" show-overflow-tooltip />
+        <el-table-column label="操作" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.current" size="small">当前</el-tag>
+            <el-button v-else link type="danger" @click="kickSession(row)">下线</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </section>
+
+    <section v-if="form.profileEditable" class="card block">
+      <h2 class="block-title">{{ labels.cancelAccountLabel || '申请注销账号' }}</h2>
+      <el-input v-model="cancelReason" type="textarea" :rows="2" placeholder="说明注销原因（选填）" />
+      <el-button class="mt" type="danger" plain :loading="cancelSaving" @click="submitCancel">提交申请</el-button>
+    </section>
 
     <el-dialog v-model="rechargeVisible" title="账户充值" width="400px" destroy-on-close>
       <p class="loy-hint">选择充值金额，即时到账。</p>
@@ -221,7 +325,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../api/http'
 import {
   anyLoyaltyEnabled,
@@ -234,14 +338,16 @@ import {
   profileFieldsForAudience,
   getSchema,
   roleLabel,
+  schemaLabels,
 } from '../utils/domainSchema.js'
 import {
   validateProfileFormats,
   isProfileFieldRequired,
   isProfileFieldVisible,
 } from '../utils/profileValidate.js'
-import { clearAuthStorage, loginPathForRole, syncProfileDisplay } from '../utils/session.js'
+import { authPolicy, clearAuthStorage, loginPathForRole, setMustChangePassword, syncProfileDisplay } from '../utils/session.js'
 import { memberTierTone } from '../utils/statusTone.js'
+import { userMenuPath } from '../utils/menuRoutes.js'
 
 const BASIC_KEYS = new Set(['realName', 'phone', 'email', 'gender'])
 const WIDE_KEYS = new Set([
@@ -249,6 +355,26 @@ const WIDE_KEYS = new Set([
   'skinOrPrefer', 'usualPlace', 'labOrOffice', 'officeLoc', 'workUnit', 'orgName', 'orgOrClub',
 ])
 const router = useRouter()
+const labels = schemaLabels()
+/** XD-02：个人中心单据聚合——仅终端买家；管理/商家岗走工作台，不展示「我的订单」等买家入口 */
+const myDocLinks = computed(() => {
+  if (audience.value !== 'user') return []
+  const raw = getSchema()?.workbench?.myDocs
+  if (!Array.isArray(raw) || !raw.length) return []
+  return raw
+    .map((d) => {
+      const key = String(d?.key || '')
+      const to = userMenuPath(key)
+      if (!to) return null
+      return { key, label: d.label || key, to }
+    })
+    .filter(Boolean)
+})
+const minPwdLen = computed(() => Math.max(1, Number(authPolicy().passwordMinLength) || 6))
+const strengthHint = computed(
+  () => labels.passwordStrengthHint || `密码至少 ${minPwdLen.value} 位，建议包含字母和数字`,
+)
+const hasSecurityQuestion = ref(false)
 const saving = ref(false)
 const loyalty = ref(null)
 const pointsLedger = ref([])
@@ -307,8 +433,21 @@ const form = reactive({
   oldPassword: '',
   newPassword: '',
   confirmPassword: '',
+  securityQuestion: '',
+  securityAnswer: '',
+  realNameAcked: false,
   profileEditable: true,
 })
+
+const contactField = ref('phone')
+const contactValue = ref('')
+const contactCaptcha = ref('')
+const contactCaptchaImg = ref('')
+const contactSaving = ref(false)
+const loginLogs = ref([])
+const mySessions = ref([])
+const cancelReason = ref('')
+const cancelSaving = ref(false)
 
 const displayName = computed(() =>
   form.extras?.realName || form.nickname || form.username || '未设置姓名',
@@ -388,6 +527,7 @@ function clearPasswords() {
   form.oldPassword = ''
   form.newPassword = ''
   form.confirmPassword = ''
+  form.securityAnswer = ''
 }
 
 function goBack() {
@@ -439,7 +579,11 @@ async function load() {
     ...emptyProfileExtras(profileFieldsForAudience(profileAudienceOf())),
     ...(data.extras || {}),
   }
+  hasSecurityQuestion.value = !!data.hasSecurityQuestion
+  form.realNameAcked = !!data.realNameAcked
+  form.securityQuestion = ''
   clearPasswords()
+  if (data.mustChangePassword != null) setMustChangePassword(!!data.mustChangePassword)
   if (showBuyerLoyalty.value) {
     try {
       const loy = await http.get('/api/loyalty/me')
@@ -452,6 +596,89 @@ async function load() {
   } else {
     loyalty.value = null
     pointsLedger.value = []
+  }
+  await Promise.all([loadLoginLogs(), loadMySessions(), loadContactCaptcha()])
+}
+
+async function loadLoginLogs() {
+  try {
+    const res = await http.get('/api/auth/login-logs')
+    loginLogs.value = res.data || []
+  } catch {
+    loginLogs.value = []
+  }
+}
+
+async function loadMySessions() {
+  try {
+    const res = await http.get('/api/auth/my-sessions')
+    mySessions.value = res.data || []
+  } catch {
+    mySessions.value = []
+  }
+}
+
+async function loadContactCaptcha() {
+  try {
+    const res = await http.get('/api/auth/captcha')
+    contactCaptchaImg.value = res.data?.image || ''
+  } catch {
+    contactCaptchaImg.value = ''
+  }
+}
+
+async function submitContact() {
+  if (!contactValue.value.trim()) {
+    ElMessage.warning('请填写新的手机号或邮箱')
+    return
+  }
+  if (!contactCaptcha.value) {
+    ElMessage.warning('请填写验证码')
+    return
+  }
+  contactSaving.value = true
+  try {
+    const res = await http.post('/api/profile/change-contact', {
+      field: contactField.value,
+      value: contactValue.value.trim(),
+      captcha: contactCaptcha.value,
+    })
+    const data = res.data || {}
+    form.phone = data.phone || form.phone
+    form.extras = {
+      ...emptyProfileExtras(profileFieldsForAudience(profileAudienceOf())),
+      ...(data.extras || {}),
+    }
+    contactValue.value = ''
+    contactCaptcha.value = ''
+    ElMessage.success('已更新')
+    loadContactCaptcha()
+  } catch {
+    contactCaptcha.value = ''
+    loadContactCaptcha()
+  } finally {
+    contactSaving.value = false
+  }
+}
+
+async function kickSession(row) {
+  await ElMessageBox.confirm('确定将该设备下线？', '提示', { type: 'warning' })
+  await http.post(`/api/auth/my-sessions/${encodeURIComponent(row.sessionId)}/kick`)
+  ElMessage.success('已下线')
+  loadMySessions()
+}
+
+async function submitCancel() {
+  await ElMessageBox.confirm('提交后需管理员审核，通过后账号将停用。确定继续？', '注销申请', {
+    type: 'warning',
+  })
+  cancelSaving.value = true
+  try {
+    await http.post('/api/profile/cancel-request', { reason: cancelReason.value })
+    ElMessage.success('已提交注销申请')
+    cancelReason.value = ''
+  } finally {
+    cancelSaving.value = false
   }
 }
 
@@ -484,8 +711,8 @@ async function save() {
       ElMessage.warning('请填写新密码')
       return
     }
-    if (form.newPassword.length < 6) {
-      ElMessage.warning('新密码至少 6 位')
+    if (form.newPassword.length < minPwdLen.value) {
+      ElMessage.warning(strengthHint.value)
       return
     }
     if (form.newPassword !== form.confirmPassword) {
@@ -493,17 +720,26 @@ async function save() {
       return
     }
   }
+  if ((form.securityQuestion && !form.securityAnswer) || (!form.securityQuestion && form.securityAnswer)) {
+    ElMessage.warning('密保问题与答案需同时填写')
+    return
+  }
   saving.value = true
   try {
     const body = {
       nickname: form.nickname,
       phone: form.phone,
       extras: form.extras,
+      realNameAcked: !!form.realNameAcked,
     }
     if (changingPwd) {
       body.oldPassword = form.oldPassword
       body.newPassword = form.newPassword
       body.confirmPassword = form.confirmPassword
+    }
+    if (form.securityQuestion && form.securityAnswer) {
+      body.securityQuestion = form.securityQuestion
+      body.securityAnswer = form.securityAnswer
     }
     const res = await http.put('/api/profile', body)
     const data = res.data || {}
@@ -522,6 +758,8 @@ async function save() {
     form.phone = data.phone || form.phone
     form.nickname = data.nickname || form.nickname
     form.avatarUrl = data.avatarUrl || form.avatarUrl
+    hasSecurityQuestion.value = !!data.hasSecurityQuestion
+    form.securityQuestion = ''
     clearPasswords()
     syncProfileDisplay({ nickname: form.nickname, avatarUrl: form.avatarUrl })
     ElMessage.success('已保存')
@@ -718,6 +956,12 @@ onMounted(load)
   gap: 8px;
   margin-top: 12px;
 }
+.pwd-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--el-text-color-secondary);
+}
 .block-title {
   display: flex;
   align-items: baseline;
@@ -729,6 +973,21 @@ onMounted(load)
   font-weight: 650;
   color: var(--portal-ink, #15202b);
 }
+.captcha-row { display: flex; gap: 8px; align-items: center; }
+.captcha-btn {
+  width: 104px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--portal-line, #d5dde3);
+  border-radius: 8px;
+  background: #fff;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+}
+.captcha-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.doc-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.mt { margin-top: 12px; }
 .block-title .hint {
   font-size: 12px;
   font-weight: 400;

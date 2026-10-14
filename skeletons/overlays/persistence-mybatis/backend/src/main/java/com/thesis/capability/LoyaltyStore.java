@@ -98,6 +98,11 @@ public final class LoyaltyStore {
         OFFSET_POINTS.remove();
     }
 
+    /** 下单拆单等：窥视是否勾了积分抵扣（不消费）。 */
+    public static Integer peekOffsetPoints() {
+        return OFFSET_POINTS.get();
+    }
+
     public static boolean anyEnabled() {
         return walletEnabled || pointsEnabled || spendDiscountEnabled || memberTierEnabled || couponEnabled;
     }

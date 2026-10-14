@@ -22,9 +22,10 @@ public class MessageController {
     public R<Map<String, Object>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "all") String kind,
             HttpSession session) {
         String uid = AdminAuth.requireLogin(session);
-        return R.ok(MessageStore.page(uid, page, size));
+        return R.ok(MessageStore.page(uid, page, size, kind));
     }
 
     @GetMapping("/unread-count")
@@ -50,5 +51,15 @@ public class MessageController {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("updated", MessageStore.markAllRead(uid));
         return R.ok(m);
+    }
+
+    /** XM-01：软删本人站内信。 */
+    @DeleteMapping("/{id}")
+    public R<Void> softDelete(@PathVariable long id, HttpSession session) {
+        String uid = AdminAuth.requireLogin(session);
+        if (!MessageStore.softDelete(uid, id)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "消息不存在");
+        }
+        return R.ok(null);
     }
 }

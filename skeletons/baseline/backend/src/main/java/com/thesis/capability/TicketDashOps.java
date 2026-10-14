@@ -27,6 +27,14 @@ final class TicketDashOps {
     private TicketDashOps() {}
 
     static Map<String, Object> dashboard(String readerRole) {
+        return dashboard(readerRole, null, true);
+    }
+
+    /**
+     * @param scopeUid 非超管时：处理中/逾期只计本人 assignee（待办池仍全员可见）
+     * @param superAdmin 超管不过滤
+     */
+    static Map<String, Object> dashboard(String readerRole, String scopeUid, boolean superAdmin) {
         if (!TicketStore.enabled) {
             Map<String, Object> empty = new LinkedHashMap<>();
             empty.put("pendingTickets", 0);
@@ -34,6 +42,7 @@ final class TicketDashOps {
             empty.put("completedTickets", 0);
             empty.put("rejectedTickets", 0);
             empty.put("approveEndsFlow", TicketStore.approveEndsFlow);
+            empty.put("todoScopedByRole", false);
             empty.put("userTotal", UserStore.countByRole(
                     readerRole == null || readerRole.isBlank() ? TicketStore.userRole : readerRole));
             empty.put("bookTotal", ArchiveStore.countItems());
@@ -42,6 +51,10 @@ final class TicketDashOps {
             return empty;
         }
         String role = readerRole == null || readerRole.isBlank() ? TicketStore.userRole : readerRole;
+        boolean scopeActive = !superAdmin
+                && scopeUid != null
+                && !scopeUid.isBlank()
+                && TicketStore.hasColumn("assignee_username");
         if (TicketStore.useDeadline) {
             TicketSql.db().query("SELECT * FROM " + TicketStore.TICKET + " WHERE status IN ('approved','overdue')",
                     (rs, i) -> {
@@ -52,10 +65,28 @@ final class TicketDashOps {
         }
         Long pending = TicketSql.db().queryForObject(
                 "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status IN ('pending','pending_mid','pending_final')", Long.class);
-        Long approved = TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='approved'", Long.class);
-        Long overdue = TicketStore.useDeadline || TicketStore.noShowAfterEnd
-                ? TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='overdue'", Long.class)
-                : 0L;
+        Long approved;
+        if (scopeActive) {
+            approved = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='approved' AND assignee_username=?",
+                    Long.class, scopeUid.trim());
+        } else {
+            approved = TicketSql.db().queryForObject(
+                    "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='approved'", Long.class);
+        }
+        Long overdue;
+        if (TicketStore.useDeadline || TicketStore.noShowAfterEnd) {
+            if (scopeActive) {
+                overdue = TicketSql.db().queryForObject(
+                        "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='overdue' AND assignee_username=?",
+                        Long.class, scopeUid.trim());
+            } else {
+                overdue = TicketSql.db().queryForObject(
+                        "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='overdue'", Long.class);
+            }
+        } else {
+            overdue = 0L;
+        }
         Long returned = TicketSql.db().queryForObject("SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='returned'", Long.class);
         Long rejected = TicketSql.db().queryForObject(
                 "SELECT COUNT(*) FROM " + TicketStore.TICKET + " WHERE status='rejected'", Long.class);
@@ -79,6 +110,7 @@ final class TicketDashOps {
         m.put("completedTickets", completed);
         m.put("rejectedTickets", rejected == null ? 0 : rejected);
         m.put("approveEndsFlow", TicketStore.approveEndsFlow);
+        m.put("todoScopedByRole", scopeActive);
         m.put("userTotal", UserStore.countByRole(role));
         m.put("pendingBorrow", pending == null ? 0 : pending);
         m.put("onLoan", TicketStore.approveEndsFlow ? 0 : (approved == null ? 0 : approved));

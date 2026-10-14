@@ -24,8 +24,8 @@
             :style="mallBannerStyle"
           >
             <div v-if="!mallBannerSrc" class="mall-banner-fallback">
-              <p class="mall-banner-kicker">{{ appName }}</p>
-              <p class="mall-banner-lead">{{ lead }}</p>
+              <p class="mall-banner-kicker">{{ mallBannerTitle }}</p>
+              <p class="mall-banner-lead">{{ mallBannerLead }}</p>
             </div>
           </div>
         </section>
@@ -77,6 +77,7 @@
       <section class="hero">
         <h1>{{ appName }}</h1>
         <p>{{ lead }}</p>
+        <p v-if="industrySkinHint" class="skin-hint">{{ industrySkinHint }}</p>
       </section>
 
       <section class="grid" aria-label="功能入口">
@@ -183,6 +184,7 @@ import { isGuestBrowseEnabled, isLoggedIn, requireLogin } from '../../utils/sess
 const router = useRouter()
 const labels = schemaLabels()
 const appName = labels.appName || APP_DELIVERED.title || '业务门户'
+const industrySkinHint = computed(() => String(labels.industrySkinHint || '').trim())
 const lead = computed(
   () =>
     labels.portalHomeLead ||
@@ -220,15 +222,35 @@ const claimText = computed(
     appName,
 )
 
+/** 管理端 sys_banner（slot=home）优先，bake 静态 portalBanners 垫底；与 PortalCarousel 同源 */
+const apiBanners = ref([])
 const banners = computed(() => {
-  const list = APP_DELIVERED?.portalBanners
-  return Array.isArray(list) ? list.filter((x) => x && x.src) : []
+  const baked = Array.isArray(APP_DELIVERED?.portalBanners) ? APP_DELIVERED.portalBanners : []
+  const fromApi = apiBanners.value.map((b) => ({
+    src: b.src || b.imageUrl || '',
+    title: b.title || '',
+    lead: b.lead || '',
+  }))
+  // 有图优先；无图但有标题的也保留（mall 纯色兜底文案）
+  const merged = [...fromApi, ...baked].filter((x) => x && (x.src || x.title))
+  const withSrc = merged.filter((x) => x.src)
+  return withSrc.length ? withSrc : merged
 })
 const claimCover = computed(() => banners.value[0]?.src || APP_DELIVERED?.authHero || '')
 
 const newsItems = ref([])
 
+async function loadHomeBanners() {
+  try {
+    const res = await http.get('/api/banners', { params: { slot: 'home' } })
+    apiBanners.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    apiBanners.value = []
+  }
+}
+
 async function loadNews() {
+  await loadHomeBanners()
   const covers = banners.value.map((b) => b.src).filter(Boolean)
   try {
     const res = await http.get('/api/notices', { params: { page: 1, size: 4 } })
@@ -261,8 +283,13 @@ async function loadNews() {
 const mallCategories = ref([])
 const mallProducts = ref([])
 
-const mallBannerSrc = computed(() => banners.value[0]?.src || APP_DELIVERED?.authHero || '')
-const mallBannerTitle = computed(() => banners.value[0]?.title || appName)
+const mallHero = computed(() => {
+  const withSrc = banners.value.find((b) => b.src)
+  return withSrc || banners.value[0] || null
+})
+const mallBannerSrc = computed(() => mallHero.value?.src || APP_DELIVERED?.authHero || '')
+const mallBannerTitle = computed(() => mallHero.value?.title || appName)
+const mallBannerLead = computed(() => mallHero.value?.lead || lead.value)
 const mallBannerStyle = computed(() =>
   mallBannerSrc.value ? { backgroundImage: `url('${mallBannerSrc.value}')` } : undefined,
 )
@@ -302,6 +329,7 @@ function mallMetaText(row) {
 }
 
 async function loadMall() {
+  await loadHomeBanners()
   try {
     const catRes = await http.get('/api/categories')
     const cats = catRes.data || catRes || []
@@ -507,6 +535,11 @@ function openNews(item) {
   letter-spacing: 0.01em;
   font-family: var(--portal-font-display, var(--portal-font-ui));
   overflow-wrap: anywhere;
+}
+.skin-hint {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--portal-muted, #64748b);
 }
 .hero p {
   margin: 0;

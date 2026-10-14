@@ -79,8 +79,10 @@ async function onUpload(opt) {
   ElMessage.success('已上传：' + res.data.url)
 }
 
-function logout() {
-  localStorage.clear()
+async function logout() {
+  const { logoutOnServer, clearAuthStorage } = await import('../utils/session.js')
+  await logoutOnServer()
+  clearAuthStorage()
   router.push('/login')
 }
 
