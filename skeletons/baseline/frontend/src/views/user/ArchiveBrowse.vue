@@ -2644,7 +2644,7 @@ function play(row) {
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
-const size = ref(9)
+const size = ref(10)
 const keyword = ref('')
 const categoryId = ref(null)
 const categoryIds = ref([])

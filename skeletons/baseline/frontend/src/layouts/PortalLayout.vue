@@ -196,7 +196,7 @@ async function logout() {
   min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* 短菜单可换行露全；超过 6 项由「更多」收纳，顶栏保持单行 */
+/* 短菜单可换行露全；超过 12 项由「更多」收纳，顶栏保持单行 */
 .nav { display: flex; gap: 4px; flex: 1 1 280px; flex-wrap: wrap; align-items: center; min-width: 0; }
 .nav.nav--split { flex-wrap: nowrap; }
 .nav a,

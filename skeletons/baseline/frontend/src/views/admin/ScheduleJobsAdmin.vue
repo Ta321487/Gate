@@ -4,7 +4,7 @@
       <h2 class="title">{{ labels.scheduleJobsMenu || '定时任务' }}</h2>
       <el-button @click="load">刷新</el-button>
     </div>
-    <p class="hint">{{ labels.scheduleJobsHint || '以下任务由系统定时扫描；本页只读说明，不能改调度。' }}</p>
+    <p class="hint">{{ labels.scheduleJobsHint || '以下为本系统已启用的定时任务；本页只读说明，不能改调度。' }}</p>
     <p v-if="delayMs" class="meta">扫描间隔约 {{ Math.round(delayMs / 1000) }} 秒</p>
     <el-table :data="list" stripe v-loading="loading">
       <el-table-column prop="title" label="任务" min-width="160" />

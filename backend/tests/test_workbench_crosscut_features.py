@@ -112,6 +112,11 @@ class WorkbenchCrosscutFeatureTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("/api/admin/schedule-jobs", sc)
         self.assertIn("armed", sc)
+        # 只列本包已启用：禁农产包串出台「影院/课时」灰项
+        self.assertIn("addIfArmed", sc)
+        self.assertIn("SeatStore.enabled()", sc)
+        self.assertIn("UserStore.postMuteEnabled()", sc)
+        self.assertIn("ArchiveStore.hasStartAt()", sc)
         st = (
             REPO
             / "skeletons/baseline/backend/src/main/java/com/thesis/controller/SiteStatController.java"

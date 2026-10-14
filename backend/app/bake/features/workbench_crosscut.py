@@ -19,7 +19,7 @@ _DASH_LABELS: dict[str, str] = {
     "myDocsTitle": "我的单据",
     "myDocsEmptyHint": "暂无关联业务入口",
     "scheduleJobsMenu": "定时任务",
-    "scheduleJobsHint": "以下任务由系统定时扫描；本页只读说明，不能改调度。",
+    "scheduleJobsHint": "以下为本系统已启用的定时任务；本页只读说明，不能改调度。",
 }
 
 _DEFAULT_SHORTCUT_KEYS: tuple[str, ...] = (

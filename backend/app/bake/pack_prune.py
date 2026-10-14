@@ -906,7 +906,10 @@ def _strip_type_usages(text: str, type_name: str) -> str:
     if type_name == "TicketStore":
         text = re.sub(rf"{fqn}\.scheduleChangeNotify\b", "false", text)
         text = re.sub(rf"{fqn}\.allowContractExpireRemind\b", "false", text)
-        text = re.sub(rf"{fqn}\.notifyArchiveExpireDays\b", "0", text)
+        text = _replace_type_calls(text, type_name, "notifyArchiveExpireDays", "0")
+        text = _replace_type_calls(text, type_name, "approveAutoPassHours", "0")
+        text = _replace_type_calls(text, type_name, "peerTimeoutRejectHours", "0")
+        text = re.sub(rf"{fqn}\.notifyArchiveExpireDays\b(?!\s*\()", "0", text)
         # 占位表名仅出现在 if(false) 死分支；用普通标识避免交源码穿帮
         text = re.sub(rf"{fqn}\.TICKET\b", '"ticket"', text)
         text = re.sub(rf"{fqn}\.PROGRESS\b", '""', text)

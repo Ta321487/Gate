@@ -41,10 +41,11 @@ def _eval_nav(payload: dict) -> dict:
 
 class NavOverflowTests(unittest.TestCase):
     def test_split_and_dense_thresholds(self) -> None:
-        items = [{"to": f"/m{i}", "label": f"项{i}"} for i in range(8)]
-        got = _eval_nav(
+        # ≤12 全直出（商城用户菜单常见长度）
+        eleven = [{"to": f"/m{i}", "label": f"项{i}"} for i in range(11)]
+        fit = _eval_nav(
             {
-                "items": items,
+                "items": eleven,
                 "counts": [0, 8, 9, 12],
                 "paths": [
                     ["/orders/1", "/orders"],
@@ -53,14 +54,26 @@ class NavOverflowTests(unittest.TestCase):
                 ],
             }
         )
-        self.assertEqual(got["primary"], [f"/m{i}" for i in range(5)])
-        self.assertEqual(got["more"], [f"/m{i}" for i in range(5, 8)])
-        self.assertEqual(got["dense"], [False, False, True, True])
-        self.assertEqual(got["active"], [True, False, True])
+        self.assertEqual(fit["primary"], [f"/m{i}" for i in range(11)])
+        self.assertEqual(fit["more"], [])
+        self.assertEqual(fit["dense"], [False, False, True, True])
+        self.assertEqual(fit["active"], [True, False, True])
+
+        # >12 才收纳：前 10 直出
+        long = [{"to": f"/m{i}", "label": f"项{i}"} for i in range(14)]
+        got = _eval_nav(
+            {
+                "items": long,
+                "counts": [9],
+                "paths": [["/a", "/a"]],
+            }
+        )
+        self.assertEqual(got["primary"], [f"/m{i}" for i in range(10)])
+        self.assertEqual(got["more"], [f"/m{i}" for i in range(10, 14)])
 
         short = _eval_nav(
             {
-                "items": items[:6],
+                "items": eleven[:6],
                 "counts": [6],
                 "paths": [["/a", "/a"]],
             }

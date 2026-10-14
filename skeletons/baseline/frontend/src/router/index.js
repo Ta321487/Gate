@@ -1563,6 +1563,9 @@ const publicPaths = new Set([
   '/cert-verify',
   '/error',
   '/loading',
+  // 注册页协议链（未登录 target=_blank）；勿拦到登录页
+  '/agreement',
+  '/privacy',
 ])
 
 function safeRedirect(path) {

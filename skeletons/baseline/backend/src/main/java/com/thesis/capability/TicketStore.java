@@ -674,6 +674,18 @@ public final class TicketStore {
         return approveAutoPassHours;
     }
 
+    public static boolean isAllowApproveAutoPass() {
+        return allowApproveAutoPass;
+    }
+
+    public static int peerTimeoutRejectHours() {
+        return peerTimeoutRejectHours;
+    }
+
+    public static int notifyArchiveExpireDays() {
+        return notifyArchiveExpireDays;
+    }
+
     /** 请假代审：写入 approve_delegate；untilAt 须为未来时间。 */
     public static Map<String, Object> setApproveDelegate(String username, String delegateTo, String untilAt) {
         if (!allowApproveDelegate) throw new IllegalStateException("当前未开启请假代审");
