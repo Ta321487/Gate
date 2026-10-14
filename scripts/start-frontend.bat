@@ -16,6 +16,6 @@ if not exist "node_modules\vite\package.json" (
     exit /b 1
   )
 )
-echo Gate UI - http://127.0.0.1:5173
-call npm run dev -- --host 127.0.0.1 --port 5173
+echo Gate UI - http://127.0.0.1:5300
+call npm run dev -- --host 127.0.0.1 --port 5300
 pause

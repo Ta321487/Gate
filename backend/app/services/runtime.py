@@ -258,8 +258,8 @@ def _popen(cmd: list[str], *, cwd: Path, log_f, env: Optional[dict] = None) -> s
     )
 
 
-def _tcp_open(port: int, timeout: float = 0.05) -> bool:
-    """端口未监听时立刻失败，避免对死端口做 HTTP 探测（每次最多 0.35s × 多条 URL）。"""
+def _tcp_open(port: int, timeout: float = 0.15) -> bool:
+    """端口未监听时立刻失败，避免对死端口做 HTTP 探测（每次最多 ~0.8s × 多条 URL）。"""
     if not port:
         return False
     try:
@@ -269,7 +269,7 @@ def _tcp_open(port: int, timeout: float = 0.05) -> bool:
         return False
 
 
-def _http_ok(url: str, timeout: float = 0.35) -> bool:
+def _http_ok(url: str, timeout: float = 0.8) -> bool:
     try:
         with urllib.request.urlopen(url, timeout=timeout) as resp:
             return 200 <= getattr(resp, "status", 200) < 500

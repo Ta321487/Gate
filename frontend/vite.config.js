@@ -9,7 +9,8 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     host,
-    port: 5173,
+    // 避开学生包默认 Vite :5173，工厂控制台固定 :5300
+    port: 5300,
     proxy: {
       '/api': { target: apiProxy, changeOrigin: true },
       '/docs': { target: apiProxy, changeOrigin: true },

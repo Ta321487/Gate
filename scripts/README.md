@@ -8,9 +8,9 @@ Windows 启动与运维脚本。**约定：bat 只做入口，ps1 做逻辑。**
 |------|------|
 | `launcher.bat` | **推荐** 控制台菜单；有 Windows Terminal 时进 WT，服务用同窗标签页 |
 | `start-backend.bat` | 仅启动后端 `:8000`（独立窗口） |
-| `start-frontend.bat` | 仅启动前端 `:5173` |
+| `start-frontend.bat` | 仅启动前端 `:5300`（避开学生包 `:5173`） |
 | `stop-backend.bat` | 停止全部 uvicorn 后端 |
-| `stop-frontend.bat` | 停止 `:5173` 监听进程 |
+| `stop-frontend.bat` | 停止 `:5300` 监听进程 |
 | `kill-dup-backend.bat` | 清理重复 uvicorn（默认保留最新；`/all` 全杀） |
 | `verify-bats.bat` | 检查 bat 是否误存为 UTF-8 BOM / 含中文 |
 | `setup-cn-mirrors.ps1` | 国内镜像一键配置（pip / npm / Maven / Docker，**用户级**） |

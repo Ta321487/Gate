@@ -2,7 +2,7 @@
 $ErrorActionPreference = "Continue"
 try { chcp 65001 | Out-Null } catch {}
 . (Join-Path $PSScriptRoot "_backend-procs.ps1")
-$port = 5173
+$port = 5300
 $ids = @(
     Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty OwningProcess -Unique

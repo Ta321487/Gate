@@ -164,7 +164,24 @@ def sync_checklist_from_workspace(project: Project) -> bool:
         review_allows_zip_promote,
     )
 
-    gates = evaluate_domain_gates(ws, project.spec or {})
+    try:
+        gates = evaluate_domain_gates(ws, project.spec or {})
+    except OSError as e:
+        # 工作区残缺/被锁（如 flow_api 空 file 落到目录）不得拖垮整轮对账
+        logger.warning(
+            "evaluate_domain_gates OSError project=%s ws=%s: %s",
+            project.id,
+            ws,
+            e,
+        )
+        return _clear_stale_zip_ready(project)
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "evaluate_domain_gates failed project=%s ws=%s",
+            project.id,
+            ws,
+        )
+        return _clear_stale_zip_ready(project)
     st = get_review_state(project)
     last_qa = st.get("last_qa")
     if isinstance(last_qa, dict) and last_qa:

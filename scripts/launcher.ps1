@@ -27,7 +27,7 @@ $Scripts = $PSScriptRoot
 $Repo = (Resolve-Path (Join-Path $Scripts "..")).Path
 . (Join-Path $Scripts "_backend-procs.ps1")
 $BackendPort = $script:GfBackendPort
-$FrontendPort = 5173
+$FrontendPort = 5300
 $UiUrl = "http://127.0.0.1:$FrontendPort"
 $ApiUrl = "http://127.0.0.1:$BackendPort"
 $DocsUrl = "$ApiUrl/docs"

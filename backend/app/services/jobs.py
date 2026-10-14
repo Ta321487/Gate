@@ -77,7 +77,22 @@ def _gate_fail_summary(gates: dict[str, Any] | None) -> str:
     if isinstance(acc, dict) and acc.get("ok") is False:
         return _short_error(acc.get("desc") or acc.get("label") or "可接题边界未通过", limit=200)
     # 含 p3q（QA）/ p3s（语义）；漏列时 overall=False 会落到笼统「主流程或功能清单未通过」
-    for k in ("p3c", "p3d", "p3t", "p3q", "p3copy", "p3s", "p3a", "p3b", "p2", "p1", "p0b", "p0a"):
+    for k in (
+        "p3c",
+        "p3d",
+        "p3t",
+        "p3q",
+        "p3copy",
+        "p3s",
+        "p3lean",
+        "p3n",
+        "p3a",
+        "p3b",
+        "p2",
+        "p1",
+        "p0b",
+        "p0a",
+    ):
         item = g.get(k)
         if not isinstance(item, dict) or item.get("ok") is not False:
             continue
@@ -159,9 +174,11 @@ def evaluate_gates(project: Project, workspace: Path) -> dict[str, Any]:
     return evaluate_domain_gates(workspace, project.spec or {})
 
 
-# 工厂内部产物，不进学生交付 ZIP（含 .factory/defense-ppt 旁路）
+# 工厂内部产物，不进学生交付 ZIP（含 .factory/defense-ppt 旁路、预览 JVM 临时目录）
 _ZIP_EXCLUDE_NAMES = frozenset({"spec.json", "domain.schema.json"})
-_ZIP_EXCLUDE_DIRS = frozenset({"node_modules", "target", ".git", "islands", ".vite", ".factory"})
+_ZIP_EXCLUDE_DIRS = frozenset(
+    {"node_modules", "target", ".git", "islands", ".vite", ".factory", ".runtime-tmp"}
+)
 
 
 def pack_zip(workspace: Path, zip_path: Path) -> None:

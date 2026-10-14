@@ -1,9 +1,9 @@
 /**
  * 预览运行态（启停、地址、忙碌门闩）。挂入 useProjectDetail。
  */
-import { computed, reactive, ref } from 'vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { api, message } from '../../api'
-import { runtimeCanStop } from './pdRuntimeFmt'
+import { runtimeCanStop, runtimeTransient } from './pdRuntimeFmt'
 
 /**
  * @param {object} deps
@@ -128,6 +128,53 @@ export function usePdRuntime({ p, tab, route, ctx }) {
     return beDone && feDone
   }
 
+  /** 运行页在启动中/停止中持续刷状态，避免等超时后一直转圈要人刷新 */
+  let rtWatchTimer = null
+  let rtWatchInFlight = false
+  function stopRtWatch() {
+    if (rtWatchTimer) {
+      clearInterval(rtWatchTimer)
+      rtWatchTimer = null
+    }
+    rtWatchInFlight = false
+  }
+  function rtNeedsWatch() {
+    return (
+      rtBusyBe.value
+      || rtBusyFe.value
+      || runtimeTransient(rt.backend_status)
+      || runtimeTransient(rt.frontend_status)
+    )
+  }
+  function startRtWatch() {
+    if (rtWatchTimer) return
+    rtWatchTimer = setInterval(async () => {
+      if (tab.value !== 'runtime') {
+        stopRtWatch()
+        return
+      }
+      if (!rtNeedsWatch()) {
+        stopRtWatch()
+        return
+      }
+      if (rtWatchInFlight) return
+      rtWatchInFlight = true
+      try {
+        await refreshRuntime()
+      } finally {
+        rtWatchInFlight = false
+      }
+    }, 1000)
+  }
+  watch(
+    () => [tab.value, rt.backend_status, rt.frontend_status, rtBusyBe.value, rtBusyFe.value],
+    () => {
+      if (tab.value === 'runtime' && rtNeedsWatch()) startRtWatch()
+      else if (tab.value !== 'runtime') stopRtWatch()
+    },
+  )
+  onUnmounted(stopRtWatch)
+
   async function rtAction(side, action) {
     const projectId = p.value?.id
     if (!projectId) return
@@ -153,12 +200,14 @@ export function usePdRuntime({ p, tab, route, ctx }) {
       if (touchBe) rt.backend_status = 'stopping'
       if (touchFe) rt.frontend_status = 'stopping'
     }
+    startRtWatch()
     try {
       await api.runtimeAction(projectId, side, action)
       if (!ctx.viewActive(projectId, epoch)) return
       await ctx.load({ id: projectId })
       if (!ctx.viewActive(projectId, epoch)) return
-      const deadline = Date.now() + (action === 'stop' ? 8000 : 90000)
+      // 冷启动 Maven 常要 1～2 分钟；超时后仍靠 startRtWatch 继续刷到 settled
+      const deadline = Date.now() + (action === 'stop' ? 12000 : 180000)
       while (Date.now() < deadline && ctx.viewActive(projectId, epoch) && tab.value === 'runtime') {
         await refreshRuntime(projectId)
         if (_runtimeSettled(side, action)) break
@@ -170,6 +219,7 @@ export function usePdRuntime({ p, tab, route, ctx }) {
       if (side === 'all') rtPendingAll.value = ''
       if (ctx.viewActive(projectId, epoch) && tab.value === 'runtime') {
         await refreshRuntime(projectId)
+        if (rtNeedsWatch()) startRtWatch()
       }
     }
   }

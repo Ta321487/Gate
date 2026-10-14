@@ -30,14 +30,21 @@ export function runtimeTransient(st) {
 
 /** 状态只在 pill；这里只展示真实日志，占位文案一律收成 — */
 export function runtimeLogView(st, tail) {
-  if (st === 'stopping') return '—'
+  if (st === 'stopping') return '正在停止…'
   // 编译/启动失败后进程常已退出；若仍当 stopped 藏日志，工作台只剩「—」
   if (st === 'stopped') {
     if (tail && _runtimeLogLooksFailed(tail)) return _tailLines(tail, 24)
     return '—'
   }
-  if (!tail || /^(后端|前端)?(启动|停止)中/.test(String(tail).trim())) return '—'
-  return _tailLines(tail, st === 'error' ? 24 : 8)
+  const startingHint =
+    '编译启动中，日志可能短暂无新输出；就绪后会自动变为「正常」，无需刷新页面。'
+  if (!tail || /^(后端|前端)?(启动|停止)中/.test(String(tail).trim())) {
+    return st === 'starting' ? startingHint : '—'
+  }
+  const keep = st === 'error' ? 24 : st === 'starting' ? 20 : 8
+  const body = _tailLines(tail, keep)
+  if (st === 'starting') return `${body}\n\n（${startingHint}）`
+  return body
 }
 
 export function _runtimeLogLooksFailed(tail) {

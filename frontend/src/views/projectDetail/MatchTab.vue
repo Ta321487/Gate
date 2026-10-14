@@ -55,6 +55,9 @@
             <div class="rec-sub" v-if="recommendedArchesText">
               能力路径并集：{{ recommendedArchesText }}
             </div>
+            <div class="rec-sub generic-tip" v-if="genericShellTip">
+              {{ genericShellTip }}
+            </div>
             <div class="rec-sub" v-if="archDomainDeviant">
               当前出包：{{ form.archetype }} × {{ form.domain }}
             </div>
@@ -290,6 +293,11 @@
 import { computed } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
+
+const GENERIC_SHELL_TIP =
+  '通用壳（DOM-GENERIC）：能落到具名 DOM 时优先具名；盖不住多主路径时才降通用并保留 ARCH 并集。' +
+  '禁止为「看起来更行业」而静默改 Dom 标签冒充具名域；行业词浅替换只改可见文案，不改 domain。'
+
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,
   alreadyBaked, apiCopyText, apiGroupCopyText, apiQuery, apiSmokeBusy, apiSmokeFactoryHint, apiSmokeResult, apiSurface,
@@ -330,5 +338,10 @@ const {
 const materialWeakHint = computed(() => {
   const path = matchPath.value || {}
   return Boolean(path.entry_weak || path.needs_path_ack)
+})
+
+const genericShellTip = computed(() => {
+  const dom = form.domain || p.value?.recommended_domain || p.value?.domain || ''
+  return dom === 'DOM-GENERIC' ? GENERIC_SHELL_TIP : ''
 })
 </script>
