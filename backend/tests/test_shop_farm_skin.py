@@ -40,6 +40,9 @@ class ShopFarmSkinTests(unittest.TestCase):
         self.assertIn("harvest_on", sql)
         self.assertIn("山东烟台", sql)
         self.assertIn("5 斤装", sql)
+        # 同名兄弟行：购物车「换规格」依赖同 title 多条在售
+        self.assertIn("10 斤装", sql)
+        self.assertGreaterEqual(sql.count("'红富士苹果'"), 2)
         self.assertIn("'shipped'", sql)
         self.assertNotIn("日用收纳盒", sql)
         self.assertNotIn("'热销'", sql)

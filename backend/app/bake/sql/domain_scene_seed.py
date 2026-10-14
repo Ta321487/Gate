@@ -1996,7 +1996,8 @@ INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status,
 (1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', '2026-09-01', 'subadmin'),
 (2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', '2026-09-03', 'merchant_b'),
 (3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', '2026-09-05', 'subadmin'),
-(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', '2026-08-20', 'merchant_b');
+(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', '2026-08-20', 'merchant_b'),
+(5, '红富士苹果', '72.00', '10 斤装', 1, 30, 'available', '家庭装，同果园直供。', '山东烟台', '2026-09-01', 'subadmin');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
