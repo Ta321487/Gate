@@ -863,7 +863,7 @@
 
 | 功能 | 建议落域 | 说明 |
 |------|----------|------|
-| 订单小票浏览器打印 | SHOP / FOOD / CINEMA | print；通识；打印≠已齐 |
+| 订单小票浏览器打印 | FOOD / CINEMA 域默认；SHOP **扫词开**（打印小票/订单小票）；打印≠已齐 |
 | 堂食排队取餐号叫号大屏 | — | **不支持**：桌号/取餐号顶；无硬件大屏 |
 
 #### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）
@@ -879,9 +879,9 @@
 | 取票码展示（订单号派生） | OrderStore.ensurePickupCode + labels.pickupCodeLabel / pickupCodeHint；SeatStore 下单签发；MyOrders 出示 / OrdersAdmin 列 | **域默认** CINEMA |
 | 购物车全选 / 失效商品清理 | OrderStore.clearInvalidCart + labels.cartSelectAllLabel / cartClearInvalidLabel / cartInvalidHint；Cart 勾选列与清理按钮；placeOrder 只结算勾选 itemIds | **域默认** SHOP / FOOD |
 | 购物车失效自动勾掉 | cartAutoUncheck + Cart.vue syncSelection；失效行禁勾选，下单跳过 invalid | **域默认** SHOP / FOOD |
-| 购物车改规格（有则换无则提示） | ArchiveStore.listAvailableByTitle + /api/cart/replace；labels.cartChangeSpecLabel / cartNoSpecHint；有则下拉换，无则提示 | **域默认** SHOP |
-| 购物车凑单提示（差 N 元包邮） | archive.freeShipYuan + labels.cartFreeShipHint / cartFreeShipOkHint；管理端档案门槛，购物车按勾选金额提示差额 | **域默认** SHOP |
-| 下单锁库存 / 取消回补 | useQuota + ArchiveStore.adjustStock；labels.stockLockHint；Cart / MyOrders 提示；超卖拒绝、取消回补 | **域默认** SHOP / FOOD |
+| 购物车改规格（有则换无则提示） | ArchiveStore.listAvailableByTitle + /api/cart/replace；labels.cartChangeSpecLabel / cartNoSpecHint；有则下拉换，无则提示 | **扫词开** SHOP（规格/换规格；≠完整 SKU 矩阵） |
+| 购物车凑单提示（差 N 元包邮） | archive.freeShipYuan + labels.cartFreeShipHint / cartFreeShipOkHint；管理端档案门槛，购物车按勾选金额提示差额 | **扫词开** SHOP（包邮/满额包邮/免运费）；文案 hint，≠真免运费清算 |
+| 下单锁库存 / 取消回补 | useQuota + ArchiveStore.adjustStock；labels.stockLockHint；Cart / MyOrders 提示；超卖拒绝、取消回补 | **域默认** SHOP / FOOD（须 `quota`；域 cap 已带） |
 | 确认收货超时自动完成 | confirmReceiveTimeoutMinutes + labels.confirmReceiveTimeoutHint；DemoScheduleJobs → completeTimedOutUnreceived | **域默认** SHOP |
 | 订单完成自动邀评站内信 | 完成态 MessageStore；labels.inviteReviewTitle / inviteReviewBody；须 order_review | 挂评价时 |
 | 销售日报简表（按日订单数/金额） | chartStats.salesDailySeries + labels.salesDailyLabel / salesDailyHint；工作台表与导出；≠BI | **域默认** SHOP / FOOD |
@@ -892,12 +892,12 @@
 | 退货物流单号回填 | refund_tracking_no；PUT /api/orders/{id}/refund-tracking；买家或商家写 | **域默认** SHOP |
 | 收货后仅 N 天可申请售后 | afterSaleDays + labels.afterSaleDaysHint；completed_at 窗口 | **域默认** SHOP |
 | 售后进度时间轴 | GET /api/orders/{id}/refund-trace；OrderTraceDialog endpoint=refund-trace | **域默认** SHOP |
-| 售后换货 / 仅换货 | refund_type=exchange/exchange_only + labels.refundTypeExchange / refundTypeExchangeOnly；通过后不关单 | **域默认** SHOP |
-| 物流进度手填 | order_ship_node 子表 + labels.logisticsTraceLabel / shipNodeLabel；管理端登记、买家时间轴可见 | **域默认** SHOP |
+| 售后换货 / 仅换货 | refund_type=exchange/exchange_only + labels.refundTypeExchange / refundTypeExchangeOnly；通过后不关单 | **扫词开** SHOP（换货/以换代修）；仅退款·退货退款仍域默认 |
+| 物流进度手填 | order_ship_node 子表 + labels.logisticsTraceLabel / shipNodeLabel；管理端登记、买家时间轴可见 | **扫词开** SHOP（物流进度/节点等） |
 | 订单部分发货登记 | orders.partial_ship + labels.partialShipLabel；发货时可标、双端可见 | **域默认** SHOP |
-| 订单分享口令（只读查单） | orders.share_token + labels.orderShareLabel / orderShareHint；下单签发、登录页凭口令查单 | **域默认** SHOP / FOOD |
-| 订单收货码核销 | pickup_code + receive_verified_at；labels.receiveCodeLabel / receiveCodeVerifyLabel；商家核销写库 | **域默认** SHOP / FOOD |
-| 订单延保登记 | orders.warranty_until + labels.warrantyLabel / warrantyHint；日期选择器双端写 | **域默认** SHOP |
+| 订单分享口令（只读查单） | orders.share_token + labels.orderShareLabel / orderShareHint；下单签发、登录页凭口令查单 | **扫词开** SHOP / FOOD |
+| 订单收货码核销 | pickup_code + receive_verified_at；labels.receiveCodeLabel / receiveCodeVerifyLabel；商家核销写库 | **扫词开** SHOP / FOOD（收货码/当面核销） |
+| 订单延保登记 | orders.warranty_until + labels.warrantyLabel / warrantyHint；日期选择器双端写 | **扫词开** SHOP（延保/质保） |
 | 影院退票截止（开场前 N 分钟） | ticketRefundCutoffMinutes + SeatStore.assertOrderRefundOpen；labels.ticketRefundCutoffHint / cinemaRefundLabel；待取票可申请 | **域默认** CINEMA |
 | 选座占座倒计时释放 | cinema_seat.hold_until + POST /api/seats/hold；DemoScheduleJobs.releaseExpiredHolds；labels.seatHoldTimeoutHint | **域默认** CINEMA |
 | 连座推荐（相邻空座提示） | getMap.adjacentHint；labels.adjacentSeatHintTitle / adjacentSeatHintEmpty；≠锁座 | **域默认** CINEMA |
@@ -910,7 +910,7 @@
 | 影院连场套票说明 | labels.cinemaComboLabel / cinemaComboBody；SeatShows / SeatMap 真读 | **域默认** CINEMA |
 | 堂食桌号 / 取餐号展示 | orders.table_no + pickup_code；labels.tableNoLabel / tableNoHint / pickupNoLabel / pickupNoHint；Cart 堂食必填、MyOrders / OrdersAdmin / 小票出示 | **域默认** FOOD |
 | 餐具/打包选项 | orders.utensil_opt / pack_opt；labels.utensilOptLabel / packOptLabel；Cart 下拉写库 | **域默认** FOOD |
-| 包装费选项 | orders.packaging_fee_yuan + packagingFeeYuan；labels.packagingFeeLabel / packagingFeeHint；选打包加收 | **域默认** FOOD |
+| 包装费选项 | orders.packaging_fee_yuan + packagingFeeYuan；labels.packagingFeeLabel / packagingFeeHint；选打包加收 | **域默认** FOOD；SHOP **扫词开**（包装费/打包费） |
 | 档口营业时段外禁下单 | archive.open_hours + labels.stallOpenHoursLabel / stallOpenHoursHint / stallClosedHint；时段外拒单 | **域默认** FOOD |
 | 骑手接单超时自动回池 | riderClaimTimeoutMinutes + OrderStore.claimRider / releaseTimedOutRiderClaims；labels.riderClaimLabel / riderClaimTimeoutHint；DemoScheduleJobs；扫词挂骑手时 | 扫词挂骑手时 |
 | 外卖配送费阶梯说明 | orders.delivery_fee_yuan + deliveryFeeBaseYuan / deliveryFeeFreeYuan；labels.deliveryFeeLabel / deliveryFeeLadderBody | **域默认** FOOD |
@@ -918,24 +918,24 @@
 | 点餐必选品类校验 | categories.required_pick；labels.requiredCategoryLabel / requiredCategoryHint / requiredCategoryMissingHint；CategoriesAdmin 开关、下单校验 | **域默认** FOOD |
 | 点餐拼单（同桌合并） | orders.merge_code；labels.mergeCodeLabel / mergeCodeHint；浅合并；≠美团拼单 | **域默认** FOOD |
 | 档口评分排序 | archive.stall_score；labels.stallScoreLabel / stallScoreHint；列表按分降序 | **域默认** FOOD |
-| 发票抬头登记 | orders.invoice_title；labels.invoiceTitleLabel / invoiceTitleHint；Cart 下单写库、MyOrders 申请 | **域默认** SHOP |
-| 发票申请状态 | orders.invoice_status（pending/issued）；labels.invoiceStatusLabel / invoiceStatusPending / invoiceStatusIssued / invoiceRequestLabel / invoiceIssueLabel；买家申请、商家标记已开 | **域默认** SHOP |
-| 订单发票下载占位 | labels.invoiceDownloadLabel / invoiceDownloadHint；orderInvoicePrint 浏览器演示壳；≠税控 | **域默认** SHOP |
+| 发票抬头登记 | orders.invoice_title；labels.invoiceTitleLabel / invoiceTitleHint；Cart 下单写库、MyOrders 申请 | **扫词开** SHOP（发票/开票） |
+| 发票申请状态 | orders.invoice_status（pending/issued）；labels.invoiceStatusLabel / invoiceStatusPending / invoiceStatusIssued / invoiceRequestLabel / invoiceIssueLabel；买家申请、商家标记已开 | **扫词开** SHOP（同上） |
+| 订单发票下载占位 | labels.invoiceDownloadLabel / invoiceDownloadHint；orderInvoicePrint 浏览器演示壳；≠税控 | **扫词开** SHOP（同上） |
 | 满减叠加说明页 | labels.spendDiscountHelpLabel / spendDiscountHelpBody；Cart 真读 | 挂满减时 |
-| 满赠说明 | labels.giftPromoLabel / giftPromoBody；Cart 真读 | **域默认** SHOP |
+| 满赠说明 | labels.giftPromoLabel / giftPromoBody；Cart 真读 | **扫词开** SHOP（满赠/赠品/买赠） |
 | 优惠券互斥说明页 | labels.couponMutexLabel / couponMutexBody；Cart 真读 | 挂券时 |
 | 退款原路退回说明 | labels.refundOriginLabel / refundOriginHint；MyOrders 售后旁真读 | **域默认** SHOP / FOOD |
 | 会员日折扣说明 | labels.memberDayLabel / memberDayHint；Cart 真读 | 挂 `member_tier` 时 |
-| 缺货登记 / 到货通知（站内信） | stock_notify + StockNotifyStore；labels.stockNotifyLabel / stockNotifyHint / stockNotifyDoneLabel；补货站内信；ArchiveBrowse 订阅 | **域默认** SHOP |
-| 商品到货订阅（再次） | 同上 ON DUPLICATE 重置 notified_at；labels.stockNotifyAgainLabel | **域默认** SHOP |
-| 商品上下架定时 | archive.shelf_on / shelf_off；labels.shelf*；applyShelfSchedule；ArchiveAdmin 日期时间字段 | **域默认** SHOP / FOOD |
+| 缺货登记 / 到货通知（站内信） | stock_notify + StockNotifyStore；labels.stockNotifyLabel / stockNotifyHint / stockNotifyDoneLabel；补货站内信；ArchiveBrowse 订阅 | **扫词开** SHOP（到货通知/缺货提醒） |
+| 商品到货订阅（再次） | 同上 ON DUPLICATE 重置 notified_at；labels.stockNotifyAgainLabel | **扫词开** SHOP（同上） |
+| 商品上下架定时 | archive.shelf_on / shelf_off；labels.shelf*；applyShelfSchedule；ArchiveAdmin 日期时间字段 | **扫词开** SHOP / FOOD（定时上架/下架） |
 | 商品好评率展示 | OrderReviewStore.pageByItem.goodRate；labels.goodRateLabel / goodRateEmpty；ArchiveBrowse | **域默认** SHOP / FOOD |
 | 评价晒图 | order_review.image_url；labels.reviewImageLabel / reviewImageHint；MyOrders 提交、详情展示 | 挂评价时 |
 | 商品评论追评 | order_review.follow_body / follow_at；POST /api/order-reviews/{id}/follow；MyOrderReviews | 挂评价时 |
-| 商品浏览足迹 | SHOP 域默认挂 browse_history；既有 BrowseHistory / touchBrowseHistory | **域默认** SHOP |
-| 商品规格库存分记（浅二维） | siblingSpecStock 同名兄弟行；labels.specStockLabel；≠完整 SKU 矩阵 | **域默认** SHOP |
-| 商品详情页问答 | sys_guestbook.item_id；labels.itemQa*；ArchiveBrowse 提问、后台留言回复 | **域默认** SHOP |
-| 商品预售定金尾款说明 | archive.presale_note；labels.presaleNoteLabel / presaleNoteHint；管理端维护、详情展示 | **域默认** SHOP |
+| 商品浏览足迹 | 仅 `browse_history` cap；BrowseHistory / touchBrowseHistory | **能力加深** SHOP（开题扫词挂 cap；≠域默认注入） |
+| 商品规格库存分记（浅二维） | siblingSpecStock 同名兄弟行；labels.specStockLabel；≠完整 SKU 矩阵 | **扫词开** SHOP（与改规格同扫；≠完整 SKU 矩阵） |
+| 商品详情页问答 | sys_guestbook.item_id；labels.itemQa*；ArchiveBrowse 提问、后台留言回复 | **扫词开** SHOP（商品问答/详情问答） |
+| 商品预售定金尾款说明 | archive.presale_note；labels.presaleNoteLabel / presaleNoteHint；管理端维护、详情展示 | **扫词开** SHOP（预售/定金/尾款） |
 | 优惠券核销码（订单展示） | orders.coupon_code + labels.couponRedeemCodeLabel；MyOrders 真读 | 挂 `coupon` 时 |
 | 优惠券领取中心页 | MyCoupons + labels.couponClaimCenterTitle / Lead；既有领取 API | 挂 `coupon` 时 |
 | 优惠券过期站内信提醒 | CouponStore.expireSweep + MessageStore；DemoScheduleJobs | 挂 `coupon` 时 |
@@ -949,7 +949,7 @@
 | 影院会员价说明 | labels.cinemaMemberPrice*；SeatMap 真读 | 挂 `member_tier` 时（CINEMA） |
 | 影院卖品加购（简易加价项） | cinema_snack + order_line.line_kind=snack；labels.cinemaSnack*；SeatMap 勾选加购、ArchiveAdmin 维护 | **域默认** CINEMA |
 | 影院卖品库存扣减 | SeatStore.adjustSnackStock；下单扣减、取消/售后回补；labels.cinemaSnackStockHint | **域默认** CINEMA |
-| 包装费选项 | orders.packaging_fee_yuan + packagingFeeYuan；labels.packagingFee*；Cart 勾选写库（FOOD 见上；SHOP 同列） | **域默认** SHOP |
+| 包装费选项 | orders.packaging_fee_yuan + packagingFeeYuan；labels.packagingFee*；Cart 勾选写库（FOOD 见上；SHOP 同列） | **扫词开** SHOP（包装费/打包费）；FOOD 见上域默认 |
 
 不支持：完整 SKU 多规格库存矩阵、微信/支付宝商户清算、原生小程序包、实时运单调度、直播带货、堂食叫号大屏、税控电子发票。
 
@@ -1428,7 +1428,7 @@
 | 2026-10-06 | **§1.6 T-06b 已齐**：座属性/特效厅/退票手续费/周视图/连场说明；三套 SeatStore/OrderStore + 双端 |
 | 2026-10-07 | **§1.6 T-07 已齐**：桌号取餐号、餐具打包包装费、营业时段禁单、骑手回池、配送费与送达、必选品类、拼单、档口评分排序；`ensure_food_thicken_sql` + 三套 OrderStore/ArchiveStore + 双端；叫号大屏仍不支持 |
 | 2026-10-07 | **§1.6 T-08 已齐**：发票抬头/状态/演示下载；满减满赠互斥文案；原路退回说明；会员日说明；三套 OrderStore + 双端；≠税控 |
-| 2026-10-07 | **§1.6 T-09 已齐**：缺货到货订阅、上下架定时、好评率、晒图追评、SHOP 足迹默认、浅规格库存、详情问答、预售说明；`ensure_catalog_thicken_sql` + 三套 Store + 双端；≠完整 SKU 矩阵 |
+| 2026-10-07 | **§1.6 T-09 已齐**：缺货到货订阅、上下架定时、好评率、晒图追评、足迹（后改仅 cap）、浅规格库存、详情问答、预售说明；`ensure_catalog_thicken_sql` + 三套 Store + 双端；≠完整 SKU 矩阵 |
 | 2026-10-07 | **§1.6 T-10 已齐**：券核销码/领券中心/过期站内信、拼团进度与失败退款说明、限时购倒计时、盲盒中赏记录、积分流水与运费/兑票、影院会员价；仅对应 cap 已挂时 |
 | 2026-10-07 | **§1.6 T-11 已齐并收口**：影院卖品加购+库存扣减（`cinema_snack`/`line_kind`）、SHOP 包装费；小票打印仍待补（打印≠已齐）；叫号大屏不支持；批次册改已收口档案 |
 | 2026-10-07 | **§1.7 R-00/R-01 已齐**：脚手架 `reserve_thicken`；钉齐取消时限/改约上限/提前提醒/爽约限制/成功信/签到迟到/维护禁约/候补转正信/日历着色/管理员备注/黑名单申诉；三套 SlotStore + DemoScheduleJobs |
@@ -1472,3 +1472,4 @@
 | 2026-10-12 | **§0 X-MSG XM-02**：公告过期下架/强制弹窗/浅富文本/广告位多槽 → 已实现 |
 | 2026-10-12 | **§0 X-DASH XD-01**：工作台待办角标与跳转 / 按角色过滤 / 快捷入口 → 已实现（角标归 X-DASH，非 XM-03） |
 | 2026-10-12 | **§0 X-DASH XD-02**：简易 PV / 我的单据聚合 / 定时任务只读台 → 已实现；全局搜索留给 X-LIST |
+| 2026-10-14 | **§1.6 挂载收口**：SHOP 加戏（发票/满赠/到货/上下架/问答/预售/包装费/换货等）与 FOOD 上下架·收货码改 **扫词开**；足迹仅 `browse_history` cap（≠域默认）；批次册 §0.3 三档表对齐 |

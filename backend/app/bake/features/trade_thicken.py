@@ -31,6 +31,7 @@ T-11：影院卖品加购与库存扣减；SHOP 包装费；扫尾。
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 TRADE_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"})
@@ -39,6 +40,43 @@ TRADE_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"})
 _ORDER_SHARE_RE = re.compile(
     r"分享口令|订单口令|凭口令|免登录查|口令查单|分享查单|分享码查"
 )
+
+# 购物车改规格 / 浅规格库存：开题写到规格才挂，避免商城壳空挂「换规格」
+_CART_SPEC_UX_EXTRA_RE = re.compile(r"换规格|改规格")
+
+# 开题未写却空挂易被追问 → 扫词开（交易族 B 档）
+_SHIP_NODES_RE = re.compile(r"物流进度|物流节点|物流跟踪|物流轨迹|手填物流|登记物流")
+_RECEIVE_CODE_RE = re.compile(r"收货码|核销收货|当面核销|取货核销")
+_WARRANTY_RE = re.compile(r"延保|质保期|保修登记|质保截止")
+_RECEIPT_PRINT_RE = re.compile(r"打印小票|小票打印|订单小票|(?<![电子发])小票(?!机)")
+_INVOICE_RE = re.compile(r"电子发票|发票抬头|申请开票|开具发票|发票下载|(?<![电])发票(?!机)")
+_GIFT_PROMO_RE = re.compile(r"满赠|赠品|买赠|加价购")
+_SHOP_PACKAGING_FEE_RE = re.compile(r"包装费|打包费|包装袋费")
+_PRESALE_RE = re.compile(r"预售|定金|尾款")
+_STOCK_NOTIFY_RE = re.compile(r"到货通知|缺货提醒|到货提醒|缺货通知|到货订阅")
+_ITEM_QA_RE = re.compile(r"商品问答|详情问答|商品咨询|买家提问")
+_SHELF_SCHEDULE_RE = re.compile(r"定时上架|定时下架|上下架定时|预约上架|预约下架")
+_REFUND_EXCHANGE_RE = re.compile(r"换货|以换代修|仅换货")
+_FREE_SHIP_RE = re.compile(r"包邮|满额包邮|免运费|凑单包邮|满.*包邮")
+
+
+def _scan_cart_spec_ux(proposal_text: str) -> bool:
+    """开题命中规格相关词才开改规格/浅规格库存；完整 SKU 矩阵词仍不挂（与 product_spec 同拒）。"""
+    raw = proposal_text or ""
+    from app.bake.features.product_spec import (
+        scan_product_spec,
+        scan_product_spec_matrix_block,
+    )
+
+    if scan_product_spec_matrix_block(raw):
+        return False
+    if _CART_SPEC_UX_EXTRA_RE.search(raw):
+        return True
+    return scan_product_spec(raw)
+
+
+def _proposal_blob(spec: dict[str, Any], proposal_text: str) -> str:
+    return f"{spec.get('title') or ''} {proposal_text or ''}"
 
 _DEFAULT_TASTE_CHIPS = ("少辣", "多冰", "不要香菜", "多糖")
 # 与 skeletons/.../MyOrders.vue 兜底字典保持一致；漏写 schema 时前端仍能出下拉。
@@ -438,34 +476,38 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "购物车全选与失效清理")
 
     if domain == "DOM-SHOP":
-        labels.setdefault("cartChangeSpecLabel", "换规格")
-        labels.setdefault("cartNoSpecHint", "当前没有可换规格。")
-        thicken["cartChangeSpec"] = True
-        _add_feature(spec, "购物车改规格")
-        if not float(schema.get("freeShipYuan") or 0):
-            schema["freeShipYuan"] = _SHOP_FREE_SHIP_DEFAULT
-        labels.setdefault("freeShipYuanLabel", "包邮门槛（元）")
-        labels.setdefault(
-            "freeShipYuanHint",
-            "购物车按勾选金额提示还差多少包邮；0 表示不提示。",
-        )
-        labels.setdefault("cartFreeShipHint", "再买 ¥{n} 即可包邮")
-        labels.setdefault("cartFreeShipOkHint", "已满包邮门槛")
-        archive = ents.get("archive") if isinstance(ents.get("archive"), dict) else {}
-        if not isinstance(archive, dict):
-            archive = {}
-        _ensure_archive_field(
-            archive,
-            {
-                "key": "freeShipYuan",
-                "label": labels.get("freeShipYuanLabel") or "包邮门槛（元）",
-                "type": "number",
-                "hint": labels.get("freeShipYuanHint") or "",
-            },
-        )
-        ents["archive"] = archive
-        thicken["cartFreeShip"] = True
-        _add_feature(spec, "购物车凑单包邮提示")
+        if _scan_cart_spec_ux(proposal_text):
+            labels.setdefault("cartChangeSpecLabel", "换规格")
+            labels.setdefault("cartNoSpecHint", "当前没有可换规格。")
+            thicken["cartChangeSpec"] = True
+            _add_feature(spec, "购物车改规格")
+        # 包邮凑单：开题写到才挂（自提/配送题勿空挂文案）
+        body_early = _proposal_blob(spec, proposal_text)
+        if _FREE_SHIP_RE.search(body_early):
+            if not float(schema.get("freeShipYuan") or 0):
+                schema["freeShipYuan"] = _SHOP_FREE_SHIP_DEFAULT
+            labels.setdefault("freeShipYuanLabel", "包邮门槛（元）")
+            labels.setdefault(
+                "freeShipYuanHint",
+                "购物车按勾选金额提示还差多少包邮；0 表示不提示。",
+            )
+            labels.setdefault("cartFreeShipHint", "再买 ¥{n} 即可包邮")
+            labels.setdefault("cartFreeShipOkHint", "已满包邮门槛")
+            archive = ents.get("archive") if isinstance(ents.get("archive"), dict) else {}
+            if not isinstance(archive, dict):
+                archive = {}
+            _ensure_archive_field(
+                archive,
+                {
+                    "key": "freeShipYuan",
+                    "label": labels.get("freeShipYuanLabel") or "包邮门槛（元）",
+                    "type": "number",
+                    "hint": labels.get("freeShipYuanHint") or "",
+                },
+            )
+            ents["archive"] = archive
+            thicken["cartFreeShip"] = True
+            _add_feature(spec, "购物车凑单包邮提示")
 
     # —— T-03：订单主规则 ——
     if domain in ("DOM-SHOP", "DOM-FOOD") and "quota" in caps:
@@ -509,9 +551,12 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         thicken["inviteReview"] = True
         _add_feature(spec, "订单完成自动邀评")
 
-    labels.setdefault("orderReceiptPrintLabel", "打印小票")
-    thicken["orderReceiptPrint"] = True
-    _add_feature(spec, "订单小票打印")
+    body = _proposal_blob(spec, proposal_text)
+    # 小票：SHOP 开题写到才挂（农产壳忌空挂）；FOOD/CINEMA 仍域默认
+    if domain != "DOM-SHOP" or _RECEIPT_PRINT_RE.search(body):
+        labels.setdefault("orderReceiptPrintLabel", "打印小票")
+        thicken["orderReceiptPrint"] = True
+        _add_feature(spec, "订单小票打印")
 
     # —— T-04：售后闭环 ——
     if domain in ("DOM-SHOP", "DOM-FOOD"):
@@ -532,17 +577,23 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         labels.setdefault("refundTypeLabel", "售后类型")
         labels.setdefault("refundTypeRefundOnly", "仅退款")
         labels.setdefault("refundTypeReturnRefund", "退货退款")
-        labels.setdefault("refundTypeExchange", "换货")
-        labels.setdefault("refundTypeExchangeOnly", "仅换货")
-        labels.setdefault(
-            "refundTypeHint",
-            "未收到货可选仅退款；已收货退回请选退货退款；换货请选换货或仅换货。",
-        )
+        if _REFUND_EXCHANGE_RE.search(body):
+            labels.setdefault("refundTypeExchange", "换货")
+            labels.setdefault("refundTypeExchangeOnly", "仅换货")
+            labels.setdefault(
+                "refundTypeHint",
+                "未收到货可选仅退款；已收货退回请选退货退款；换货请选换货或仅换货。",
+            )
+            thicken["refundExchange"] = True
+            _add_feature(spec, "售后换货")
+            _add_feature(spec, "仅换货不退款")
+        else:
+            labels.setdefault(
+                "refundTypeHint",
+                "未收到货可选仅退款；已收货退回请选退货退款。",
+            )
         thicken["refundType"] = True
-        thicken["refundExchange"] = True
         _add_feature(spec, "仅退款与退货退款分流")
-        _add_feature(spec, "售后换货")
-        _add_feature(spec, "仅换货不退款")
 
         labels.setdefault("refundTrackingLabel", "退货物流单号")
         labels.setdefault("refundTrackingHint", "退货寄出后填写承运单号，便于商家签收。")
@@ -564,35 +615,37 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         thicken["refundTrace"] = True
         _add_feature(spec, "售后进度时间轴")
 
-        labels.setdefault("logisticsTraceLabel", "物流进度")
-        labels.setdefault("shipNodeLabel", "登记物流进度")
-        labels.setdefault("shipNodeHint", "填写当前物流节点，便于买家查看。")
-        thicken["shipNodes"] = True
-        _add_feature(spec, "物流进度手填")
+        if _SHIP_NODES_RE.search(body):
+            labels.setdefault("logisticsTraceLabel", "物流进度")
+            labels.setdefault("shipNodeLabel", "登记物流进度")
+            labels.setdefault("shipNodeHint", "填写当前物流节点，便于买家查看。")
+            thicken["shipNodes"] = True
+            _add_feature(spec, "物流进度手填")
 
         labels.setdefault("partialShipLabel", "部分发货")
         labels.setdefault("partialShipHint", "本单先发出部分商品。")
         thicken["partialShip"] = True
         _add_feature(spec, "订单部分发货")
 
-        labels.setdefault("warrantyLabel", "延保至")
-        labels.setdefault("warrantyHint", "登记本单质保截止日期。")
-        thicken["warranty"] = True
-        _add_feature(spec, "订单延保登记")
+        if _WARRANTY_RE.search(body):
+            labels.setdefault("warrantyLabel", "延保至")
+            labels.setdefault("warrantyHint", "登记本单质保截止日期。")
+            thicken["warranty"] = True
+            _add_feature(spec, "订单延保登记")
 
     if domain in ("DOM-SHOP", "DOM-FOOD"):
-        body = f"{spec.get('title') or ''} {proposal_text or ''}"
         if _ORDER_SHARE_RE.search(body):
             labels.setdefault("orderShareLabel", "分享口令")
             labels.setdefault("orderShareHint", "凭口令可查看本单进度，无需登录。")
             thicken["orderShare"] = True
             _add_feature(spec, "订单分享口令")
 
-        labels.setdefault("receiveCodeLabel", "收货码")
-        labels.setdefault("receiveCodeHint", "当面交付时出示，商家核对后完成核销。")
-        labels.setdefault("receiveCodeVerifyLabel", "核销收货码")
-        thicken["receiveCode"] = True
-        _add_feature(spec, "订单收货码核销")
+        if _RECEIVE_CODE_RE.search(body):
+            labels.setdefault("receiveCodeLabel", "收货码")
+            labels.setdefault("receiveCodeHint", "当面交付时出示，商家核对后完成核销。")
+            labels.setdefault("receiveCodeVerifyLabel", "核销收货码")
+            thicken["receiveCode"] = True
+            _add_feature(spec, "订单收货码核销")
 
     # —— T-06a：影院选座（截止 / 占座 / 连座 / 售罄 / 须知）——
     if domain == "DOM-CINEMA":
@@ -829,31 +882,33 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
     caps_set = {str(c) for c in (spec.get("capabilities") or []) if c}
 
     if domain == "DOM-SHOP":
-        labels.setdefault("invoiceTitleLabel", "发票抬头")
-        labels.setdefault("invoiceTitleHint", "选填；用于开具普通发票，非税控。")
-        labels.setdefault("invoiceStatusLabel", "开票状态")
-        labels.setdefault("invoiceStatusPending", "申请中")
-        labels.setdefault("invoiceStatusIssued", "已开")
-        labels.setdefault("invoiceRequestLabel", "申请开票")
-        labels.setdefault("invoiceIssueLabel", "标记已开")
-        labels.setdefault("invoiceDownloadLabel", "下载发票")
-        labels.setdefault(
-            "invoiceDownloadHint",
-            "可用固定模板下载后打印或保存；非税控电子发票。",
-        )
-        thicken["invoiceTitle"] = True
-        thicken["invoiceStatus"] = True
-        thicken["invoicePdf"] = True
-        _add_feature(spec, "发票抬头与开票状态")
-        _add_feature(spec, "订单发票下载占位")
+        if _INVOICE_RE.search(body):
+            labels.setdefault("invoiceTitleLabel", "发票抬头")
+            labels.setdefault("invoiceTitleHint", "选填；用于开具普通发票，非税控。")
+            labels.setdefault("invoiceStatusLabel", "开票状态")
+            labels.setdefault("invoiceStatusPending", "申请中")
+            labels.setdefault("invoiceStatusIssued", "已开")
+            labels.setdefault("invoiceRequestLabel", "申请开票")
+            labels.setdefault("invoiceIssueLabel", "标记已开")
+            labels.setdefault("invoiceDownloadLabel", "下载发票")
+            labels.setdefault(
+                "invoiceDownloadHint",
+                "可用固定模板下载后打印或保存；非税控电子发票。",
+            )
+            thicken["invoiceTitle"] = True
+            thicken["invoiceStatus"] = True
+            thicken["invoicePdf"] = True
+            _add_feature(spec, "发票抬头与开票状态")
+            _add_feature(spec, "订单发票下载占位")
 
-        labels.setdefault("giftPromoLabel", "满赠说明")
-        labels.setdefault(
-            "giftPromoBody",
-            "购满指定金额可获赠品或加价购，以结算页与活动说明为准；赠品不叠加现金券面额。",
-        )
-        thicken["giftPromo"] = True
-        _add_feature(spec, "满赠说明")
+        if _GIFT_PROMO_RE.search(body):
+            labels.setdefault("giftPromoLabel", "满赠说明")
+            labels.setdefault(
+                "giftPromoBody",
+                "购满指定金额可获赠品或加价购，以结算页与活动说明为准；赠品不叠加现金券面额。",
+            )
+            thicken["giftPromo"] = True
+            _add_feature(spec, "满赠说明")
 
     if domain in ("DOM-SHOP", "DOM-FOOD"):
         labels.setdefault("refundOriginLabel", "退款说明")
@@ -897,34 +952,35 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         archive = {}
 
     if domain in ("DOM-SHOP", "DOM-FOOD"):
-        labels.setdefault("shelfScheduleLabel", "定时上下架")
-        # 与「上架开关 / 强制下架」区分：这里是预约时刻；手动下架会把实际时刻写入 shelf_off
-        labels.setdefault("shelfOnLabel", "定时上架")
-        labels.setdefault("shelfOffLabel", "定时下架")
-        labels.setdefault(
-            "shelfScheduleHint",
-            "预约到点自动上架或下架；手动点下架时也会记下实际下架时刻。未预约则只跟开关与库存。",
-        )
-        _ensure_archive_field(
-            archive,
-            {
-                "key": "shelfOn",
-                "label": labels.get("shelfOnLabel") or "定时上架",
-                "type": "datetime",
-                "hint": labels.get("shelfScheduleHint") or "",
-            },
-        )
-        _ensure_archive_field(
-            archive,
-            {
-                "key": "shelfOff",
-                "label": labels.get("shelfOffLabel") or "定时下架",
-                "type": "datetime",
-                "hint": labels.get("shelfScheduleHint") or "",
-            },
-        )
-        thicken["shelfSchedule"] = True
-        _add_feature(spec, "商品上下架定时")
+        if _SHELF_SCHEDULE_RE.search(body):
+            labels.setdefault("shelfScheduleLabel", "定时上下架")
+            # 与「上架开关 / 强制下架」区分：这里是预约时刻；手动下架会把实际时刻写入 shelf_off
+            labels.setdefault("shelfOnLabel", "定时上架")
+            labels.setdefault("shelfOffLabel", "定时下架")
+            labels.setdefault(
+                "shelfScheduleHint",
+                "预约到点自动上架或下架；手动点下架时也会记下实际下架时刻。未预约则只跟开关与库存。",
+            )
+            _ensure_archive_field(
+                archive,
+                {
+                    "key": "shelfOn",
+                    "label": labels.get("shelfOnLabel") or "定时上架",
+                    "type": "datetime",
+                    "hint": labels.get("shelfScheduleHint") or "",
+                },
+            )
+            _ensure_archive_field(
+                archive,
+                {
+                    "key": "shelfOff",
+                    "label": labels.get("shelfOffLabel") or "定时下架",
+                    "type": "datetime",
+                    "hint": labels.get("shelfScheduleHint") or "",
+                },
+            )
+            thicken["shelfSchedule"] = True
+            _add_feature(spec, "商品上下架定时")
 
         labels.setdefault("goodRateLabel", "好评率")
         labels.setdefault("goodRateHint", "按已评价订单中 4～5 星占比统计。")
@@ -933,62 +989,52 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "商品好评率展示")
 
     if domain == "DOM-SHOP":
-        labels.setdefault("stockNotifyLabel", "到货通知我")
-        labels.setdefault("stockNotifyHint", "补货后会发站内信；可再次订阅。")
-        labels.setdefault("stockNotifyDoneLabel", "已登记到货提醒")
-        labels.setdefault("stockNotifyAgainLabel", "再次订阅到货")
-        thicken["stockNotify"] = True
-        _add_feature(spec, "缺货到货通知")
-        _add_feature(spec, "商品到货订阅")
+        if _STOCK_NOTIFY_RE.search(body):
+            labels.setdefault("stockNotifyLabel", "到货通知我")
+            labels.setdefault("stockNotifyHint", "补货后会发站内信；可再次订阅。")
+            labels.setdefault("stockNotifyDoneLabel", "已登记到货提醒")
+            labels.setdefault("stockNotifyAgainLabel", "再次订阅到货")
+            thicken["stockNotify"] = True
+            _add_feature(spec, "缺货到货通知")
+            _add_feature(spec, "商品到货订阅")
 
-        labels.setdefault("presaleNoteLabel", "预售说明")
-        labels.setdefault(
-            "presaleNoteHint",
-            "可填写定金、尾款或预计发货时间，方便买家了解预售安排。",
-        )
-        _ensure_archive_field(
-            archive,
-            {
-                "key": "presaleNote",
-                "label": labels.get("presaleNoteLabel") or "预售说明",
-                "type": "string",
-                "hint": labels.get("presaleNoteHint") or "",
-            },
-        )
-        thicken["presaleNote"] = True
-        _add_feature(spec, "商品预售定金尾款说明")
+        if _PRESALE_RE.search(body):
+            labels.setdefault("presaleNoteLabel", "预售说明")
+            labels.setdefault(
+                "presaleNoteHint",
+                "可填写定金、尾款或预计发货时间，方便买家了解预售安排。",
+            )
+            _ensure_archive_field(
+                archive,
+                {
+                    "key": "presaleNote",
+                    "label": labels.get("presaleNoteLabel") or "预售说明",
+                    "type": "string",
+                    "hint": labels.get("presaleNoteHint") or "",
+                },
+            )
+            thicken["presaleNote"] = True
+            _add_feature(spec, "商品预售定金尾款说明")
 
-        labels.setdefault("specStockLabel", "规格库存")
-        labels.setdefault(
-            "specStockHint",
-            "同名在售规格可分看库存；完整多维 SKU 矩阵不支持。",
-        )
-        thicken["specStock"] = True
-        _add_feature(spec, "商品规格库存分记")
+        if _scan_cart_spec_ux(proposal_text):
+            labels.setdefault("specStockLabel", "规格库存")
+            labels.setdefault(
+                "specStockHint",
+                "同名在售规格可分看库存；完整多维 SKU 矩阵不支持。",
+            )
+            thicken["specStock"] = True
+            _add_feature(spec, "商品规格库存分记")
 
-        labels.setdefault("itemQaLabel", "商品问答")
-        labels.setdefault("itemQaHint", "对这件商品提问，店家会在留言里回复。")
-        labels.setdefault("itemQaEmpty", "还没有人提问")
-        labels.setdefault("itemQaSubmitLabel", "提问")
-        thicken["itemQa"] = True
-        _add_feature(spec, "商品详情页问答")
+        if _ITEM_QA_RE.search(body):
+            labels.setdefault("itemQaLabel", "商品问答")
+            labels.setdefault("itemQaHint", "对这件商品提问，店家会在留言里回复。")
+            labels.setdefault("itemQaEmpty", "还没有人提问")
+            labels.setdefault("itemQaSubmitLabel", "提问")
+            thicken["itemQa"] = True
+            _add_feature(spec, "商品详情页问答")
 
-        # 浏览足迹：SHOP 域默认挂 browse_history
-        caps_list = list(spec.get("capabilities") or [])
-        if "browse_history" not in caps_list and "archive" in caps_list:
-            caps_list.append("browse_history")
-            spec["capabilities"] = caps_list
-            schema["capabilities"] = caps_list
-            caps_set = set(caps_list)
-            try:
-                from app.bake.features.ux_scan import attach_ux_schema
-                from app.bake.gate_contracts import merge_ux_gate
-
-                attach_ux_schema(schema, caps_list)
-                gate = dict(spec.get("gate") or {})
-                spec["gate"] = merge_ux_gate(gate, caps_list)
-            except Exception:
-                pass
+        # 浏览足迹：仅能力岛已挂 browse_history 时加深（≠ SHOP 域默认注入）
+        if "browse_history" in caps_set:
             thicken["browseHistory"] = True
             _add_feature(spec, "商品浏览足迹")
 
@@ -1123,7 +1169,7 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "影院卖品加购")
         _add_feature(spec, "影院卖品库存扣减")
 
-    if domain == "DOM-SHOP":
+    if domain == "DOM-SHOP" and _SHOP_PACKAGING_FEE_RE.search(body):
         try:
             pkg = float(schema.get("packagingFeeYuan") or 0)
         except (TypeError, ValueError):
@@ -1140,6 +1186,194 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
     ents["order"] = order_ent
     schema["tradeThicken"] = thicken
     return spec
+
+
+# —— 开题对齐登记：B 档扫词开关（bake 与门禁共用；禁止第二套词典）——
+
+TradeScanFn = Callable[[dict[str, Any], str], bool]
+
+
+def _body_re(pattern: re.Pattern[str]) -> TradeScanFn:
+    def _fn(spec: dict[str, Any], proposal_text: str) -> bool:
+        return bool(pattern.search(_proposal_blob(spec, proposal_text)))
+
+    return _fn
+
+
+def _scan_cart_spec_align(spec: dict[str, Any], proposal_text: str) -> bool:
+    # 与 apply 一致：改规格只看 proposal_text，不拼 title
+    return _scan_cart_spec_ux(proposal_text)
+
+
+# (thicken 键, 适用域, 扫词判定) — 改 RE 只改上面常量，门禁自动跟
+TRADE_B_ALIGN_RULES: list[tuple[str, frozenset[str], TradeScanFn]] = [
+    ("cartChangeSpec", frozenset({"DOM-SHOP"}), _scan_cart_spec_align),
+    ("specStock", frozenset({"DOM-SHOP"}), _scan_cart_spec_align),
+    ("cartFreeShip", frozenset({"DOM-SHOP"}), _body_re(_FREE_SHIP_RE)),
+    ("refundExchange", frozenset({"DOM-SHOP"}), _body_re(_REFUND_EXCHANGE_RE)),
+    ("shipNodes", frozenset({"DOM-SHOP"}), _body_re(_SHIP_NODES_RE)),
+    ("warranty", frozenset({"DOM-SHOP"}), _body_re(_WARRANTY_RE)),
+    ("orderShare", frozenset({"DOM-SHOP", "DOM-FOOD"}), _body_re(_ORDER_SHARE_RE)),
+    ("receiveCode", frozenset({"DOM-SHOP", "DOM-FOOD"}), _body_re(_RECEIVE_CODE_RE)),
+    ("orderReceiptPrint", frozenset({"DOM-SHOP"}), _body_re(_RECEIPT_PRINT_RE)),
+    ("invoiceTitle", frozenset({"DOM-SHOP"}), _body_re(_INVOICE_RE)),
+    ("invoiceStatus", frozenset({"DOM-SHOP"}), _body_re(_INVOICE_RE)),
+    ("invoicePdf", frozenset({"DOM-SHOP"}), _body_re(_INVOICE_RE)),
+    ("giftPromo", frozenset({"DOM-SHOP"}), _body_re(_GIFT_PROMO_RE)),
+    ("packagingFee", frozenset({"DOM-SHOP"}), _body_re(_SHOP_PACKAGING_FEE_RE)),
+    ("presaleNote", frozenset({"DOM-SHOP"}), _body_re(_PRESALE_RE)),
+    ("stockNotify", frozenset({"DOM-SHOP"}), _body_re(_STOCK_NOTIFY_RE)),
+    ("itemQa", frozenset({"DOM-SHOP"}), _body_re(_ITEM_QA_RE)),
+    ("shelfSchedule", frozenset({"DOM-SHOP", "DOM-FOOD"}), _body_re(_SHELF_SCHEDULE_RE)),
+]
+
+# A 壳底白名单（摘录）：门禁不要求开题写出；灰区人工定
+TRADE_A_SHELL_WHITELIST: frozenset[str] = frozenset(
+    {
+        "core",
+        "orderTimeoutNail",
+        "orderRemark",
+        "defaultAddress",
+        "tasteChips",
+        "cinemaPickup",
+        "cartSelectAll",
+        "cartClearInvalid",
+        "cartAutoUncheck",
+        "stockLock",
+        "confirmReceiveTimeout",
+        "changeAddress",  # 灰区：订单壳延伸，进白名单
+        "salesDaily",
+        "refundReasonCategories",
+        "refundReasonRequired",
+        "refundType",
+        "refundTracking",
+        "afterSaleDays",
+        "refundTrace",
+        "partialShip",
+        "refundOrigin",
+        "goodRate",
+        "tableNo",
+        "pickupNo",
+        "utensilPack",
+        "packagingFee",  # FOOD 壳底；SHOP 另走 B 规则
+        "stallOpenHours",
+        "deliveryFeeLadder",
+        "etaText",
+        "requiredCategory",
+        "tableMerge",
+        "stallScoreSort",
+        "ticketRefundCutoff",
+        "seatHoldTimeout",
+        "adjacentSeatHint",
+        "showSoldOut",
+        "cinemaNotice",
+        "seatAttrs",
+        "effectHall",
+        "refundFee",
+        "showWeekView",
+        "cinemaCombo",
+        "cinemaSnack",
+        "cinemaSnackStock",
+        "orderReceiptPrint",  # FOOD/CINEMA 壳底；SHOP 另走 B
+    }
+)
+
+
+# (thicken 键, 适用域, 依赖 cap) — 与 apply 里「挂 cap 才加深」同口径
+TRADE_C_ALIGN_RULES: list[tuple[str, frozenset[str], str]] = [
+    ("browseHistory", frozenset({"DOM-SHOP"}), "browse_history"),
+    ("spendDiscountHelp", frozenset({"DOM-SHOP"}), "spend_discount"),
+    ("couponMutex", frozenset({"DOM-SHOP"}), "coupon"),
+    ("memberDay", frozenset({"DOM-SHOP"}), "member_tier"),
+    ("inviteReview", frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"}), "order_review"),
+    ("reviewImage", frozenset({"DOM-SHOP", "DOM-FOOD"}), "order_review"),
+    ("reviewFollow", frozenset({"DOM-SHOP", "DOM-FOOD"}), "order_review"),
+    ("couponRedeemCode", frozenset({"DOM-SHOP"}), "coupon"),
+    ("couponClaimCenter", frozenset({"DOM-SHOP"}), "coupon"),
+    ("couponExpireNotify", frozenset({"DOM-SHOP"}), "coupon"),
+    ("groupBuyProgress", frozenset({"DOM-SHOP"}), "group_buy"),
+    ("groupBuyFailRefund", frozenset({"DOM-SHOP"}), "group_buy"),
+    ("flashCountdown", frozenset({"DOM-SHOP"}), "flash_price"),
+    ("blindDraws", frozenset({"DOM-SHOP"}), "blind_box"),
+    ("pointsLedger", frozenset({"DOM-SHOP"}), "points"),
+    ("pointsFreight", frozenset({"DOM-SHOP"}), "points"),
+    ("cinemaPointsTicket", frozenset({"DOM-CINEMA"}), "points"),
+    ("cinemaMemberPrice", frozenset({"DOM-CINEMA"}), "member_tier"),
+    ("stockLock", frozenset({"DOM-SHOP", "DOM-FOOD"}), "quota"),
+]
+
+
+def expected_trade_b_flags(
+    domain: str, spec: dict[str, Any], proposal_text: str = ""
+) -> dict[str, bool]:
+    """登记表上该域每个 B 开关：扫词是否应开。"""
+    out: dict[str, bool] = {}
+    for flag, domains, scan in TRADE_B_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = bool(scan(spec, proposal_text))
+    return out
+
+
+def expected_trade_c_flags(domain: str, spec: dict[str, Any]) -> dict[str, bool]:
+    """登记表上该域每个 C 开关：依赖 cap 是否应开。"""
+    caps = {str(c) for c in (spec.get("capabilities") or []) if c}
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    if isinstance(schema.get("capabilities"), list):
+        caps |= {str(c) for c in schema["capabilities"] if c}
+    out: dict[str, bool] = {}
+    for flag, domains, cap in TRADE_C_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = cap in caps
+    return out
+
+
+def _diff_flags(
+    thicken: dict[str, Any], expected: dict[str, bool]
+) -> tuple[list[str], list[str]]:
+    over: list[str] = []
+    under: list[str] = []
+    for flag, want in expected.items():
+        got = bool(thicken.get(flag))
+        if got and not want:
+            over.append(flag)
+        elif want and not got:
+            under.append(flag)
+    return over, under
+
+
+def diff_trade_b_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    """B 档对照：返回 (多挂 flags, 漏挂 flags)。非交易域 → 空。"""
+    domain = str(spec.get("domain") or "")
+    if domain not in TRADE_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = schema.get("tradeThicken") if isinstance(schema.get("tradeThicken"), dict) else {}
+    return _diff_flags(thicken, expected_trade_b_flags(domain, spec, proposal_text))
+
+
+def diff_trade_c_align(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """C 档对照：thicken ↔ 依赖 cap。非交易域 → 空。"""
+    domain = str(spec.get("domain") or "")
+    if domain not in TRADE_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = schema.get("tradeThicken") if isinstance(schema.get("tradeThicken"), dict) else {}
+    return _diff_flags(thicken, expected_trade_c_flags(domain, spec))
+
+
+def diff_trade_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    """B+C 合并多挂/漏挂（去重保序）。"""
+    bo, bu = diff_trade_b_align(spec, proposal_text)
+    co, cu = diff_trade_c_align(spec)
+    over = list(dict.fromkeys([*bo, *co]))
+    under = list(dict.fromkeys([*bu, *cu]))
+    return over, under
 
 
 def assert_trade_refund_reason_surface(

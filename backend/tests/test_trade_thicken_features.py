@@ -111,21 +111,44 @@ class TradeThickenFeatureTests(unittest.TestCase):
         self.assertTrue(thicken.get("cartSelectAll"))
         self.assertTrue(thicken.get("cartClearInvalid"))
         self.assertTrue(thicken.get("cartAutoUncheck"))
-        self.assertTrue(thicken.get("cartChangeSpec"))
-        self.assertTrue(thicken.get("cartFreeShip"))
-        self.assertEqual(float(schema.get("freeShipYuan") or 0), 49.0)
-        self.assertIn("freeShipYuan", keys)
+        # 开题未写规格：不空挂「换规格」
+        self.assertFalse(thicken.get("cartChangeSpec"))
+        self.assertNotIn("cartChangeSpecLabel", labels)
+        # 包邮改扫词：空开题不挂
+        self.assertFalse(thicken.get("cartFreeShip"))
+        self.assertNotIn("cartFreeShipHint", labels)
         for key in (
             "cartSelectAllLabel",
             "cartClearInvalidLabel",
             "cartInvalidHint",
-            "cartChangeSpecLabel",
-            "cartNoSpecHint",
-            "cartFreeShipHint",
-            "cartFreeShipOkHint",
         ):
             self.assertIn(key, labels)
         self.assertFalse(thicken.get("tasteChips"))
+
+    def test_shop_t02_cart_free_ship_scan(self) -> None:
+        out = _spec("DOM-SHOP", "校园二手商城系统", "支持满额包邮与凑单提示")
+        schema = out.get("schema") or {}
+        thicken = schema.get("tradeThicken") or {}
+        labels = schema.get("labels") or {}
+        archive = ((schema.get("entities") or {}).get("archive") or {})
+        keys = {f.get("key") for f in (archive.get("fields") or []) if isinstance(f, dict)}
+        self.assertTrue(thicken.get("cartFreeShip"))
+        self.assertEqual(float(schema.get("freeShipYuan") or 0), 49.0)
+        self.assertIn("freeShipYuan", keys)
+        self.assertIn("cartFreeShipHint", labels)
+        self.assertIn("cartFreeShipOkHint", labels)
+
+    def test_shop_t02_cart_change_spec_scan(self) -> None:
+        out = _spec("DOM-SHOP", "校园二手商城系统", "支持商品规格与购物车换规格")
+        thicken = (out.get("schema") or {}).get("tradeThicken") or {}
+        labels = (out.get("schema") or {}).get("labels") or {}
+        self.assertTrue(thicken.get("cartChangeSpec"))
+        self.assertIn("cartChangeSpecLabel", labels)
+        self.assertIn("cartNoSpecHint", labels)
+        blocked = _spec("DOM-SHOP", "校园二手商城系统", "支持多规格库存与色码矩阵")
+        self.assertFalse(
+            ((blocked.get("schema") or {}).get("tradeThicken") or {}).get("cartChangeSpec")
+        )
 
     def test_food_t02_cart_select_only(self) -> None:
         out = _spec("DOM-FOOD", "校园点餐配送系统", "")
@@ -176,7 +199,9 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertTrue(thicken.get("changeAddress"))
         self.assertTrue(thicken.get("salesDaily"))
         self.assertTrue(thicken.get("inviteReview"))
-        self.assertTrue(thicken.get("orderReceiptPrint"))
+        # SHOP：开题未写小票则不挂
+        self.assertFalse(thicken.get("orderReceiptPrint"))
+        self.assertNotIn("orderReceiptPrintLabel", labels)
         self.assertGreaterEqual(int(schema.get("confirmReceiveTimeoutMinutes") or 0), 1)
         for key in (
             "stockLockHint",
@@ -187,9 +212,14 @@ CREATE TABLE IF NOT EXISTS goods (
             "salesDailyHint",
             "inviteReviewTitle",
             "inviteReviewBody",
-            "orderReceiptPrintLabel",
         ):
             self.assertIn(key, labels)
+        with_receipt = _spec("DOM-SHOP", "校园二手商城系统", "支持打印小票")
+        self.assertTrue(
+            ((with_receipt.get("schema") or {}).get("tradeThicken") or {}).get(
+                "orderReceiptPrint"
+            )
+        )
         yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-SHOP", out)
         self.assertIn("confirm-receive-timeout-minutes:", yml)
         self.assertRegex(yml, r"confirm-receive-timeout-minutes:\s*[1-9]\d*")
@@ -449,25 +479,33 @@ CREATE TABLE IF NOT EXISTS goods (
         schema = out.get("schema") or {}
         thicken = schema.get("tradeThicken") or {}
         labels = schema.get("labels") or {}
-        self.assertTrue(thicken.get("refundExchange"))
-        self.assertTrue(thicken.get("shipNodes"))
+        # 换货扫词开；空开题不挂
+        self.assertFalse(thicken.get("refundExchange"))
+        self.assertNotIn("refundTypeExchange", labels)
+        self.assertTrue(thicken.get("refundType"))
+        self.assertFalse(thicken.get("shipNodes"))
         self.assertTrue(thicken.get("partialShip"))
         self.assertFalse(thicken.get("orderShare"))
-        self.assertTrue(thicken.get("receiveCode"))
-        self.assertTrue(thicken.get("warranty"))
-        for key in (
-            "refundTypeExchange",
-            "refundTypeExchangeOnly",
-            "logisticsTraceLabel",
-            "shipNodeLabel",
-            "partialShipLabel",
-            "receiveCodeLabel",
-            "receiveCodeVerifyLabel",
-            "warrantyLabel",
-        ):
-            self.assertIn(key, labels)
+        self.assertFalse(thicken.get("receiveCode"))
+        self.assertFalse(thicken.get("warranty"))
+        self.assertIn("partialShipLabel", labels)
         self.assertNotIn("orderShareLabel", labels)
-        self.assertEqual(labels.get("logisticsTraceLabel"), "物流进度")
+        self.assertNotIn("logisticsTraceLabel", labels)
+        self.assertNotIn("receiveCodeLabel", labels)
+        self.assertNotIn("warrantyLabel", labels)
+        with_ship = _spec(
+            "DOM-SHOP",
+            "校园二手商城系统",
+            "支持物流进度手填、收货码核销、延保登记与换货。",
+        )
+        wt = (with_ship.get("schema") or {}).get("tradeThicken") or {}
+        wl = (with_ship.get("schema") or {}).get("labels") or {}
+        self.assertTrue(wt.get("shipNodes"))
+        self.assertTrue(wt.get("receiveCode"))
+        self.assertTrue(wt.get("warranty"))
+        self.assertTrue(wt.get("refundExchange"))
+        self.assertEqual(wl.get("logisticsTraceLabel"), "物流进度")
+        self.assertIn("refundTypeExchange", wl)
         with_share = _spec(
             "DOM-SHOP",
             "校园二手商城系统",
@@ -488,10 +526,19 @@ CREATE TABLE IF NOT EXISTS goods (
         out = _spec("DOM-FOOD", "校园点餐配送系统", "")
         thicken = (out.get("schema") or {}).get("tradeThicken") or {}
         self.assertFalse(thicken.get("orderShare"))
-        self.assertTrue(thicken.get("receiveCode"))
+        # FOOD 收货码也改扫词：未写不挂
+        self.assertFalse(thicken.get("receiveCode"))
         self.assertFalse(thicken.get("refundExchange"))
         self.assertFalse(thicken.get("shipNodes"))
         self.assertFalse(thicken.get("warranty"))
+        with_code = _spec(
+            "DOM-FOOD",
+            "校园点餐配送系统",
+            "当面核销收货码完成交付。",
+        )
+        self.assertTrue(
+            ((with_code.get("schema") or {}).get("tradeThicken") or {}).get("receiveCode")
+        )
         with_share = _spec(
             "DOM-FOOD",
             "校园点餐配送系统",
@@ -982,7 +1029,7 @@ CREATE TABLE IF NOT EXISTS goods (
                 "features": [],
                 "archetype": "ARCH-TRADE",
             },
-            "满减优惠券会员日折扣",
+            "满减优惠券会员日折扣；支持发票开票与满赠说明",
         )
         schema = out.get("schema") or {}
         thicken = schema.get("tradeThicken") or {}
@@ -998,6 +1045,11 @@ CREATE TABLE IF NOT EXISTS goods (
             "memberDay",
         ):
             self.assertTrue(thicken.get(key), key)
+        empty = _spec("DOM-SHOP", "校园二手商城系统", "")
+        et = (empty.get("schema") or {}).get("tradeThicken") or {}
+        self.assertFalse(et.get("invoiceTitle"))
+        self.assertFalse(et.get("giftPromo"))
+
         for key in (
             "invoiceTitleLabel",
             "invoiceTitleHint",
@@ -1082,43 +1134,73 @@ CREATE TABLE IF NOT EXISTS goods (
         thicken = schema.get("tradeThicken") or {}
         labels = schema.get("labels") or {}
         caps = schema.get("capabilities") or []
+        # 壳底：好评率 + 评价加深；加戏项空开题关闭
+        self.assertTrue(thicken.get("goodRate"))
+        self.assertTrue(thicken.get("reviewImage"))
+        self.assertTrue(thicken.get("reviewFollow"))
         for key in (
             "shelfSchedule",
-            "goodRate",
             "stockNotify",
             "presaleNote",
-            "specStock",
             "itemQa",
             "browseHistory",
-            "reviewImage",
-            "reviewFollow",
+            "specStock",
         ):
-            self.assertTrue(thicken.get(key), key)
-        self.assertIn("browse_history", caps)
+            self.assertFalse(thicken.get(key), key)
+        self.assertNotIn("browse_history", caps)
+        self.assertIn("goodRateLabel", labels)
+        self.assertIn("reviewImageLabel", labels)
+        self.assertIn("reviewFollowLabel", labels)
+
+        with_scan = _spec(
+            "DOM-SHOP",
+            "校园二手商城系统",
+            "商品规格；定时上架下架；到货通知；预售定金尾款；商品问答。",
+        )
+        wt = (with_scan.get("schema") or {}).get("tradeThicken") or {}
+        wl = (with_scan.get("schema") or {}).get("labels") or {}
         for key in (
-            "shelfOnLabel",
-            "shelfOffLabel",
-            "goodRateLabel",
-            "stockNotifyLabel",
-            "presaleNoteLabel",
-            "specStockLabel",
-            "itemQaLabel",
-            "reviewImageLabel",
-            "reviewFollowLabel",
+            "shelfSchedule",
+            "stockNotify",
+            "presaleNote",
+            "itemQa",
+            "specStock",
         ):
-            self.assertIn(key, labels)
-        archive = (schema.get("entities") or {}).get("archive") or {}
+            self.assertTrue(wt.get(key), key)
+        self.assertIn("shelfOnLabel", wl)
+        self.assertIn("stockNotifyLabel", wl)
+        self.assertIn("presaleNoteLabel", wl)
+        self.assertIn("itemQaLabel", wl)
+        archive = ((with_scan.get("schema") or {}).get("entities") or {}).get("archive") or {}
         field_keys = {f.get("key") for f in (archive.get("fields") or []) if isinstance(f, dict)}
         self.assertIn("shelfOn", field_keys)
         self.assertIn("shelfOff", field_keys)
         self.assertIn("presaleNote", field_keys)
 
+        with_bh = attach_accept(
+            {
+                "domain": "DOM-SHOP",
+                "title": "校园二手商城系统",
+                "capabilities": list(DOMAIN_CAPABILITIES["DOM-SHOP"]) + ["browse_history"],
+                "features": [],
+                "archetype": "ARCH-TRADE",
+            },
+            "",
+        )
+        self.assertTrue(
+            ((with_bh.get("schema") or {}).get("tradeThicken") or {}).get("browseHistory")
+        )
+
         food = _spec("DOM-FOOD", "校园点餐配送系统", "")
         ft = (food.get("schema") or {}).get("tradeThicken") or {}
-        self.assertTrue(ft.get("shelfSchedule"))
+        self.assertFalse(ft.get("shelfSchedule"))
         self.assertTrue(ft.get("goodRate"))
         self.assertFalse(ft.get("stockNotify"))
         self.assertFalse(ft.get("presaleNote"))
+        food_shelf = _spec("DOM-FOOD", "校园点餐配送系统", "支持定时上架与定时下架")
+        self.assertTrue(
+            ((food_shelf.get("schema") or {}).get("tradeThicken") or {}).get("shelfSchedule")
+        )
 
         baked = domain_sql(
             "DOM-SHOP",
@@ -1354,7 +1436,11 @@ CREATE TABLE IF NOT EXISTS goods (
             "cinemaSnackSaveLabel",
         ):
             self.assertIn(key, cl)
-        shop = _spec("DOM-SHOP", "校园二手商城系统", "")
+        shop_empty = _spec("DOM-SHOP", "校园二手商城系统", "")
+        self.assertFalse(
+            ((shop_empty.get("schema") or {}).get("tradeThicken") or {}).get("packagingFee")
+        )
+        shop = _spec("DOM-SHOP", "校园二手商城系统", "结算可收包装费")
         st = (shop.get("schema") or {}).get("tradeThicken") or {}
         sl = (shop.get("schema") or {}).get("labels") or {}
         self.assertTrue(st.get("packagingFee"))
@@ -1430,6 +1516,71 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertIn("cinemaSnackOn", fe_admin)
         self.assertIn("/api/seats/snacks/all", fe_admin)
         self.assertIn("!isFood && packagingFeeOn", fe_cart)
+
+
+    def test_trade_tri_domain_shell_vs_scan(self) -> None:
+        """交易族三域：空开题仅壳底+能力加深；B 档加戏不空挂；CINEMA 不串商城物流延保。"""
+        shop = _spec("DOM-SHOP", "校园二手商城系统", "")
+        st = (shop.get("schema") or {}).get("tradeThicken") or {}
+        for key in (
+            "cartSelectAll",
+            "changeAddress",
+            "confirmReceiveTimeout",
+            "refundType",
+            "partialShip",
+            "goodRate",
+            "orderTimeoutNail",
+        ):
+            self.assertTrue(st.get(key), key)
+        for key in (
+            "cartChangeSpec",
+            "cartFreeShip",
+            "shipNodes",
+            "warranty",
+            "receiveCode",
+            "orderReceiptPrint",
+            "invoiceTitle",
+            "giftPromo",
+            "packagingFee",
+            "presaleNote",
+            "stockNotify",
+            "itemQa",
+            "shelfSchedule",
+            "refundExchange",
+            "browseHistory",
+            "specStock",
+        ):
+            self.assertFalse(st.get(key), key)
+
+        food = _spec("DOM-FOOD", "校园点餐配送系统", "")
+        ft = (food.get("schema") or {}).get("tradeThicken") or {}
+        self.assertTrue(ft.get("cartSelectAll"))
+        self.assertTrue(ft.get("tableNo"))
+        self.assertTrue(ft.get("packagingFee"))
+        self.assertTrue(ft.get("orderReceiptPrint"))
+        self.assertFalse(ft.get("cartChangeSpec"))
+        self.assertFalse(ft.get("cartFreeShip"))
+        self.assertFalse(ft.get("receiveCode"))
+        self.assertFalse(ft.get("orderShare"))
+        self.assertFalse(ft.get("shelfSchedule"))
+        self.assertFalse(ft.get("shipNodes"))
+        self.assertFalse(ft.get("warranty"))
+
+        cinema = _spec("DOM-CINEMA", "影院在线选座购票系统", "")
+        ct = (cinema.get("schema") or {}).get("tradeThicken") or {}
+        self.assertTrue(ct.get("cinemaPickup"))
+        self.assertTrue(ct.get("seatHoldTimeout"))
+        self.assertTrue(ct.get("orderReceiptPrint"))
+        self.assertTrue(ct.get("cinemaSnack"))
+        for key in (
+            "shipNodes",
+            "warranty",
+            "cartChangeSpec",
+            "receiveCode",
+            "cartSelectAll",
+            "invoiceTitle",
+        ):
+            self.assertFalse(ct.get(key), key)
 
 
 if __name__ == "__main__":
