@@ -402,9 +402,14 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 workspace = await asyncio.to_thread(bake_project, bake_id, bake_spec, bake_db)
                 project.workspace_path = str(workspace)
                 try:
-                    from app.services.student_db import ensure_student_schema
+                    from app.services.student_db import reset_student_schema
 
-                    await asyncio.to_thread(ensure_student_schema, workspace, project.db_name)
+                    # 重 bake 必须洗库：INSERT IGNORE 否则会留下旧货皮/旧分类种子
+                    await asyncio.to_thread(
+                        reset_student_schema,
+                        workspace,
+                        project.db_name,
+                    )
                     await set_step(1, "done", "骨架就绪 · 库表已准备")
                 except RuntimeError as e:
                     await set_step(1, "done", f"骨架就绪 · 库表跳过：{e}")

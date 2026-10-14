@@ -1,4 +1,8 @@
-"""学生项目库：按 workspace/sql/schema.sql 建库建表（幂等）。"""
+"""学生项目库：按 workspace/sql/schema.sql 建库建表。
+
+默认幂等补列；重 bake 走 ``reset_student_schema`` / ``ensure_student_schema(..., reset=True)``
+先删库再重建，避免 INSERT IGNORE 留下旧货皮种子。
+"""
 
 from __future__ import annotations
 
@@ -91,10 +95,16 @@ def _ensure_table_columns(cur, db_name: str, table: str, columns: list[tuple[str
             pass
 
 
-def ensure_student_schema(workspace: Path, db_name: str) -> None:
-    """连接本机 MySQL，执行项目 schema.sql。失败抛 RuntimeError。"""
+def ensure_student_schema(workspace: Path, db_name: str, *, reset: bool = False) -> None:
+    """连接本机 MySQL，执行项目 schema.sql。失败抛 RuntimeError。
+
+    reset=True（重 bake）：先删库再重建，避免 INSERT IGNORE 留下旧货皮/旧分类种子。
+    预览启停保持 reset=False，只补列与空表回放，不冲掉演示过程中的写入。
+    """
     if not db_name or not re.match(r"^[a-zA-Z0-9_]+$", db_name):
         raise RuntimeError(f"非法库名: {db_name!r}")
+    if reset:
+        drop_student_database(db_name)
     schema_path = workspace / "sql" / "schema.sql"
     if not schema_path.exists():
         raise RuntimeError(f"缺少 {schema_path}")
@@ -142,6 +152,11 @@ def ensure_student_schema(workspace: Path, db_name: str) -> None:
         raise RuntimeError(f"执行 schema.sql 失败: {e}") from e
     finally:
         conn.close()
+
+
+def reset_student_schema(workspace: Path, db_name: str) -> None:
+    """重 bake 专用：删库后按当前 schema.sql 全量重建。"""
+    ensure_student_schema(workspace, db_name, reset=True)
 
 
 def _post_schema_demo_repair(cur, workspace: Path, db_name: str, script: str) -> None:
