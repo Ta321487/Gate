@@ -1671,6 +1671,48 @@ public final class ArchiveStore {
         return out;
     }
 
+    /**
+     * 窗内活动价货架（E-05）：仅 flash_price 开启且有 promo_* 列时有数据。
+     * 条件与 {@link ArchivePriceOps#isPromoActive} 一致，供门户限时特价区服务端筛选。
+     */
+    public static Map<String, Object> pagePromoActive(int page, int size) {
+        if (page < 1) page = 1;
+        if (size < 1) size = 10;
+        Map<String, Object> empty = new LinkedHashMap<>();
+        empty.put("list", List.of());
+        empty.put("total", 0);
+        empty.put("page", page);
+        empty.put("size", size);
+        if (!flashPriceEnabled || !hasPromoPrice()) {
+            return empty;
+        }
+        StringBuilder where = new StringBuilder(" WHERE 1=1");
+        List<Object> args = new ArrayList<>();
+        if (hasDeletedAt()) {
+            where.append(" AND deleted_at IS NULL");
+        }
+        where.append(" AND status='available'");
+        where.append(" AND promo_price IS NOT NULL AND promo_price > 0");
+        where.append(" AND (promo_start IS NULL OR promo_start <= NOW())");
+        where.append(" AND (promo_end IS NULL OR promo_end >= NOW())");
+        Integer total = db().queryForObject(
+                "SELECT COUNT(*) FROM " + ITEM + where, Integer.class, args.toArray());
+        int t = total == null ? 0 : total;
+        args.add(size);
+        args.add((page - 1) * size);
+        List<Map<String, Object>> list = db().query(
+                "SELECT * FROM " + ITEM + where
+                        + " ORDER BY promo_end ASC, id ASC"
+                        + " LIMIT ? OFFSET ?",
+                (rs, i) -> enrichItem(mapItemRow(rs)), args.toArray());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("list", list);
+        out.put("total", t);
+        out.put("page", page);
+        out.put("size", size);
+        return out;
+    }
+
     /** 目录排序：置顶 > 精华 > id（有列才用）。 */
     private static String catalogOrderBy() {
         if (hasItemColumn("stall_score")) return " ORDER BY stall_score DESC, id DESC";

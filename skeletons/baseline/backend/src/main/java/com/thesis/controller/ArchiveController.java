@@ -35,6 +35,8 @@ public class ArchiveController {
             @RequestParam(required = false) Integer ageMax,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
+            /** 为 true 时只返回窗内活动价商品（需挂 flash_price）；门户限时特价区用 */
+            @RequestParam(required = false, defaultValue = "false") boolean promoActive,
             @RequestParam(required = false, defaultValue = "false") boolean includeDeleted,
             HttpSession session) {
         boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
@@ -42,7 +44,9 @@ public class ArchiveController {
         int p = GuestTeaser.clampPage(session, page);
         int s = GuestTeaser.clampSize(session, size);
         Map<String, Object> data;
-        if (admin && ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
+        if (promoActive && !admin) {
+            data = ArchiveStore.pagePromoActive(p, s);
+        } else if (admin && ArchiveStore.shopMarketplaceEnabled() && !AdminAuth.isSuperAdmin(session)) {
             String uid = AdminAuth.requireLogin(session);
             data = ArchiveStore.pageItemsForMerchant(uid, keyword, categoryId, p, s);
         } else if (!admin && year != null && year > 0) {

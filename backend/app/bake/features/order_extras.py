@@ -40,6 +40,7 @@ _FLASH_TERMS = (
     "限时折扣",
     "活动价",
     "秒杀",
+    "促销活动",
     "促销信息",
     "节日优惠",
     "早鸟票",
@@ -143,6 +144,10 @@ def attach_flash_price_fields(schema: dict[str, Any]) -> None:
         "flashPriceHint",
         "活动窗口内按下单时的活动价计入订单；窗外按原价。库存仍按单仓扣减。",
     )
+    labels.setdefault("mallFlashTitle", "限时特价")
+    labels.setdefault("mallFlashMore", "查看更多")
+    labels.setdefault("flashCountdownLabel", "距结束")
+    labels.setdefault("flashCountdownEnded", "已结束")
 
 
 def attach_order_extras_schema(schema: dict[str, Any], caps: list[str], *, timeout_minutes: int = 0) -> None:
@@ -244,6 +249,33 @@ def ensure_flash_price_columns(sql: str, *, enabled: bool, item_table: str | Non
         return f"{head}{body}{tail}"
 
     return _CREATE_TABLE_RE.sub(repl, sql)
+
+
+def ensure_flash_price_demo_seed(sql: str, *, enabled: bool, item_table: str | None) -> str:
+    """挂 flash_price 时给前两件货写入进行中的活动窗，供门户限时特价区真读。
+
+    用 NOW() 相对窗，避免日历对齐后窗外空架；已有活动价的行不覆盖。
+    """
+    if not enabled:
+        return sql
+    t = (item_table or "").strip()
+    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+        return sql
+    marker = f"/* gf_flash_price_demo:{t} */"
+    if marker in sql:
+        return sql
+    # author 在交易壳即标价；无价或已填活动价则跳过
+    block = f"""
+{marker}
+UPDATE {t} SET
+  promo_price = ROUND(CAST(author AS DECIMAL(10,2)) * 0.85, 2),
+  promo_start = DATE_SUB(NOW(), INTERVAL 1 DAY),
+  promo_end = DATE_ADD(NOW(), INTERVAL 7 DAY)
+WHERE id IN (1, 2)
+  AND CAST(author AS DECIMAL(10,2)) > 0
+  AND (promo_price IS NULL OR promo_price <= 0);
+"""
+    return sql.rstrip() + "\n" + block
 
 _PROMO_COUPON_DDL = """
 CREATE TABLE IF NOT EXISTS promo_coupon (

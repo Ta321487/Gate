@@ -488,7 +488,11 @@ def domain_sql(
     from app.bake.features.ai_assistant import AI_ASSISTANT_CAP
     from app.bake.features.ux_scan import BROWSE_HISTORY_CAP, GALLERY_CAP
     from app.bake.features.archive_log import ARCHIVE_LOG_CAP
-    from app.bake.features.order_extras import FLASH_PRICE_CAP, ORDER_REVIEW_CAP
+    from app.bake.features.order_extras import (
+        FLASH_PRICE_CAP,
+        ORDER_REVIEW_CAP,
+        ensure_flash_price_demo_seed,
+    )
     from app.bake.features.loyalty import LOYALTY_CAPS
     from app.bake.features.proposal_caps import merge_proposal_capabilities
     from app.bake.archive_columns import apply_archive_semantic_columns
@@ -805,6 +809,11 @@ def domain_sql(
         item_table=resolved_item,
     )
     text = ensure_flash_price_columns(
+        text,
+        enabled=FLASH_PRICE_CAP in caps,
+        item_table=resolved_item,
+    )
+    text = ensure_flash_price_demo_seed(
         text,
         enabled=FLASH_PRICE_CAP in caps,
         item_table=resolved_item,

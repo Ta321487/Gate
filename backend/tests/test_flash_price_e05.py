@@ -32,6 +32,7 @@ class FlashPriceE05Tests(unittest.TestCase):
         self.assertTrue(scan_flash_price("限时特价窗口。"))
         self.assertTrue(scan_flash_price("开题写秒杀（时段特价）。"))
         self.assertTrue(scan_flash_price("活动模块查看促销信息、节日优惠。"))
+        self.assertTrue(scan_flash_price("用户端含促销活动模块。"))
         self.assertTrue(scan_flash_price("菜品限时折扣"))
         self.assertTrue(scan_flash_price("早鸟票与场次特价"))
         self.assertTrue(scan_flash_price("第二份半价、今日特价、折扣价"))
@@ -108,6 +109,10 @@ class FlashPriceE05Tests(unittest.TestCase):
         self.assertIn("promo_price", n)
         self.assertIn("promo_start", n)
         self.assertIn("promo_end", n)
+        self.assertIn("gf_flash_price_demo", sql)
+        self.assertIn("DATE_ADD(NOW()", sql)
+        labels = (rich.get("schema") or {}).get("labels") or {}
+        self.assertEqual(labels.get("mallFlashTitle"), "限时特价")
 
     def test_unmounted_sql_no_promo_columns(self) -> None:
         plain = attach_accept(
@@ -128,6 +133,7 @@ class FlashPriceE05Tests(unittest.TestCase):
         n = normalize_sql(sql)
         self.assertNotIn("promo_price", n)
         self.assertNotIn("promo_start", n)
+        self.assertNotIn("gf_flash_price_demo", sql)
 
     def test_baseline_effective_price_and_fe(self) -> None:
         store = (
@@ -138,6 +144,24 @@ class FlashPriceE05Tests(unittest.TestCase):
         self.assertIn("effectiveUnitPrice", store)
         self.assertIn("isPromoActive", store)
         self.assertIn("promoActive", store)
+        self.assertIn("pagePromoActive", store)
+        for overlay in (
+            "overlays/persistence-mybatis",
+            "overlays/persistence-jpa",
+        ):
+            sc = (
+                ROOT
+                / "skeletons"
+                / overlay
+                / "backend/src/main/java/com/thesis/capability/ArchiveStore.java"
+            ).read_text(encoding="utf-8")
+            self.assertIn("pagePromoActive", sc, overlay)
+        ctrl = (
+            BASELINE
+            / "backend/src/main/java/com/thesis/controller/ArchiveController.java"
+        ).read_text(encoding="utf-8")
+        self.assertIn("promoActive", ctrl)
+        self.assertIn("pagePromoActive", ctrl)
         order = (
             BASELINE
             / "backend/src/main/java/com/thesis/capability/OrderStore.java"
@@ -154,6 +178,13 @@ class FlashPriceE05Tests(unittest.TestCase):
         self.assertIn("flash_price", fe)
         self.assertIn("promoActive", fe)
         self.assertIn("flashBadge", fe)
+        home = (
+            BASELINE / "frontend/src/views/user/PortalHome.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("flash_price", home)
+        self.assertIn("mallFlashProducts", home)
+        self.assertIn("promoActive: true", home)
+        self.assertIn("mallFlashTitle", home)
 
 
 if __name__ == "__main__":

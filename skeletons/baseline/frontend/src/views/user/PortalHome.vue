@@ -12,8 +12,7 @@
               class="mall-cat"
               @click="goCategory(c)"
             >
-              <span>{{ c.name }}</span>
-              <span class="mall-cat-chev" aria-hidden="true">›</span>
+              {{ c.name }}
             </button>
             <p v-if="!mallCategories.length" class="mall-cat-empty">暂无分类</p>
           </aside>
@@ -67,6 +66,43 @@
               cta-label="去逛逛"
               @cta="goArchive"
             />
+          </div>
+        </section>
+
+        <!-- 挂 flash_price 且有窗内活动价才出；点进详情按下单活动价走 -->
+        <section v-if="flashOn && mallFlashProducts.length" class="mall-flash" aria-label="限时特价">
+          <div class="mall-new-hd">
+            <h2 class="mall-new-title">{{ mallFlashTitle }}</h2>
+            <button type="button" class="more" @click="goArchive">{{ mallFlashMore }} &gt;&gt;</button>
+          </div>
+          <div class="mall-grid">
+            <button
+              v-for="item in mallFlashProducts"
+              :key="'flash-' + item.id"
+              type="button"
+              class="mall-card"
+              @click="goProduct(item)"
+            >
+              <div
+                class="mall-cover"
+                :style="item.cover ? { backgroundImage: `url('${item.cover}')` } : undefined"
+              >
+                <span class="mall-flash-badge">{{ flashBadge }}</span>
+                <span v-if="!item.cover" class="mall-cover-letter">{{ item.letter }}</span>
+              </div>
+              <div class="mall-copy">
+                <h3>{{ item.title }}</h3>
+                <p v-if="item.countdown" class="mall-flash-cd">{{ item.countdown }}</p>
+                <p v-else>{{ item.lead }}</p>
+                <div class="mall-foot">
+                  <span class="mall-price">
+                    {{ item.price }}
+                    <span v-if="item.listPrice" class="mall-list-price">{{ item.listPrice }}</span>
+                  </span>
+                  <span class="mall-meta">{{ item.shop ? item.shop : item.meta }}</span>
+                </div>
+              </div>
+            </button>
           </div>
         </section>
       </div>
@@ -174,10 +210,16 @@ import {
   archiveCopy,
   formatArchiveScalar,
   getSchema,
+  hasCap,
   schemaLabels,
   schemaMenus,
   ticketCopy,
 } from '../../utils/domainSchema.js'
+import {
+  formatCountdownClock,
+  secondsUntil,
+  useNowTick,
+} from '../../utils/useCountdown.js'
 import { userMenuPath } from '../../utils/menuRoutes.js'
 import { isGuestBrowseEnabled, isLoggedIn, requireLogin } from '../../utils/session.js'
 
@@ -282,6 +324,44 @@ async function loadNews() {
 
 const mallCategories = ref([])
 const mallProducts = ref([])
+const mallFlashRows = ref([])
+const flashOn = computed(() => hasCap('flash_price'))
+const mallFlashTitle = computed(() => labels.mallFlashTitle || '限时特价')
+const mallFlashMore = computed(() => labels.mallFlashMore || '查看更多')
+const flashBadge = computed(() => labels.flashPriceBadge || '活动价')
+const flashCountdownLabel = computed(() => labels.flashCountdownLabel || '距结束')
+const flashCountdownEnded = computed(() => labels.flashCountdownEnded || '已结束')
+const { nowMs } = useNowTick()
+
+const mallFlashProducts = computed(() =>
+  mallFlashRows.value.map((row) => {
+    const sec = row.promoEnd ? secondsUntil(row.promoEnd, nowMs.value) : null
+    let countdown = ''
+    if (sec != null) {
+      countdown = sec <= 0 ? flashCountdownEnded.value : `${flashCountdownLabel.value} ${formatCountdownClock(sec)}`
+    }
+    const promo = Number(row.promoPrice)
+    const list = Number(row.author)
+    return {
+      id: row.id,
+      title: row.title || '未命名',
+      lead: mallLeadText(row),
+      price:
+        Number.isFinite(promo) && promo > 0
+          ? `¥${promo.toFixed(2)}`
+          : mallPriceText(row),
+      listPrice:
+        Number.isFinite(list) && list > 0 && Number.isFinite(promo) && promo > 0 && list > promo
+          ? `¥${list.toFixed(2)}`
+          : '',
+      meta: mallMetaText(row),
+      shop: String(row.shopName || row.shop_name || '').trim(),
+      cover: row.coverUrl || '',
+      letter: String(row.title || '?').slice(0, 1),
+      countdown,
+    }
+  }),
+)
 
 const mallHero = computed(() => {
   const withSrc = banners.value.find((b) => b.src)
@@ -328,15 +408,26 @@ function mallMetaText(row) {
   return row?.categoryName || ''
 }
 
+/** 门户侧栏只挂品类维；用途/目标等其它维留给目录筛选，避免扁列表长得像子菜单。 */
+function mallRailCategories(raw) {
+  const rows = (Array.isArray(raw) ? raw : []).filter((c) => c && c.id != null)
+  const hasDim = rows.some((c) => String(c.dimension || '').trim())
+  const rail = hasDim
+    ? rows.filter((c) => {
+        const d = String(c.dimension || '').trim()
+        return !d || d === '品类'
+      })
+    : rows
+  const list = (rail.length ? rail : rows).slice(0, 12)
+  return list.map((c) => ({ id: c.id, name: c.name || '分类' }))
+}
+
 async function loadMall() {
   await loadHomeBanners()
   try {
     const catRes = await http.get('/api/categories')
     const cats = catRes.data || catRes || []
-    mallCategories.value = (Array.isArray(cats) ? cats : []).slice(0, 12).map((c) => ({
-      id: c.id,
-      name: c.name || '分类',
-    }))
+    mallCategories.value = mallRailCategories(cats)
   } catch {
     mallCategories.value = []
   }
@@ -356,6 +447,17 @@ async function loadMall() {
     }))
   } catch {
     mallProducts.value = []
+  }
+  mallFlashRows.value = []
+  if (!flashOn.value) return
+  try {
+    const res = await http.get('/api/archive', {
+      params: { page: 1, size: 4, promoActive: true },
+    })
+    const rows = res.data?.list || res.data?.items || res.data || []
+    mallFlashRows.value = (Array.isArray(rows) ? rows : []).slice(0, 4)
+  } catch {
+    mallFlashRows.value = []
   }
 }
 
@@ -773,10 +875,7 @@ function openNews(item) {
   min-height: 280px;
 }
 .mall-cat {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  display: block;
   width: 100%;
   border: 0;
   background: transparent;
@@ -790,11 +889,6 @@ function openNews(item) {
 }
 .mall-cat:hover {
   background: color-mix(in srgb, var(--portal-accent, #f97316) 28%, transparent);
-}
-.mall-cat-chev {
-  opacity: 0.55;
-  font-size: 14px;
-  line-height: 1;
 }
 .mall-cat-empty {
   margin: auto;
@@ -886,12 +980,36 @@ function openNews(item) {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 .mall-cover-letter {
   font-size: 2rem;
   font-weight: 700;
   color: var(--portal-accent, #ea580c);
   opacity: 0.55;
+}
+.mall-flash-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 650;
+  color: #fff;
+  background: var(--portal-accent, #ea580c);
+}
+.mall-flash-cd {
+  color: var(--portal-accent, #ea580c) !important;
+  font-weight: 600;
+}
+.mall-list-price {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--portal-muted, #9ca3af);
+  text-decoration: line-through;
 }
 .mall-copy {
   padding: 12px 12px 14px;

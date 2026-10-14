@@ -1795,8 +1795,10 @@ def merge_order_extras_gate(gate: dict, caps: list[str] | None, *, timeout_minut
             [
                 "backend/src/main/java/com/thesis/capability/ArchiveStore.java",
                 "backend/src/main/java/com/thesis/capability/OrderStore.java",
+                "backend/src/main/java/com/thesis/controller/ArchiveController.java",
                 "frontend/src/views/admin/ArchiveAdmin.vue",
                 "frontend/src/views/user/ArchiveBrowse.vue",
+                "frontend/src/views/user/PortalHome.vue",
             ]
         )
     if timeout_minutes > 0:
@@ -1829,10 +1831,10 @@ def merge_order_extras_gate(gate: dict, caps: list[str] | None, *, timeout_minut
     if "coupon" in caps:
         flow["coupon"] = {"file": "CouponController.java", "need": ["/api/coupons"]}
     if "flash_price" in caps:
-        # 计价在 ArchiveStore/OrderStore；订单 API 仍走 OrderController
+        # 计价下单走订单；窗内货架走档案列表 promoActive
         flow["flash_price"] = {
-            "file": "OrderController.java",
-            "need": ["/api/orders"],
+            "file": "ArchiveController.java",
+            "need": ["/api/archive", "/api/orders"],
         }
     out["flow_api"] = flow
     return out
