@@ -13,9 +13,11 @@ from app.bake.runtime_policy import policy_preview as app_policy_preview
 from app.bake.engine_sql import domain_sql
 from app.bake.features.detail_attrs import DETAIL_ATTRS_CAP, parse_detail_labels
 from app.bake.features.multi_category import (
+    DEFAULT_CATEGORY_DIMENSIONS,
     MULTI_CATEGORY_CAP,
     merge_multi_category_capabilities,
     parse_category_axes,
+    resolve_category_dimensions,
     scan_multi_category,
 )
 from app.bake.features.order_extras import FLASH_PRICE_CAP, scan_flash_price
@@ -149,6 +151,7 @@ class MultiCategoryProductTagsTests(unittest.TestCase):
         self.assertIn(MULTI_CATEGORY_CAP, caps)
         arch = ((rich.get("schema") or {}).get("entities") or {}).get("archive") or {}
         self.assertTrue(bool(arch.get("multiCategory")))
+        self.assertEqual(arch.get("categoryDimensions"), ["用途", "目标"])
         keys = {f.get("key") for f in (arch.get("fields") or []) if isinstance(f, dict)}
         self.assertIn("categoryIds", keys)
         self.assertNotIn("category", keys)
@@ -238,6 +241,49 @@ class MultiCategoryProductTagsTests(unittest.TestCase):
         )
         self.assertIn("dimension", cats)
         self.assertIn("multiCategory", cats)
+        self.assertIn("categoryDimensions", cats)
+        # 维度备选跟开题 schema，禁止前端写死「品类/材质/品牌」擦包
+        self.assertNotIn("['品类', '用途', '材质', '品牌', '目标']", cats)
+        # 维度是有限轴，禁止 allow-create 手填出「11」这类无法维护的值
+        dim_select = ""
+        for line in cats.splitlines():
+            if "form.dimension" in line and "el-select" in line:
+                dim_select = line
+                break
+        self.assertIn("form.dimension", dim_select)
+        self.assertNotIn("allow-create", dim_select)
+
+    def test_category_dimensions_follow_opening(self) -> None:
+        """选题轴变了，schema 维度备选跟着变，不是写死五词。"""
+        self.assertEqual(
+            parse_category_axes(_MULTI_TEXT),
+            [("用途", ["用途"]), ("目标", ["目标"])],
+        )
+        tea = (
+            "浏览搜索（按香型：花香/果香；按茶类：绿茶/红茶）。分类双维度。"
+        )
+        self.assertEqual(
+            resolve_category_dimensions(tea),
+            ["香型", "茶类"],
+        )
+        food = resolve_category_dimensions(_FOOD_ACCEPT)
+        self.assertEqual(food, ["口味", "荤素"])
+        # 只说「多维分类」无轴名 → 默认演示轴
+        self.assertEqual(
+            resolve_category_dimensions("多维分类与多条件筛选。"),
+            list(DEFAULT_CATEGORY_DIMENSIONS),
+        )
+        tea_spec = attach_accept(
+            {
+                "domain": "DOM-SHOP",
+                "title": "茶叶零售",
+                "capabilities": _SHOP_CAPS,
+                "archetype": "ARCH-TRADE",
+            },
+            tea,
+        )
+        arch = ((tea_spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
+        self.assertEqual(arch.get("categoryDimensions"), ["香型", "茶类"])
 
     def test_dual_axis_values_and_detail_attrs(self) -> None:
         text = (

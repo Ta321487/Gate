@@ -53,13 +53,16 @@ _AXIS_TERMS = (
     "按价位",
 )
 
-# 「按…分类」出现两次以上
-_BY_CLASSIFY_RE = re.compile(r"按[\u4e00-\u9fffA-Za-z0-9]{1,12}分类")
+# 「按…分类」出现两次以上（捕获维名，供种子与管理端下拉）
+_BY_CLASSIFY_RE = re.compile(r"按([\u4e00-\u9fffA-Za-z0-9]{1,12})分类")
 
 # 「按口味和荤素分类」「按类型和评分分类」——一句里两个维
 _AND_CLASSIFY_RE = re.compile(
     r"按([\u4e00-\u9fffA-Za-z0-9]{1,12})(?:和|与|及)([\u4e00-\u9fffA-Za-z0-9]{1,12})分类"
 )
+
+# 开题未写出轴名时，与 ensure 默认种子一致（勿在前端另写一套）
+DEFAULT_CATEGORY_DIMENSIONS: tuple[str, ...] = ("品类", "用途", "目标")
 
 
 def scan_multi_category(text: str, title: str = "") -> bool:
@@ -121,7 +124,25 @@ def parse_category_axes(text: str, title: str = "") -> list[tuple[str, list[str]
                     break
             if len(axes) >= 2:
                 break
+    # 「按用途分类、按目标分类」：有维名无取值时，维名占位，与扫词挂岛对齐
+    if len(axes) < 2:
+        for raw in _BY_CLASSIFY_RE.findall(blob):
+            dim = _clean_axis_token(raw)
+            if not dim or dim in seen:
+                continue
+            seen.add(dim)
+            axes.append((dim, [dim]))
+            if len(axes) >= 4:
+                break
     return axes
+
+
+def resolve_category_dimensions(text: str, title: str = "") -> list[str]:
+    """管理端维度下拉真源：开题轴名；未解析出则用默认演示轴。"""
+    dims = [dim for dim, _names in parse_category_axes(text, title) if dim]
+    if dims:
+        return dims
+    return list(DEFAULT_CATEGORY_DIMENSIONS)
 
 
 def multi_category_axis_seed_sql(
@@ -190,12 +211,19 @@ def merge_multi_category_capabilities(
     return out
 
 
-def attach_multi_category_fields(schema: dict[str, Any]) -> None:
+def attach_multi_category_fields(
+    schema: dict[str, Any],
+    proposal_text: str = "",
+    title: str = "",
+) -> None:
     ents = schema.setdefault("entities", {})
     archive = ents.setdefault("archive", {})
     if not isinstance(archive, dict):
         return
     archive["multiCategory"] = True
+    archive["categoryDimensions"] = resolve_category_dimensions(
+        proposal_text or "", title or ""
+    )
     # 浏览/表单改走 categoryIds；单列 category 字段改为多选语义
     fields = list(archive.get("fields") or [])
     new_fields: list[dict[str, Any]] = []
@@ -235,7 +263,7 @@ def apply_multi_category_to_spec(
     if MULTI_CATEGORY_CAP not in caps:
         return {**spec, "schema": schema}
 
-    attach_multi_category_fields(schema)
+    attach_multi_category_fields(schema, proposal_text or "", title)
     runtime = dict(spec.get("runtime") or {})
     runtime.setdefault("archive_item_category_table", "product_category")
     spec["runtime"] = runtime

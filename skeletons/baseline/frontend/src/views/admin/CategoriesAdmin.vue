@@ -32,7 +32,7 @@
           <el-input v-model="form.name" maxlength="32" show-word-limit :placeholder="`${catLabel}名称`" />
         </el-form-item>
         <el-form-item v-if="multiCategory" label="维度" required>
-          <el-select v-model="form.dimension" filterable allow-create default-first-option placeholder="如用途、材质" style="width:100%">
+          <el-select v-model="form.dimension" placeholder="请选择维度" style="width:100%">
             <el-option v-for="d in dimensionOptions" :key="d" :label="d" :value="d" />
           </el-select>
         </el-form-item>
@@ -85,13 +85,23 @@ const list = ref([])
 const followerCounts = reactive({})
 const visible = ref(false)
 const form = reactive({ id: null, name: '', dimension: '', requiredPick: false, sectionNotice: '' })
+/** 维度备选真源：bake 写入的开题轴；库里已有轴并入；都空才回落演示轴 */
 const dimensionOptions = computed(() => {
   const set = new Set()
+  const fromSchema = archive.categoryDimensions
+  if (Array.isArray(fromSchema)) {
+    for (const d of fromSchema) {
+      const t = String(d || '').trim()
+      if (t) set.add(t)
+    }
+  }
   for (const row of list.value || []) {
     const d = (row.dimension || '').trim()
     if (d) set.add(d)
   }
-  ;['品类', '用途', '材质', '品牌', '目标'].forEach((d) => set.add(d))
+  if (!set.size) {
+    ;['品类', '用途', '目标'].forEach((d) => set.add(d))
+  }
   return [...set]
 })
 
@@ -129,7 +139,7 @@ function openEdit(row) {
     Object.assign(form, {
       id: null,
       name: '',
-      dimension: dimensionOptions.value[0] || '品类',
+      dimension: dimensionOptions.value[0] || '',
       requiredPick: false,
       sectionNotice: '',
     })
@@ -143,7 +153,7 @@ async function save() {
     return
   }
   if (multiCategory.value && !form.dimension?.trim()) {
-    ElMessage.warning('请填写维度')
+    ElMessage.warning('请选择维度')
     return
   }
   const body = { name: form.name }
