@@ -312,7 +312,7 @@ CAPABILITIES: dict[str, dict[str, Any]] = {
     "exam": {
         "label": "在线考试",
         "status": "implemented",
-        "desc": "题库/组卷/作答；客观题交卷匹配，主观题教师阅卷；刷题·解析·限时·次数·排行·错题本按需（C-01；挂 DOM-EXAM）",
+        "desc": "题库/组卷/作答；客观题交卷匹配，主观题教务主管阅卷；刷题·解析·限时·次数·排行·错题本按需（C-01；挂 DOM-EXAM）",
     },
     "survey": {
         "label": "简易问卷",

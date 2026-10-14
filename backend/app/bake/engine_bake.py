@@ -104,21 +104,9 @@ def _bake_project_body(
     schema_pre = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
     roles_pre = schema_pre.get("roles") if isinstance(schema_pre.get("roles"), dict) else {}
     staff_posts_pre = roles_pre.get("staff_posts") if isinstance(roles_pre.get("staff_posts"), list) else None
-    proposal_for_sql = str(spec.get("proposal_text") or "").strip()
-    if not proposal_for_sql:
-        prop = spec.get("proposal")
-        if isinstance(prop, dict):
-            proposal_for_sql = str(
-                prop.get("excerpt")
-                or prop.get("text")
-                or prop.get("summary")
-                or prop.get("background")
-                or ""
-            ).strip()
-        elif isinstance(prop, str):
-            proposal_for_sql = prop.strip()
-    if not proposal_for_sql:
-        proposal_for_sql = str(spec.get("title") or "")
+    from app.bake.domain_schema import proposal_scan_text
+
+    proposal_for_sql = proposal_scan_text(spec) or str(spec.get("title") or "")
     path = spec.get("match_path") if isinstance(spec.get("match_path"), dict) else {}
     with match_path_override_scope(
         str(spec.get("domain") or domain or ""),
@@ -173,6 +161,7 @@ def _bake_project_body(
         )
         # 菜单 key 必须能落到本包有效路由，禁止导航 404
         from app.bake.domain_skin import traits_for_domain
+        from app.bake.schema.hard_assert_ui import assert_hard_assert_ui_aligned
 
         assert_menu_routes_aligned(
             schema if isinstance(schema, dict) else None,
@@ -180,6 +169,20 @@ def _bake_project_body(
             capabilities=list(spec.get("capabilities") or []),
             traits=dict(spec.get("traits") or traits_for_domain(domain)),
             proposal_text=proposal_for_sql,
+        )
+        # 硬拦 cap 开了则收集旗标必真，禁止「操作即炸、界面无控件」
+        assert_hard_assert_ui_aligned(
+            schema if isinstance(schema, dict) else None,
+            capabilities=list(spec.get("capabilities") or []),
+            domain=domain,
+        )
+        # SHOP/FOOD 售后弹窗须有原因字典，禁止空下拉半残（勿再手补学生包）
+        from app.bake.features.trade_thicken import assert_trade_refund_reason_surface
+
+        assert_trade_refund_reason_surface(
+            schema if isinstance(schema, dict) else None,
+            domain=domain,
+            capabilities=list(spec.get("capabilities") or []),
         )
         from app.bake.skin_invariants import assert_skin_invariants
 
@@ -206,6 +209,15 @@ def _bake_project_body(
                 spec=spec if isinstance(spec, dict) else None,
             )
     _write(dest / "sql" / "schema.sql", sql)
+
+    from app.bake.demo_covers import materialize_demo_uploads
+
+    materialize_demo_uploads(
+        dest,
+        sql,
+        domain=str(domain or ""),
+        theme=str(spec.get("theme") or "lib-ink"),
+    )
 
     app_name = (
         ((schema.get("labels") or {}).get("appName") or "").strip()
@@ -347,6 +359,31 @@ def _bake_project_body(
         import logging
 
         logging.getLogger("app.bake").warning("diagram warm skipped: %s", e)
+
+    # P0：按本题 capabilities 裁掉未挂岛源码，避免学生 ZIP 胖骨架穿帮
+    try:
+        from app.bake.pack_prune import prune_student_pack, scan_forbidden_island_files
+
+        prune_stats = prune_student_pack(dest, spec)
+        import logging
+
+        logging.getLogger("app.bake").info(
+            "pack_prune deleted=%s types=%s",
+            prune_stats.get("deleted_count"),
+            len(prune_stats.get("stripped_types") or []),
+        )
+        leftovers = scan_forbidden_island_files(dest, spec)
+        if leftovers:
+            raise RuntimeError(
+                "pack_prune 后仍残留未挂岛文件（门禁 p3lean 将拒 ZIP）："
+                + ", ".join(leftovers[:20])
+                + ("…" if len(leftovers) > 20 else "")
+            )
+    except Exception as e:
+        import logging
+
+        logging.getLogger("app.bake").exception("pack_prune failed: %s", e)
+        raise
 
     return dest
 

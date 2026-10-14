@@ -21,6 +21,9 @@ HUB_BYPASS_MODULES: frozenset[str] = frozenset(
         "reserve_thicken",  # 预约组加厚，非独立 cap；落点见交付地图 §1.7
         "content_thicken",  # 内容组加厚，非独立 cap；落点见交付地图 §1.8
         "interact_thicken",  # 互动/匹配组加厚，非独立 cap；落点见交付地图 §1.9
+        "auth_crosscut",  # §0 X-AUTH 通识横切（锁定/改密/密保），基线常开非 cap
+        "msg_crosscut",  # §0 X-MSG 通识横切（站内信+公告加深+广告位），基线常开非 cap
+        "workbench_crosscut",  # §0 X-DASH 通识横切（工作台角标/快捷入口），基线常开非 cap
     }
 )
 

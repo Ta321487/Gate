@@ -17,6 +17,7 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     marketplace = scan_shop_marketplace(title, proposal_text)
     campus = pk == "campus"
     niche = None
+    pack = None
     if campus:
         brow, lead = (
             "校园商城",
@@ -41,52 +42,33 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             "errand": ("跑腿代买", "验证码登录；下单代买代取，由跑腿员接单送达。"),
             "points": ("积分兑换", "验证码登录；用积分兑换商品并提交订单。"),
         }
-        niche_brow = {
-            "pharmacy": ("药店选购", "验证码登录；浏览药品保健护理，加入购物车并提交订单。"),
-            "pet": ("宠物用品", "验证码登录；浏览主粮零食洗护，加入购物车并提交订单。"),
-            "auto": ("汽配商城", "验证码登录；浏览保养件车饰工具，加入购物车并提交订单。"),
-            "beauty": ("美妆选购", "验证码登录；浏览护肤彩妆个护，加入购物车并提交订单。"),
-            "market": ("超市选购", "验证码登录；浏览食品百货零食，加入购物车并提交订单。"),
-            "office": ("办公文具", "验证码登录；浏览文具耗材，加入购物车并提交订单。"),
-            "agri": ("农资选购", "验证码登录；浏览肥料农药农机件，加入购物车并提交订单。"),
-        }
         from app.bake.scene_scan import shop_retail_niche
+        from app.bake.shop_retail_niches import get_retail_niche
 
         niche = shop_retail_niche(title, proposal_text) if pk == "retail" else None
-        brow, lead = brow_map.get(pk) or niche_brow.get(niche) or (
-            "在线商城",
-            "验证码登录；浏览商品、加入购物车并提交订单。",
-        )
-        notice_body = {
-            "farm": "水果蔬菜粮油分类上架，下单后由管理员确认发货或自提。",
-            "print": "下单后到店取件或约定配送。",
-            "flowers": "下单后由店员确认配送。",
-            "errand": "代买代取由跑腿员接单送达；请填写送达地点与联系方式。",
-            "points": "兑换下单后由管理员确认发放。",
-        }.get(pk)
-        if notice_body is None and niche:
-            notice_body = "分类商品上架，下单后由管理员确认发货或自提。"
-        if notice_body is None:
-            notice_body = "下单后由管理员确认发货或自提。"
-        notice_title = {
-            "farm": "农产选购须知",
-            "print": "文印须知",
-            "flowers": "花店须知",
-            "errand": "跑腿须知",
-            "points": "积分兑换须知",
-        }.get(pk)
-        if notice_title is None and niche:
+        pack = get_retail_niche(niche)
+        if pack is not None:
+            brow, lead = pack.eyebrow, pack.lead
+            notice_title, notice_body = pack.notice_title, pack.notice_body
+        else:
+            brow, lead = brow_map.get(pk) or (
+                "在线商城",
+                "验证码登录；浏览商品、加入购物车并提交订单。",
+            )
+            notice_body = {
+                "farm": "水果蔬菜粮油分类上架，下单后由管理员确认发货或自提。",
+                "print": "下单后到店取件或约定配送。",
+                "flowers": "下单后由店员确认配送。",
+                "errand": "代买代取由跑腿员接单送达；请填写送达地点与联系方式。",
+                "points": "兑换下单后由管理员确认发放。",
+            }.get(pk, "下单后由管理员确认发货或自提。")
             notice_title = {
-                "pharmacy": "药店选购须知",
-                "pet": "宠物用品须知",
-                "auto": "汽配选购须知",
-                "beauty": "美妆选购须知",
-                "market": "超市选购须知",
-                "office": "办公选购须知",
-                "agri": "农资选购须知",
-            }.get(niche, "商城须知")
-        if notice_title is None:
-            notice_title = "商城须知"
+                "farm": "农产选购须知",
+                "print": "文印须知",
+                "flowers": "花店须知",
+                "errand": "跑腿须知",
+                "points": "积分兑换须知",
+            }.get(pk, "商城须知")
         if pk == "farm":
             # 农产开题常见：产地/采摘时间/规格/价格/简介/图片（封面）；
             # 物理列仍走 author→price_yuan、isbn→sku；region/harvest_on 仅 farm 注入。
@@ -138,26 +120,13 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 {"key": "stock", "label": "库存", "type": "number"},
             ]
         else:
-            # retail / 默认：软皮用说明字段签名，避免与农产/二手撞列名观感
-            note_lab = {
-                "pharmacy": "用药说明",
-                "pet": "适用说明",
-                "auto": "适配车型",
-                "beauty": "功效说明",
-                "market": "商品说明",
-                "office": "规格说明",
-                "agri": "施用说明",
-                "gift": "可定制说明",
-            }.get(niche or "", "商品说明")
-            sku_lab = {
-                "pharmacy": "国药准字/货号",
-                "pet": "规格货号",
-                "auto": "配件号",
-                "beauty": "规格",
-                "agri": "规格含量",
-            }.get(niche or "", "货号")
+            # retail / 默认：标签来自登记表 pack
+            if pack is not None:
+                title_lab, sku_lab, note_lab = pack.title_lab, pack.sku_lab, pack.note_lab
+            else:
+                title_lab, sku_lab, note_lab = "商品名", "货号", "商品说明"
             fields = [
-                {"key": "title", "label": "礼品名称" if niche == "gift" else "商品名", "type": "string"},
+                {"key": "title", "label": title_lab, "type": "string"},
                 {"key": "author", "label": "单价(元)", "type": "number", "format": "money"},
                 {"key": "isbn", "label": sku_lab, "type": "string"},
                 {"key": "sellerNote", "label": note_lab, "type": "string"},
@@ -173,22 +142,26 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     arch_menu = "农产品管理" if pk == "farm" else "商品管理"
     arch_browse = "农产品浏览" if pk == "farm" else "商品浏览"
     arch_lab = "农产品" if pk == "farm" else "商品"
-    if niche == "gift" and not marketplace:
-        admin_lab = "礼品店主管（总管）"
-        sub_lab = "制作员"
-        brow = "定制礼品"
-        lead = "验证码登录；选择礼品，填写刻字或上传图片后下单，制作完成再发货。"
-        notice_title = "定制须知"
-        notice_body = "下单请填写刻字、字体颜色尺寸，并可上传图片。提交后进入待制作，制作完成再发货。"
-        arch_menu = "礼品管理"
-        arch_browse = "礼品浏览"
-        arch_lab = "礼品"
+    if pack is not None:
+        arch_menu, arch_browse, arch_lab = pack.arch_menu, pack.arch_browse, pack.arch_lab
+        if not marketplace:
+            admin_lab = pack.admin_lab
+            sub_lab = pack.sub_name
     if marketplace:
-        brow = "多商家商城" if pk != "farm" else "多商家助农商城"
-        lead = (
-            "买家选购下单，商家入驻开店，平台统一监管；"
-            "平台管理员为系统预制账号，不开放自助注册。"
-        )
+        if pk == "farm":
+            brow = "多商家助农商城"
+            lead = (
+                "买家选购下单，商家入驻开店，平台统一监管；"
+                "平台管理员为系统预制账号，不开放自助注册。"
+            )
+        elif pack is not None:
+            brow, lead = pack.mp_eyebrow, pack.mp_lead
+        else:
+            brow = "多商家商城"
+            lead = (
+                "买家选购下单，商家入驻开店，平台统一监管；"
+                "平台管理员为系统预制账号，不开放自助注册。"
+            )
     schema = order_shell_schema(
         title,
         domain="DOM-SHOP",
@@ -233,7 +206,12 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             "管理端仅登录（无注册）",
         ]
         # 对照老师模块名：活动≈公告、数据分析≈工作台、分类/商品皮；售后挂订单管理
-        cat_lab = "农产品分类" if pk == "farm" else "商品分类"
+        if pk == "farm":
+            cat_lab = "农产品分类"
+        elif pack is not None:
+            cat_lab = pack.cat_menu_lab
+        else:
+            cat_lab = "商品分类"
         for m in (schema.get("menus") or {}).get("admin") or []:
             if not isinstance(m, dict):
                 continue
@@ -246,6 +224,8 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 m["label"] = "留言反馈"
             elif k == "category":
                 m["label"] = cat_lab
+            elif k == "archive" and pack is not None:
+                m["label"] = pack.arch_menu
             elif k == "users":
                 m["label"] = "用户管理"
             elif k == "orders":
@@ -253,6 +233,9 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             # 商家可管自家商品、留言、订单、评价、活动送审；用户/分类仍超管
             if k in ("archive", "guestbook", "orders", "order_reviews", "content"):
                 m["superOnly"] = False
+        for m in (schema.get("menus") or {}).get("user") or []:
+            if isinstance(m, dict) and m.get("key") == "archive" and pack is not None:
+                m["label"] = pack.arch_browse
         for m in (schema.get("menus") or {}).get("user") or []:
             if not isinstance(m, dict):
                 continue
@@ -449,21 +432,10 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 def _meeting_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """会议室 / 琴房 / 体育场 / 自习室 / 座位等共用时段预约壳，文案跟题名/开题走。"""
     from app.bake.scene_scan import meeting_product_kind
+    from app.bake.schema.kind_label_packs import meeting_label_pack
 
-    noun_by_kind = {
-        "study": ("自习室", "用途说明", "教务主管（总管）", "自习室管理员"),
-        "piano": ("琴房", "排练说明", "琴房管理员（总管）", "琴房值班"),
-        "gym": ("场地", "预约说明", "场馆主管（总管）", "场馆管理员"),
-        "seat": ("座位", "用途说明", "座位管理员（总管）", "座位管理员"),
-        "lab": ("实验室", "使用说明", "实验室主管（总管）", "实验室管理员"),
-        "exhibit": ("展厅", "参观说明", "场馆主管（总管）", "讲解员"),
-        "meeting": ("会议室", "会议主题", "会务主管（总管）", "会务管理员"),
-    }
-    picked = noun_by_kind.get(meeting_product_kind(title, proposal_text))
-    if picked:
-        noun, remark, admin, sub = picked
-    else:
-        noun, remark, admin, sub = "场地", "预约说明", "场地主管（总管）", "场地管理员"
+    p = meeting_label_pack(meeting_product_kind(title, proposal_text))
+    noun, remark, admin, sub = p["noun"], p["remark"], p["admin"], p["sub"]
     return slot_shell_schema(
         title,
         domain="DOM-MEETING",
@@ -502,48 +474,21 @@ def _meeting_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """门诊 / 疫苗接种 / 宠物医院：同号源预约壳；宠物走 scene_hospital=adopt。"""
     from app.bake.scene_scan import hospital_product_kind
+    from app.bake.schema.kind_label_packs import hospital_label_pack
 
     kind = hospital_product_kind(title, proposal_text)
-    if kind == "pet":
-        noun, remark, admin, sub = "医生", "宠物/就诊人", "宠物医院主管（总管）", "挂号员"
-        user, brow, resv = "宠主", "宠物挂号", "挂号"
-        fee, isbn, cat, title_lab = "挂号费(元)", "职称/说明", "科室", "医生"
-        lead = "验证码登录；选择科室医生与号源时段为宠物挂号；到诊后由前台登记就诊完成。"
-        notice = "号源有限；请填写宠物昵称与就诊人；按时到诊；就诊完成后由前台办结；取消请提前操作。"
-        notice_t, notice_page, reg, done = "挂号须知", "宠物医院公告", "注册后可以宠主身份挂号", "就诊"
-        menu_u, points_mid = "选医生", "医生检索"
-    elif kind == "vaccine":
-        noun, remark, admin, sub = "接种门诊", "接种人", "接种点主管（总管）", "预约管理员"
-        user, brow, resv = "接种人", "疫苗预约", "预约"
-        fee, isbn, cat, title_lab = "费用(元)", "针次/说明", "疫苗类型", "门诊/疫苗名称"
-        lead = "验证码登录；选择疫苗门诊与时段预约接种；到点后由管理端登记完成。"
-        notice = "号源有限；请填写接种人姓名，按预约时段到点；完成后由前台办结；取消请提前操作。"
-        notice_t, notice_page, reg, done = "接种须知", "接种公告", "注册后可预约疫苗接种", "接种"
-        menu_u, points_mid = "选门诊", "门诊检索"
-    elif kind == "window":
-        noun, remark, admin, sub = "窗口", "办事人", "大厅主管（总管）", "窗口员"
-        user, brow, resv = "办事人", "窗口取号", "取号"
-        fee, isbn, cat, title_lab = "工本费(元)", "办理说明", "业务类型", "窗口/业务"
-        lead = "验证码登录；选择政务/银行等窗口与时段取号预约；到窗后由窗口员办结。"
-        notice = "号源有限；请填写办事人信息，按时到窗；办结后由窗口登记完成；取消请提前操作。"
-        notice_t, notice_page, reg, done = "取号须知", "大厅公告", "注册后可预约取号", "办结"
-        menu_u, points_mid = "选窗口", "窗口检索"
-    elif kind == "visit":
-        noun, remark, admin, sub = "探视时段", "探视人", "病区主管（总管）", "护士站"
-        user, brow, resv = "探视人", "探视预约", "预约"
-        fee, isbn, cat, title_lab = "登记费(元)", "病区/说明", "探视类型", "病区/床位"
-        lead = "验证码登录；选择病区/养老院探视时段预约；到访后由护士站登记完成。"
-        notice = "探视名额有限；请填写探视人与被访人信息；按时到访；完成后由前台办结。"
-        notice_t, notice_page, reg, done = "探视须知", "病区公告", "注册后可预约探视", "到访"
-        menu_u, points_mid = "选病区", "病区检索"
-    else:
-        noun, remark, admin, sub = "医生", "就诊人", "医务主管（总管）", "挂号员"
-        user, brow, resv = "患者", "门诊挂号", "挂号"
-        fee, isbn, cat, title_lab = "挂号费(元)", "职称/说明", "科室", "医生"
-        lead = "验证码登录；选择科室医生与号源时段挂号；到诊后由管理端登记就诊完成。"
-        notice = "号源有限；请填写就诊人姓名，按时就诊；就诊完成后由挂号台办结；取消请提前操作。"
-        notice_t, notice_page, reg, done = "挂号须知", "医院公告", "注册后可以患者身份挂号", "就诊"
-        menu_u, points_mid = "选医生", "医生检索"
+    p = hospital_label_pack(kind)
+    noun, remark, admin, sub = p["noun"], p["remark"], p["admin"], p["sub"]
+    user, brow, resv = p["user"], p["eyebrow"], p["resv"]
+    fee, isbn, cat, title_lab = p["fee"], p["isbn"], p["cat"], p["title_lab"]
+    lead, notice = p["lead"], p["notice"]
+    notice_t, notice_page, reg, done = (
+        p["notice_t"],
+        p["notice_page"],
+        p["reg"],
+        p["done"],
+    )
+    menu_u, points_mid = p["menu_u"], p["points_mid"]
     if kind == "window":
         visit_lab, symptom_lab = "业务类型", "办事说明"
         visit_opts = [
@@ -700,45 +645,18 @@ def _parking_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """美发 / 健身私教：同服务预约壳，文案跟题名/开题走（同 _meeting_schema）。"""
     from app.bake.scene_scan import salon_product_kind
+    from app.bake.schema.kind_label_packs import salon_label_pack
 
     kind = salon_product_kind(title, proposal_text)
-    if kind == "fitness":
-        noun, staff, admin, user = "课程", "默认教练", "场馆主管（总管）", "会员"
-        title_lab, brow, place, notice_page = "课程/私教项目", "健身预约", "到馆", "场馆公告"
-        lead = "验证码登录；选择私教/团课与时段预约到馆；到馆后由前台登记完成。"
-        points = ["验证码登录", "课程浏览", "时段预约与到馆办结"]
-    elif kind == "counsel":
-        noun, staff, admin, user = "咨询服务", "默认咨询师", "辅导中心主管（总管）", "来访者"
-        title_lab, brow, place, notice_page = "咨询类型", "心理咨询预约", "到访", "辅导中心公告"
-        lead = "验证码登录；选择心理咨询服务与时段预约；到访后由前台登记完成。"
-        points = ["验证码登录", "咨询服务浏览", "时段预约与到访办结"]
-    elif kind == "drive":
-        noun, staff, admin, user = "练车项目", "默认教练", "驾校主管（总管）", "学员"
-        title_lab, brow, place, notice_page = "练车/陪驾项目", "练车预约", "到场", "驾校公告"
-        lead = "验证码登录；选择练车或陪驾时段预约；到场后由教练登记完成。"
-        points = ["验证码登录", "练车项目浏览", "时段预约与到场办结"]
-    elif kind == "home":
-        noun, staff, admin, user = "上门服务", "默认师傅", "家政主管（总管）", "业主"
-        title_lab, brow, place, notice_page = "上门服务项目", "家政预约", "上门", "家政公告"
-        lead = "验证码登录；选择家政/上门维修服务与时段预约；上门完成后由师傅登记办结。"
-        points = ["验证码登录", "服务浏览", "时段预约与上门办结"]
-    elif kind == "tutor":
-        noun, staff, admin, user = "辅导项目", "默认老师", "辅导站主管（总管）", "学员"
-        title_lab, brow, place, notice_page = "辅导科目", "辅导预约", "到课", "辅导站公告"
-        lead = "验证码登录；选择家教/技能辅导与时段预约；到课后由老师登记完成。"
-        points = ["验证码登录", "辅导项目浏览", "时段预约与到课办结"]
-    else:
-        noun, staff, admin, user = "服务", "默认技师", "门店主管（总管）", "顾客"
-        title_lab, brow, place, notice_page = "服务项目", "服务预约", "到店", "门店公告"
-        lead = "验证码登录；选择服务项目与时段预约到店；到店后由门店登记完成。"
-        points = ["验证码登录", "服务浏览", "时段预约与到店办结"]
-    stylist_label = {
-        "fitness": "偏好教练",
-        "counsel": "偏好咨询师",
-        "drive": "偏好教练",
-        "home": "偏好师傅",
-        "tutor": "偏好老师",
-    }.get(kind, "偏好技师")
+    p = salon_label_pack(kind)
+    noun, staff, admin, user = p["noun"], p["staff"], p["admin"], p["user"]
+    title_lab, brow, place, notice_page = (
+        p["title_lab"],
+        p["eyebrow"],
+        p["place"],
+        p["notice_page"],
+    )
+    lead, points = p["lead"], list(p["points"])
     schema = slot_shell_schema(
         title,
         domain="DOM-SALON",
@@ -772,7 +690,7 @@ def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         completed_label="已完成",
         allow_rating=True,
     )
-    schema["entities"]["reservation"]["stylistLabel"] = stylist_label
+    schema["entities"]["reservation"]["stylistLabel"] = p["stylist_label"]
     return schema
 
 def _carrent_schema(title: str, proposal_text: str = "") -> dict[str, Any]:

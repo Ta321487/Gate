@@ -36,6 +36,36 @@ def baseline_runtime_covers(
     return req <= BASELINE_RUNTIME_CAPS
 
 
+def proposal_scan_text(spec: dict[str, Any] | None, *, limit: int = 12000) -> str:
+    """开题扫词正文：proposal_text 优先，否则拼 proposal 的摘要/功能行/摘录。
+
+    只取 excerpt 会漏掉 feature_lines，导致能力岛（如 digital_goods）误粘旧 cap。
+    """
+    if not isinstance(spec, dict):
+        return ""
+    raw = spec.get("proposal_text")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()[:limit]
+    prop = spec.get("proposal")
+    if isinstance(prop, str) and prop.strip():
+        return prop.strip()[:limit]
+    if not isinstance(prop, dict):
+        return str(spec.get("title") or "").strip()[:limit]
+    parts: list[str] = []
+    for key in ("title", "background", "summary", "text", "excerpt"):
+        v = prop.get(key)
+        if v:
+            parts.append(str(v).strip())
+    for line in prop.get("feature_lines") or []:
+        s = str(line).strip()
+        if s:
+            parts.append(s)
+    blob = "\n".join(parts).strip()
+    if not blob:
+        blob = str(spec.get("title") or "").strip()
+    return blob[:limit]
+
+
 # 主数据菜单 key（领域实体管理，总管专属）
 MASTER_MENU_KEYS = frozenset({"archive", "category", "lookup_site", "lookup_type"})
 REQUIRED_SUPER_MENU_KEYS = frozenset({"users", "content"})
@@ -66,6 +96,28 @@ def _clerk_pack_opens_master_menu(schema: dict[str, Any], key: str) -> bool:
             if key in menus:
                 return True
     return False
+
+
+def sync_cap_surfaces(schema: dict[str, Any]) -> None:
+    """出包收束：通用菜单/硬拦旗标 + 各能力岛自己补表面（互不塞皮文案）。"""
+    if not isinstance(schema, dict):
+        return
+    from app.bake.features.dm import sync_dm_surface_from_caps
+    from app.bake.features.lostfound import sync_lostfound_surface_from_caps
+    from app.bake.features.ticket_flow_opts import sync_material_check_surface_from_caps
+    from app.bake.schema.hard_assert_ui import (
+        assert_hard_assert_ui_aligned,
+        sync_hard_assert_ui_from_caps,
+    )
+    from app.bake.schema.menu_utils import sync_user_menus_from_caps
+
+    sync_user_menus_from_caps(schema)
+    sync_hard_assert_ui_from_caps(schema)
+    sync_dm_surface_from_caps(schema)
+    sync_material_check_surface_from_caps(schema)
+    sync_lostfound_surface_from_caps(schema)
+    # 收束末自检：漏登记 / sync 被旁路时工厂当场红灯，不把病包留给启动
+    assert_hard_assert_ui_aligned(schema)
 
 
 def build_domain_schema(
@@ -173,41 +225,14 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
     if domain == "DOM-GENERIC":
         from app.bake.archetype_shells import apply_generic_shell
 
-        prop_body = ""
-        if isinstance(spec.get("proposal_text"), str):
-            prop_body = spec["proposal_text"]
-        else:
-            prop = spec.get("proposal")
-            if isinstance(prop, dict):
-                prop_body = str(
-                    prop.get("excerpt")
-                    or prop.get("text")
-                    or prop.get("summary")
-                    or prop.get("background")
-                    or ""
-                )
-            elif isinstance(prop, str):
-                prop_body = prop
+        prop_body = proposal_scan_text(spec)
         spec = apply_generic_shell(spec, proposal_text=prop_body)
         _merge_baseline_tags(spec)
     else:
         dom = DOMAINS.get(domain) or DOMAINS["DOM-GENERIC"]
         _sync_named_domain_from_catalog(spec, dom)
         arches = list(spec.get("archetypes") or [archetype])
-        prop_body = ""
-        if isinstance(spec.get("proposal_text"), str):
-            prop_body = spec["proposal_text"]
-        else:
-            prop = spec.get("proposal")
-            if isinstance(prop, dict):
-                prop_body = str(
-                    prop.get("excerpt")
-                    or prop.get("text")
-                    or prop.get("summary")
-                    or ""
-                )
-            elif isinstance(prop, str):
-                prop_body = prop
+        prop_body = proposal_scan_text(spec)
         from app.bake.match_path_axes import match_path_override_scope
 
         # 具名域一律按开题重编壳（题名+正文双扫）；通用壳仍走 stale 分支
@@ -246,37 +271,57 @@ def ensure_spec_schema(spec: dict[str, Any] | None) -> dict[str, Any]:
                     proposal_text=prop_body,
                     title=title,
                 )
-    prop_body = ""
-    if isinstance(spec.get("proposal_text"), str):
-        prop_body = spec["proposal_text"]
-    else:
-        prop = spec.get("proposal")
-        if isinstance(prop, dict):
-            prop_body = str(
-                prop.get("excerpt")
-                or prop.get("text")
-                or prop.get("summary")
-                or prop.get("background")
-                or ""
-            )
-        elif isinstance(prop, str):
-            prop_body = prop
-    if not prop_body:
-        prop_body = title
+    prop_body = proposal_scan_text(spec) or title
 
+    from app.bake.match_path_axes import match_path_override_scope
+
+    path = spec.get("match_path") if isinstance(spec.get("match_path"), dict) else {}
     if not spec.get("accept"):
-        from app.bake.match_path_axes import match_path_override_scope
-
-        path = spec.get("match_path") if isinstance(spec.get("match_path"), dict) else {}
         with match_path_override_scope(
             domain, path.get("scene"), path.get("entry")
         ):
             spec = attach_accept(spec, prop_body)
     else:
-        # accept 已定稿时 attach_accept 不再跑；仍须同步按需 AI 开关 → cap/SQL/菜单
-        from app.bake.features.ai_assistant import apply_ai_assistant_to_spec
+        # accept / 能力已定稿不重判；但 SCHEMA_BUILDERS 会重编壳，必须再过加厚/横切
+        # （否则 tradeThicken / T-04 售后原因字典等会在「复制骨架」前被洗掉）
+        locked = {
+            "accept": spec.get("accept"),
+            "accept_reason": spec.get("accept_reason"),
+            "missing_capabilities": spec.get("missing_capabilities"),
+            "out_of_mvp_signals": spec.get("out_of_mvp_signals"),
+            "out_of_mvp": spec.get("out_of_mvp"),
+            "capabilities": list(spec.get("capabilities") or []),
+        }
+        with match_path_override_scope(
+            domain, path.get("scene"), path.get("entry")
+        ):
+            spec = attach_accept(spec, prop_body)
+        for key, val in locked.items():
+            if key == "capabilities":
+                # 并集：锁定能力保留；加厚派生（如 browse_history）不得被冲掉，否则菜单有、路由无
+                locked_caps = [str(c) for c in (val or [])]
+                attach_caps = [str(c) for c in (spec.get("capabilities") or [])]
+                merged: list[str] = []
+                seen: set[str] = set()
+                for c in locked_caps + attach_caps:
+                    if c and c not in seen:
+                        seen.add(c)
+                        merged.append(c)
+                if merged:
+                    spec["capabilities"] = merged
+                    sch = spec.get("schema")
+                    if isinstance(sch, dict):
+                        sch["capabilities"] = list(merged)
+                continue
+            if val is not None:
+                spec[key] = val
+        sch = spec.get("schema")
+        if isinstance(sch, dict) and locked.get("accept") is not None:
+            sch["accept"] = locked["accept"]
+        # 扫词否决的误开 cap（如 digital_goods）不得被 locked 并集救回
+        from app.bake.features.digital_goods import apply_digital_goods_to_spec
 
-        spec = apply_ai_assistant_to_spec(spec, prop_body)
+        spec = apply_digital_goods_to_spec(spec, prop_body)
     # 学生可见文案：builders 可含工厂注记，出评测/交付前必须洗净，避免 ensure 重编壳又灌脏
     if isinstance(spec.get("schema"), dict):
         spec["schema"] = scrub_schema_student_copy(dict(spec["schema"]))
@@ -545,6 +590,13 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.interact_thicken import apply_interact_thicken_to_spec
 
     out = apply_interact_thicken_to_spec(out, body)
+    from app.bake.features.auth_crosscut import apply_auth_crosscut_to_spec
+    from app.bake.features.msg_crosscut import apply_msg_crosscut_to_spec
+    from app.bake.features.workbench_crosscut import apply_workbench_crosscut_to_spec
+
+    out = apply_auth_crosscut_to_spec(out, body)
+    out = apply_msg_crosscut_to_spec(out, body)
+    out = apply_workbench_crosscut_to_spec(out, body)
 
     # 岗位随开题补挂（如 FOOD 骑手）；复用 attach_staff_posts，刷新 spec.roles
     from app.bake.domains import DOMAINS
@@ -565,11 +617,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
         )
     dom_roles = list((DOMAINS.get(domain) or {}).get("roles") or [])
     out["roles"] = roles_for_spec(dom_roles, out["schema"])
-    # 收束：能力已开则用户菜单必有对应项（防壳文案重写 / 填岛漏挂）
-    from app.bake.schema.menu_utils import sync_user_menus_from_caps
-
+    # 收束：通用菜单/硬拦旗标 + 各 feature 自己补表面（dm / 材料 / 失物）
     sch_final = out.get("schema") if isinstance(out.get("schema"), dict) else {}
-    sync_user_menus_from_caps(sch_final)
+    sync_cap_surfaces(sch_final)
     out["schema"] = sch_final
     from app.bake.features.opening_align import apply_opening_align_to_spec
 
@@ -1264,10 +1314,8 @@ def deterministic_llm_patch(spec: dict[str, Any], enabled: bool) -> dict[str, An
 
 def write_schema_artifacts(workspace: Path, schema: dict[str, Any]) -> list[str]:
     """写入 domain.schema.json 与 islands 摘要，供 gate / 前端对照。"""
-    from app.bake.schema.menu_utils import sync_user_menus_from_caps
-
     if isinstance(schema, dict):
-        sync_user_menus_from_caps(schema)
+        sync_cap_surfaces(schema)
     schema = scrub_schema_student_copy(schema)
     blob = json.dumps(schema, ensure_ascii=False, indent=2)
     written: list[str] = []

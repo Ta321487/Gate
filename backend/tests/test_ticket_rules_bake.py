@@ -108,3 +108,22 @@ def test_thesis_yml_keeps_single_shared_quota_key():
         )
         assert out.count("use-quota") == 1, dom
         assert "ticket" not in out, dom
+
+
+def test_write_policy_removes_ticket_policy_without_ticket_flow(tmp_path):
+    """商城无 ticket_flow：write_policy 不得再写出 TicketPolicy（防 island 同步写回）。"""
+    from pathlib import Path
+
+    from app.bake.ticket_policy import write_policy
+
+    java = tmp_path / "backend/src/main/java/com/campus/agri_mall/config"
+    java.mkdir(parents=True)
+    path = java / "TicketPolicy.java"
+    path.write_text("package com.campus.agri_mall.config;\npublic final class TicketPolicy {}\n", encoding="utf-8")
+    got = write_policy(
+        tmp_path,
+        "DOM-SHOP",
+        {"capabilities": ["archive", "order_lines", "content"], "schema": {}},
+    )
+    assert got is None
+    assert not path.exists()

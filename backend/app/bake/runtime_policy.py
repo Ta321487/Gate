@@ -151,6 +151,79 @@ FIELDS: tuple[tuple[str, str, str, str, str, str], ...] = (
         "instrumentOvertimeYuan",
         "numeric",
     ),
+    # ---------- §0 X-AUTH 通识阈值（常开默认；禁止 thesis.auth-*）----------
+    (
+        "auth-lock-max-attempts",
+        "AUTH_LOCK_MAX_ATTEMPTS",
+        "int",
+        "5",
+        "authLockMaxAttempts",
+        "numeric",
+    ),
+    (
+        "auth-lock-minutes",
+        "AUTH_LOCK_MINUTES",
+        "int",
+        "15",
+        "authLockMinutes",
+        "numeric",
+    ),
+    (
+        "auth-password-max-days",
+        "AUTH_PASSWORD_MAX_DAYS",
+        "int",
+        "0",
+        "authPasswordMaxDays",
+        "numeric",
+    ),
+    (
+        "auth-remember-days",
+        "AUTH_REMEMBER_DAYS",
+        "int",
+        "7",
+        "authRememberDays",
+        "numeric",
+    ),
+    (
+        "auth-password-min-length",
+        "AUTH_PASSWORD_MIN_LENGTH",
+        "int",
+        "6",
+        "authPasswordMinLength",
+        "numeric",
+    ),
+    (
+        "auth-session-idle-minutes",
+        "AUTH_SESSION_IDLE_MINUTES",
+        "int",
+        "30",
+        "authSessionIdleMinutes",
+        "numeric",
+    ),
+    (
+        "auth-max-sessions",
+        "AUTH_MAX_SESSIONS",
+        "int",
+        "5",
+        "authMaxSessions",
+        "numeric",
+    ),
+    (
+        "auth-require-invite",
+        "AUTH_REQUIRE_INVITE",
+        "int",
+        "0",
+        "authRequireInvite",
+        "numeric",
+    ),
+    (
+        "auth-require-email-activate",
+        "AUTH_REQUIRE_EMAIL_ACTIVATE",
+        "int",
+        "1",
+        "authRequireEmailActivate",
+        "numeric",
+    ),
 )
 
 #: 能力开关：(yml 键, Java 常量)。类型固定 boolean、默认 false；
@@ -508,6 +581,23 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
         if schema.get("instrumentTrainingRequired"):
             out["INSTRUMENT_TRAINING_REQUIRED"] = True
 
+    # ---- 注册鉴权（跟 schema.authPolicy；邀请码开题未写则为 0）----
+    auth_pol = schema.get("authPolicy") if isinstance(schema.get("authPolicy"), dict) else {}
+    if auth_pol:
+        for schema_key, const in (
+            ("lockMaxAttempts", "AUTH_LOCK_MAX_ATTEMPTS"),
+            ("lockMinutes", "AUTH_LOCK_MINUTES"),
+            ("passwordMaxDays", "AUTH_PASSWORD_MAX_DAYS"),
+            ("rememberDays", "AUTH_REMEMBER_DAYS"),
+            ("passwordMinLength", "AUTH_PASSWORD_MIN_LENGTH"),
+            ("sessionIdleMinutes", "AUTH_SESSION_IDLE_MINUTES"),
+            ("maxSessions", "AUTH_MAX_SESSIONS"),
+            ("requireInvite", "AUTH_REQUIRE_INVITE"),
+            ("requireEmailActivate", "AUTH_REQUIRE_EMAIL_ACTIVATE"),
+        ):
+            if schema_key in auth_pol:
+                out[const] = _int_or(auth_pol.get(schema_key), 0)
+
     return out
 
 
@@ -549,6 +639,15 @@ COMMENTS: dict[str, str] = {
     "HOTEL_LATE_CHECKOUT_FEE_YUAN": "客房延迟退房加收默认金额（元）；0 表示未启用",
     "CARRENT_MILEAGE_OVER_FEE_YUAN": "租车里程超支加收默认金额（元）；0 表示未启用",
     "INSTRUMENT_OVERTIME_YUAN": "仪器机时超时加收默认金额（元）；0 表示未启用",
+    "AUTH_LOCK_MAX_ATTEMPTS": "连续登录失败达此次数后进入冷却",
+    "AUTH_LOCK_MINUTES": "登录失败冷却时长（分钟）",
+    "AUTH_PASSWORD_MAX_DAYS": "密码最长有效天数；0 表示不强制定期更换",
+    "AUTH_REMEMBER_DAYS": "勾选记住登录时会话延长天数",
+    "AUTH_PASSWORD_MIN_LENGTH": "注册与改密的最短密码长度",
+    "AUTH_SESSION_IDLE_MINUTES": "前端闲置超时提示参考（分钟）",
+    "AUTH_MAX_SESSIONS": "同账号同时有效会话上限；超出踢最旧",
+    "AUTH_REQUIRE_INVITE": "注册是否必须邀请码；1=必须",
+    "AUTH_REQUIRE_EMAIL_ACTIVATE": "注册后是否须站内激活码；1=必须",
     "SLOT_REQUIRE_REMARK": "预约须填写备注",
     "SLOT_REQUIRE_CONFIRM": "预约须管理端确认",
     "SLOT_ALLOW_RATING": "办结后允许用户评价",

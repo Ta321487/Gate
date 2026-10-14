@@ -81,6 +81,17 @@ def ensure_lostfound_sql(
     return out
 
 
+def sync_lostfound_surface_from_caps(schema: dict[str, Any]) -> None:
+    """收束：claim_proof / lost_clue 已开则本岛 schema 齐（不进 menu_utils）。"""
+    if not isinstance(schema, dict):
+        return
+    caps = list(schema.get("capabilities") or [])
+    cap_set = set(caps)
+    if CLAIM_PROOF_CAP not in cap_set and LOST_CLUE_CAP not in cap_set:
+        return
+    attach_lostfound_schema(schema, caps)
+
+
 def attach_lostfound_schema(schema: dict[str, Any], caps: list[str]) -> None:
     from app.bake.schema.menu_utils import ensure_menu
 

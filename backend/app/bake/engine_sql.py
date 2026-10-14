@@ -38,6 +38,20 @@ TABLE_COUNT_HARD = 18
 # 借用族（BORROW_FAMILY_DOMAINS，与级联展示分组无关）：薄壳 6～7 张不够答辩，族内下限 10
 BORROW_TABLE_MIN = 10
 
+# 通识横切表（鉴权/公告确认/轮播/站点统计）：基线常开，不占业务硬顶预算。
+# 与「选题扫入业务岛」分流：硬顶拦的是灌水业务表，不是登录会话这类平台壳。
+PLATFORM_HARD_EXEMPT_TABLES: frozenset[str] = frozenset(
+    {
+        "sys_auth_session",
+        "sys_login_log",
+        "sys_invite_code",
+        "sys_account_cancel",
+        "sys_notice_ack",
+        "sys_banner",
+        "sys_site_stat",
+    }
+)
+
 # 开题扫入后才会有的业务表。缺了论文主路径或答辩场景会变浅，故不计入「超过 18 打回」。
 # 已写进该域 DOMAIN_CAPABILITIES 的默认能力不算：那是域壳本身，仍占预算。
 ESSENTIAL_CAP_TABLES: dict[str, frozenset[str]] = {
@@ -154,6 +168,15 @@ def essential_scanned_tables(
     return frozenset(out)
 
 
+def hard_exempt_tables(
+    domain: str, caps: list[str] | None, sql: str
+) -> frozenset[str]:
+    """硬顶不计费：选题扫入业务表 + 通识横切平台表。"""
+    present = set(list_create_table_names(sql))
+    platform = {t for t in PLATFORM_HARD_EXEMPT_TABLES if t in present}
+    return frozenset(set(essential_scanned_tables(domain, caps, sql)) | platform)
+
+
 @dataclass(frozen=True)
 class TableBudgetResult:
     count: int
@@ -172,7 +195,7 @@ def evaluate_table_budget(
 ) -> TableBudgetResult:
     """表预算：低于下限打回；超过 soft_max 警告；超过 hard_max 打回。
 
-    选题扫入的必需业务表不计入 hard 档（仍计 soft 警告）。
+    硬顶计费 = 总表 − 选题扫入业务表 − 通识横切平台表（仍计 soft 警告）。
     """
     names = list_create_table_names(sql)
     n = len(names)
@@ -180,7 +203,17 @@ def evaluate_table_budget(
     soft = TABLE_COUNT_MAX
     hard = TABLE_COUNT_HARD
     essential = essential_scanned_tables(domain, caps, sql)
-    charged = max(0, n - len(essential))
+    exempt = hard_exempt_tables(domain, caps, sql)
+    charged = max(0, n - len(exempt))
+
+    def _exempt_tip() -> str:
+        bits: list[str] = []
+        if essential:
+            bits.append("选题必需表 " + "、".join(sorted(essential)))
+        plat = sorted(exempt - essential)
+        if plat:
+            bits.append("平台表 " + "、".join(plat))
+        return "，".join(bits) if bits else "无豁免"
 
     if n < lo:
         return TableBudgetResult(
@@ -195,7 +228,6 @@ def evaluate_table_budget(
             message=f"{domain} schema 表数量={n}，低于下限 {lo}",
         )
     if charged > hard:
-        ess = "、".join(sorted(essential)) or "无"
         return TableBudgetResult(
             count=n,
             floor=lo,
@@ -207,13 +239,12 @@ def evaluate_table_budget(
             warn=False,
             message=(
                 f"{domain} schema 表数量={n}（计费 {charged}，"
-                f"选题必需表 {ess}），超过硬顶 {hard}"
+                f"{_exempt_tip()}），超过硬顶 {hard}"
             ),
         )
     warn = n > soft
     if warn:
-        ess = "、".join(sorted(essential))
-        tip = f"；选题必需表 {ess} 未计入硬顶" if ess else ""
+        tip = f"；{_exempt_tip()} 未计入硬顶" if exempt else ""
         msg = f"当前 {n} 张，超过舒适区 {soft}{tip}"
     else:
         msg = f"当前 {n} 张"
@@ -312,6 +343,13 @@ def _patch_student_readme(
     text = text.replace("${SECURITY_AUTH_LINE}", auth_line)
     text = text.replace("${SECURITY_FAQ}", sec_faq)
     text = text.replace("${AI_ASSISTANT_FAQ}", ai_assistant_readme_bits(ai_assistant))
+    from app.bake.cross_path_guide import readme_bits_from_spec
+
+    cross_guide = readme_bits_from_spec(spec)
+    text = text.replace("${CROSS_PATH_GUIDE}", cross_guide)
+    # 占位被清空后去掉多余空行，避免非交叉包留下大块空白
+    while "\n\n\n" in text:
+        text = text.replace("\n\n\n", "\n\n")
     path.write_text(text, encoding="utf-8")
 
 def _merge_tree(src: Path, dest: Path) -> None:
@@ -1051,8 +1089,17 @@ def domain_sql(
         item_table=resolved_item,
     )
     from app.bake.features.post_mute import POST_MUTE_CAP, ensure_post_mute_sql
+    from app.bake.features.auth_crosscut import ensure_auth_crosscut_sql, scan_invite_codes
+    from app.bake.features.msg_crosscut import ensure_msg_crosscut_sql
+    from app.bake.features.workbench_crosscut import ensure_workbench_crosscut_sql
 
     text = ensure_post_mute_sql(text, enabled=POST_MUTE_CAP in caps)
+    text = ensure_auth_crosscut_sql(
+        text,
+        invite_enabled=scan_invite_codes(proposal_text or "", title or ""),
+    )
+    text = ensure_msg_crosscut_sql(text)
+    text = ensure_workbench_crosscut_sql(text)
     text = ensure_book_suggest_sql(
         text,
         enabled=BOOK_SUGGEST_CAP in caps,
@@ -1174,6 +1221,9 @@ def domain_sql(
         title=title or "",
         posts=staff_posts,
     )
+    from app.bake.demo_covers import ensure_demo_cover_urls_sql
+
+    text = ensure_demo_cover_urls_sql(text, item_table=resolved_item)
     # 演示日历不在 bake 时写死「今天」：交付后隔月答辩仍靠启动时 SeedCalendarAligner 平移
     return (
         text.replace("${DB_NAME}", db_name)

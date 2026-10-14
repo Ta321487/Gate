@@ -90,7 +90,11 @@ class PortalHomeStyleTests(unittest.TestCase):
         )
         self.assertEqual(
             resolve_portal_home_style("DOM-SHOP", None, "seed"),
-            "cards",
+            "mall",
+        )
+        self.assertEqual(
+            resolve_portal_home_style("DOM-FOOD", None, "seed"),
+            "mall",
         )
         spec = build_spec(
             "校园商城",
@@ -100,7 +104,6 @@ class PortalHomeStyleTests(unittest.TestCase):
             False,
             "recommended",
             0.9,
-            portal_home_style="mall",
         )
         self.assertEqual(spec["portal_home_style"], "mall")
         # mall 不强制登录版式

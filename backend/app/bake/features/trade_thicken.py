@@ -30,12 +30,20 @@ T-11：影院卖品加购与库存扣减；SHOP 包装费；扫尾。
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 TRADE_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"})
 
+# 订单分享口令：登录页「凭口令查单」易显得突兀；开题写到才挂（≠域皮强开）
+_ORDER_SHARE_RE = re.compile(
+    r"分享口令|订单口令|凭口令|免登录查|口令查单|分享查单|分享码查"
+)
+
 _DEFAULT_TASTE_CHIPS = ("少辣", "多冰", "不要香菜", "多糖")
+# 与 skeletons/.../MyOrders.vue 兜底字典保持一致；漏写 schema 时前端仍能出下拉。
 _DEFAULT_REFUND_REASONS = ("质量问题", "少件/错发", "描述不符", "物流损坏", "其他")
+DEFAULT_REFUND_REASONS = _DEFAULT_REFUND_REASONS
 
 # 三域通识：未扫词也给可答辩的超时关单默认分钟数（可被开题扫词更大值覆盖）
 _TRADE_TIMEOUT_DEFAULT = 30
@@ -573,10 +581,12 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "订单延保登记")
 
     if domain in ("DOM-SHOP", "DOM-FOOD"):
-        labels.setdefault("orderShareLabel", "分享口令")
-        labels.setdefault("orderShareHint", "凭口令可查看本单进度，无需登录。")
-        thicken["orderShare"] = True
-        _add_feature(spec, "订单分享口令")
+        body = f"{spec.get('title') or ''} {proposal_text or ''}"
+        if _ORDER_SHARE_RE.search(body):
+            labels.setdefault("orderShareLabel", "分享口令")
+            labels.setdefault("orderShareHint", "凭口令可查看本单进度，无需登录。")
+            thicken["orderShare"] = True
+            _add_feature(spec, "订单分享口令")
 
         labels.setdefault("receiveCodeLabel", "收货码")
         labels.setdefault("receiveCodeHint", "当面交付时出示，商家核对后完成核销。")
@@ -820,7 +830,7 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
 
     if domain == "DOM-SHOP":
         labels.setdefault("invoiceTitleLabel", "发票抬头")
-        labels.setdefault("invoiceTitleHint", "选填；用于开具普通发票演示，非税控。")
+        labels.setdefault("invoiceTitleHint", "选填；用于开具普通发票，非税控。")
         labels.setdefault("invoiceStatusLabel", "开票状态")
         labels.setdefault("invoiceStatusPending", "申请中")
         labels.setdefault("invoiceStatusIssued", "已开")
@@ -829,7 +839,7 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         labels.setdefault("invoiceDownloadLabel", "下载发票")
         labels.setdefault(
             "invoiceDownloadHint",
-            "演示用固定模板，可浏览器打印或保存；≠税控电子发票。",
+            "可用固定模板下载后打印或保存；非税控电子发票。",
         )
         thicken["invoiceTitle"] = True
         thicken["invoiceStatus"] = True
@@ -849,7 +859,7 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         labels.setdefault("refundOriginLabel", "退款说明")
         labels.setdefault(
             "refundOriginHint",
-            "同意售后后退回系统内余额或订单原支付演示渠道，不对接微信/支付宝商户清算。",
+            "同意售后后，退款会退回账户余额或原支付渠道。",
         )
         thicken["refundOrigin"] = True
         _add_feature(spec, "退款原路退回说明")
@@ -888,17 +898,18 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
 
     if domain in ("DOM-SHOP", "DOM-FOOD"):
         labels.setdefault("shelfScheduleLabel", "定时上下架")
-        labels.setdefault("shelfOnLabel", "上架时间")
-        labels.setdefault("shelfOffLabel", "下架时间")
+        # 与「上架开关 / 强制下架」区分：这里是预约时刻；手动下架会把实际时刻写入 shelf_off
+        labels.setdefault("shelfOnLabel", "定时上架")
+        labels.setdefault("shelfOffLabel", "定时下架")
         labels.setdefault(
             "shelfScheduleHint",
-            "到点自动上架或下架；未填则按库存与手动状态。",
+            "预约到点自动上架或下架；手动点下架时也会记下实际下架时刻。未预约则只跟开关与库存。",
         )
         _ensure_archive_field(
             archive,
             {
                 "key": "shelfOn",
-                "label": labels.get("shelfOnLabel") or "上架时间",
+                "label": labels.get("shelfOnLabel") or "定时上架",
                 "type": "datetime",
                 "hint": labels.get("shelfScheduleHint") or "",
             },
@@ -907,7 +918,7 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
             archive,
             {
                 "key": "shelfOff",
-                "label": labels.get("shelfOffLabel") or "下架时间",
+                "label": labels.get("shelfOffLabel") or "定时下架",
                 "type": "datetime",
                 "hint": labels.get("shelfScheduleHint") or "",
             },
@@ -933,7 +944,7 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         labels.setdefault("presaleNoteLabel", "预售说明")
         labels.setdefault(
             "presaleNoteHint",
-            "可填写定金/尾款或发货节奏；仅说明，不对接第三方支付分账。",
+            "可填写定金、尾款或预计发货时间，方便买家了解预售安排。",
         )
         _ensure_archive_field(
             archive,
@@ -1129,3 +1140,28 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
     ents["order"] = order_ent
     schema["tradeThicken"] = thicken
     return spec
+
+
+def assert_trade_refund_reason_surface(
+    schema: dict[str, Any] | None,
+    *,
+    domain: str,
+    capabilities: list[str] | None = None,
+) -> None:
+    """SHOP/FOOD + order_lines：售后原因字典必写出，禁止半残弹窗（农产探针曾踩）。"""
+    if domain not in ("DOM-SHOP", "DOM-FOOD"):
+        return
+    caps = set(capabilities or [])
+    if "order_lines" not in caps:
+        return
+    sch = schema if isinstance(schema, dict) else {}
+    order = (sch.get("entities") or {}).get("order") if isinstance(sch.get("entities"), dict) else None
+    opts = (order or {}).get("refundReasonOptions") if isinstance(order, dict) else None
+    cleaned = [str(x).strip() for x in opts] if isinstance(opts, list) else []
+    cleaned = [x for x in cleaned if x]
+    if cleaned:
+        return
+    raise ValueError(
+        f"{domain} schema 缺少 entities.order.refundReasonOptions（T-04 售后原因）；"
+        "须经 trade_thicken 写出，禁止空字典出包"
+    )

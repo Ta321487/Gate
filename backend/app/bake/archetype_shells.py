@@ -685,6 +685,9 @@ def build_generic_shell_schema(
         }
 
     _augment_menus_for_paths(schema, need_flow=need_flow, need_trade=need_trade, need_reserve=need_reserve)
+    from app.bake.cross_path_guide import apply_cross_guide_to_schema
+
+    apply_cross_guide_to_schema(schema, archetypes=arches, primary=primary)
     points = list((schema.get("labels") or {}).get("authPoints") or [])
     if need_flow and "申请与审核" not in "".join(points):
         points.append("申请与审核")

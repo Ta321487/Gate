@@ -565,7 +565,7 @@ def _nail_exam_grade_contract(
     labels = schema.setdefault("labels", {})
     labels.setdefault(
         "examObjectiveGradeHint",
-        "客观题交卷后按标准答案自动判分：单选与判断须完全一致；多选须选项集合完全一致才得分（部分对不得分）；主观题由教师阅卷。",
+        "客观题交卷后按标准答案自动判分：单选与判断须完全一致；多选须选项集合完全一致才得分（部分对不得分）；主观题由教务主管阅卷。",
     )
     labels.setdefault("examObjectiveGradedLead", "客观题已自动判分。总分在全部主观题阅完后公布。")
     thicken["examObjectiveGradeContract"] = True
@@ -659,7 +659,7 @@ def _nail_exam_i07(
     )
     labels.setdefault(
         "examObjectiveGradeHint",
-        "客观题交卷后按标准答案自动判分：单选与判断须完全一致；多选在开启部分得分时按比例计分（有错选为 0），否则须选项集合完全一致；主观题由教师阅卷。",
+        "客观题交卷后按标准答案自动判分：单选与判断须完全一致；多选在开启部分得分时按比例计分（有错选为 0），否则须选项集合完全一致；主观题由教务主管阅卷。",
     )
     thicken["examPartialMulti"] = True
     _add_feature(spec, "多选题部分得分规则")
@@ -767,7 +767,7 @@ def _nail_exam_i08(
 
     # —— 主观题评分细则 ——
     labels.setdefault("examMarkRubricLabel", "评分细则")
-    labels.setdefault("examMarkRubricHint", "供阅卷教师参考的给分说明，不对学生展示。")
+    labels.setdefault("examMarkRubricHint", "供阅卷教务主管参考的给分说明，不对学生展示。")
     labels.setdefault("examMarkRubricPlaceholder", "如：要点齐全得满分，缺一项扣 2 分…")
     thicken["examMarkRubric"] = True
     _add_feature(spec, "考试主观题评分细则字段")

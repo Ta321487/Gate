@@ -180,18 +180,12 @@ SHOP_KIND_CATEGORIES: dict[str, tuple[str, str, str]] = {
     "errand": ("代买餐饮", "代买日用", "代取快递"),
     "points": ("文创兑换", "生活兑换", "虚拟权益"),
 }
-# 零售软皮：仍 shop_product_kind=retail（壳/能力不变），只换分类+SKU+FAQ，求一次 bake 贴题
-# (hints, niche_id, categories)
-SHOP_RETAIL_NICHE_RULES: list[tuple[tuple[str, ...], str, tuple[str, str, str]]] = [
-    (("药店", "药品", "药房", "医药"), "pharmacy", ("药品", "保健", "护理")),
-    (("宠物用品", "宠粮", "猫粮", "狗粮"), "pet", ("主粮", "零食", "洗护")),
-    (("汽配", "汽车配件", "车品"), "auto", ("保养件", "车饰", "工具")),
-    (("化妆品", "美妆", "护肤"), "beauty", ("护肤", "彩妆", "个护")),
-    (("超市", "便利店"), "market", ("食品", "百货", "零食")),
-    (("办公用品", "文具"), "office", ("文具", "耗材", "桌面")),
-    (("农资",), "agri", ("肥料", "农药", "农机件")),
-    (("定制礼品", "礼品定制", "刻字"), "gift", ("杯壶刻字", "服饰印制", "相册抱枕")),
-]
+# 零售软皮：仍 shop_product_kind=retail；正文见 shop_retail_niches 登记表
+from app.bake.shop_retail_niches import shop_retail_niche_rules
+
+SHOP_RETAIL_NICHE_RULES: list[tuple[tuple[str, ...], str, tuple[str, str, str]]] = (
+    shop_retail_niche_rules()
+)
 for _hints, _nid, _cats in SHOP_RETAIL_NICHE_RULES:
     SHOP_KIND_CATEGORIES[f"retail_{_nid}"] = _cats
 

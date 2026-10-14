@@ -75,7 +75,7 @@ class GradeScoreTests(unittest.TestCase):
 
         self.assertNotIn("报警|撤离|灭火器", _EXAM_LABSAFE_GATE_SEED)
         self.assertNotIn("自动判分", _EXAM_LABSAFE_GATE_SEED)
-        self.assertIn("参考答案供教师阅卷", _EXAM_LABSAFE_GATE_SEED)
+        self.assertIn("参考答案供教务主管阅卷", _EXAM_LABSAFE_GATE_SEED)
 
     def test_grade_score_history_import_stats(self) -> None:
         """改分留痕表 + 三套 Store 同源 API + 管理端三个新端点。"""

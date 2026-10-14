@@ -1,6 +1,7 @@
 """数字商品履约。开题写到才挂，挂在商城订单上。
 
 付款后写入激活码或下载链接，跳过发货。数字单默认不支持无理由退。
+关 cap 时主动清掉 schema / SQL 残留，避免「电子商务」误开后半残留在包里。
 """
 
 from __future__ import annotations
@@ -31,16 +32,40 @@ _TERMS = (
     "数字下载",
 )
 
+# 「电子商务 / 数字化」里的「电子」「数字」不是数字码履约
+_MASK_FALSE_DIGITAL = re.compile(
+    r"电子商务|电子支付|电子发票|电子面单|电子运单|电子合同|"
+    r"数字化|数字乡村|数字农业|数字经济"
+)
+
+_DIGITAL_MENU_KEYS = frozenset({"digital_codes", "my_digital"})
+_DIGITAL_LABEL_KEYS = frozenset(
+    {"digitalDeliveryMenu", "myDigitalMenu", "digitalGoodsHint"}
+)
+
+_PHYSICAL_ORDER_STATES = {
+    "pending": "待付款",
+    "confirmed": "待发货",
+    "shipped": "配送中",
+    "completed": "已完成",
+    "cancelled": "已取消",
+}
+_PHYSICAL_ORDER_VERBS = {
+    "confirm": "确认交付",
+    "complete": "办结",
+}
+
 
 def _hit(text: str, terms: tuple[str, ...]) -> bool:
     return any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in terms)
 
 
 def scan_digital_goods(text: str, title: str = "") -> bool:
-    blob = f"{title or ''}\n{text or ''}"
+    blob = _MASK_FALSE_DIGITAL.sub(" ", f"{title or ''}\n{text or ''}")
     if _hit(blob, _TERMS):
         return True
-    if _hit(blob, ("电子", "虚拟", "数字")) and _hit(blob, ("商城", "商品", "课程", "会员", "素材")):
+    # 「虚拟」须搭售卖语境；不再用「电子/数字」弱组合（电子商务/数字化误伤）
+    if _hit(blob, ("虚拟",)) and _hit(blob, ("商城", "商品", "课程", "会员", "素材")):
         return True
     return False
 
@@ -52,13 +77,50 @@ def merge_digital_goods_capabilities(
     domain: str | None = None,
     title: str = "",
 ) -> list[str]:
-    out = list(caps or [])
+    """开题扫到才挂。旧 spec 粘着的 digital_goods 也会被扫词否决后摘掉。"""
+    out = [c for c in (caps or []) if c != DIGITAL_GOODS_CAP]
     if (domain or "") != "DOM-SHOP" or "order_lines" not in out:
-        return [c for c in out if c != DIGITAL_GOODS_CAP]
-    if DIGITAL_GOODS_CAP in out:
         return out
     if scan_digital_goods(proposal_text or "", title):
         out.append(DIGITAL_GOODS_CAP)
+    return out
+
+
+def _strip_digital_from_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """关 cap：清字段/菜单/标签/数字履约态，避免半残留。不碰 line_custom 的 noCasualRefund。"""
+    out = dict(schema)
+    out.pop("digitalGoods", None)
+
+    labels = dict(out.get("labels") or {})
+    for k in _DIGITAL_LABEL_KEYS:
+        labels.pop(k, None)
+    out["labels"] = labels
+
+    ents = dict(out.get("entities") or {})
+    archive = dict(ents.get("archive") or {})
+    archive["fields"] = [
+        f for f in (archive.get("fields") or []) if (f or {}).get("key") != "digitalKind"
+    ]
+    ents["archive"] = archive
+
+    order = dict(ents.get("order") or {})
+    if order.get("fulfillMode") == "digital":
+        order.pop("fulfillMode", None)
+        order["states"] = dict(_PHYSICAL_ORDER_STATES)
+        verbs = dict(order.get("verbs") or {})
+        verbs.update(_PHYSICAL_ORDER_VERBS)
+        order["verbs"] = verbs
+    ents["order"] = order
+    out["entities"] = ents
+
+    menus = dict(out.get("menus") or {})
+    for side in ("admin", "user"):
+        menus[side] = [
+            m
+            for m in (menus.get(side) or [])
+            if (m or {}).get("key") not in _DIGITAL_MENU_KEYS
+        ]
+    out["menus"] = menus
     return out
 
 
@@ -76,7 +138,7 @@ def apply_digital_goods_to_spec(spec: dict[str, Any], proposal_text: str = "") -
     schema = dict(spec.get("schema") or {})
     schema["capabilities"] = caps
     if DIGITAL_GOODS_CAP not in caps:
-        return {**spec, "schema": schema}
+        return {**spec, "schema": _strip_digital_from_schema(schema)}
 
     schema["digitalGoods"] = True
     schema["noCasualRefund"] = True
@@ -167,12 +229,55 @@ PRODUCT_DIGITAL_COLUMNS: list[tuple[str, str]] = [
     ("digital_kind", "VARCHAR(16) NOT NULL DEFAULT 'code'"),
 ]
 
-def ensure_digital_goods_sql(sql: str, *, enabled: bool, item_table: str | None = "product") -> str:
-    """数字码池与订单交付快照。未开不加。"""
-    if not enabled:
-        return sql
-    t = (item_table or "product").strip()
+_DIGITAL_TABLE_NAMES = frozenset({"digital_code", "digital_delivery"})
+_DIGITAL_KIND_KNOWN = {"digital_kind"}
+
+
+def _strip_digital_goods_sql(sql: str, *, item_table: str | None = "product") -> str:
+    """未开数字商品：去掉码池表、交付表、商品 digital_kind 列与相关种子。"""
     out = sql
+
+    def drop_table(m: re.Match[str]) -> str:
+        table = m.group(2)
+        if table.lower() in _DIGITAL_TABLE_NAMES:
+            return ""
+        return m.group(0)
+
+    out = _CREATE_TABLE_RE.sub(drop_table, out)
+
+    t = (item_table or "product").strip()
+    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
+
+        def prune_item(m: re.Match[str]) -> str:
+            head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+            if table.lower() != t.lower():
+                return m.group(0)
+            body = _prune_columns(body, allow=set(), known=_DIGITAL_KIND_KNOWN)
+            return f"{head}{body}{tail}"
+
+        out = _CREATE_TABLE_RE.sub(prune_item, out)
+        out = re.sub(
+            rf"(?im)^\s*UPDATE\s+`?{re.escape(t)}`?\s+SET\s+digital_kind\s*=.*?;\s*\n?",
+            "",
+            out,
+        )
+
+    # 含多行 INSERT…SELECT…WHERE NOT EXISTS
+    out = re.sub(
+        r"(?is)INSERT\s+INTO\s+`?digital_code`?\b.*?;\s*",
+        "",
+        out,
+    )
+    out = re.sub(r"\n{3,}", "\n\n", out)
+    return out
+
+
+def ensure_digital_goods_sql(sql: str, *, enabled: bool, item_table: str | None = "product") -> str:
+    """数字码池与订单交付快照。未开则剔除残留，不开不加。"""
+    if not enabled:
+        return _strip_digital_goods_sql(sql, item_table=item_table)
+    t = (item_table or "product").strip()
+    out = _strip_digital_goods_sql(sql, item_table=item_table)
     if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
 
         def repl(m: re.Match[str]) -> str:

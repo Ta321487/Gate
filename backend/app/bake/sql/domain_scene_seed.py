@@ -1493,88 +1493,37 @@ INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VA
 (1, 1, 1, '热销爆款套装', 99.00, 1);
 """
 
-# 零售软皮 SKU：(title, price, sku, category_id)
-_SHOP_RETAIL_NICHE_SKUS: dict[str, list[tuple[str, str, str, int]]] = {
-    "pharmacy": [
-        ("常用感冒药套装", "39.90", "PH-01", 1),
-        ("维生素 C 片", "29.90", "PH-02", 2),
-        ("免洗手消毒液", "19.90", "PH-03", 3),
-        ("创可贴家庭装", "15.00", "PH-04", 3),
-    ],
-    "pet": [
-        ("成猫粮 1.5kg", "68.00", "PT-01", 1),
-        ("狗零食肉干", "28.00", "PT-02", 2),
-        ("宠物沐浴露", "35.00", "PT-03", 3),
-        ("猫砂 5L", "32.00", "PT-04", 3),
-    ],
-    "auto": [
-        ("机油 4L 套装", "128.00", "AU-01", 1),
-        ("车载香薰", "39.00", "AU-02", 2),
-        ("随车工具包", "59.00", "AU-03", 3),
-        ("雨刷片一对", "45.00", "AU-04", 1),
-    ],
-    "beauty": [
-        ("保湿面霜 50g", "89.00", "BE-01", 1),
-        ("口红试色装", "59.00", "BE-02", 2),
-        ("氨基酸洗面奶", "49.00", "BE-03", 3),
-        ("面膜 5 片装", "39.00", "BE-04", 1),
-    ],
-    "market": [
-        ("牛奶 12 盒装", "56.00", "MK-01", 1),
-        ("抽纸 24 包", "39.90", "MK-02", 2),
-        ("坚果礼盒", "68.00", "MK-03", 3),
-        ("方便面箱装", "45.00", "MK-04", 1),
-    ],
-    "office": [
-        ("中性笔 12 支装", "19.90", "OF-01", 1),
-        ("A4 复印纸 500 张", "28.00", "OF-02", 2),
-        ("桌面收纳盒", "35.00", "OF-03", 3),
-        ("订书机套装", "25.00", "OF-04", 1),
-    ],
-    "agri": [
-        ("复合肥 5kg", "48.00", "AG-01", 1),
-        ("园艺喷雾壶", "29.00", "AG-02", 2),
-        ("农用手套", "18.00", "AG-03", 3),
-        ("种子套装", "22.00", "AG-04", 1),
-    ],
-    "gift": [
-        ("刻字马克杯", "39.00", "GF-01", 1),
-        ("定制T恤", "69.00", "GF-02", 2),
-        ("定制相册", "88.00", "GF-03", 3),
-        ("定制抱枕", "59.00", "GF-04", 3),
-    ],
-}
-
-
 def _shop_retail_seed_for(catalog_kind: str) -> str:
     """retail 或 retail_* 软皮种子；壳仍走零售交易路径。"""
     if catalog_kind == "retail" or not catalog_kind.startswith("retail_"):
         return _SHOP_RETAIL
-    niche = catalog_kind.removeprefix("retail_")
-    from app.bake.scene_scan import SHOP_KIND_CATEGORIES
+    from app.bake.shop_retail_niches import get_retail_niche
 
-    cats = SHOP_KIND_CATEGORIES.get(catalog_kind) or SHOP_KIND_CATEGORIES["retail"]
-    skus = _SHOP_RETAIL_NICHE_SKUS.get(niche)
-    if not skus:
+    pack = get_retail_niche(catalog_kind.removeprefix("retail_"))
+    if pack is None:
         return _SHOP_RETAIL
-    a, b, c = cats
-    admin_name = "礼品店主管" if niche == "gift" else "商城主管"
-    sub_name = "制作员" if niche == "gift" else "订单管理员"
-    notice_title = "定制须知" if niche == "gift" else "商城开业"
-    notice_body = (
-        "下单请填写刻字或上传图片；制作完成后再发货。"
-        if niche == "gift"
-        else "欢迎选购；下单后可在订单页查看进度。"
-    )
+    a, b, c = pack.categories
+    admin_name, sub_name = pack.admin_name, pack.sub_name
+    notice_title, notice_body = pack.notice_title, pack.notice_body
+    # 单店种子须知用稍短句，避免与 schema 定制长文重复
+    if pack.gift_line_custom:
+        notice_body = "下单请填写刻字或上传图片；制作完成后再发货。"
+    elif pack.id == "fitness":
+        notice_body = "器械与护具按训练目标上架；下单后可在订单页查看进度。"
+    else:
+        notice_body = "欢迎选购；下单后可在订单页查看进度。"
+        notice_title = "商城开业"
     cat_sql = f"(1, '{a}'), (2, '{b}'), (3, '{c}')"
     prod_lines = ",\n".join(
         f"({i}, '{title}', '{price}', '{sku}', {cid}, {50 + i * 5}, 'available')"
-        for i, (title, price, sku, cid) in enumerate(skus, start=1)
+        for i, (title, price, sku, cid, _note) in enumerate(pack.skus, start=1)
     )
-    first_title, first_price, _sku, _cid = skus[0]
-    order_status = "confirmed" if niche == "gift" else "pending"
-    order_remark = "刻字：张三；宋体 / 红色 / 大号" if niche == "gift" else "请确认后发货。"
-    if niche == "gift":
+    first_title, first_price, _sku, _cid, _n = pack.skus[0]
+    order_status = "confirmed" if pack.gift_line_custom else "pending"
+    order_remark = (
+        "刻字：张三；宋体 / 红色 / 大号" if pack.gift_line_custom else "请确认后发货。"
+    )
+    if pack.gift_line_custom:
         line_sql = (
             "INSERT IGNORE INTO order_line "
             "(id, order_id, item_id, title, price_yuan, qty, custom_text, spec_choice) VALUES\n"
@@ -1612,6 +1561,103 @@ INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver
 """
 
 
+def _shop_mp_retail_seed_for(catalog_kind: str) -> str:
+    """多店零售软皮：由登记表 pack 渲染；无 pack 时回落通用百货多店。"""
+    from app.bake.shop_retail_niches import get_retail_niche
+
+    if catalog_kind == "retail" or not catalog_kind.startswith("retail_"):
+        return _SHOP_MP_RETAIL
+    pack = get_retail_niche(catalog_kind.removeprefix("retail_"))
+    if pack is None:
+        return _SHOP_MP_RETAIL
+    a, b, c = pack.categories
+    shop_a, shop_b = pack.mp_shops
+    cat_sql = f"(1, '{a}'), (2, '{b}'), (3, '{c}')"
+    prod_rows: list[str] = []
+    for i, (title, price, sku, cid, note) in enumerate(pack.skus, start=1):
+        owner = "subadmin" if cid == 1 else "merchant_b"
+        stock = 40 if i < len(pack.skus) else 8
+        note_s = (note or title).replace("'", "''")
+        prod_rows.append(
+            f"({i}, '{title}', '{price}', '{sku}', {cid}, {stock}, 'available', "
+            f"'{note_s}', '{owner}')"
+        )
+    prod_sql = ",\n".join(prod_rows)
+    # 演示订单：取各店一件 + pending + shipped
+    skus = pack.skus
+    o1 = skus[0]
+    o2 = next((s for s in skus if s[3] != 1), skus[min(1, len(skus) - 1)])
+    o3 = next((s for s in skus if s is not o1 and s is not o2), skus[-1])
+    o4 = next((s for s in skus if s[3] == 1 and s is not o1), o1)
+    lines = [
+        (1, 1, o1[0], o1[1], "confirmed", f"{o1[0][:8]}请加固包装。"),
+        (2, next(i for i, s in enumerate(skus, 1) if s is o2), o2[0], o2[1], "completed", "已签收。"),
+        (3, next(i for i, s in enumerate(skus, 1) if s is o3), o3[0], o3[1], "pending", "待付款。"),
+        (4, next(i for i, s in enumerate(skus, 1) if s is o4), o4[0], o4[1], "shipped", "已发出。"),
+    ]
+    order_sql = ",\n".join(
+        f"({oid}, 'user', '{st}', {price}, '{rmk}', '王先生', '13800000002', "
+        f"'示例小区 3 栋 1201', '配送到家')"
+        for oid, _iid, _t, price, st, rmk in lines
+    )
+    line_sql = ",\n".join(
+        f"({oid}, {oid}, {iid}, '{title}', {price}, 1)"
+        for oid, iid, title, price, _st, _rmk in lines
+    )
+    promo_title = pack.mp_promo_title.replace("'", "''")
+    promo_body = pack.mp_promo_body.replace("'", "''")
+    notice_t = pack.mp_notice_title.replace("'", "''")
+    notice_b = pack.mp_notice_body.replace("'", "''")
+    gb_q = (o1[0][:6] if o1[0] else "商品").replace("'", "''")
+    return f"""\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '平台管理员', '13800000000', '{{}}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '{shop_a.name}', '13800000001',
+ '{{"shopName":"{shop_a.name}","shopIntro":"{shop_a.intro}","shopPhone":"13800000001"}}',
+ 0, 1, 1),
+('merchant_b', 'mer123', 'admin', '{shop_b.name}', '13800000012',
+ '{{"shopName":"{shop_b.name}","shopIntro":"{shop_b.intro}","shopPhone":"13800000012"}}',
+ 0, 1, 1),
+('user', 'user123', 'user', '买家甲', '13800000002',
+ '{{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json),
+ enabled=VALUES(enabled);
+
+UPDATE sys_user SET staff_post='shop_merchant', staff_kind='clerk', role='admin', super_admin=0
+WHERE username IN ('subadmin', 'merchant_b');
+
+INSERT IGNORE INTO category (id, name) VALUES {cat_sql};
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, owner_username) VALUES
+{prod_sql};
+
+INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
+(1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
+(2, 'user', '王先生', '13800000002', '科技园 A 座前台', '公司', 0),
+(3, 'user', '王先生', '13800000002', '门店自提', '自提', 0);
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audit_status, submitter_username)
+SELECT '{notice_t}', '{notice_b}', 'admin', '平台管理员', 'approved', ''
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='{notice_t}' OR title='商城开业');
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audit_status, submitter_username)
+SELECT '{promo_title}', '{promo_body}', 'subadmin', '{shop_a.name}', 'pending', 'subadmin'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='{promo_title}');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
+{order_sql};
+INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
+{line_sql};
+INSERT IGNORE INTO order_review (id, order_id, username, rating, body, created_at) VALUES
+(1, 2, 'user', 5, '质量不错，物流及时。', NOW());
+
+INSERT INTO sys_guestbook (username, nickname, body, channel)
+SELECT 'user', '买家甲', '请问{gb_q}能否货到付款？', 'user'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='user' AND body LIKE '请问{gb_q}%');
+INSERT INTO sys_guestbook (username, nickname, body, channel)
+SELECT 'subadmin', '{shop_a.name}', '申请上架{promo_title}活动，请平台审核。', 'merchant'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='subadmin' AND body LIKE '申请上架{promo_title}%');
+"""
+
+
 _SHOP_FARM = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '农产主管', '13800000000', '{}', 1, 0, 1),
@@ -1626,7 +1672,8 @@ INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status,
 (1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', '2026-09-01'),
 (2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', '2026-09-03'),
 (3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', '2026-09-05'),
-(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', '2026-08-20');
+(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', '2026-08-20'),
+(5, '红富士苹果', '72.00', '10 斤装', 1, 30, 'available', '家庭装，同果园直供。', '山东烟台', '2026-09-01');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
@@ -2033,8 +2080,6 @@ SELECT 'subadmin', '日用优选店', '申请参加平台百货周活动。', 'm
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='subadmin' AND body LIKE '申请参加平台百货%');
 """
 
-
-
 _HOTEL_BOARDING = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '寄养主管', '13800000000', '{}', 1, 0, 1),
@@ -2108,7 +2153,10 @@ def apply_domain_scene_seed(
         if scan_shop_marketplace(title, proposal_text):
             sql = _shop_sql_marketplace(sql, farm=farm)
             # 多店种子覆盖单店种子（含店长账号与商品归属）
-            seed = _SHOP_MP_FARM if farm else _SHOP_MP_RETAIL
+            if farm:
+                seed = _SHOP_MP_FARM
+            else:
+                seed = _shop_mp_retail_seed_for(ck)
     elif domain == "DOM-FOOD" and food_product_kind(title, proposal_text) == "canteen":
         seed = _FOOD_CANTEEN
     elif domain == "DOM-PARKING":

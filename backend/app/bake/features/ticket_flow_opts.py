@@ -458,6 +458,15 @@ def attach_material_check_menus(schema: dict[str, Any]) -> None:
         }
 
 
+def sync_material_check_surface_from_caps(schema: dict[str, Any]) -> None:
+    """收束：material_check 已开则管理菜单/实体/申请旗标齐（本岛自己补，不进 menu_utils）。"""
+    if not isinstance(schema, dict):
+        return
+    if MATERIAL_CHECK_CAP not in set(schema.get("capabilities") or []):
+        return
+    attach_material_check_menus(schema)
+
+
 def apply_material_check_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
     domain = spec.get("domain")
     caps = merge_material_check_capabilities(

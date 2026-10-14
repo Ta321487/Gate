@@ -13,6 +13,7 @@ from app.bake.menu_routes import (
     USER_MENU_PATHS,
     assert_menu_routes_aligned,
     check_menu_routes_aligned,
+    effective_paths,
     shell_kind,
 )
 
@@ -91,6 +92,28 @@ class MenuRoutesTests(unittest.TestCase):
             domain="DOM-SHOP",
         )
         self.assertTrue(any("wallet" in i for i in issues))
+
+    def test_order_shell_has_crosscut_admin_and_browse_history(self) -> None:
+        """横切广告位/定时任务与 browse_history 须进 order 壳有效路由。"""
+        caps = ["archive", "order_lines", "browse_history", "content", "org_users"]
+        paths = effective_paths(caps)
+        self.assertIn("/admin/banners", paths)
+        self.assertIn("/admin/schedule-jobs", paths)
+        self.assertIn("/browse-history", paths)
+        assert_menu_routes_aligned(
+            {
+                "menus": {
+                    "user": [{"key": "browse_history", "label": "浏览足迹"}],
+                    "admin": [
+                        {"key": "banners", "label": "广告位"},
+                        {"key": "schedule_jobs", "label": "定时任务"},
+                    ],
+                },
+                "capabilities": caps,
+            },
+            domain="DOM-SHOP",
+            capabilities=caps,
+        )
 
     def test_every_catalog_domain_default_ok(self) -> None:
         for domain in DOMAINS:

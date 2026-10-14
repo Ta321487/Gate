@@ -6,7 +6,12 @@ from pathlib import Path
 
 from app.bake.catalog import match_text
 from app.bake.domain_schema import attach_accept
-from app.bake.engine_sql import assert_table_budget, count_create_tables, domain_sql
+from app.bake.engine_sql import (
+    TABLE_COUNT_HARD,
+    assert_table_budget,
+    domain_sql,
+    evaluate_table_budget,
+)
 from app.bake.features.front_desk import FRONT_DESK_CAP
 from app.bake.features.housekeeping_cap import HOUSEKEEPING_CAP
 from app.bake.features.room_board import ROOM_BOARD_CAP
@@ -40,7 +45,8 @@ def test_room_booking_title_keeps_pms_off() -> None:
     sql = domain_sql("DOM-HOTEL", "t_hotel", title=title, proposal_text=body)
     assert "room_instance" not in sql
     assert "CREATE TABLE IF NOT EXISTS checkin" not in sql
-    assert count_create_tables(sql) <= 15
+    budget = evaluate_table_budget(sql, "DOM-HOTEL", caps=list(caps))
+    assert budget.charged <= TABLE_COUNT_HARD
     assert_table_budget(sql, "DOM-HOTEL", caps=list(caps))
     model = schema_model(sql)
     tables = {t.get("name") for t in (model.get("tables") or [])}
@@ -72,8 +78,8 @@ def test_hotel_management_umbrella_opens_three() -> None:
     assert "CREATE TABLE IF NOT EXISTS checkin" in sql
     assert "CREATE TABLE IF NOT EXISTS checkout" in sql
     assert "CREATE TABLE IF NOT EXISTS consumption" in sql
-    n = count_create_tables(sql)
-    assert n <= 20
+    budget = evaluate_table_budget(sql, "DOM-HOTEL", caps=list(caps))
+    assert budget.charged <= TABLE_COUNT_HARD, budget.message
     assert_table_budget(sql, "DOM-HOTEL", caps=list(caps))
     er = schema_model(sql)
     tables = {t.get("name") for t in (er.get("tables") or [])}

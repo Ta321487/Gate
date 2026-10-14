@@ -153,7 +153,7 @@ INSERT IGNORE INTO exam_question (id, subject_id, type, stem, answer_key, score,
 (3, 2, 'multi', '英语阅读理解常见题型包括哪些？',
  'A,B,C', 10, '代码调试不属于英语阅读题型。'),
 (4, 2, 'subjective', '请简述提高英语阅读速度的一种方法。',
- '参考：略读或扫读，先看题再定位段落。', 10, '参考答案供教师阅卷，不自动匹配。'),
+ '参考：略读或扫读，先看题再定位段落。', 10, '参考答案供教务主管阅卷，不自动匹配。'),
 (5, 3, 'single', '下列哪一项是常见的程序控制结构？',
  'A', 5, '顺序、分支、循环是基本控制结构。');
 
@@ -182,5 +182,5 @@ INSERT IGNORE INTO exam_paper_question (id, paper_id, question_id, sort_no) VALU
 (5, 2, 5, 1), (6, 2, 1, 2), (7, 2, 2, 3);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '考试须知', '请独立完成作答；客观题自动判分，主观题由教师阅卷后出总分。', 'admin', '平台主管'
+SELECT '考试须知', '请独立完成作答；客观题自动判分，主观题由教务主管阅卷后出总分。', 'admin', '平台主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='考试须知');

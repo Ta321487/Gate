@@ -172,19 +172,56 @@ def _strip_dm_oos(spec: dict[str, Any]) -> None:
     spec["features"] = keep
 
 
-def attach_dm_menus(
-    schema: dict[str, Any],
-    *,
-    peer_mode: str = DM_PEER_ALL,
-    cs_labels: bool = False,
-) -> None:
+def _dm_label_bundle(*, merchant: bool, use_cs: bool) -> dict[str, str]:
+    if merchant:
+        return {
+            "dmPageTitle": "客服",
+            "dmPageLead": "与店铺商家一对一沟通，打开会话后自动刷新新消息。",
+            "dmNewTitle": "联系商家客服",
+            "dmPeerPlaceholder": "选择店铺商家",
+            "dmEmptyPeers": "暂无会话，点「新建」选店铺商家。",
+            "dmEmptyChat": "选择左侧会话，或新建联系商家。",
+            "dmMerchantPageLead": "回复买家咨询，打开会话后自动刷新新消息。",
+            "dmMerchantNewTitle": "联系买家",
+            "dmMerchantPeerPlaceholder": "选择买家账号",
+            "dmMerchantEmptyPeers": "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。",
+            "dmMerchantEmptyChat": "选择左侧会话，或新建联系买家。",
+        }
+    if use_cs:
+        return {
+            "dmPageTitle": "客服",
+            "dmPageLead": "与平台客服一对一沟通，打开会话后自动刷新新消息。",
+            "dmNewTitle": "联系客服",
+            "dmPeerPlaceholder": "选择客服账号",
+            "dmEmptyPeers": "暂无会话，点「新建」选客服开聊。",
+            "dmEmptyChat": "选择左侧会话，或新建联系客服。",
+            "dmMerchantPageLead": "回复用户咨询，打开会话后自动刷新新消息。",
+            "dmMerchantNewTitle": "联系用户",
+            "dmMerchantPeerPlaceholder": "选择用户账号",
+            "dmMerchantEmptyPeers": "暂无会话，用户发起咨询后会出现在这里；也可点「新建」选用户。",
+            "dmMerchantEmptyChat": "选择左侧会话，或新建联系用户。",
+        }
+    return {
+        "dmPageTitle": "私信",
+        "dmPageLead": "与其他用户一对一沟通，打开会话后自动刷新新消息。",
+        "dmNewTitle": "新建私信",
+        "dmPeerPlaceholder": "选择对方账号",
+        "dmEmptyPeers": "暂无会话，点「新建」选人开聊。",
+        "dmEmptyChat": "选择左侧会话，或新建私信。",
+        "dmMerchantPageLead": "与用户一对一沟通，打开会话后自动刷新新消息。",
+        "dmMerchantNewTitle": "联系用户",
+        "dmMerchantPeerPlaceholder": "选择用户账号",
+        "dmMerchantEmptyPeers": "暂无会话，点「新建」选用户开聊。",
+        "dmMerchantEmptyChat": "选择左侧会话，或新建联系用户。",
+    }
+
+
+def _ensure_dm_menu_entries(schema: dict[str, Any], *, use_cs: bool) -> None:
     from app.bake.schema.menu_utils import ensure_menu
 
     menus = schema.setdefault("menus", {})
     user = menus.setdefault("user", [])
     admin = menus.setdefault("admin", [])
-    merchant = peer_mode == DM_PEER_MERCHANT
-    use_cs = merchant or cs_labels
     item = {"key": "dm", "label": "客服" if use_cs else "私信"}
     if not any(m.get("key") == "dm" for m in user):
         placed = False
@@ -199,7 +236,6 @@ def attach_dm_menus(
         for m in user:
             if isinstance(m, dict) and m.get("key") == "dm" and use_cs:
                 m["label"] = "客服"
-    # 管理端：办理岗也要有入口（店铺客服 / 平台客服 / 红娘 / 版主私信等）
     admin_item = {
         "key": "dm",
         "label": "客服" if use_cs else "私信",
@@ -219,43 +255,6 @@ def attach_dm_menus(
             if isinstance(m, dict) and m.get("key") == "dm":
                 m["label"] = "客服" if use_cs else "私信"
                 m["superOnly"] = False
-    labels = schema.setdefault("labels", {})
-    if merchant:
-        labels["dmPageTitle"] = "客服"
-        labels["dmPageLead"] = "与店铺商家一对一沟通，打开会话后自动刷新新消息。"
-        labels["dmNewTitle"] = "联系商家客服"
-        labels["dmPeerPlaceholder"] = "选择店铺商家"
-        labels["dmEmptyPeers"] = "暂无会话，点「新建」选店铺商家。"
-        labels["dmEmptyChat"] = "选择左侧会话，或新建联系商家。"
-        labels["dmMerchantPageLead"] = "回复买家咨询，打开会话后自动刷新新消息。"
-        labels["dmMerchantNewTitle"] = "联系买家"
-        labels["dmMerchantPeerPlaceholder"] = "选择买家账号"
-        labels["dmMerchantEmptyPeers"] = "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。"
-        labels["dmMerchantEmptyChat"] = "选择左侧会话，或新建联系买家。"
-    elif use_cs:
-        labels["dmPageTitle"] = "客服"
-        labels["dmPageLead"] = "与平台客服一对一沟通，打开会话后自动刷新新消息。"
-        labels["dmNewTitle"] = "联系客服"
-        labels["dmPeerPlaceholder"] = "选择客服账号"
-        labels["dmEmptyPeers"] = "暂无会话，点「新建」选客服开聊。"
-        labels["dmEmptyChat"] = "选择左侧会话，或新建联系客服。"
-        labels["dmMerchantPageLead"] = "回复用户咨询，打开会话后自动刷新新消息。"
-        labels["dmMerchantNewTitle"] = "联系用户"
-        labels["dmMerchantPeerPlaceholder"] = "选择用户账号"
-        labels["dmMerchantEmptyPeers"] = "暂无会话，用户发起咨询后会出现在这里；也可点「新建」选用户。"
-        labels["dmMerchantEmptyChat"] = "选择左侧会话，或新建联系用户。"
-    else:
-        labels["dmPageTitle"] = "私信"
-        labels["dmPageLead"] = "与其他用户一对一沟通，打开会话后自动刷新新消息。"
-        labels["dmNewTitle"] = "新建私信"
-        labels["dmPeerPlaceholder"] = "选择对方账号"
-        labels["dmEmptyPeers"] = "暂无会话，点「新建」选人开聊。"
-        labels["dmEmptyChat"] = "选择左侧会话，或新建私信。"
-        labels["dmMerchantPageLead"] = "与用户一对一沟通，打开会话后自动刷新新消息。"
-        labels["dmMerchantNewTitle"] = "联系用户"
-        labels["dmMerchantPeerPlaceholder"] = "选择用户账号"
-        labels["dmMerchantEmptyPeers"] = "暂无会话，点「新建」选用户开聊。"
-        labels["dmMerchantEmptyChat"] = "选择左侧会话，或新建联系用户。"
     ents = schema.setdefault("entities", {})
     if "dm" not in ents:
         ents["dm"] = {
@@ -263,6 +262,37 @@ def attach_dm_menus(
             "label": "客服" if use_cs else "私信",
             "labelPlural": "客服" if use_cs else "私信",
         }
+
+
+def attach_dm_menus(
+    schema: dict[str, Any],
+    *,
+    peer_mode: str = DM_PEER_ALL,
+    cs_labels: bool = False,
+) -> None:
+    merchant = peer_mode == DM_PEER_MERCHANT
+    use_cs = merchant or cs_labels
+    _ensure_dm_menu_entries(schema, use_cs=use_cs)
+    labels = schema.setdefault("labels", {})
+    labels.update(_dm_label_bundle(merchant=merchant, use_cs=use_cs))
+
+
+def sync_dm_surface_from_caps(schema: dict[str, Any]) -> None:
+    """收束：dm 已开则菜单/店铺客服旗标齐；皮文案只补缺省（不覆盖 opening_align）。"""
+    if not isinstance(schema, dict):
+        return
+    if DM_CAP not in set(schema.get("capabilities") or []):
+        return
+    # 多店商城有 dm 但未落 dmShopCs 时，按店铺客服收口（与 resolve_dm_peer_mode 默认同向）
+    if not schema.get("dmShopCs") and schema.get("shopMarketplace"):
+        schema["dmShopCs"] = True
+    merchant = bool(schema.get("dmShopCs"))
+    labels = schema.setdefault("labels", {})
+    cs_labels = (not merchant) and str(labels.get("dmPageTitle") or "") == "客服"
+    use_cs = merchant or cs_labels
+    _ensure_dm_menu_entries(schema, use_cs=use_cs)
+    for k, v in _dm_label_bundle(merchant=merchant, use_cs=use_cs).items():
+        labels.setdefault(k, v)
 
 
 def apply_dm_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:

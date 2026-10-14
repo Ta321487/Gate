@@ -11,7 +11,13 @@ from app.bake.engine_sql import evaluate_table_budget
 
 
 def _read(path: Path) -> str:
-    return path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
+    # 须 is_file：flow_api 缺 file 时路径会落到 controller/ 目录，Windows 上 read_text 抛 PermissionError
+    try:
+        if path.is_file():
+            return path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return ""
+    return ""
 
 
 _VUE_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.S)
@@ -56,19 +62,23 @@ def _has_files(workspace: Path, rels: list[str]) -> tuple[bool, list[str]]:
 
 
 def _route_present(router_src: str, seg: str) -> bool:
-    for q in (f"'{seg}'", f'"{seg}"', f"'/{seg}'", f'"/{seg}"'):
-        if q in router_src:
-            return True
+    # 契约偶发下划线、骨架 path 用连字符；两侧都认
+    alts = {seg, seg.replace("_", "-"), seg.replace("-", "_")}
+    for s in alts:
+        for q in (f"'{s}'", f'"{s}"', f"'/{s}'", f'"/{s}"'):
+            if q in router_src:
+                return True
     # 嵌套路由：admin/tickets → 父 '/admin' + 子 'tickets'
     if "/" in seg:
-        parent, child = seg.split("/", 1)
-        parent_ok = any(
-            p in router_src
-            for p in (f"'{parent}'", f"'/{parent}'", f'"{parent}"', f'"/{parent}"')
-        )
-        child_ok = any(c in router_src for c in (f"'{child}'", f'"{child}"'))
-        if parent_ok and child_ok:
-            return True
+        for s in alts:
+            parent, child = s.split("/", 1)
+            parent_ok = any(
+                p in router_src
+                for p in (f"'{parent}'", f"'/{parent}'", f'"{parent}"', f'"/{parent}"')
+            )
+            child_ok = any(c in router_src for c in (f"'{child}'", f'"{child}"'))
+            if parent_ok and child_ok:
+                return True
     return False
 
 
@@ -161,9 +171,13 @@ def _eval_flow_api(be: Path, flow_api: dict[str, Any]) -> dict[str, bool]:
         if not isinstance(rule, dict):
             hits[key] = False
             continue
-        src = _read(be / "controller" / rule.get("file", ""))
+        fname = str(rule.get("file") or "").strip()
+        if not fname or "/" in fname or "\\" in fname or fname in (".", ".."):
+            hits[key] = False
+            continue
+        src = _read(be / "controller" / fname)
         need = rule.get("need") or []
-        hits[key] = all(n in src for n in need)
+        hits[key] = bool(src) and all(n in src for n in need)
     return hits
 
 
@@ -826,6 +840,7 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
 
     from app.bake.gates.semantic import merge_semantic_into_gates
     from app.bake.gates.schema_nf import evaluate_workspace_schema_nf
+    from app.bake.pack_prune import evaluate_pack_lean_gate
 
     merge_semantic_into_gates(results, workspace, spec)
     nf = evaluate_workspace_schema_nf(workspace)
@@ -835,6 +850,12 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
         "desc": nf.get("desc") or "",
     }
     if not nf.get("ok"):
+        results["zip_allowed"] = False
+        results["overall"] = False
+
+    lean = evaluate_pack_lean_gate(workspace, spec)
+    results["p3lean"] = lean
+    if not lean.get("ok"):
         results["zip_allowed"] = False
         results["overall"] = False
 

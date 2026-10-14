@@ -79,6 +79,10 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "ticket_pending": "/admin/tickets",
     "ticket_records": "/admin/ticket-records",
     "users": "/admin/users",
+    "online_sessions": "/admin/online-sessions",
+    "invite_codes": "/admin/invite-codes",
+    "banners": "/admin/banners",
+    "schedule_jobs": "/admin/schedule-jobs",
     "content": "/admin/notices",
     "guestbook": "/admin/guestbook",
     "item_comments": "/admin/item-comments",
@@ -164,6 +168,11 @@ _BASE_ALWAYS = frozenset(
         "/notices",
         "/admin/dashboard",
         "/admin/users",
+        "/admin/online-sessions",
+        "/admin/invite-codes",
+        # 通识横切：与各壳 AdminLayout children 及 msg/workbench_crosscut 菜单对齐
+        "/admin/banners",
+        "/admin/schedule-jobs",
         "/admin/notices",
         "/admin/profile",
         "/admin/messages",
@@ -173,6 +182,11 @@ _BASE_ALWAYS = frozenset(
         "/staff/tickets",
         "/staff/orders",
         "/staff/slots",
+        "/activate",
+        "/agreement",
+        "/privacy",
+        "/forgot-password",
+        "/force-change-password",
     }
 )
 

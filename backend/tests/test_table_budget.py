@@ -61,6 +61,46 @@ class TableBudgetTests(unittest.TestCase):
         self.assertEqual(r.charged, 19)
         self.assertFalse(r.ok)
 
+    def test_platform_crosscut_tables_exempt_from_hard(self) -> None:
+        # 18 张业务壳 + 7 张通识横切 → 计费仍 18，不打回
+        names = [f"t{i}" for i in range(18)] + [
+            "sys_auth_session",
+            "sys_login_log",
+            "sys_invite_code",
+            "sys_account_cancel",
+            "sys_notice_ack",
+            "sys_banner",
+            "sys_site_stat",
+        ]
+        sql = _sql(0, names)
+        r = evaluate_table_budget(sql, "DOM-SHOP")
+        self.assertEqual(r.count, 25)
+        self.assertEqual(r.charged, 18)
+        self.assertTrue(r.ok)
+        self.assertTrue(r.warn)
+        assert_table_budget(sql, "DOM-SHOP")
+
+    def test_shop_scanned_caps_with_platform_ok(self) -> None:
+        from app.bake.domains import DOMAIN_CAPABILITIES
+        from app.bake.engine_sql import domain_sql
+
+        caps = list(DOMAIN_CAPABILITIES["DOM-SHOP"]) + [
+            "dm",
+            "favorites",
+            "wallet",
+            "digital_goods",
+        ]
+        sql = domain_sql(
+            "DOM-SHOP",
+            "t_shop",
+            title="农产商城",
+            proposal_text="数字商品 私信 收藏 余额",
+            capabilities=caps,
+        )
+        r = evaluate_table_budget(sql, "DOM-SHOP", caps)
+        self.assertTrue(r.ok, r.message)
+        self.assertLessEqual(r.charged, TABLE_COUNT_HARD)
+
     def test_below_floor_rejects(self) -> None:
         r = evaluate_table_budget(_sql(5), "DOM-SHOP")
         self.assertFalse(r.ok)

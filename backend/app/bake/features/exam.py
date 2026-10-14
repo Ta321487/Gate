@@ -47,9 +47,9 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "archive_menu_admin": "科目管理",
         "archive_menu_user": "考试科目",
         "papers_title": "在线考试",
-        "papers_lead": "选择已发布试卷开考；客观题交卷自动判分，主观题由教师阅卷。",
+        "papers_lead": "选择已发布试卷开考；客观题交卷自动判分，主观题由教务主管阅卷。",
         "notice_title": "考试须知",
-        "notice_body": "请独立完成作答；客观题自动判分，主观题由教师阅卷后出总分。",
+        "notice_body": "请独立完成作答；客观题自动判分，主观题由教务主管阅卷后出总分。",
     },
     "party": {
         "auth_eyebrow": "党建答题",
@@ -59,7 +59,7 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "papers_title": "党建答题",
         "papers_lead": "选择专题试卷作答；提交后查看成绩。",
         "notice_title": "答题须知",
-        "notice_body": "请认真学习后作答；客观题自动判分，主观题由教师阅卷。非真机考监考。",
+        "notice_body": "请认真学习后作答；客观题自动判分，主观题由教务主管阅卷。非真机考监考。",
     },
     "drive": {
         "auth_eyebrow": "理论题库",
@@ -67,9 +67,9 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "archive_menu_admin": "科目管理",
         "archive_menu_user": "题库科目",
         "papers_title": "理论考试",
-        "papers_lead": "选择已发布试卷模拟作答；客观题交卷自动判分，主观题由教师阅卷。",
+        "papers_lead": "选择已发布试卷模拟作答；客观题交卷自动判分，主观题由教务主管阅卷。",
         "notice_title": "理论考试须知",
-        "notice_body": "题库非官方题库；客观题自动判分，主观题由教师阅卷。",
+        "notice_body": "题库非官方题库；客观题自动判分，主观题由教务主管阅卷。",
     },
     "safety": {
         "auth_eyebrow": "安全考试",
@@ -77,9 +77,9 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "archive_menu_admin": "科目管理",
         "archive_menu_user": "培训科目",
         "papers_title": "安全教育考试",
-        "papers_lead": "完成岗前/入职安全试卷；客观题交卷自动判分，主观题由教师阅卷。",
+        "papers_lead": "完成岗前/入职安全试卷；客观题交卷自动判分，主观题由教务主管阅卷。",
         "notice_title": "安全考试须知",
-        "notice_body": "请结合培训材料作答；客观题自动判分，主观题由教师阅卷。",
+        "notice_body": "请结合培训材料作答；客观题自动判分，主观题由教务主管阅卷。",
     },
     "grad": {
         "auth_eyebrow": "结业测验",
@@ -87,9 +87,9 @@ _SKIN_COPY: dict[str, dict[str, str]] = {
         "archive_menu_admin": "课程科目",
         "archive_menu_user": "课程科目",
         "papers_title": "结业测验",
-        "papers_lead": "选择课程试卷完成测验；客观题交卷自动判分，主观题由教师阅卷。",
+        "papers_lead": "选择课程试卷完成测验；客观题交卷自动判分，主观题由教务主管阅卷。",
         "notice_title": "测验须知",
-        "notice_body": "请在规定时限内完成；客观题自动判分，主观题由教师阅卷。",
+        "notice_body": "请在规定时限内完成；客观题自动判分，主观题由教务主管阅卷。",
     },
 }
 
@@ -452,7 +452,7 @@ INSERT IGNORE INTO exam_question (id, subject_id, type, stem, answer_key, score,
 (9003, NULL, 'multi', '实验室常见防护措施包括哪些？',
  'A,B,C', 30, '废液须按规定回收。'),
 (9004, NULL, 'subjective', '简述发现火情时的正确做法。',
- '参考：报警、撤离、使用灭火器，勿用水扑灭电器火。', 30, '参考答案供教师阅卷，不自动匹配。');
+ '参考：报警、撤离、使用灭火器，勿用水扑灭电器火。', 30, '参考答案供教务主管阅卷，不自动匹配。');
 
 INSERT IGNORE INTO exam_option (question_id, sort_no, label, content) VALUES
 (9001, 1, 'A', '实验目的'),

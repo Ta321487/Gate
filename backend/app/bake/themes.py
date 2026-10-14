@@ -225,12 +225,14 @@ def resolve_portal_home_style(
     override: str | None,
     seed: str | None,
 ) -> str:
-    """手选优先；mall 仅货架域；内容域未选手动则种子抽 cards/editorial；其它域固定 cards。"""
+    """手选优先；货架域默认 mall；内容域未选手动则种子抽 cards/editorial；其它域固定 cards。"""
     if override:
         style = normalize_portal_home_style(override)
         if style == "mall" and domain not in MALL_PORTAL_HOME_DOMAINS:
             return "cards"
         return style
+    if domain in MALL_PORTAL_HOME_DOMAINS:
+        return "mall"
     if domain in CONTENT_PORTAL_HOME_DOMAINS:
         return pick_portal_home_style(f"{seed or ''}|portalHome")
     return "cards"

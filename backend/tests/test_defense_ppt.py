@@ -273,6 +273,8 @@ class DefensePptFingerprintTest(unittest.TestCase):
 class DefensePptZipExcludeTest(unittest.TestCase):
     def test_factory_dir_excluded(self) -> None:
         self.assertIn(".factory", _ZIP_EXCLUDE_DIRS)
+        # 预览把 JVM tmpdir 指到工作区 .runtime-tmp；打包时若扫进去会撞 hsperfdata 锁文件
+        self.assertIn(".runtime-tmp", _ZIP_EXCLUDE_DIRS)
 
 
 class DefensePptUnitFlowHookTest(unittest.TestCase):

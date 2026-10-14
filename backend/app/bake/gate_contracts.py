@@ -1696,8 +1696,12 @@ def merge_ux_gate(gate: dict, caps: list[str] | None) -> dict:
     out["files"] = files
     routes = list(out.get("routes") or [])
     have = {r.get("seg") for r in routes if isinstance(r, dict)}
-    if "browse_history" in caps and "browse_history" not in have:
-        routes.append({"seg": "browse_history", "from_feature": "浏览历史"})
+    if (
+        "browse_history" in caps
+        and "browse-history" not in have
+        and "browse_history" not in have
+    ):
+        routes.append({"seg": "browse-history", "from_feature": "浏览历史"})
     out["routes"] = routes
     flow = dict(out.get("flow_api") or {})
     if "browse_history" in caps:
@@ -1803,10 +1807,14 @@ def merge_order_extras_gate(gate: dict, caps: list[str] | None, *, timeout_minut
     out["files"] = files
     routes = list(out.get("routes") or [])
     have = {r.get("seg") for r in routes if isinstance(r, dict)}
-    if "order_review" in caps and "order_reviews" not in have:
-        routes.append({"seg": "order_reviews", "from_feature": "订单评价"})
-    if "order_review" in caps and "admin/order_reviews" not in have:
-        routes.append({"seg": "admin/order_reviews", "from_feature": "订单评价"})
+    if "order_review" in caps and "order-reviews" not in have and "order_reviews" not in have:
+        routes.append({"seg": "order-reviews", "from_feature": "订单评价"})
+    if (
+        "order_review" in caps
+        and "admin/order-reviews" not in have
+        and "admin/order_reviews" not in have
+    ):
+        routes.append({"seg": "admin/order-reviews", "from_feature": "订单评价"})
     if "coupon" in caps and "coupons" not in have:
         routes.append({"seg": "coupons", "from_feature": "优惠券"})
     if "coupon" in caps and "admin/coupons" not in have:

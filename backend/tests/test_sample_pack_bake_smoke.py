@@ -161,13 +161,32 @@ class SamplePackBakeSmokeTests(unittest.TestCase):
                     f"pk={pk} marketplace={marketplace} brow={brow!r}",
                 )
             elif pk == "retail":
+                from app.bake.scene_scan import shop_retail_niche
+
                 self.assertNotIn("conditionGrade", keys)
                 self.assertNotIn("condition_grade", sql)
                 self.assertNotIn("成色", sql)
                 self.assertNotIn("校徽帆布袋", sql)
-                self.assertEqual(
-                    brow, "多商家商城" if marketplace else "在线商城"
-                )
+                niche = shop_retail_niche(title, text)
+                if marketplace:
+                    expected_brow = {
+                        "fitness": "多商家健身商城",
+                        "sports": "多商家体育商城",
+                    }.get(niche or "", "多商家商城")
+                else:
+                    expected_brow = {
+                        "pharmacy": "药店选购",
+                        "pet": "宠物用品",
+                        "auto": "汽配商城",
+                        "beauty": "美妆选购",
+                        "market": "超市选购",
+                        "office": "办公文具",
+                        "agri": "农资选购",
+                        "gift": "定制礼品",
+                        "fitness": "健身用品",
+                        "sports": "体育用品",
+                    }.get(niche or "", "在线商城")
+                self.assertEqual(brow, expected_brow)
             else:
                 # farm / flowers / print / errand / points：行业货皮，无二手成色
                 self.assertNotIn("conditionGrade", keys)

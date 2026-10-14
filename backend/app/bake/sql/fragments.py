@@ -551,7 +551,7 @@ INSERT IGNORE INTO exam_question (id, subject_id, type, stem, answer_key, score,
 (9003, NULL, 'multi', '实验室常见防护措施包括哪些？',
  'A,B,C', 30, '废液须按规定回收。'),
 (9004, NULL, 'subjective', '简述发现火情时的正确做法。',
- '参考：报警、撤离、使用灭火器，勿用水扑灭电器火。', 30, '参考答案供教师阅卷，不自动匹配。');
+ '参考：报警、撤离、使用灭火器，勿用水扑灭电器火。', 30, '参考答案供教务主管阅卷，不自动匹配。');
 
 INSERT IGNORE INTO exam_option (question_id, sort_no, label, content) VALUES
 (9001, 1, 'A', '实验目的'),
@@ -2129,62 +2129,11 @@ def ensure_rental_bond_sql(sql: str, *, enabled: bool, item_table: str | None = 
     return out
 
 
-_DIGITAL_GOODS_DDL = """
-CREATE TABLE IF NOT EXISTS digital_code (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  item_id BIGINT NULL,
-  code_value VARCHAR(128) NOT NULL DEFAULT '',
-  link_url VARCHAR(255) NOT NULL DEFAULT '',
-  kind VARCHAR(16) NOT NULL DEFAULT 'code',
-  used_order_id BIGINT NULL,
-  enabled TINYINT NOT NULL DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS digital_delivery (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  order_id BIGINT NOT NULL,
-  item_id BIGINT NULL,
-  kind VARCHAR(16) NOT NULL DEFAULT 'code',
-  code_value VARCHAR(128) NOT NULL DEFAULT '',
-  link_url VARCHAR(255) NOT NULL DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_digital_order (order_id)
-);
-"""
-
-PRODUCT_DIGITAL_COLUMNS: list[tuple[str, str]] = [
-    ("digital_kind", "VARCHAR(16) NOT NULL DEFAULT 'code'"),
-]
-
-
-def ensure_digital_goods_sql(sql: str, *, enabled: bool, item_table: str | None = "product") -> str:
-    """数字码池与订单交付快照。未开不加。"""
-    if not enabled:
-        return sql
-    t = (item_table or "product").strip()
-    out = sql
-    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-
-        def repl(m: re.Match[str]) -> str:
-            head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-            if table.lower() != t.lower():
-                return m.group(0)
-            body = _inject_missing_columns(body, PRODUCT_DIGITAL_COLUMNS)
-            return f"{head}{body}{tail}"
-
-        out = _CREATE_TABLE_RE.sub(repl, out)
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?digital_delivery`?\b", out):
-        return out
-    seed = f"""UPDATE {t} SET digital_kind='code' WHERE id=1;
-UPDATE {t} SET digital_kind='link' WHERE id=2;
-INSERT INTO digital_code (id, item_id, code_value, kind, enabled)
-SELECT 1, 1, 'DEMO-ACTIVATE-1001', 'code', 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM digital_code WHERE id=1);
-INSERT INTO digital_code (id, item_id, code_value, link_url, kind, enabled)
-SELECT 2, 2, '', '/files/ebook-demo.pdf', 'link', 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM digital_code WHERE id=2);
-"""
-    return out.rstrip() + "\n" + _DIGITAL_GOODS_DDL + "\n" + seed
+# 正文在 features/digital_goods.py；此处只转发，避免双份 ensure。
+from app.bake.features.digital_goods import (  # noqa: E402
+    PRODUCT_DIGITAL_COLUMNS,
+    ensure_digital_goods_sql,
+)
 
 
 _BUYBACK_DDL = """

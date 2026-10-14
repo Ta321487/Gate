@@ -265,6 +265,26 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertGreaterEqual(int(schema.get("afterSaleDays") or 0), 1)
         opts = order.get("refundReasonOptions") or []
         self.assertGreaterEqual(len(opts), 3)
+        from app.bake.features.trade_thicken import (
+            DEFAULT_REFUND_REASONS,
+            assert_trade_refund_reason_surface,
+        )
+
+        assert_trade_refund_reason_surface(
+            schema,
+            domain="DOM-SHOP",
+            capabilities=list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
+        )
+        # 骨架兜底字典须与 bake 默认同源，禁止再手补农产包
+        from pathlib import Path
+
+        vue = (
+            Path(__file__).resolve().parents[2]
+            / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("DEFAULT_REFUND_REASONS", vue)
+        for reason in DEFAULT_REFUND_REASONS:
+            self.assertIn(reason, vue)
         for key in (
             "refundReasonLabel",
             "refundReasonHint",
@@ -288,6 +308,85 @@ CREATE TABLE IF NOT EXISTS goods (
         )
         for col in ("refund_type", "refund_tracking_no", "refund_requested_at", "completed_at"):
             self.assertIn(col, baked)
+
+    def test_farm_shop_refund_reasons_not_empty(self) -> None:
+        """农产只是探针：farm 皮出包也必须有 T-04 原因字典。"""
+        out = _spec(
+            "DOM-SHOP",
+            "基于Spring Boot与Vue的农产品电商系统",
+            "助农生鲜果蔬粮油选购 申请售后 退货",
+        )
+        order = ((out.get("schema") or {}).get("entities") or {}).get("order") or {}
+        opts = order.get("refundReasonOptions") or []
+        self.assertGreaterEqual(len(opts), 3)
+        from app.bake.features.trade_thicken import assert_trade_refund_reason_surface
+
+        assert_trade_refund_reason_surface(
+            out.get("schema"),
+            domain="DOM-SHOP",
+            capabilities=list(out.get("capabilities") or DOMAIN_CAPABILITIES["DOM-SHOP"]),
+        )
+
+    def test_assert_trade_refund_rejects_empty_dict(self) -> None:
+        from app.bake.features.trade_thicken import assert_trade_refund_reason_surface
+
+        with self.assertRaises(ValueError) as ctx:
+            assert_trade_refund_reason_surface(
+                {"entities": {"order": {"refundReasonOptions": []}}},
+                domain="DOM-SHOP",
+                capabilities=["order_lines"],
+            )
+        self.assertIn("refundReasonOptions", str(ctx.exception))
+        # FOOD 同拦；影院不拦
+        with self.assertRaises(ValueError):
+            assert_trade_refund_reason_surface(
+                {"entities": {"order": {}}},
+                domain="DOM-FOOD",
+                capabilities=["order_lines"],
+            )
+        assert_trade_refund_reason_surface(
+            {"entities": {"order": {}}},
+            domain="DOM-CINEMA",
+            capabilities=["order_lines"],
+        )
+
+    def test_ensure_spec_schema_locked_accept_keeps_t04(self) -> None:
+        """一键生成：accept 已定仍重编壳时，须回补 T-04，不能在「复制骨架」炸掉。"""
+        from app.bake.domain_schema import ensure_spec_schema
+        from app.bake.features.trade_thicken import assert_trade_refund_reason_surface
+        from app.bake.menu_routes import assert_menu_routes_aligned
+
+        caps = list(DOMAIN_CAPABILITIES["DOM-SHOP"])
+        out = ensure_spec_schema(
+            {
+                "domain": "DOM-SHOP",
+                "title": "基于Spring Boot与Vue的农产品电商系统",
+                "archetype": "ARCH-TRADE",
+                "capabilities": caps,
+                "accept": "full",
+                "accept_reason": "locked-for-test",
+                "proposal_text": "助农生鲜果蔬粮油选购 申请售后",
+                "schema": {"labels": {"productName": "旧壳"}},
+            }
+        )
+        self.assertEqual(out.get("accept"), "full")
+        self.assertEqual(out.get("accept_reason"), "locked-for-test")
+        # 锁定能力保留；加厚可并入 browse_history 等派生 cap
+        out_caps = set(out.get("capabilities") or [])
+        self.assertTrue(set(caps) <= out_caps)
+        order = ((out.get("schema") or {}).get("entities") or {}).get("order") or {}
+        self.assertGreaterEqual(len(order.get("refundReasonOptions") or []), 3)
+        assert_trade_refund_reason_surface(
+            out.get("schema"),
+            domain="DOM-SHOP",
+            capabilities=list(out.get("capabilities") or caps),
+        )
+        assert_menu_routes_aligned(
+            out.get("schema"),
+            domain="DOM-SHOP",
+            capabilities=list(out.get("capabilities") or []),
+            proposal_text="助农生鲜果蔬粮油选购 申请售后",
+        )
 
     def test_food_t04_reason_only(self) -> None:
         out = _spec("DOM-FOOD", "校园点餐配送系统", "")
@@ -353,7 +452,7 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertTrue(thicken.get("refundExchange"))
         self.assertTrue(thicken.get("shipNodes"))
         self.assertTrue(thicken.get("partialShip"))
-        self.assertTrue(thicken.get("orderShare"))
+        self.assertFalse(thicken.get("orderShare"))
         self.assertTrue(thicken.get("receiveCode"))
         self.assertTrue(thicken.get("warranty"))
         for key in (
@@ -362,13 +461,19 @@ CREATE TABLE IF NOT EXISTS goods (
             "logisticsTraceLabel",
             "shipNodeLabel",
             "partialShipLabel",
-            "orderShareLabel",
             "receiveCodeLabel",
             "receiveCodeVerifyLabel",
             "warrantyLabel",
         ):
             self.assertIn(key, labels)
+        self.assertNotIn("orderShareLabel", labels)
         self.assertEqual(labels.get("logisticsTraceLabel"), "物流进度")
+        with_share = _spec(
+            "DOM-SHOP",
+            "校园二手商城系统",
+            "支持订单分享口令，买家可凭口令免登录查单。",
+        )
+        self.assertTrue((with_share.get("schema") or {}).get("tradeThicken", {}).get("orderShare"))
         baked = domain_sql(
             "DOM-SHOP",
             "db_test",
@@ -382,11 +487,19 @@ CREATE TABLE IF NOT EXISTS goods (
     def test_food_t05_share_and_receive(self) -> None:
         out = _spec("DOM-FOOD", "校园点餐配送系统", "")
         thicken = (out.get("schema") or {}).get("tradeThicken") or {}
-        self.assertTrue(thicken.get("orderShare"))
+        self.assertFalse(thicken.get("orderShare"))
         self.assertTrue(thicken.get("receiveCode"))
         self.assertFalse(thicken.get("refundExchange"))
         self.assertFalse(thicken.get("shipNodes"))
         self.assertFalse(thicken.get("warranty"))
+        with_share = _spec(
+            "DOM-FOOD",
+            "校园点餐配送系统",
+            "支持凭口令查看订单进度。",
+        )
+        self.assertTrue(
+            (with_share.get("schema") or {}).get("tradeThicken", {}).get("orderShare")
+        )
         baked = domain_sql(
             "DOM-FOOD",
             "db_test",

@@ -19,29 +19,16 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     from app.bake.scene_scan import media_product_kind
 
     kind = media_product_kind(title, proposal_text)
+    from app.bake.schema.kind_label_packs import media_label_pack
+
+    p = media_label_pack(kind)
+    noun, plural = p["noun"], p["plural"]
+    author_lab, cat_lab = p["author_lab"], p["cat_lab"]
+    brow, user, admin = p["eyebrow"], p["user"], p["admin"]
+    lead, notice = p["lead"], p["notice"]
+    banner_lead, menu_u, fav_lead = p["banner_lead"], p["menu_u"], p["fav_lead"]
     blob = f"{title}\n{proposal_text}"
     user_publish = scan_user_publish(blob, domain="DOM-MEDIA") or scan_publish_review(blob)
-    if kind == "coursevod":
-        noun, plural, author_lab, cat_lab = "课程视频", "课程库", "主讲教师", "课程类型"
-        brow, user, admin = "点播课", "学员", "课程视频库主管（总管）"
-        lead = "验证码登录；浏览点播课视频、在线播放，收藏想看的课程。"
-        notice = "课程视频仅供学习点播。请勿传播未授权内容。"
-        banner_lead = "专业课、通识课、实验演示分类浏览，点击即可播放。"
-        menu_u, fav_lead = "课程检索", "收藏想看的课程视频，方便回看。"
-    elif kind == "campus":
-        noun, plural, author_lab, cat_lab = "影片", "片单", "导演/主演", "分类"
-        brow, user, admin = "校园媒资", "师生", "媒资主管（总管）"
-        lead = "验证码登录；浏览校园片单、在线播放，收藏想看的影视综。"
-        notice = "片源仅供学习使用；请文明观影，勿传播未授权内容。"
-        banner_lead = "教学片、纪录片、活动回放分类浏览，点击即可播放。"
-        menu_u, fav_lead = "片单检索", "收藏想看的影视综，方便下次回看。"
-    else:
-        noun, plural, author_lab, cat_lab = "影片", "片单", "导演/主演", "分类"
-        brow, user, admin = "影视点播", "观众", "内容总监（总管）"
-        lead = "验证码登录；浏览片单、在线播放，收藏想看的影视综。"
-        notice = "片源仅供学习使用；请文明观影，勿传播未授权内容。"
-        banner_lead = "电影、电视剧、综艺分类浏览，点击即可播放。"
-        menu_u, fav_lead = "片单检索", "收藏想看的影视综，方便下次回看。"
     if user_publish:
         lead = lead.rstrip("。") + "；开题点名投稿时可上传片源链接。"
     return _with_portal_banners(
@@ -56,7 +43,7 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             archive_label=noun,
             archive_plural=plural,
             archive_fields=[
-                {"key": "title", "label": "片名" if kind != "coursevod" else "课程名称", "type": "string"},
+                {"key": "title", "label": p["title_field"], "type": "string"},
                 {"key": "author", "label": author_lab, "type": "string"},
                 {"key": "isbn", "label": "播放链接", "type": "url"},
                 {"key": "durationSec", "label": "时长(秒)", "type": "number"},
@@ -68,10 +55,10 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             users_menu="用户管理",
             auth_eyebrow=brow,
             auth_lead=lead,
-            auth_points=["验证码登录", f"{'课程' if kind == 'coursevod' else '片单'}检索与播放", "收藏想看"]
+            auth_points=["验证码登录", f"{p['points_mid']}检索与播放", "收藏想看"]
             + (["上传投稿"] if user_publish else []),
             register_hint="注册后可浏览并收藏" + ("、投稿" if user_publish else ""),
-            notice_title="点播须知" if kind == "coursevod" else "观影须知",
+            notice_title=p["notice_title"],
             notice_body=notice,
             notice_page_title="平台公告",
             notice_page_lead="上新与维护通知，点击条目阅读全文。",
@@ -82,7 +69,7 @@ def _media_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             user_publish=user_publish,
         ),
         [
-            {"title": "热播片单" if kind != "coursevod" else "热门课程", "lead": banner_lead},
+            {"title": p["hot_banner"], "lead": banner_lead},
             {"title": "收藏想看", "lead": fav_lead},
             {"title": "平台公告", "lead": "上新与维护通知见公告栏。"},
             {"title": "猜你喜欢", "lead": "根据浏览偏好推荐内容。"},
@@ -96,25 +83,13 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     from app.bake.scene_scan import music_product_kind
 
     kind = music_product_kind(title, proposal_text)
+    from app.bake.schema.kind_label_packs import music_label_pack
+
+    p = music_label_pack(kind)
+    brow, user, admin = p["eyebrow"], p["user"], p["admin"]
+    lead, notice = p["lead"], p["notice"]
+    banner_lead, cat_lab = p["banner_lead"], p["cat_lab"]
     user_publish = scan_user_publish(f"{title}\n{proposal_text}", domain="DOM-MUSIC")
-    if kind == "karaoke":
-        brow, user, admin = "点歌台", "听众", "点歌台主管（总管）"
-        lead = "验证码登录；浏览点歌曲库、在线试听，收藏喜欢的歌曲。"
-        notice = "曲库供点歌试听。请尊重版权。"
-        banner_lead = "热门点歌、校园原创、合唱分类浏览。"
-        cat_lab = "点歌分区"
-    elif kind == "campus":
-        brow, user, admin = "校园曲库", "师生", "曲库主管（总管）"
-        lead = "验证码登录；浏览校园曲库、在线试听，收藏喜欢的歌曲。"
-        notice = "曲源仅供学习使用；请尊重版权，勿传播未授权内容。"
-        banner_lead = "合唱、器乐、校园原创分类浏览。"
-        cat_lab = "曲风"
-    else:
-        brow, user, admin = "在线音乐", "听众", "曲库主管（总管）"
-        lead = "验证码登录；浏览曲库、在线试听，收藏喜欢的歌曲。"
-        notice = "曲源仅供学习使用；请尊重版权，勿传播未授权内容。"
-        banner_lead = "流行、摇滚等曲风分类浏览。"
-        cat_lab = "曲风"
     if user_publish:
         lead = lead.rstrip("。") + "；开题点名时可上传曲目链接。"
     return _with_portal_banners(
@@ -144,7 +119,7 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             auth_points=["验证码登录", "曲库检索与播放", "收藏喜欢"]
             + (["上传曲目"] if user_publish else []),
             register_hint="注册后可浏览曲库并收藏" + ("、上传" if user_publish else ""),
-            notice_title="点歌须知" if kind == "karaoke" else "试听须知",
+            notice_title=p["notice_title"],
             notice_body=notice,
             notice_page_title="平台公告",
             # 勿写「歌单」：开题常把独立歌单/协作编辑标非本期，营销「歌单」易被 QA 当成范围冲突
@@ -160,7 +135,7 @@ def _music_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             {"title": "收藏喜欢", "lead": "感兴趣的歌曲一键收藏，方便下次回听。"},
             {"title": "平台公告", "lead": "上新与维护通知见公告栏。"},
             {"title": "猜你喜欢", "lead": "根据听歌偏好推荐曲目。"},
-            {"title": "分区浏览" if kind == "karaoke" else "曲风浏览", "lead": "按分区快速找到想听的歌。"},
+            {"title": p["browse_banner"], "lead": "按分区快速找到想听的歌。"},
         ],
     )
 
@@ -281,26 +256,15 @@ def _blog_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     from app.bake.scene_scan import blog_product_kind
 
     kind = blog_product_kind(title, proposal_text)
+    from app.bake.schema.kind_label_packs import blog_label_pack
+
+    bp = blog_label_pack(kind)
+    brow, user, admin = bp["eyebrow"], bp["user"], bp["admin"]
+    lead, notice = bp["lead"], bp["notice"]
+    banner_lead = bp["banner_lead"]
+    cat_lab, article_lab = bp["cat_lab"], bp["article_lab"]
     blob = f"{title}\n{proposal_text}"
     user_publish = scan_user_publish(blob, domain="DOM-BLOG") or scan_publish_review(blob)
-    if kind == "press":
-        brow, user, admin = "记者站稿件", "读者", "记者站主编（总管）"
-        lead = "验证码登录；按分类阅读广播稿与图文报道，收藏喜欢的稿件（由编辑上架发布）。"
-        notice = "稿件由编辑上架发布；读者可浏览收藏。转载请注明出处。"
-        banner_lead = "广播稿、图文报道、专题分类浏览。"
-        cat_lab, article_lab = "稿件类型", "稿件"
-    elif kind == "campus":
-        brow, user, admin = "校园资讯", "师生", "主编（总管）"
-        lead = "验证码登录；按分类阅读院刊/学工资讯，收藏喜欢的文章。"
-        notice = "文章仅供学习使用；转载请注明出处。内容由主编维护发布。"
-        banner_lead = "教学、学工、活动资讯分类浏览富文本正文。"
-        cat_lab, article_lab = "分类", "文章"
-    else:
-        brow, user, admin = "个人博客", "读者", "主编（总管）"
-        lead = "验证码登录；按分类阅读富文本文章，收藏喜欢的博文。"
-        notice = "文章仅供学习使用；转载请注明出处。内容由主编维护发布。"
-        banner_lead = "技术、随笔、教程分类浏览富文本正文。"
-        cat_lab, article_lab = "分类", "文章"
     if user_publish:
         lead = lead.rstrip("。") + "；开题点名投稿时可自行发布文稿。"
         notice = notice.rstrip("。") + "；用户投稿即时可见，违规由管理员下架。"
@@ -604,7 +568,7 @@ def _exam_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         "labels": {
             "appName": app,
             "authEyebrow": "在线考试",
-            "authLead": "验证码登录；浏览考试科目，参加已发布试卷。客观题交卷自动判分，主观题由教师阅卷。",
+            "authLead": "验证码登录；浏览考试科目，参加已发布试卷。客观题交卷自动判分，主观题由教务主管阅卷。",
             "authPoints": ["验证码登录", "题库与组卷", "在线作答与判分"],
             "registerRoleHint": "注册后可参加已发布考试",
             "noticePageTitle": "考试公告",
@@ -613,7 +577,7 @@ def _exam_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         },
         "seeds": {
             "noticeTitle": "考试须知",
-            "noticeBody": "请独立完成作答；客观题自动判分，主观题由教师阅卷后出总分。",
+            "noticeBody": "请独立完成作答；客观题自动判分，主观题由教务主管阅卷后出总分。",
         },
         "examSkin": skin,
     }
@@ -621,7 +585,7 @@ def _exam_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         schema,
         [
             {"title": "考试科目", "lead": "按分类浏览开放科目与说明。"},
-            {"title": "在线作答", "lead": "选择已发布试卷开考；客观题自动判分，主观题待教师阅卷。"},
+            {"title": "在线作答", "lead": "选择已发布试卷开考；客观题自动判分，主观题待教务主管阅卷。"},
             {"title": "成绩查阅", "lead": "查看本人历史成绩与得分明细。"},
             {"title": "考试公告", "lead": "安排与须知见公告栏。"},
         ],
