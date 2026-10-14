@@ -172,6 +172,7 @@ class SamplePackBakeSmokeTests(unittest.TestCase):
                     expected_brow = {
                         "fitness": "多商家健身商城",
                         "sports": "多商家体育商城",
+                        "anime": "多商家周边商城",
                     }.get(niche or "", "多商家商城")
                 else:
                     expected_brow = {
@@ -180,6 +181,7 @@ class SamplePackBakeSmokeTests(unittest.TestCase):
                         "auto": "汽配商城",
                         "beauty": "美妆选购",
                         "market": "超市选购",
+                        "anime": "动漫周边选购",
                         "office": "办公文具",
                         "agri": "农资选购",
                         "gift": "定制礼品",

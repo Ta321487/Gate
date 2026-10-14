@@ -973,9 +973,12 @@ def shop_product_kind(title: str, body: str = "") -> str:
     行业货皮跟题名优先；校园二手成色仅 ``campus``（须校园口径∩二手/闲置）；
     其余社会售卖 ``retail``。
     题名无校园二手口径时，正文「校园二手」对比句不得洗成 campus。
-    正文仍可定 farm/print/flowers 等行业皮（勿因题名非空就直接 retail）。
+    题名已命中零售软皮（健身用品/药店…）时，正文「生鲜农产品」文献对比不得洗成 farm。
+    正文仍可定 farm/print/flowers 等行业皮，但只认承诺域正向提及（对比/文献转述不计）。
     分类名见 ``SHOP_KIND_CATEGORIES``（与 SQL 种子、AI FAQ 同字）。
     """
+    from app.bake.proposal_lexicon import hints_mentioned
+
     t = (title or "").strip()
     b = (body or "").strip()
 
@@ -994,9 +997,13 @@ def shop_product_kind(title: str, body: str = "") -> str:
             return kind
     if _is_campus(t):
         return "campus"
-    # 正文可定行业货皮；campus 只认题名（防开题对比句洗档）
+    # 题名软皮优先：对齐 food/activity「题名已写主叙事则正文对比不得洗皮」
+    if shop_retail_niche(t, ""):
+        return "retail"
+    # 正文可定行业货皮；只扫承诺域且忽略对比/文献句（裸子串会把研究现状洗成 farm）
+    focus = _shop_marketplace_focus(b) or b
     for hints, kind in industry_rules:
-        if scan_has(b, hints):
+        if hints_mentioned(focus, hints):
             return kind
     return "retail"
 

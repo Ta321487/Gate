@@ -1382,6 +1382,25 @@ def profile_fields_for(
                     ),
                 ]
             )
+        # 防旧包丢 forRoles：店铺键钉 staff，收货键钉 user
+        _SHOP_STAFF_KEYS = frozenset({"shopName", "shopIntro", "shopPhone"})
+        _SHOP_USER_KEYS = frozenset(
+            {
+                "deliveryType",
+                "receiverName",
+                "receiveAddress",
+                "pickupPoint",
+                "defaultRemark",
+            }
+        )
+        for f in specific:
+            if not isinstance(f, dict):
+                continue
+            key = str(f.get("key") or "")
+            if key in _SHOP_STAFF_KEYS:
+                f["forRoles"] = ["staff"]
+            elif key in _SHOP_USER_KEYS:
+                f["forRoles"] = ["user"]
     return copy.deepcopy(COMMON_PROFILE_FIELDS) + specific
 
 

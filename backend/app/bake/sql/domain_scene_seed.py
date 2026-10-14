@@ -1661,19 +1661,20 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='subadmin
 _SHOP_FARM = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '农产主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '店员', '13800000001', '{}', 0, 1, 1),
+('subadmin', 'sub123', 'admin', '烟台果园店', '13800000001',
+ '{"shopName":"烟台果园店","shopIntro":"胶东鲜果与时蔬","shopPhone":"13800000001"}', 0, 1, 1),
 ('user', 'user123', 'user', '买家甲', '13800000002',
  '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '水果'), (2, '蔬菜'), (3, '粮油');
-INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, region, harvest_on) VALUES
-(1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', '2026-09-01'),
-(2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', '2026-09-03'),
-(3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', '2026-09-05'),
-(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', '2026-08-20'),
-(5, '红富士苹果', '72.00', '10 斤装', 1, 30, 'available', '家庭装，同果园直供。', '山东烟台', '2026-09-01');
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, region, harvest_on, owner_username) VALUES
+(1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', '2026-09-01', 'subadmin'),
+(2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', '2026-09-03', 'subadmin'),
+(3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', '2026-09-05', 'subadmin'),
+(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', '2026-08-20', 'subadmin'),
+(5, '红富士苹果', '72.00', '10 斤装', 1, 30, 'available', '家庭装，同果园直供。', '山东烟台', '2026-09-01', 'subadmin');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
@@ -1681,14 +1682,20 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 (3, 'user', '王先生', '13800000002', '门店自提', '自提', 0);
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
-SELECT '农产选购', '水果、蔬菜、粮油分类上架；下单后可在订单页查看进度。', 'admin', '农产主管'
+SELECT '农产选购', '水果、蔬菜、粮油分类上架；支持配送到家与到店自提。', 'admin', '农产主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='农产选购' OR title='商城开业');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
-(2, 'user', 'shipped', 28.00, '草莓请冷藏发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type, created_at, completed_at) VALUES
+(1, 'user', 'pending', 39.90, '苹果请选中等果。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家', DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
+(2, 'user', 'shipped', 28.00, '草莓请冷藏发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家', DATE_SUB(NOW(), INTERVAL 2 DAY), NULL),
+(3, 'user', 'completed', 8.50, '生菜请当天送达。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(4, 'user', 'completed', 68.00, '大米放门口即可。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
+(5, 'user', 'confirmed', 34.00, '门店自提，今晚六点取。', '王先生', '13800000002', '门店自提', '到店自提', DATE_SUB(NOW(), INTERVAL 0 DAY), NULL);
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
 (1, 1, 1, '红富士苹果', 39.90, 1),
-(2, 2, 2, '应季草莓', 28.00, 1);
+(2, 2, 2, '应季草莓', 28.00, 1),
+(3, 3, 3, '有机生菜', 8.50, 1),
+(4, 4, 4, '五常大米', 68.00, 1),
+(5, 5, 3, '有机生菜', 8.50, 4);
 """
 
 _SHOP_PRINT = """\

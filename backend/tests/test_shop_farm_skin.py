@@ -103,6 +103,7 @@ class ShopRetailNicheTests(unittest.TestCase):
             "auto": "汽车配件销售管理",
             "beauty": "化妆品美妆商城",
             "market": "社区超市便利店",
+            "anime": "柚子动漫周边产品销售网站",
             "office": "办公用品文具商城",
             "agri": "农资肥料销售",
             "gift": "定制礼品刻字商城",
@@ -225,6 +226,54 @@ class ShopRetailNicheTests(unittest.TestCase):
         mp_sql = domain_sql("DOM-SHOP", "t", title=title, proposal_text=mp_body)
         self.assertIn("球类器材店", mp_sql)
 
+    def test_fitness_not_washed_by_agri_literature_contrast(self) -> None:
+        """研究现状写「同类系统聚焦生鲜农产品、较少针对健身器材」不得洗成 farm。"""
+        from app.bake.scene_scan import shop_catalog_kind, shop_product_kind
+
+        title = "方木健身用品电商平台"
+        body = (
+            "然而，通过对现有文献的梳理发现，国内同类系统多数聚焦于通用百货或生鲜农产品，"
+            "较少针对“健身器材”这一重参数、讲究训练目标的垂直类目进行深耕；"
+            "本课题建设健身用品多商家商城，支持哑铃杠铃与购物车下单。"
+        )
+        self.assertEqual(shop_product_kind(title, body), "retail")
+        self.assertEqual(shop_catalog_kind(title, body), "retail_fitness")
+        schema = _shop_schema(title, body)
+        self.assertEqual(schema["entities"]["archive"]["label"], "健身用品")
+        self.assertEqual(
+            {m.get("key"): m.get("label") for m in (schema.get("menus") or {}).get("user") or [] if isinstance(m, dict)}.get(
+                "archive"
+            ),
+            "健身用品浏览",
+        )
+        self.assertNotIn(
+            "harvestOn",
+            {f.get("key") for f in schema["entities"]["archive"]["fields"]},
+        )
+
+    def test_fitness_not_washed_without_contrast_boilerplate(self) -> None:
+        """无「多数聚焦/较少针对」套话：变体「国内外设计或研究的现状」段里的农产品仍须剥掉。"""
+        from app.bake.catalog import strip_research_status_sections
+        from app.bake.scene_scan import shop_catalog_kind, shop_product_kind
+
+        title = "方木电商平台"
+        body = (
+            "1.1 选题的意义\n"
+            "建设垂直健身器材选购与购物车下单。\n"
+            "1.2 本课题所涉及问题在国内外设计或研究的现状\n"
+            "国内同类系统有做生鲜农产品货架的，也有做通用百货的。\n"
+            "1.2.1 国内现状\n"
+            "部分平台上架水果蔬菜粮油。\n"
+            "2 研究内容\n"
+            "本系统实现哑铃杠铃瑜伽垫浏览、购物车与订单。\n"
+        )
+        stripped = strip_research_status_sections(body)
+        self.assertNotIn("生鲜农产品", stripped)
+        self.assertNotIn("水果蔬菜粮油", stripped)
+        self.assertIn("哑铃杠铃瑜伽垫", stripped)
+        self.assertEqual(shop_product_kind(title, body), "retail")
+        self.assertEqual(shop_catalog_kind(title, body), "retail_fitness")
+
     def test_fitness_catalog_seed_and_marketplace_skin(self) -> None:
         """健身用品电商（≠ SALON 私教）：单店/多店皮与种子贴题。"""
         from app.bake.engine_sql import domain_sql
@@ -290,6 +339,64 @@ class ShopRetailNicheTests(unittest.TestCase):
         self.assertIn("owner_username", mp_sql)
         self.assertNotIn("日用收纳盒", mp_sql)
         self.assertNotIn("烟台果园店", mp_sql)
+
+    def test_anime_not_washed_to_office_by_wenju_list(self) -> None:
+        """开题「手办、文具、服饰」不得被办公皮裸「文具」洗走。"""
+        from app.bake.scene_scan import shop_catalog_kind, shop_product_kind
+
+        title = "柚子动漫周边产品销售网站的设计与实现"
+        body = (
+            "用户功能含商品信息、促销活动、购物车与订单；"
+            "涵盖手办、文具、服饰等周边品类展示；"
+            "研究方法含店家入驻审核与限时秒杀活动管理。"
+        )
+        self.assertEqual(shop_product_kind(title, body), "retail")
+        self.assertEqual(shop_catalog_kind(title, body), "retail_anime")
+
+    def test_anime_catalog_seed_marketplace_and_flash(self) -> None:
+        """动漫周边：软皮种子 + 多店眉标；开题秒杀挂限时购。"""
+        from app.bake.engine_sql import domain_sql
+        from app.bake.features.ai_assistant import (
+            build_ai_knowledge_seed_sql,
+            resolve_ai_knowledge_skin,
+        )
+        from app.bake.features.order_extras import scan_flash_price
+        from app.bake.scene_scan import (
+            scan_shop_marketplace,
+            shop_catalog_kind,
+            shop_product_kind,
+        )
+
+        title = "柚子动漫周边产品销售网站的设计与实现"
+        body = (
+            "用户：认证、首页、商品信息、促销活动、购物车、订单、个人中心、客户支持。"
+            "管理员：用户管理、店家管理、商品分类、商品信息、公告、订单、轮播图、客服管理。"
+            "店家入驻审核；限时秒杀活动管理；留言反馈。"
+        )
+        self.assertEqual(shop_product_kind(title, body), "retail")
+        self.assertEqual(shop_catalog_kind(title, body), "retail_anime")
+        self.assertTrue(scan_shop_marketplace(title, body))
+        self.assertTrue(scan_flash_price(body))
+
+        schema = _shop_schema(title, body)
+        self.assertTrue(schema.get("shopMarketplace"))
+        self.assertEqual(schema["labels"]["authEyebrow"], "多商家周边商城")
+        self.assertEqual(schema["entities"]["archive"]["label"], "周边商品")
+
+        sql = domain_sql("DOM-SHOP", "t", title=title, proposal_text=body)
+        self.assertIn("手办模型", sql)
+        self.assertIn("角色手办", sql)
+        self.assertIn("手办专营店", sql)
+        self.assertNotIn("日用收纳盒", sql)
+        self.assertNotIn("中性笔", sql)
+
+        self.assertEqual(
+            resolve_ai_knowledge_skin("DOM-SHOP", title, body),
+            "shop_retail_anime",
+        )
+        faq = build_ai_knowledge_seed_sql("DOM-SHOP", title, body)
+        self.assertIn("手办模型", faq)
+        self.assertNotIn("配件缺货", faq)
 
 
 if __name__ == "__main__":
