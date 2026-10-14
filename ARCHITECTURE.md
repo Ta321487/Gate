@@ -20,7 +20,7 @@ flowchart TB
         STU["学生（拿到 ZIP 后自己跑）"]
     end
 
-    subgraph L2["② 运营前端 frontend/ · :5173 · Vue 3 + Naive UI + Vite"]
+    subgraph L2["② 运营前端 frontend/ · :5300 · Vue 3 + Naive UI + Vite"]
         FE_VIEW["views/ 项目 · 详情 · 任务 · 大模型 · Unsplash · 运行环境 · 帮助"]
         FE_DETAIL["views/projectDetail/ · 匹配 / 生成 / 产物 / 运行 / 日志"]
         FE_API["api.js（axios baseURL=/api）+ SSE 进度订阅"]
@@ -463,7 +463,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     L["scripts/launcher.bat<br/>（有 Windows Terminal 则同窗标签页）"] --> B["start-backend → uvicorn :8000"]
-    L --> F["start-frontend → vite :5173"]
+    L --> F["start-frontend → vite :5300"]
     B --> H["GET /api/health"]
     F --> P["vite proxy /api → 127.0.0.1:8000"]
     D["docker compose up -d<br/>MySQL 8（可选）"] --> B

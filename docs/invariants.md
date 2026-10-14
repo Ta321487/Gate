@@ -8,7 +8,7 @@
 ## 硬约束：库表数量（舒适区 6~15，硬顶 18）
 
 - 常量：`backend/app/bake/engine.py`（再导出；定义在 `engine_sql.py`）→ `TABLE_COUNT_MIN` / `TABLE_COUNT_MAX`（舒适区上沿）/ `TABLE_COUNT_HARD`（硬顶）。含 L0 平台表 `sys_message`。**借用/占用族**另有 `BORROW_TABLE_MIN = 10`（`table_budget_floor`），其他族仍 6。
-- **判定**：低于下限打回；**超过 15 警告**（仍可出包）；**计费张数超过 18 打回**。计费 = 总表数 − 开题扫入（非域默认）的选题必需业务表（`ESSENTIAL_CAP_TABLES`）。
+- **判定**：低于下限打回；**超过 15 警告**（仍可出包）；**计费张数超过 18 打回**。计费 = 总表数 − 开题扫入（非域默认）选题必需业务表（`ESSENTIAL_CAP_TABLES`）− 通识横切平台表（`PLATFORM_HARD_EXEMPT_TABLES`：会话/登录日志/邀请码/注销/公告确认/轮播/站点统计）。业务岛表仍随开题保留，不与平台壳抢硬顶。
 - **现状样板**：GENERIC CRUD 6 / FLOW·RESERVE 7 / TRADE（含 guestbook）约 8～9 · SHOP/FOOD（guestbook+favorites）约 **12** · 借用/占用族出包后 **10～15** · 图书/报修壳 9 · 论坛约 13 · 能力叠加可到 16～18（警告）
 - DDL/种子：具名域 `backend/app/bake/sql/templates/DOM-*.sql`（`domain_templates.py` 加载）；GENERIC 壳仍为 `sql/DOM-GENERIC*.sql`（`domain_sql` / `compose`）
 - bake 写 `schema.sql` 前 `assert_schema_nf` + `assert_table_budget`；门禁 `p3n`/`p3t` 硬失败则禁 ZIP（表预算 `warn` 不拦）

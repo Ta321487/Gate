@@ -31,7 +31,8 @@
 | [reserve-thicken-batch.md](./reserve-thicken-batch.md) | **§1.7 预约组加厚** | 已收口档案 |
 | [content-thicken-batch.md](./content-thicken-batch.md) | **§1.8 内容组加厚** | 已收口档案 |
 | [interact-thicken-batch.md](./interact-thicken-batch.md) | **§1.9 互动/匹配组加厚** | 已收口档案 |
-| [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（加厚后一组一 plan；含 ASCII） | 选型册 · 未实现 |
+| [crosscut-delivery-batch.md](./crosscut-delivery-batch.md) | **§0 通识横切**清待补（一轮一簇；非域组 thicken） | 批次册 · XA-01 已齐 · 下一波 **XA-02** |
+| [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（加厚后一组一 plan；含 ASCII） | 选型册 · 未实现；下一 plan 优先 content |
 | [ai-opening-delivery-map.md](./ai-opening-delivery-map.md) | 开题 AI 表述 → 助手岛产出 | 活表 |
 | [capability-expansion-batch.md](./capability-expansion-batch.md) | E-01～E-14 扩岛批次 | 已收口档案（勿当当前主线） |
 | [soft-fail-scan.md](./soft-fail-scan.md) | 静默失败 /「不对接＝免做」扫描 | 已收口清单 |

@@ -50,6 +50,9 @@
 | `reserve_thicken` | 预约组加厚（时段占坑通识与 HOSPITAL…INSTRUMENT 域皮），非独立 cap；落点见交付地图 §1.7 与 [`reserve-thicken-batch.md`](./reserve-thicken-batch.md) |
 | `content_thicken` | 内容组加厚（archive 浏览通识与 MEDIA/MUSIC/FORUM/BLOG/DOCLIB 域皮），非独立 cap；落点见交付地图 §1.8 与 [`content-thicken-batch.md`](./content-thicken-batch.md) |
 | `interact_thicken` | 互动/匹配组加厚（双选/考试/问卷/投票/拼车/时银/婚恋通识与域皮），非独立 cap；落点见交付地图 §1.9 与 [`interact-thicken-batch.md`](./interact-thicken-batch.md) |
+| `auth_crosscut` | §0 X-AUTH 通识横切（登录锁定/强制改密/密保找回等），基线常开非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
+| `msg_crosscut` | §0 X-MSG 通识横切（站内信软删/类型筛选；公告过期/强制弹窗/浅富文本；广告位），基线常开非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
+| `workbench_crosscut` | §0 X-DASH 通识横切（工作台待办角标/角色过滤/快捷入口），基线常开非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
 
 源码：`backend/app/bake/features/proposal_caps.py` → `HUB_BYPASS_MODULES`。
 
@@ -126,7 +129,7 @@
 | `parcel_ship` | ✅ | 用户寄件登记→店员受理→已寄出 | **开题写「寄件」才挂**；PARCEL；≠ 取件核销 ≠ 电子面单 |
 | `post_mute` | ✅ | 设禁言截止；期内不可发帖/回复；举报可下架并禁言 | **开题写「禁言/禁止发帖」才挂**（E-12）；FORUM/BLOG；≠ enabled=0 停用 |
 | `instrument_slot` | ✅ | 单域借+约（ticket+slot）；主路径约机时 | 域默认 DOM-INSTRUMENT（C-07） |
-| `exam` | ✅ | 题库/组卷/作答；客观题交卷匹配，主观题教师阅卷；刷题·解析·限时·次数·排行·错题本按需 | 域默认 DOM-EXAM（C-01）；`exam_skin` 换皮；LABSAFE 写「准入考试/先考试」→ 挂载 + 先考后申（C-02） |
+| `exam` | ✅ | 题库/组卷/作答；客观题交卷匹配，主观题教务主管阅卷；刷题·解析·限时·次数·排行·错题本按需 | 域默认 DOM-EXAM（C-01）；`exam_skin` 换皮；LABSAFE 写「准入考试/先考试」→ 挂载 + 先考后申（C-02） |
 | `survey` | ✅ | 问卷配置、在线填写、回收列表、选项计数统计 | 域默认 DOM-SURVEY（C-03）；≠ 评教 ≠ 考试 |
 | `vote` | ✅ | 候选档案、一票/限票、结果公示 | 域默认 DOM-VOTE（C-04）；ACTIVITY 开题写报名+投票 → 并挂（C-11） |
 | `doclib` | ✅ | 资料附件、权限、下载台账 | 域默认 DOM-DOCLIB（C-12）；≠ 借阅 ≠ 博客 |

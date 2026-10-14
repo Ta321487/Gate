@@ -71,7 +71,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - 健康检查：`GET http://127.0.0.1:8000/api/health`
 - 工厂 API 文档（调试用，非学生端）：http://127.0.0.1:8000/docs · http://127.0.0.1:8000/redoc
 
-### 3. 运营前端（`:5173`）
+### 3. 运营前端（`:5300`）
 
 ```bash
 cd frontend
@@ -79,7 +79,7 @@ npm install
 npm run dev
 ```
 
-浏览器打开 http://127.0.0.1:5173（`/api` 代理到后端 `:8000`）。
+浏览器打开 http://127.0.0.1:5300（`/api` 代理到后端 `:8000`）。学生包本地 Vite 仍用 `:5173`，两边可同时开。
 
 也可用 `scripts\start-frontend.bat`。
 

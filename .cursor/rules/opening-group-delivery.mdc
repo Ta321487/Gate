@@ -6,13 +6,19 @@ alwaysApply: false
 
 # 清待补交付（开题密功能地图）
 
-地图：`docs/opening-feature-delivery-map.md`。**一轮只清一组，一组一包**。
+地图：`docs/opening-feature-delivery-map.md`。
 
-## 一轮 = 一组
+> **适用范围（后加厚）**：本文纪律原服务于域组 `*_thicken`（§1.1～§1.9）。**九组加厚已收口**，禁止再开新 `*_thicken` / `generic_thicken`。  
+> - **§0 通识横切** → [`docs/crosscut-delivery-batch.md`](../../docs/crosscut-delivery-batch.md)（一轮一簇；四件套 / 三骨架 / 门禁仍适用，模块落点是基线而非 thicken）。  
+> - **§1.10 导引** → 已浅清（`cross_path_guide`）；勿再套本组工序开 thicken。  
+> - **域组 UI 表面** → [`docs/domain-group-ui-styles.md`](../../docs/domain-group-ui-styles.md)，一组一独立 plan。  
+> 下文「一轮一组 / thicken 注册」保留作**已收口档案的维护与回归**口径，不是下一主线开工令。
 
-- 组 = 地图 `### 1.x`（§1.1~§1.10）；一组一个 `backend/app/bake/features/<组>_thicken.py`。
-  已有：`borrow_thicken` · `follow_thicken` · `repair_thicken` · `apply_thicken` · `approve_thicken` · `trade_thicken` · `reserve_thicken` · `content_thicken` · `interact_thicken`（均须在 `HUB_BYPASS_MODULES` + `docs/capabilities.md` 例外表登记）。
-- 新组模块**必须**在 `backend/app/bake/domain_schema.py` 注册：`from app.bake.features.<组>_thicken import apply_<组>_thicken_to_spec` + `out = apply_<组>_thicken_to_spec(out, body)`（同文件既有 thicken 注册即范本）。**漏注册 = 死代码 = 未交付。**
+## 一轮 = 一组（历史域组加厚）
+
+- 组 = 地图 `### 1.x`（§1.1~§1.9）；一组一个 `backend/app/bake/features/<组>_thicken.py`。
+  已有（均已收口）：`borrow_thicken` · `follow_thicken` · `repair_thicken` · `apply_thicken` · `approve_thicken` · `trade_thicken` · `reserve_thicken` · `content_thicken` · `interact_thicken`（均须在 `HUB_BYPASS_MODULES` + `docs/capabilities.md` 例外表登记）。
+- **禁止**再新建 thicken 模块。若维护既有模块：须在 `backend/app/bake/domain_schema.py` 保持注册：`from app.bake.features.<组>_thicken import apply_<组>_thicken_to_spec` + `out = apply_<组>_thicken_to_spec(out, body)`。**漏注册 = 死代码。**
 - 一组清完：同节「#### 本组待补」清空，行迁到「#### 本组本轮已齐（从待补迁出 · 双端闭环 · 骨架门禁）」，列保持 `功能 / 落点 / 挂载`。
 
 ## 一条待补 = 四件套（缺一不算已齐）

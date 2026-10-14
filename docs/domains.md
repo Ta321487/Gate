@@ -19,8 +19,8 @@
 | **C** 报名 | ACTIVITY / LOST / COURSE / TOUR | §1.4 | 同上复盘册 §4 |
 | **D** 交易 | SHOP / FOOD / CINEMA | §1.6 | [`trade-thicken-batch.md`](./trade-thicken-batch.md) |
 | **E** 预约 | HOSPITAL…CARRENT；INSTRUMENT | §1.7 | [`reserve-thicken-batch.md`](./reserve-thicken-batch.md) |
-| **F** 兜底 | GENERIC + ARCH | §1.10 | 地图导引待补 |
-| **G** 内容 | MEDIA / MUSIC / FORUM / BLOG（DOCLIB 常跟内容组） | §1.8 | [`content-thicken-batch.md`](./content-thicken-batch.md)（进行中） |
+| **F** 兜底 | GENERIC + ARCH | §1.10 | 导引浅清已齐（`cross_path_guide`；不开 thicken） |
+| **G** 内容 | MEDIA / MUSIC / FORUM / BLOG（DOCLIB 常跟内容组） | §1.8 | [`content-thicken-batch.md`](./content-thicken-batch.md)（已收口） |
 | **H** 真交叉 | Path B 三条 | 不按 §1.x 加厚；交叉白名单 | 本文组 H |
 
 例：CRM 写在本文 **A** 表，加厚归地图 **§1.2**；SEAL 亦在 A 表，加厚归 **§1.5**。勿按 A 族一次清完。
@@ -33,6 +33,18 @@
 | 换皮 ID 册 / 组审进度 | [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md) |
 | 怎么审交付 | [`delivery-audit-rules.md`](./delivery-audit-rules.md) |
 | 域组 UI 表面（加厚后做） | [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) |
+
+### 换皮纪律（A / B / C）
+
+避免「来一单手改 builder」：新行业只加数据，不散落 `if niche/kind ==`。
+
+| 层 | 含义 | 落点 | 新皮怎么加 |
+|----|------|------|------------|
+| **A 软货架** | 同壳换分类/文案/SKU（商城 `retail_*`） | [`shop_retail_niches.py`](../backend/app/bake/shop_retail_niches.py) | 加一条 pack + 测试；禁止改 `builders_slot` 写 niche 分支 |
+| **B 同壳标签** | 预约/内容等同壳换眉标角色名 | [`kind_label_packs.py`](../backend/app/bake/schema/kind_label_packs.py)（CRM 见 `deep_skin_overrides`） | 加 pack；扫词仍走 `scene_scan.*_KIND_RULES` |
+| **C 换表/种子** | 种子 SQL 形态不同（EQUIP/ACTIVITY…） | 各域 seed blob / `_EQUIP_SEEDS` | rules + seed/pack **同到**；本周不拆 SQL 生成器 |
+
+运营日常：只传开题 → 匹配 → bake。新皮由对话助手改登记表，不改当面学生 ZIP。开题平台名（如「方木」）禁止写入多店 `mp_shops`。
 
 ### A. 借用 / 占用流（薄壳 + 能力组合；密功能见地图）
 
@@ -139,7 +151,7 @@
 
 ### F. 兜底
 
-密功能见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.10。
+密功能 / 导引见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.10（导引浅清已齐；**不开** `generic_thicken`）。
 
 | 领域 ID | 覆盖 | 能力 |
 |---------|------|------|
@@ -159,6 +171,12 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 | ARCH-FLOW / STOCK / CONTENT | + ticket_flow（±quota） | `DOM-GENERIC-FLOW.sql` |
 | ARCH-TRADE | + order_lines + **guestbook**（+ 默认 **favorites**） | `DOM-GENERIC-TRADE.sql` |
 | ARCH-RESERVE | + slot_reserve | `DOM-GENERIC-RESERVE.sql` |
+
+**ARCH 绑壳与 DOM 具名优先级**：能落到具名 `DOM-*` 时优先具名；仅当行业皮盖不住开题主路径（或真交叉）时降 `DOM-GENERIC` 并保留 ARCH 并集。禁止为「看起来更行业」而静默改 Dom 标签冒充具名域。
+
+**行业词浅替换**：题名经 `product_name_from_title` 写入 `domain_label` / `industry` 与壳文案，只改可见称呼，**不**改 `domain` 字段。出包后勿把通用壳说成已换成某具名行业皮。
+
+**交叉导引（代码）**：`backend/app/bake/cross_path_guide.py` — 真交叉多路径时注入 README `${CROSS_PATH_GUIDE}`、门户 `portalHomeLead`、菜单 `navSection` 分区；工厂 MatchTab 对 `DOM-GENERIC` 显示禁止静默改 Dom 提示。
 
 ### G. 内容 / 媒资 / 社区（薄壳 + 能力组合；密功能见地图 §1.8）
 

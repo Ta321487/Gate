@@ -3,7 +3,8 @@
 > **本文只负责**：地图 §1.1～§1.10 **域组**上，共用列表/主路径「过通用、不像该业务」的问题判定，以及可选手选构图目录（含 ASCII）。  
 > **不负责**：密功能四件套（各组 `*_thicken` / 地图待补）；换皮配色（theme）；沉浸边角（[`immersion-corners.md`](./immersion-corners.md)）；门户首页轴（已有 `portal_home_style`）。  
 > **状态**：**选型册 · 未实现**（只定目录与 ASCII；bake/骨架未接线）。  
-> **索引**：[README.md](./README.md) · 地图 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) · 领域 [`domains.md`](./domains.md)。
+> **触发**：§1.1～§1.9 加厚均已收口 → 可开实现 plan；**下一独立 plan 优先** `content_surface_style`（§1.8）。不进地图待补行。  
+> **索引**：[README.md](./README.md) · 地图 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) · 领域 [`domains.md`](./domains.md) · 横切 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md)（正交，勿混轮）。
 
 ---
 
@@ -70,9 +71,9 @@
 | G-1.5 | 审批/填报 | 轻 | 申请入口、TicketsAdmin | `approve_surface_style` | 2 | approve 已收口 |
 | G-1.6 | 交易 | 中 | PortalHome、Cart、ArchiveBrowse | `trade_surface_style` | 3 | trade 已收口 |
 | G-1.7 | 预约 | 中 | Slot 页、ArchiveBrowse | `reserve_surface_style` | 3 | reserve 已收口 |
-| G-1.8 | 内容 | 重 | ArchiveBrowse | `content_surface_style` | 4 | content 收口后 |
-| G-1.9 | 互动 | 中重 | ArchiveBrowse、PeerTickets；Exam/Survey 专用页不动 | `interact_surface_style` | 3 | 互动 thicken 后 |
-| G-1.10 | 兜底 | 异质 | 门户说明、README | （无） | 导引块 | 文档向 |
+| G-1.8 | 内容 | 重 | ArchiveBrowse | `content_surface_style` | 4 | content **已收口** · **下一 plan 优先** |
+| G-1.9 | 互动 | 中重 | ArchiveBrowse、PeerTickets；Exam/Survey 专用页不动 | `interact_surface_style` | 3 | interact **已收口** |
+| G-1.10 | 兜底 | 异质 | 门户说明、README | （无） | 导引块 | 导引浅清已齐（`cross_path_guide`） |
 
 ---
 
@@ -359,7 +360,7 @@ triprow:
 
 **问题（异质）**：要的是交叉导引，不是浏览皮。  
 **主表面**：门户只读说明、README 固定段。  
-与地图 §1.10 待补导引对齐；不做手选目录。
+与地图 §1.10 导引浅清对齐（已齐）；不做手选目录。
 
 ```text
 | 本系统含两条主路径（交叉壳）                   |
@@ -390,3 +391,4 @@ triprow:
 | 日期 | 说明 |
 |------|------|
 | 2026-10-10 | 初版：§1.1～§1.10 选型 + ASCII；键名统一 `*_surface_style`；菜单保全；加厚后一组一 plan |
+| 2026-10-11 | 后加厚：九组 thicken 已收口；下一实现 plan 钉 `content_surface_style`；§1.10 导引已浅清 |

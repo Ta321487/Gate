@@ -2,13 +2,14 @@
 
 > **本文只负责**：开题常见功能 → 工厂落点与状态（已实现 / 扫词开 / 待补 / 不支持）。非 AI。  
 > **不负责**：cap 定义与挂载细则（[`capabilities.md`](./capabilities.md)）；DOM 分组与域默认能力组合（[`domains.md`](./domains.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；怎么审交付（[`delivery-audit-rules.md`](./delivery-audit-rules.md)）。  
-> **索引**：[README.md](./README.md) · **AI 轴**：[`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md) · **扩岛档案**（已收口）：[`capability-expansion-batch.md`](./capability-expansion-batch.md) · **§1.1～§1.5 加厚复盘**（已收口）：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) · **§1.6 交易加厚**（已收口）：[`trade-thicken-batch.md`](./trade-thicken-batch.md) · **§1.7 预约加厚**（已收口）：[`reserve-thicken-batch.md`](./reserve-thicken-batch.md) · **§1.8 内容加厚**（已收口）：[`content-thicken-batch.md`](./content-thicken-batch.md) · **§1.9 互动加厚**（已收口）：[`interact-thicken-batch.md`](./interact-thicken-batch.md) · **域组 UI 表面**（加厚后做）：[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)。  
+> **索引**：[README.md](./README.md) · **AI 轴**：[`ai-opening-delivery-map.md`](./ai-opening-delivery-map.md) · **扩岛档案**（已收口）：[`capability-expansion-batch.md`](./capability-expansion-batch.md) · **§1.1～§1.5 加厚复盘**（已收口）：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) · **§1.6 交易加厚**（已收口）：[`trade-thicken-batch.md`](./trade-thicken-batch.md) · **§1.7 预约加厚**（已收口）：[`reserve-thicken-batch.md`](./reserve-thicken-batch.md) · **§1.8 内容加厚**（已收口）：[`content-thicken-batch.md`](./content-thicken-batch.md) · **§1.9 互动加厚**（已收口）：[`interact-thicken-batch.md`](./interact-thicken-batch.md) · **§0 通识横切批次**：[`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) · **域组 UI 表面**（加厚后一组一 plan）：[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)。  
 > **覆盖**：全 **68** 域。活表。  
 > **口径**：全国专本科 **Web 管理类毕设**通识可交付（能注册、走主流程、能答辩）。**不**依赖工厂样例库，**不**绑某一所学校课表；按开题常写模块建库存。禁止用「演示级」打发已实现能力。  
 > **库存原则**：工厂先列全「毕设常见且不超纲」功能；域仍用**薄壳架构**（不另起厚包），**薄壳≠功能稀薄**——齐度看本节待补与各组 thicken。开题命中才挂扫词项。挂载细节以 [`capabilities.md`](./capabilities.md) 为准；与本表冲突时只改一处并同步，禁止两套口径。  
-> **UI 表面**：列表/主路径构图选型不进本表待补行；见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md)，须该组加厚收口后再开实现 plan。菜单入口须保全（毕设截图）。  
+> **UI 表面**：列表/主路径构图选型不进本表待补行；见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md)，须该组加厚收口后再开实现 plan。菜单入口须保全（毕设截图）。下一独立实现 plan 优先 `content_surface_style`（§1.8）。  
+> **后加厚三轨（§1.9 I-12 收口后）**：① 域组加厚 §1.1～§1.9 **已收口**（禁止再开 `*_thicken`；§1.10 也不开 `generic_thicken`）；② §0 通识横切走 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md)（一轮一簇，非域组）；③ 域组 UI 表面外链选型册、一组一 plan。  
 > **齐度**：有「待补」=实现未齐，≠库存未列。超纲进「不支持」，不进待补装齐。压力测见下节。
-> **已齐硬口径（老板原话）**：**管理端能管，且用户端可产生数据（写库）**；答辩能讲、论文能写。只读文案 / 纯 Hint / 仅打印导出 / 仅前端字面量真读 → **不算已齐**，进待补。
+> **已齐硬口径（老板原话）**：**管理端能管，且用户端可产生数据（写库）**；答辩能讲、论文能写。只读文案 / 纯 Hint / 仅打印导出 / 仅前端字面量真读 → **不算已齐**，进待补。§1.10 导引/文档向为例外：只读 README/门户说明/匹配口径可迁已齐。
 > **骨架门禁（代替起包）**：在硬口径之上再钉：① 列/API/SQL；② 管理端有管控件 + 用户端有写入控件；③ `test_opening_map_skeleton_gate.py` 绿。不靠逐题起包。
 
 ## 压力测门（整模块级 · 真缺口）
@@ -155,23 +156,23 @@
 | 二级审批（schema） | difficulty L1 | 已实现（扫词/配置） | ≠三级 `multi_approve`；≠任意 BPM |
 | 选课互斥 / 分类限额（schema） | difficulty L1 | 已实现（COURSE 等） | — |
 | 我的周历 / 课表列表 | difficulty L0 | 已实现 | 非拖拽排期引擎 |
-| 忘记密码 / 邮箱或手机找回 | — | **待补** | 通识高频；现网多为验证码登录改密，缺自助找回闭环 |
-| 注册手机号/学号唯一校验提示 | auth | **待补** | 多数域已有唯一约束，缺统一友好提示文案契约 |
+| 忘记密码 / 邮箱或手机找回 | auth | **已实现**（密保顶；≠真 SMTP） | XA-01；`ForgotPassword` + `/api/auth/reset-by-security` |
+| 注册手机号/学号唯一校验提示 | auth | **已实现** | XA-02；labels.phoneDupHint / studentNoDupHint |
 | 敏感操作二次确认（删档/驳回/退款） | — | **待补** | 前端确认框+后端再校验；通识开题常写 |
 | 数据备份/恢复说明（非功能） | README | 已实现（交付说明） | 开题写「备份」→ 论文写运维说明，不另起备份引擎 |
 | Excel/CSV 导出当前列表 | 基线导出 | 已实现 | 见 difficulty L0 |
-| 个人中心改手机号/邮箱（需验证码） | auth + profile | **待补** | 通识；现网改密多、改绑定少 |
-| 登录失败次数锁定 / 冷却 | auth | **待补** | 防爆破浅规则；≠验证码平台 |
-| 用户启用停用 + 强制下线提示 | org_users | 已实现（启停） | 「强制踢下线」会话侧 **待补** |
-| 站内信已读/未读/全部已读 | sys_message | **待补** | 铃铛已有；缺已读态闭环 |
-| 公告置顶 / 过期自动下架 | content | **待补** | 字段+列表过滤 |
-| 工作台待办数字角标与跳转 | 基线工作台 | **待补** | 通识开题常写「待办提醒」 |
+| 个人中心改手机号/邮箱（需验证码） | auth + profile | **已实现** | XA-02；图形验证码改绑；≠真短信 |
+| 登录失败次数锁定 / 冷却 | auth | **已实现** | XA-01；`AppPolicy.AUTH_LOCK_*` + 40103 |
+| 用户启用停用 + 强制下线提示 | org_users | **已实现** | XA-02；启停叠 AuthSessionStore.kickAll |
+| 站内信已读/未读/全部已读 | sys_message | **已实现** | XM-01；铃铛+列表+markRead/read-all |
+| 公告置顶 / 过期自动下架 | content | **已实现** | XM-02；pinned + expire_at 门户过滤 |
+| 工作台待办数字角标与跳转 | 基线工作台 | **已实现** | XD-01；侧栏 `/counts` 角标 + 工作台卡片跳转 |
 | 列表高级筛选（多条件组合） | 基线列表 | **待补** | 状态+日期+关键词；≠报表引擎 |
 | 操作成功/失败统一 Toast 文案契约 | FE | **待补** | 学生可见文案一致性 |
 | 附件大小/类型限制与提示 | upload | **待补** | 配置+前端提示；通识 |
 | 打印当前页（浏览器打印样式） | FE | **待补** | @media print；≠报表套打引擎 |
 | 帮助中心 / 操作手册页（静态） | content 或静态页 | **待补** | 开题常写「系统帮助」 |
-| 用户协议 / 隐私政策勾选注册 | auth | **待补** | 勾选+链接；≠法务审 |
+| 用户协议 / 隐私政策勾选注册 | auth | **已实现** | XA-02；Register 勾选闸 + Agreement/Privacy |
 | 黑暗主题 / 换肤 | — | **不支持**（视觉在一键生成另轴） | 勿当业务密功能 |
 | 多语言 i18n | — | **不支持** | 毕设极少刚需；中文包 |
 | 组织/院系树（资料挂组织） | org | **待补** | 校园/企业题高频；浅树；≠完整 HR |
@@ -181,47 +182,47 @@
 | Excel 批量导入（模板+行校验） | 基线导入 | **待补** | 与导出成对；通识高频 |
 | 列表批量通过/驳回/删除 | 基线列表 | **待补** | 管理端多选；各壳复用 |
 | 软删除回收站（管理恢复） | 基线 | **待补** | 内容/档案类开题常写 |
-| 注册密码强度规则提示 | auth | **待补** | 长度/复杂度提示；≠风控中台 |
-| 首次登录强制改初始密码 | auth | **待补** | 种子账号答辩常写 |
+| 注册密码强度规则提示 | auth | **已实现** | XA-01；`AUTH_PASSWORD_MIN_LENGTH` + labels | 
+| 首次登录强制改初始密码 | auth | **已实现** | XA-01；种子 `user` 置闸 + `ForceChangePassword` |
 | 图片灯箱预览（附件/封面） | FE | **待补** | 通识 UX；≠专业预览云 |
 | 全局关键词搜索入口 | 基线 | **待补** | 顶栏搜档案标题；浅 |
 | 系统维护中提示条（只读开关） | sys_config | **待补** | 文案条；≠运维平台 |
-| 管理员重置用户密码 | org_users | **待补** | 通识高频；重置后强制改密可叠 |
-| 会话超时自动退出提示 | auth | **待补** | 前端闲置计时；通识 |
-| 邮箱验证激活（注册后点链/填码） | auth | **待补** | 站内信/演示码即可；≠真 SMTP 必达 |
-| 账号注销/停用自助申请 | auth | **待补** | 轻申请+审；通识偶见 |
+| 管理员重置用户密码 | org_users | **已实现** | XA-01；重置后 `must_change_password=1` |
+| 会话超时自动退出提示 | auth | **已实现** | XA-01；前端闲置 + `sessionIdleHint` |
+| 邮箱验证激活（注册后点链/填码） | auth | **已实现** | XA-02；站内码；≠真 SMTP |
+| 账号注销/停用自助申请 | auth | **已实现** | XA-02；sys_account_cancel + 审 |
 | 数据权限按组织过滤列表 | org | **待补** | 依赖组织树；浅过滤；≠完整数据权限引擎 |
-| 公告/详情富文本编辑 | content | **待补** | 通识高频；浅编辑器 |
+| 公告/详情富文本编辑 | content | **已实现** | XM-02；content_fmt=html 浅 textarea；≠专业编辑器 |
 | 防重复提交（按钮锁定/幂等键） | FE + API | **待补** | 开题常写；浅 |
-| 工作台常用功能快捷入口可配 | 基线工作台 | **待补** | 入口集合；≠低代码 |
+| 工作台常用功能快捷入口可配 | 基线工作台 | **已实现** | XD-01；schema.workbench.shortcuts 浅链；≠低代码 |
 | 页脚系统版本号展示 | FE | **待补** | 答辩常问；只读 |
-| 「记住登录」延长会话 | auth | **待补** | Cookie/Token 时长；浅 |
-| 登录设备/最近登录记录 | auth | **待补** | 列表只读；≠风控中台 |
+| 「记住登录」延长会话 | auth | **已实现** | XA-01；`session.setMaxInactiveInterval` + `AUTH_REMEMBER_DAYS` |
+| 登录设备/最近登录记录 | auth | **已实现** | XA-02；sys_login_log |
 | 省市区三级联动（地址簿） | profile / 地址 | **待补** | 通识高频；本地码表；≠真地图 |
 | 身份证号校验（位权算法提示） | profile | **待补** | 格式校验；≠公安网 |
-| 手机号格式统一校验契约 | auth + profile | **待补** | 文案+正则；通识 |
-| 强制公告弹窗（未读不可关） | content | **待补** | 开题常写；浅 |
+| 手机号格式统一校验契约 | auth + profile | **已实现** | XA-02；labels.phoneFormatHint 与 profileValidate 对齐 |
+| 强制公告弹窗（未读不可关） | content | **已实现** | XM-02；force_ack + sys_notice_ack + ForceNoticeGate |
 | 分类/字典拖拽排序 | dict / 分类 | **待补** | 管理端排序权重；浅 |
-| 个人中心「我的单据」聚合入口 | 基线 | **待补** | 各壳单据列表汇总链；浅 |
-| 消息按类型筛选（系统/业务） | sys_message | **待补** | Tab；已读闭环可叠 |
-| 简易访问量统计（PV，工作台） | 基线工作台 | **待补** | 计数；≠大数据 UV 中台 |
+| 个人中心「我的单据」聚合入口 | 基线 | **已实现** | XD-02；Profile 链 workbench.myDocs；浅 |
+| 消息按类型筛选（系统/业务） | sys_message | **已实现** | XM-01；`kind=all|system|biz` + Messages Tab |
+| 简易访问量统计（PV，工作台） | 基线工作台 | **已实现** | XD-02；sys_site_stat 按日；≠ UV 中台 |
 | 第三方/微信登录 | — | **不支持** | 无 OAuth 主线；论文写账号密码 |
 | 统一身份认证 CAS/LDAP | — | **不支持** | 无校园 IdP 对接主线 |
 | 多租户 SaaS 隔离 | — | **不支持** | 单校单库毕设口径 |
 | 系统名称 / Logo 可配 | sys_config | **待补** | 开题常写系统设置；浅 |
 | 登录页背景/轮播可配 | sys_config | **待补** | 管理端上传；浅 |
-| 密保问题找回密码 | auth | **待补** | 与邮箱找回二选一即可；浅 |
+| 密保问题找回密码 | auth | **已实现** | XA-01；注册/资料设密保 + 匿名找回 |
 | 用户管理打标签筛选 | org_users | **待补** | 管理标签；浅 |
 | 批量启用/停用账号 | org_users | **待补** | 多选操作；通识 |
 | 离开页未保存提示 | FE | **待补** | beforeunload；通识 UX |
 | 单号一键复制 | FE | **待补** | 通识 UX；浅 |
-| 演示账号一键填登录 | FE | **待补** | 答辩演示常用；种子账号 |
+| 演示账号一键填登录 | FE | **已实现** | XA-01；文案「试用账号」/`trialLoginFillLabel` |
 | 上传图片前端压缩 | upload | **待补** | 通识；≠专业图床 |
 | 接口说明 / Swagger 入口说明 | README | 已实现（交付说明） | 开题写「接口文档」→ README；不另起门户 |
-| 注册邀请码（限本校） | auth | **待补** | 开题偶见；浅码表 |
-| 密码定期强制更换提示 | auth | **待补** | 日期规则；通识等保题常写 |
+| 注册邀请码（限本校） | auth | **已实现（开题扫到才挂）** | XA-02；未写开题不挂菜单、不强制；命中才灌码池种子 |
+| 密码定期强制更换提示 | auth | **已实现** | XA-01；`AUTH_PASSWORD_MAX_DAYS`（默认 0=关） |
 | 操作日志导出 CSV | audit_log | **待补** | 扫词挂审计时加深 |
-| 工作台待办按角色过滤 | 基线工作台 | **待补** | 与角标可叠；浅 |
+| 工作台待办按角色过滤 | 基线工作台 | **已实现** | XD-01；订单店主过滤 + 工单处理中按 assignee |
 | 附件病毒扫描 | — | **不支持** | 无杀毒引擎主线 |
 | 电子签章平台对接（法大大等） | — | **不支持** | 法定 CA；本地签章另见 e_sign |
 | 真短信/邮件网关必达 | — | **不支持** | 站内信/消息模板顶；已散见口径收口于此 |
@@ -229,12 +230,12 @@
 | 工作流可视化拖拽设计器 | — | **不支持** | 完整 BPM；三级审+转审顶 |
 | 报表拖拽自制 BI | — | **不支持** | ECharts 工作台顶 |
 | 移动端自适应专项包 | — | **不支持** | 无独立 H5/小程序主线；浏览器缩放顶 |
-| 同账号多端会话列表互踢细控 | auth | **待补** | 强制下线加深；浅 |
+| 同账号多端会话列表互踢细控 | auth | **已实现** | XA-02；my-sessions 互踢 |
 | 敏感字段脱敏策略可配 | sys_config | **待补** | 手机号/证件；浅 |
 | 列表导出字段勾选 | 基线导出 | **待补** | 列选择；通识偶见 |
-| 登录页验证码一键刷新无障碍文案 | captcha | **待补** | 文案契约；浅 |
-| 个人中心实名认证勾选（非公安） | profile | **待补** | 勾选+姓名证件字段；浅 |
-| 站内信删除（软删） | sys_message | **待补** | 已读闭环加深 |
+| 登录页验证码一键刷新无障碍文案 | captcha | **已实现** | XA-02；captchaRefreshHint + aria-label |
+| 个人中心实名认证勾选（非公安） | profile | **已实现** | XA-02；real_name_acked |
+| 站内信删除（软删） | sys_message | **已实现** | XM-01；`deleted_at` + DELETE `/api/messages/{id}` |
 | 字典项启用停用 | dict | **待补** | 浅；通识 |
 | 区块链存证 / 上链 | — | **不支持** | 无链主线 |
 | 视频通话 / WebRTC 面试 | — | **不支持** | 无音视频 SDK 主线 |
@@ -244,15 +245,15 @@
 | 容器编排 K8s 交付 | — | **不支持** | 交付说明顶 |
 | 全局全站检索（ES） | — | **不支持** | 基线关键词顶 |
 | 验证码行为式（滑块/点选） | captcha | **待补** | 可先图形；行为式浅可选 |
-| 账号异地登录提醒 | auth | **待补** | 对照登录记录；浅 |
-| 注册图形验证码失败次数提示 | captcha | **待补** | 文案契约；浅 |
+| 账号异地登录提醒 | auth | **已实现** | XA-02；对照 geo_hint + 站内信 |
+| 注册图形验证码失败次数提示 | captcha | **已实现** | XA-02；captchaFailHint |
 | 个人资料完整度进度条 | profile | **待补** | 对齐婚恋完整度；横切化 |
 | 菜单按角色动态隐藏已齐说明 | RBAC | 已实现（交付说明） | 开题写动态菜单→角色勾选顶；缺则待补矩阵 |
 | 大数据实时数仓 | — | **不支持** | ECharts 工作台顶 |
 | 中台业务中台交付 | — | **不支持** | 单体域壳顶 |
 | 灰度发布 / 功能开关中台 | — | **不支持** | sys_config 浅 KV 顶 |
 | 全链路调用追踪 APM | — | **不支持** | 审计日志顶 |
-| 账号绑定学工号唯一强校验提示齐 | auth | **待补** | 与手机号唯一提示同契约 |
+| 账号绑定学工号唯一强校验提示齐 | auth | **已实现** | XA-02；与手机号唯一同契约 |
 | 导出任务中心（异步大导出） | — | **不支持** | 同步 CSV 顶；毕设极少刚需 |
 | 自定义表单设计器 | — | **不支持** | schema 字段顶；≠低代码 |
 | 素材/文件库中心（统一管附件） | upload 加深菜单 | **待补** | 开题常写「文件管理」；≠网盘产品 |
@@ -264,10 +265,10 @@
 | 多商家入驻平台 | — | **不支持** | 寄卖/子管岗顶；≠多店商城中台 |
 | 校园一卡通 / 门禁闸机硬件 | — | **不支持** | 证件号字段 / 通行码顶 |
 | 二手交易专域 | consign / SHOP 皮 | 扫词开或商城深皮 | 勿新 DOM；寄卖/旧书回收顶 |
-| 在线用户列表与强制下线 | auth 会话 | **待补** | 开题常写「在线用户」；与启停行「强制踢下线」同缺口 |
+| 在线用户列表与强制下线 | auth 会话 | **已实现** | XA-02；OnlineSessionsAdmin |
 | 每日签到涨积分 | points 窄扫 | **扫词开** | 材料写签到才挂；≠活动口令 `checkin` |
-| 定时任务只读台（关单/过期券等） | 基线调度 | **待补** | 展示调度项说明；≠ XXL-JOB 中台 |
-| 广告位 Banner 多槽 | content | **待补** | 开题写广告位/运营位时；单轮播可先顶 |
+| 定时任务只读台（关单/过期券等） | 基线调度 | **已实现** | XD-02；ScheduleJobsAdmin 只读；≠ XXL-JOB |
+| 广告位 Banner 多槽 | content | **已实现** | XM-02；sys_banner + BannersAdmin + PortalCarousel |
 | 自习室 / 图书馆座位预约 | MEETING 皮或 X-BORROW-RESERVE | 已实现 | 见 domains 组 H；勿新 DOM |
 | 心理咨询预约 | slot_reserve 深皮 | 已实现（换皮） | 勿新 DOM；挂号/美业/会议皮顶 |
 | 校友录 / 通讯录 | CRM 或 archive 深皮 | 已实现（换皮） | 勿新 DOM |
@@ -1309,16 +1310,22 @@
 |----|----------------|----------|
 | `DOM-GENERIC` | 仅真交叉或无贴切行业皮时的 ARCH 绑壳（CRUD/FLOW/TRADE/RESERVE） | 能具名 DOM 勿落这；交叉白名单见 domains 组 H |
 
+组口径：导引/文档向浅清；**不开** `generic_thicken`。落点见 [`domains.md`](./domains.md) §F/H · `backend/app/bake/cross_path_guide.py`。
+
 #### 本组待补
 
-| 功能 | 建议落域 | 说明 |
-|------|----------|------|
-| 交叉壳双主路径答辩导引页（只读） | GENERIC 真交叉 | README/门户一段；帮学生讲清两套路 |
-| 通用壳行业词浅替换开关说明 | GENERIC | 文档口径；勿 silently 冒充具名 DOM |
-| 真交叉时双菜单分区标签 | GENERIC | 导航文案；答辩导引配套 |
-| 交叉白名单题答辩话术模板段 | GENERIC | README 固定段；浅 |
-| 通用壳禁止静默改 Dom 标签的门禁说明 | GENERIC | 文档+匹配页口径；浅 |
-| ARCH 绑壳与 DOM 具名优先级说明 | GENERIC | 文档口径；浅 |
+（本组待补已清。）
+
+#### 本组本轮已齐（从待补迁出 · 导引浅清）
+
+| 功能 | 落点 | 挂载 |
+|------|------|------|
+| 交叉壳双主路径答辩导引页（只读） | README `${CROSS_PATH_GUIDE}` + `labels.portalHomeLead`；`cross_path_guide` | GENERIC 真交叉多路径 |
+| 通用壳行业词浅替换开关说明 | `labels.industrySkinHint` + domains §F；题名→`domain_label` 浅替换≠改 Dom | GENERIC |
+| 真交叉时双菜单分区标签 | 菜单 `navSection`（申请办理/购物下单/时段预约）；Admin 分组 · 门户前缀 | GENERIC 真交叉 |
+| 交叉白名单题答辩话术模板段 | README 固定段（分路径演示要点）；domains 组 H | GENERIC 真交叉 |
+| 通用壳禁止静默改 Dom 标签的门禁说明 | 工厂 MatchTab 提示 + domains §F；`factory_generic_match_tip` | GENERIC |
+| ARCH 绑壳与 DOM 具名优先级说明 | domains §F（具名优先；盖不住才降 GENERIC 保留 ARCH 并集） | 文档口径 |
 
 ---
 
@@ -1458,3 +1465,10 @@
 | 2026-10-11 | **§1.9 I-11 已齐**：favorites 导出提示 / dm 文案 / allowRating 管理可见 / content_report 时限；四条待补迁已齐；收藏备注另案 |
 | 2026-10-11 | **§1.9 I-12 收口**：本组待补清零；不支持只留边界；`interact-thicken-batch` 改已收口档案；delivery-audit 互动行已收口 |
 | 2026-10-10 | **§1.1～§1.5 复盘档案**：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md)；domains A–H ↔ §1.x 对照写入 [`domains.md`](./domains.md) |
+| 2026-10-11 | **后加厚三轨**：文首钉 §1.1～§1.9 加厚已收口；§1.10 六条导引浅清（`cross_path_guide` + README/门户/菜单分区/MatchTab；不开 `generic_thicken`）；§0 横切立 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md)（首簇 X-AUTH）；UI 仍外链选型册 |
+| 2026-10-12 | **§0 X-AUTH XA-01**：锁定冷却/强制改密/定期换密/超时/记住登录/强度/密保找回/试用账号一键填 → 已实现；密保顶邮箱找回（≠真 SMTP） |
+| 2026-10-12 | **§0 X-AUTH XA-02**：在线踢下线/多端互踢/改绑/登录记录异地/邀请码注销激活/协议闸/唯一格式/实名/验证码文案 → 已实现；行为式验证码留待补（图形先顶） |
+| 2026-10-12 | **§0 X-MSG XM-01**：站内信已读闭环迁齐、软删、系统/业务 Tab → 已实现；公告过期/强制弹窗等属 XM-02 |
+| 2026-10-12 | **§0 X-MSG XM-02**：公告过期下架/强制弹窗/浅富文本/广告位多槽 → 已实现 |
+| 2026-10-12 | **§0 X-DASH XD-01**：工作台待办角标与跳转 / 按角色过滤 / 快捷入口 → 已实现（角标归 X-DASH，非 XM-03） |
+| 2026-10-12 | **§0 X-DASH XD-02**：简易 PV / 我的单据聚合 / 定时任务只读台 → 已实现；全局搜索留给 X-LIST |
