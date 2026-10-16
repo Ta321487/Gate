@@ -38,7 +38,7 @@
 | 主域 | LIBRARY / EQUIP / ASSET / PARCEL / BED（INSTRUMENT 级联归 §1.7） |
 | Store 主战场 | `ArchiveStore` / `TicketStore`；辅 Message / Favorites / stock |
 | 待补 | 已清（地图本组待补无行） |
-| 收口时间线（changelog） | 2026-09-30：续借/催还/信誉分/报废单/PROCURE 一键入库；齐度纠偏（Hint≠已齐）后双端闭环 |
+| 收口时间线（changelog） | 2026-09-30：续借/催还/信誉分/报废单/PROCURE 一键入库；齐度纠偏（Hint≠已齐）后双端闭环。2026-10-17：挂载三档收口（A 壳底 / B 扫词 / C book_suggest） |
 
 **复盘要点**：信誉分（`credit_score` + 台账）曾误判 Store 不读，后已跨 Store / 逾期扣分 / 再借拦截；报废走独立审批单 `scrap_request`。
 

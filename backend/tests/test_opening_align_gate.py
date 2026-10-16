@@ -1,4 +1,4 @@
-"""开题对齐门禁：登记开关双向对上（交易 B 扫词 + C cap）。
+"""开题对齐门禁：登记开关双向对上（交易/借用 B 扫词 + C cap）。
 
 禁止开题全文 vs 页面全文自由匹配。
 """
@@ -9,6 +9,15 @@ import unittest
 
 from app.bake.domain_schema import attach_accept
 from app.bake.domains import DOMAIN_CAPABILITIES
+from app.bake.features.borrow_thicken import (
+    BORROW_A_SHELL_WHITELIST,
+    BORROW_B_ALIGN_RULES,
+    BORROW_C_ALIGN_RULES,
+    diff_borrow_align,
+    diff_borrow_b_align,
+    diff_borrow_c_align,
+    expected_borrow_b_flags,
+)
 from app.bake.features.trade_thicken import (
     TRADE_A_SHELL_WHITELIST,
     TRADE_B_ALIGN_RULES,
@@ -20,17 +29,21 @@ from app.bake.features.trade_thicken import (
 )
 
 
-def _spec(domain: str, title: str, body: str = "") -> dict:
+def _spec(domain: str, title: str, body: str = "", *, archetype: str = "ARCH-TRADE") -> dict:
     return attach_accept(
         {
             "domain": domain,
             "title": title,
             "capabilities": list(DOMAIN_CAPABILITIES[domain]),
             "features": [],
-            "archetype": "ARCH-TRADE",
+            "archetype": archetype,
         },
         body,
     )
+
+
+def _borrow_spec(domain: str, title: str, body: str = "") -> dict:
+    return _spec(domain, title, body, archetype="ARCH-FLOW")
 
 
 class OpeningAlignGateTradeBTests(unittest.TestCase):
@@ -192,6 +205,144 @@ class OpeningAlignGateTradeCTests(unittest.TestCase):
 
     def test_c_rule_count_stable(self) -> None:
         self.assertGreaterEqual(len(TRADE_C_ALIGN_RULES), 10)
+
+
+class OpeningAlignGateBorrowBTests(unittest.TestCase):
+    def test_b_rules_not_in_shell(self) -> None:
+        b_flags = {f for f, _, _ in BORROW_B_ALIGN_RULES}
+        overlap = b_flags & BORROW_A_SHELL_WHITELIST
+        self.assertEqual(overlap, set(), f"B 键误入壳底白名单: {overlap}")
+
+    def test_empty_library_no_over_mount(self) -> None:
+        out = _borrow_spec("DOM-LIBRARY", "图书借阅管理系统", "")
+        over, under = diff_borrow_b_align(out, "")
+        self.assertEqual(over, [], f"空开题多挂: {over}")
+        self.assertEqual(under, [], f"空开题不应漏挂 B: {under}")
+        th = (out.get("schema") or {}).get("borrowThicken") or {}
+        self.assertFalse(th.get("isbnValidate"))
+        self.assertFalse(th.get("fineWaive"))
+        self.assertTrue(th.get("hotLoanBoard"))
+
+    def test_empty_bed_peer_off(self) -> None:
+        out = _borrow_spec("DOM-BED", "学生床位调配管理系统", "")
+        over, under = diff_borrow_b_align(out, "")
+        self.assertEqual(over, [])
+        self.assertEqual(under, [])
+        th = (out.get("schema") or {}).get("borrowThicken") or {}
+        self.assertFalse(th.get("peerConfirm"))
+        self.assertFalse(th.get("bedSwapMatch"))
+        self.assertTrue(th.get("bedConstraint"))
+
+    def test_empty_equip_maintain_due_off(self) -> None:
+        out = _borrow_spec("DOM-EQUIP", "实验室设备借用管理系统", "")
+        over, under = diff_borrow_b_align(out, "")
+        self.assertEqual(over, [])
+        self.assertEqual(under, [])
+        th = (out.get("schema") or {}).get("borrowThicken") or {}
+        self.assertFalse(th.get("maintainDue"))
+        self.assertTrue(th.get("maintainWorkOrder"))
+
+    def test_scan_hits_library_equip_bed(self) -> None:
+        lib_body = "ISBN校验；随书光盘；逾期罚款减免；续借须无预约；预约取消次数限制。"
+        lib = _borrow_spec("DOM-LIBRARY", "图书借阅管理系统", lib_body)
+        over, under = diff_borrow_b_align(lib, lib_body)
+        self.assertEqual(over, [], f"LIBRARY 多挂: {over}")
+        self.assertEqual(under, [], f"LIBRARY 漏挂: {under}")
+        expected = expected_borrow_b_flags("DOM-LIBRARY", lib, lib_body)
+        self.assertTrue(expected.get("isbnValidate"))
+        self.assertTrue(expected.get("fineWaive"))
+
+        eq_body = "保养到期提醒；设备押金登记；校准证书到期；设备保险声明；随借配件清单。"
+        eq = _borrow_spec("DOM-EQUIP", "实验室设备借用管理系统", eq_body)
+        over, under = diff_borrow_b_align(eq, eq_body)
+        self.assertEqual(over, [], f"EQUIP 多挂: {over}")
+        self.assertEqual(under, [], f"EQUIP 漏挂: {under}")
+        self.assertTrue((eq.get("schema") or {}).get("borrowThicken", {}).get("maintainDue"))
+
+        bed_body = "调宿双方确认与对向同意；住宿费预定金；退宿水电清算；退宿行李清点。"
+        bed = _borrow_spec("DOM-BED", "学生床位调配管理系统", bed_body)
+        over, under = diff_borrow_b_align(bed, bed_body)
+        self.assertEqual(over, [], f"BED 多挂: {over}")
+        self.assertEqual(under, [], f"BED 漏挂: {under}")
+        th = (bed.get("schema") or {}).get("borrowThicken") or {}
+        self.assertTrue(th.get("peerConfirm"))
+        self.assertTrue(th.get("bedSwapMatch"))
+
+    def test_manual_over_mount_detected(self) -> None:
+        out = _borrow_spec("DOM-LIBRARY", "图书借阅管理系统", "")
+        th = out.setdefault("schema", {}).setdefault("borrowThicken", {})
+        th["isbnValidate"] = True
+        th["fineWaive"] = True
+        over, under = diff_borrow_b_align(out, "")
+        self.assertIn("isbnValidate", over)
+        self.assertIn("fineWaive", over)
+        self.assertEqual(under, [])
+
+    def test_manual_under_mount_detected(self) -> None:
+        body = "图书录入支持 ISBN 校验与查重提示。"
+        out = _borrow_spec("DOM-LIBRARY", "图书借阅管理系统", body)
+        th = out.setdefault("schema", {}).setdefault("borrowThicken", {})
+        th["isbnValidate"] = False
+        over, under = diff_borrow_b_align(out, body)
+        self.assertEqual(over, [])
+        self.assertIn("isbnValidate", under)
+
+
+class OpeningAlignGateBorrowCTests(unittest.TestCase):
+    def test_empty_library_suggest_budget_off(self) -> None:
+        out = _borrow_spec("DOM-LIBRARY", "图书借阅管理系统", "")
+        over, under = diff_borrow_c_align(out)
+        self.assertEqual(over, [], f"多挂: {over}")
+        self.assertEqual(under, [], f"漏挂: {under}")
+        th = (out.get("schema") or {}).get("borrowThicken") or {}
+        self.assertFalse(th.get("suggestBudget"))
+
+    def test_c_over_mount_without_cap(self) -> None:
+        out = _borrow_spec("DOM-LIBRARY", "图书借阅管理系统", "")
+        th = out.setdefault("schema", {}).setdefault("borrowThicken", {})
+        th["suggestBudget"] = True
+        over, under = diff_borrow_c_align(out)
+        self.assertIn("suggestBudget", over)
+        self.assertEqual(under, [])
+
+    def test_c_with_book_suggest_bake_clean(self) -> None:
+        out = _borrow_spec("DOM-LIBRARY", "图书借阅管理系统", "支持图书荐购与读者荐购审核。")
+        over, under = diff_borrow_c_align(out)
+        self.assertEqual(over, [])
+        self.assertEqual(under, [])
+        th = (out.get("schema") or {}).get("borrowThicken") or {}
+        self.assertTrue(th.get("suggestBudget"))
+        self.assertIn("book_suggest", out.get("capabilities") or [])
+
+    def test_c_under_mount_when_cap_present(self) -> None:
+        out = attach_accept(
+            {
+                "domain": "DOM-LIBRARY",
+                "title": "图书借阅管理系统",
+                "capabilities": list(DOMAIN_CAPABILITIES["DOM-LIBRARY"]) + ["book_suggest"],
+                "features": [],
+                "archetype": "ARCH-FLOW",
+            },
+            "",
+        )
+        th = out.setdefault("schema", {}).setdefault("borrowThicken", {})
+        th["suggestBudget"] = False
+        over, under = diff_borrow_c_align(out)
+        self.assertEqual(over, [])
+        self.assertIn("suggestBudget", under)
+
+    def test_bc_merged_diff(self) -> None:
+        out = _borrow_spec("DOM-LIBRARY", "图书借阅管理系统", "")
+        th = out.setdefault("schema", {}).setdefault("borrowThicken", {})
+        th["isbnValidate"] = True
+        th["suggestBudget"] = True
+        over, under = diff_borrow_align(out, "")
+        self.assertIn("isbnValidate", over)
+        self.assertIn("suggestBudget", over)
+        self.assertEqual(under, [])
+
+    def test_c_rule_count_stable(self) -> None:
+        self.assertGreaterEqual(len(BORROW_C_ALIGN_RULES), 1)
 
 
 if __name__ == "__main__":

@@ -13,8 +13,8 @@
 |---|----|--------|-------------------|------|
 | 1 | **UI 包** | 域组页内构图选型 → bake/骨架接线；一组一 plan | [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) | 选型册已齐 · **未实现**；优先 `content_surface_style` |
 | 2 | **X 系列** | §0 通识横切剩余簇（一轮一簇） | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) | X-AUTH～X-UX 已齐；打印/灯箱/Toast/页脚版本/离开提示/复制单号为**基线体验**；档案 Excel 导入导出已是 xlsx |
-| 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **仅交易族迁档已齐**；借用/跟进/报修/报名/审批/预约/内容/互动等 **未推** |
-| 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；`TRADE_*_ALIGN_RULES` + `test_opening_align_gate.py` | **交易族 A 白名单 + B + C 门禁已齐**；其它域组登记表/测 **未开** |
+| 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **交易族 + 借用组已收口**；跟进/报修/报名/审批/预约/内容/互动 **未推** |
+| 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；`TRADE_*` / `BORROW_*_ALIGN_RULES` + `test_opening_align_gate.py` | **交易族 + 借用组 A 白名单 + B + C 门禁已齐**；其余域组登记表/测 **未开** |
 
 ### #3 / #4 与 ABC（要扩展到全族）
 
@@ -73,3 +73,4 @@
 | 2026-10-16 | X-UX XU-02：文件列表、省市区、删档驳回售后二次确认、一级佣金扫词才挂；Excel 二进制与打印/灯箱仍待补 |
 | 2026-10-16 | 基线体验常开：打印本页/灯箱/Toast/页脚版本/离开未保存/单号复制；地图改「基线体验」 |
 | 2026-10-16 | 档案导入模板、导入、导出改为 xlsx（Apache POI），按行回错；其它名单导出仍为 CSV |
+| 2026-10-17 | #3/#4 **借用组**收口：双方确认/保养到期日/超期次数改扫词；荐购预算随 book_suggest；`BORROW_*_ALIGN_RULES` + gate 测 |

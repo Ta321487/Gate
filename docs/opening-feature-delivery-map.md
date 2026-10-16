@@ -327,13 +327,13 @@
 | 功能 | 落点 | 挂载 |
 |------|------|------|
 | 新书/新物资上架通报提示 | labels.shelfAnnounceHint + 用户收藏写库；管理端上架/公告 | **域默认** LIBRARY/ASSET |
-| 图书荐购预算余额提示 | book_suggest 域挂 + 用户提交荐购；管理端审核 | **域默认** LIBRARY |
-| 图书读者信用分规则提示 | maxOverdueTimes + ever_overdue 写库 + 再借拦截；labels.creditRuleHint；bake 另挂 creditOnOverdue 标记（与分值列并存，次数冻结不替代分值） | **域默认** LIBRARY；EQUIP 扫「信誉分」同挂 |
-| 借用信誉分（分值列 / 逾期扣分 / 低于 N 停借） | `credit_score` 列 + `credit_ledger` 台账写库（逾期扣分按 ticket 幂等）；再借拦截 assertCanBorrow；labels.creditScoreLabel；管理端台账 + 人工调整写库；用户端我的分值 | **扫词开** credit-on-overdue（bake creditOnOverdue / creditPoints）；LIBRARY 域默认；EQUIP 扫「信誉分」同挂 |
+| 图书荐购预算余额提示 | book_suggest 域挂 + 用户提交荐购；管理端审核 | **能力加深** book_suggest（空开题关） |
+| 图书读者信用分规则提示 | labels.creditRuleHint（文案壳）；次数冻结不在此行硬开 | **域默认** LIBRARY 文案壳（灰区）；次数冻结见「超期达 N 次」扫词行 |
+| 借用信誉分（分值列 / 逾期扣分 / 低于 N 停借） | `credit_score` 列 + `credit_ledger` 台账写库（逾期扣分按 ticket 幂等）；再借拦截 assertCanBorrow；labels.creditScoreLabel；管理端台账 + 人工调整写库；用户端我的分值 | **扫词开** creditOnOverdue / creditPoints（信誉分/逾期扣分/低于 N 停借）；空开题关 |
 | 设备借用合同模板说明 | requireNoticeAck 写 notice_ack；管理维护合同文案 | **域默认** EQUIP |
 | 图书闭架索书单打印提示 | 打印面 + 用户提交借阅申请写库 | **域默认** LIBRARY |
-| 设备保养工单联动说明 | archive.maintainDue/repairTicketNo 管理维护；用户申请可备注 | **域默认** EQUIP |
-| 床位互换意向文案指引 | requirePeerConfirm：用户写 peer_username，对方 peer_ack，管理审核 | **域默认** BED |
+| 设备保养工单联动说明 | repairTicketNo 管理维护；用户申请可备注 | **域默认** EQUIP（说明壳）；到期日字段见扫词行 |
+| 床位互换意向文案指引 | requirePeerConfirm：用户写 peer_username，对方 peer_ack，管理审核 | **扫词开**（双方确认/对向同意/调宿双方） |
 | 图书征订目录导入提示 | 管理端 CSV 导入 + 用户荐购产生需求 | **域默认** LIBRARY |
 | 床位入住登记表打印提示 | 打印 + requireNoticeAck 写库 | **域默认** BED |
 | 设备标签二维码打印说明 | allowAssetCode 用户手输资产编号写库；管理打印标签 | **域默认** EQUIP |
@@ -341,10 +341,10 @@
 | 物资申购转领用一键动作 | ticket.allowProcureRef / procureToStockIn | **域默认** ASSET 申购单号确认；PROCURE 一键入库（补 stock_io gate） |
 | 续借次数上限 | loan_renew → `maxRenew` | **域默认** 随续借 |
 | 即将到期提前提醒（站内信，应还日前 N 天） | deadline → `dueSoonDays`（默认 3） | **域默认** 借还壳 |
-| 超期达 N 次限制再借（资格冻结） | ticket → `maxOverdueTimes` | **开题扫** |
+| 超期达 N 次限制再借（资格冻结） | ticket → `maxOverdueTimes` | **扫词开**（限制再借/资格冻结/超期达…；空开题关） |
 | 领用用途必填 | ticket.requireRemark | **域默认** ASSET/EQUIP |
 | 滞留超 N 日催领（站内） | deadline（PARCEL SLA） | **域默认** PARCEL |
-| 低库存自动站内信提醒总管 | schema `stockWarnNotify` | **开题扫** |
+| 低库存自动站内信提醒总管 | schema `stockWarnNotify` | **扫词开** |
 | 热门借阅榜文案（复用 recommend 计数热度） | labels.recommendSectionTitle | **域默认** LIBRARY/EQUIP |
 | 领用常用用途字典（下拉可手填） | ticket.remarkOptions | **域默认** ASSET/EQUIP |
 | 物资安全库存下限可配 | schema.stockWarnBelow | **域默认** ASSET |
@@ -352,16 +352,16 @@
 | 到件站内信通知本人 | ticket.arrivalNotify | **域默认** PARCEL |
 | 包裹异常件原因 + 破损理赔说明 | ticket.allowExceptionClose | **域默认** PARCEL |
 | 驿站营业时间外取件提示 | labels.offHoursPickupHint | **域默认** PARCEL |
-| 驿站代收协议勾选 | ticket.requireNoticeAck | **开题扫** |
+| 驿站代收协议勾选 | ticket.requireNoticeAck | **扫词开** |
 | 床位性别/年级约束校验 | ticket.bedConstraint | **域默认** BED |
 | 床位入住须知勾选 | ticket.requireNoticeAck | **域默认** BED |
 | 调宿原床位释放时机说明 | labels.bedReleaseHint | **域默认** BED |
 | 图书馆藏地点 / 分馆校区 | archive holdingLoc/campusZone | **域默认** LIBRARY |
 | 图书漂流/赠阅标记 | archive.stage 选项 | **域默认** LIBRARY |
 | 寒暑假闭馆停借规则提示 | labels.closedLoanHint | **域默认** LIBRARY |
-| 图书索书号 / ISBN 规范校验 | borrowThicken.isbnValidate | **开题扫** |
-| 设备保养到期日字段 | archive.maintainDue | **开题扫** |
-| 设备押金登记 | ticket.allowDeposit | **开题扫** |
+| 图书索书号 / ISBN 规范校验 | borrowThicken.isbnValidate | **扫词开** |
+| 设备保养到期日字段 | archive.maintainDue | **扫词开**（保养到期/维保到期/保养提醒） |
+| 设备押金登记 | ticket.allowDeposit | **扫词开** |
 | 设备借用须培训合格勾选 | ticket.requireTrainingAck | **域默认** EQUIP |
 | 设备外借单位（校外）字段 | archive.loanOrg | **域默认** EQUIP |
 | 物资批次号 / 有效期 / 库位货架 / 供应商联系人 | archive 浅列 | **域默认** ASSET |
@@ -370,37 +370,37 @@
 | 图书分类树 / 中图法简码字段 | archive.clcCode | **域默认** LIBRARY |
 | 损坏赔偿标准表（按类型定额） | schema.damageCompStandards | **域默认** LIBRARY/EQUIP |
 | 设备校检合格证附件槽 | archive.calibCertUrl | **域默认** EQUIP |
-| 退宿行李清点勾选清单 | material_check 变体 | **开题扫**（行李清点/退宿清点） |
+| 退宿行李清点勾选清单 | material_check 变体 | **扫词开**（行李清点/退宿清点） |
 | 预约到书站内信通知 | book_hold → hold_ready MessageStore | **扫词开** book_hold（原已闭环） |
-| 设备随借配件勾选清单 | material_check 变体 | **开题扫**（随借配件） |
+| 设备随借配件勾选清单 | material_check 变体 | **扫词开**（随借配件） |
 | 排队到号站内信 | waitlist 晋升 MessageStore | **扫词开** waitlist（原已闭环） |
 | 驿站货架格口占用状态 | archive.slotStatus | **域默认** PARCEL |
 | 读者证号/一卡通号字段 | profile.cardNo 文案 | **域默认** LIBRARY |
-| 随书附件（光盘）勾选借出 | material_check 变体 | **开题扫**（随书光盘/附件） |
-| 领用双人复核签字栏 | ticket.allowDualReview | **开题扫**（双人复核） |
-| 床位住宿费/预定金演示登记 | ticket.allowDeposit | **开题扫**（住宿费/预定金） |
+| 随书附件（光盘）勾选借出 | material_check 变体 | **扫词开**（随书光盘/附件） |
+| 领用双人复核签字栏 | ticket.allowDualReview | **扫词开**（双人复核） |
+| 床位住宿费/预定金演示登记 | ticket.allowDeposit | **扫词开**（住宿费/预定金） |
 | 设备故障转报修单号 | archive.repairTicketNo | **域默认** EQUIP |
-| 图书预约取消次数限制 | ticket.maxCancelHolds | **开题扫** |
-| 设备归还逾期转赔付提示开关 | ticket.overdueAutoCompensate | **开题扫** |
-| 退宿水电清算备注 | ticket.allowUtilityNote | **开题扫** |
-| 设备校准证书到期停借 | archive.calibDue + blockIfCalibExpired | **开题扫**（校准证书） |
-| 包裹逾期弃件标记 | archive.stage 弃件 + 文案 | **开题扫**（弃件） |
-| 物资领用课题号 | ticket.allowProjectNo | **开题扫**（课题号） |
-| 驿站寄件运费登记 | ticket.allowShipFee | **开题扫** |
-| 设备借用保险声明勾选 | ticket.requireInsuranceAck | **开题扫** |
+| 图书预约取消次数限制 | ticket.maxCancelHolds | **扫词开** |
+| 设备归还逾期转赔付提示开关 | ticket.overdueAutoCompensate | **扫词开** |
+| 退宿水电清算备注 | ticket.allowUtilityNote | **扫词开** |
+| 设备校准证书到期停借 | archive.calibDue + blockIfCalibExpired | **扫词开**（校准证书） |
+| 包裹逾期弃件标记 | archive.stage 弃件 + 文案 | **扫词开**（弃件） |
+| 物资领用课题号 | ticket.allowProjectNo | **扫词开**（课题号） |
+| 驿站寄件运费登记 | ticket.allowShipFee | **扫词开** |
+| 设备借用保险声明勾选 | ticket.requireInsuranceAck | **扫词开** |
 | 楼栋床位分区色块字段 | archive.buildingZone + bedPlanHint | **域默认** BED |
-| 报废叠二级审 | ticket.twoLevelApprove（挂 stock_scrap 时） | **扫词开** stock_scrap 时叠 |
+| 报废叠二级审 | ticket.twoLevelApprove（挂 stock_scrap 且无独立 approveFlow 时） | **能力加深** stock_scrap 且无 approveFlow（有独立报废流则不叠） |
 | 多册合借一单（册数） | ticket.allowQty + qtyLabel=册数 | **域默认** LIBRARY（检索页填数量） |
-| 逾期罚款减免 | ticket.allowFineWaive → fine_status=waived | **开题扫**（罚款减免） |
-| 续借须无他人预约 | ticket.renewBlockIfHeld | **开题扫** |
-| 调宿双方确认 | ticket.requirePeerConfirm + peer_ack → `peer_tickets` 菜单 + Mapper 收件箱 | **开题扫**（双方确认/对向同意） |
-| 床位互换双方确认链路 | 同上 + peer_tickets 菜单 | **开题扫**（与双方确认同开） |
+| 逾期罚款减免 | ticket.allowFineWaive → fine_status=waived | **扫词开**（罚款减免） |
+| 续借须无他人预约 | ticket.renewBlockIfHeld | **扫词开** |
+| 调宿双方确认 | ticket.requirePeerConfirm + peer_ack → `peer_tickets` 菜单 + Mapper 收件箱 | **扫词开**（双方确认/对向同意/调宿双方） |
+| 床位互换双方确认链路 | 同上 + peer_tickets 菜单 | **扫词开**（与双方确认同开） |
 | 荐购进度查询（审核说明） | BookSuggest 用户列表 handleNote | **扫词开** book_suggest（原已闭环） |
-| 物资领用额度（分类上限） | ticket.categoryLimit | **开题扫**（领用额度/按月限额） |
-| 盘点锁定禁出入库 | stockCountOpts.countLock → StockIoStore | **开题扫** |
-| 盘点差异原因必填 | stockCountOpts.requireDiffReason | **开题扫** |
-| 物资盘点盲盘 | stockCountOpts.blindCount | **开题扫** |
-| 驿站弃件双人确认 | ticket.requireAbandonDual | **开题扫**（弃件双人） |
+| 物资领用额度（分类上限） | ticket.categoryLimit | **扫词开**（领用额度/按月限额） |
+| 盘点锁定禁出入库 | stockCountOpts.countLock → StockIoStore | **扫词开** |
+| 盘点差异原因必填 | stockCountOpts.requireDiffReason | **扫词开** |
+| 物资盘点盲盘 | stockCountOpts.blindCount | **扫词开** |
+| 驿站弃件双人确认 | ticket.requireAbandonDual | **扫词开**（弃件双人） |
 
 不支持：RFID/物联网盘点、跨馆互借、柜机硬件对接、多仓调拨、图书联合编目 Z39.50。
 
@@ -1482,3 +1482,4 @@
 | 2026-10-16 | **§0 X-UX XU-02**：文件列表、地址簿省市区、删档/驳回/售后二次确认、一级佣金台账均扫词才挂；多级分销仍不支持；打印/灯箱/Toast/Excel 二进制仍待补 |
 | 2026-10-16 | **基线体验常开**：打印本页、灯箱、Toast、页脚版本、离开未保存、单号复制（开题几乎不写→不扫词）；地图改「基线体验」 |
 | 2026-10-16 | **档案 Excel**：导入模板、批量导入（按行回错）、同页导出均为 xlsx，Apache POI；其它名单导出仍为 CSV |
+| 2026-10-17 | **§1.1 挂载收口**：双方确认、保养到期日、超期次数限制再借改 **扫词开**；荐购预算改 **能力加深** book_suggest；信誉分值列空开题关 |

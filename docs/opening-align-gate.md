@@ -2,8 +2,8 @@
 
 > **本文只负责**：壳底白名单 + B 扫词对照 + C cap 对照；门禁口径。  
 > **不负责**：开题全文 vs 页面全文匹配；既有模块缺口闸（[`opening_align.py`](../backend/app/bake/features/opening_align.py)）。  
-> **状态**：交易族 A 白名单摘录 · **B+C 门禁已齐**；扩到其它域组见 [parked-work.md](./parked-work.md) #3/#4。  
-> **索引**：[parked-work.md](./parked-work.md) · [`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3
+> **状态**：交易族 + **借用组** A 白名单 · **B+C 门禁已齐**；其余域组见 [parked-work.md](./parked-work.md) #3/#4。  
+> **索引**：[parked-work.md](./parked-work.md) · [`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3 · 借用 `borrow_thicken.py`
 
 ---
 
@@ -18,11 +18,11 @@ B 对扫词，C 对 cap。不审开题每个动词，不扫页面裸文案。
 
 | 档 | 门禁 | 真源 |
 |----|------|------|
-| **A 壳底** | 跟域走；不要求开题写出 | `TRADE_A_SHELL_WHITELIST` |
-| **B 扫词开** | `tradeThicken.x` ↔ 同一 `scan_*` / RE | `TRADE_B_ALIGN_RULES` |
-| **C 能力加深** | `tradeThicken.x` ↔ 依赖 cap 在不在 | `TRADE_C_ALIGN_RULES` |
+| **A 壳底** | 跟域走；不要求开题写出 | `TRADE_A_SHELL_WHITELIST` / `BORROW_A_SHELL_WHITELIST` |
+| **B 扫词开** | thicken 键 ↔ 同一 `scan_*` / RE | `TRADE_B_ALIGN_RULES` / `BORROW_B_ALIGN_RULES` |
+| **C 能力加深** | thicken 键 ↔ 依赖 cap 在不在 | `TRADE_C_ALIGN_RULES` / `BORROW_C_ALIGN_RULES` |
 
-**禁止第二套词典**：改词只改 `trade_thicken.py` 的 RE / `_scan_*`；改 cap 条件只改 apply + 本表。
+**禁止第二套词典**：改词只改该组 thicken 的 RE / `scan_*`；改 cap 条件只改 apply + 本表。
 
 ---
 
@@ -99,13 +99,29 @@ pytest backend/tests/test_opening_align_gate.py -q
 
 - B：空开题不多挂；扫词命中不漏挂  
 - C：无 cap 不多挂；有 cap 不漏挂  
-- `diff_trade_align` = B+C 合并  
+- `diff_trade_align` / `diff_borrow_align` = 各域组 B+C 合并  
 
 ---
 
-## 6. 修订
+## 6. 借用组（§1.1）
+
+真源：`BORROW_*` → `diff_borrow_b_align` / `diff_borrow_c_align` / `diff_borrow_align`。  
+改词只改 `borrow_thicken.py` 的 `_*_TERMS` / `scan_*`。
+
+| 档 | 要点 |
+|----|------|
+| **A** | 热门榜、用途字典、代取、床位性别年级、入库衔接等；灰区：信誉规则文案壳、闭架/征订/漂流文案、驿站异常件、保养工单说明 |
+| **B** | ISBN、随书光盘、信誉分值、罚款减免、续借无预约、保养到期日、押金、校准停借、双方确认、弃件、盘点锁定等（见 `BORROW_B_ALIGN_RULES`） |
+| **C** | `suggestBudget` ↔ `book_suggest` |
+
+未进 C 表：报废叠二级审（`stock_scrap` 且无 `approveFlow` 才叠；有独立报废流则关，不是「有 cap 必开」）。
+
+---
+
+## 7. 修订
 
 | 日期 | 说明 |
 |------|------|
 | 2026-10-14 | 首版：交易 B 对照 + A 白名单摘录 |
 | 2026-10-14 | 补 C：`TRADE_C_ALIGN_RULES` + gate 测 |
+| 2026-10-17 | 借用组 A/B/C：`BORROW_*_ALIGN_RULES` + gate 测 |

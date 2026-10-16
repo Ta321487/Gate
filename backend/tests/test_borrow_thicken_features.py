@@ -1,4 +1,4 @@
-"""借用组 borrow_thicken：域默认用途字典/代取/床位约束/热门榜文案；扫词 ISBN/押金/代收协议。"""
+"""借用组 borrow_thicken：A 壳底用途字典/代取/床位约束；B 扫词 ISBN/押金/双方确认等。"""
 
 from __future__ import annotations
 
@@ -156,8 +156,12 @@ class BorrowThickenFeatureTests(unittest.TestCase):
     def test_bed_constraint_and_notice(self) -> None:
         out = _spec("DOM-BED", "学生床位调配管理系统", "")
         ticket = ((out.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+        thicken = (out.get("schema") or {}).get("borrowThicken") or {}
         self.assertTrue(ticket.get("bedConstraint"))
         self.assertTrue(ticket.get("requireNoticeAck"))
+        # B：双方确认空开题关
+        self.assertFalse(ticket.get("requirePeerConfirm"))
+        self.assertFalse(thicken.get("peerConfirm"))
         yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-BED", out) + policy_preview("DOM-BED", out)
         self.assertIn("ticket-bed-constraint: true", yml)
         self.assertIn("ticket-require-notice-ack: true", yml)
@@ -172,6 +176,31 @@ class BorrowThickenFeatureTests(unittest.TestCase):
         self.assertIn("allowedGender", keys)
         self.assertIn("allowedGrades", keys)
         self.assertIn("buildingZone", keys)
+
+    def test_empty_library_no_suggest_budget_or_isbn(self) -> None:
+        out = _spec("DOM-LIBRARY", "图书借阅管理系统", "")
+        thicken = (out.get("schema") or {}).get("borrowThicken") or {}
+        self.assertFalse(thicken.get("suggestBudget"))
+        self.assertFalse(thicken.get("isbnValidate"))
+        self.assertTrue(thicken.get("creditRuleHint"))
+        self.assertTrue(thicken.get("hotLoanBoard"))
+
+    def test_empty_equip_no_maintain_due_field(self) -> None:
+        out = _spec("DOM-EQUIP", "实验室设备借用管理系统", "")
+        thicken = (out.get("schema") or {}).get("borrowThicken") or {}
+        self.assertTrue(thicken.get("maintainWorkOrder"))
+        self.assertFalse(thicken.get("maintainDue"))
+        keys = {
+            f.get("key")
+            for f in ((out.get("schema") or {}).get("entities") or {})
+            .get("archive", {})
+            .get("fields")
+            or []
+            if isinstance(f, dict)
+        }
+        self.assertNotIn("maintainDue", keys)
+        hit = _spec("DOM-EQUIP", "设备借用", "设备保养到期提醒与维保到期停借。")
+        self.assertTrue((hit.get("schema") or {}).get("borrowThicken", {}).get("maintainDue"))
 
     def test_isbn_deposit_parcel_ack_scan(self) -> None:
         self.assertTrue(scan_isbn_validate("图书录入支持 ISBN 校验与查重提示。"))

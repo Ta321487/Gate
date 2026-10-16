@@ -3,15 +3,31 @@
 硬约束
 ------
 - 不新造厚 DOM；复用 archive/ticket/recommend/MessageStore/material_check。
-- 域默认：通识必开（用途字典、热门借阅文案、PARCEL 代取、BED 性别年级、ASSET 预警阈值）。
-- 开题扫：ISBN、保养/校准到期、押金、代收协议、行李清点/随借配件/随书光盘、报废二级审等。
+- 挂载三档（与交易族同口径，见 docs/trade-thicken-batch.md §0.3）：
+  A 壳底：域本来就该有，空开题也开。
+  B 扫词开：开题命中本组登记词才挂；空开题关；禁止全文自由匹配。
+  C 能力加深：已挂对应 cap 才叠；禁止域默认硬塞。
+- 改词只改本组 TERMS / scan_*；门禁与 bake 共用，禁止第二套词典。
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
+
+# 借用主域 + PROCURE 一键入库（复用本组 thicken，不进地图 §1.5）
+BORROW_DOMAINS = frozenset(
+    {
+        "DOM-LIBRARY",
+        "DOM-EQUIP",
+        "DOM-ASSET",
+        "DOM-PARCEL",
+        "DOM-BED",
+        "DOM-PROCURE",
+    }
+)
 
 _PURPOSE_OPTS_ASSET = ("教学科研", "办公领用", "实验耗材", "活动保障", "维修更换", "其他")
 _PURPOSE_OPTS_EQUIP = ("课程实验", "课题研究", "竞赛实训", "活动保障", "外出外借", "其他")
@@ -359,15 +375,10 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             "超期催还累计计入读者信誉；达到次数上限后可能限制再借，细则见公告。",
         )
         thicken["creditRuleHint"] = True
-        # 双端次数方案：用户借还写库产生 ever_overdue；管理按次数限制再借
-        ticket.setdefault("maxOverdueTimes", 3)
+        # 超期次数限制再借：B 扫词开（core_cap_scan + 本组软信誉词）；禁止空开题硬塞 maxOverdueTimes
         _add_feature(spec, "读者信用分规则提示")
         if scan_credit_points(text):
             _enable_credit_points(spec, ticket, labels, thicken, text)
-        labels.setdefault(
-            "suggestBudgetHint",
-            "荐购采纳受本学期预算余额约束，余额不足时可能暂缓或驳回。",
-        )
         # 双端：用户提交荐购写库；管理端审核台账（能力+菜单+gate 同挂）
         # 荐购无域默认：须开题扫到荐购词才挂 cap，避免绕开 E-13 扫词门禁
         from app.bake.features.book_suggest import scan_book_suggest
@@ -384,8 +395,15 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             attach_book_suggest_menus(schema)
             spec["gate"] = merge_book_suggest_gate(dict(spec.get("gate") or {}), caps)
             _add_feature(spec, "图书荐购")
-        thicken["suggestBudget"] = True
-        _add_feature(spec, "图书荐购预算余额提示")
+        # C：荐购预算提示仅在已挂 book_suggest 时叠（禁止空开题假域默认）
+        caps_now = set(spec.get("capabilities") or [])
+        if "book_suggest" in caps_now:
+            labels.setdefault(
+                "suggestBudgetHint",
+                "荐购采纳受本学期预算余额约束，余额不足时可能暂缓或驳回。",
+            )
+            thicken["suggestBudget"] = True
+            _add_feature(spec, "图书荐购预算余额提示")
         labels.setdefault(
             "closedStackPrintHint",
             "闭架索书可打印本页清单，持单至书库取书；请先在线提交借阅申请。",
@@ -526,14 +544,15 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             "maintainWorkOrderHint",
             "保养到期请在档案维护关联报修单号；借用申请可备注保养需求。",
         )
-        _ensure_archive_field(
-            archive, {"key": "maintainDue", "label": "保养到期日", "type": "date"}
-        )
-        thicken["maintainDue"] = True
         thicken["maintainWorkOrder"] = True
         _add_feature(spec, "设备保养工单联动说明")
-        if scan_maintain_due(text) or scan_calib_due(text):
-            pass  # maintainDue 已域默认
+        # B：保养到期日字段扫词才挂（工单联动说明仍为 A 壳底）
+        if scan_maintain_due(text):
+            _ensure_archive_field(
+                archive, {"key": "maintainDue", "label": "保养到期日", "type": "date"}
+            )
+            thicken["maintainDue"] = True
+            _add_feature(spec, "设备保养到期日字段")
         if scan_calib_due(text):
             _ensure_archive_field(
                 archive, {"key": "calibDue", "label": "校准证书到期日", "type": "date"}
@@ -812,41 +831,8 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             "列表按楼栋分区色块区分床位状态，便于对照平面示意（非 CAD）。",
         )
         labels.setdefault(
-            "bedSwapHint",
-            "互换意向：提交调宿并填写对方学号；对方确认后宿管方可审核。",
-        )
-        labels.setdefault(
             "bedPrintHint",
             "入住登记表可浏览器打印；提交申请须勾选入住须知。",
-        )
-        # 双端：用户写 peer_username；对方 peer_ack；管理审核
-        ticket["requirePeerConfirm"] = True
-        labels.setdefault("peerUsernameLabel", "对方学号/用户名")
-        labels.setdefault(
-            "peerConfirmHint",
-            "提交后须对方先确认，宿管方可审核通过。",
-        )
-        labels.setdefault("peerInboxTitle", "待我确认（调宿）")
-        labels.setdefault(
-            "peerInboxLead",
-            "他人发起的调宿/互换意向，确认后宿管才可审核；也可婉拒。",
-        )
-        thicken["peerConfirm"] = True
-        thicken["bedSwapMatch"] = True
-        _add_feature(spec, "床位互换意向双方确认")
-        from app.bake.schema.menu_utils import ensure_menu
-
-        menus = schema.setdefault("menus", {})
-        user_menu = menus.setdefault("user", [])
-        ensure_menu(
-            user_menu,
-            "peer_tickets",
-            {
-                "key": "peer_tickets",
-                "label": labels.get("peerInboxTitle") or "待我确认（调宿）",
-                "path": "/peer-tickets",
-            },
-            before_key="my_tickets",
         )
         ticket["bedConstraint"] = True
         labels.setdefault(
@@ -868,8 +854,40 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         labels.setdefault("noticeAckLabel", "我已阅读入住须知")
         thicken["bedNoticeAck"] = True
         _add_feature(spec, "床位入住须知勾选")
-        if scan_bed_notice_ack(text):
-            pass  # 已域默认
+        # B：调宿/互换双方确认扫词才挂（禁止空开题假域默认）
+        if scan_peer_confirm(text):
+            labels.setdefault(
+                "bedSwapHint",
+                "互换意向：提交调宿并填写对方学号；对方确认后宿管方可审核。",
+            )
+            ticket["requirePeerConfirm"] = True
+            labels.setdefault("peerUsernameLabel", "对方学号/用户名")
+            labels.setdefault(
+                "peerConfirmHint",
+                "提交后须对方先确认，宿管方可审核通过。",
+            )
+            labels.setdefault("peerInboxTitle", "待我确认（调宿）")
+            labels.setdefault(
+                "peerInboxLead",
+                "他人发起的调宿/互换意向，确认后宿管才可审核；也可婉拒。",
+            )
+            thicken["peerConfirm"] = True
+            thicken["bedSwapMatch"] = True
+            _add_feature(spec, "床位互换意向双方确认")
+            from app.bake.schema.menu_utils import ensure_menu
+
+            menus = schema.setdefault("menus", {})
+            user_menu = menus.setdefault("user", [])
+            ensure_menu(
+                user_menu,
+                "peer_tickets",
+                {
+                    "key": "peer_tickets",
+                    "label": labels.get("peerInboxTitle") or "待我确认（调宿）",
+                    "path": "/peer-tickets",
+                },
+                before_key="my_tickets",
+            )
         if scan_bed_fee(text):
             ticket["allowDeposit"] = True
             labels.setdefault("depositLabel", "住宿费/预定金（元）")
@@ -887,8 +905,6 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
                 lead="退宿办结前按清单清点行李与公物，缺件须说明。",
             )
             thicken["luggageChecklist"] = True
-        if scan_peer_confirm(text):
-            pass  # 调宿双方确认已域默认
 
     ents["archive"] = archive
     ents["ticket"] = ticket
@@ -900,3 +916,168 @@ def apply_borrow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
     schema["capabilities"] = caps
     spec["capabilities"] = caps
     return spec
+
+
+# —— 开题对齐登记：B 扫词 / A 壳底 / C 能力加深（bake 与门禁共用；禁止第二套词典）——
+
+BorrowScanFn = Callable[[dict[str, Any], str], bool]
+
+
+def _text_scan(fn: Callable[[str], bool]) -> BorrowScanFn:
+    def _fn(_spec: dict[str, Any], proposal_text: str) -> bool:
+        return bool(fn(proposal_text or ""))
+
+    return _fn
+
+
+# (thicken 键, 适用域, 扫词判定) — 改 TERMS 只改上面常量，门禁自动跟
+BORROW_B_ALIGN_RULES: list[tuple[str, frozenset[str], BorrowScanFn]] = [
+    ("isbnValidate", frozenset({"DOM-LIBRARY"}), _text_scan(scan_isbn_validate)),
+    ("bookDiscChecklist", frozenset({"DOM-LIBRARY"}), _text_scan(scan_book_disc)),
+    ("creditOnOverdue", frozenset({"DOM-LIBRARY", "DOM-EQUIP"}), _text_scan(scan_credit_points)),
+    ("creditPoints", frozenset({"DOM-LIBRARY", "DOM-EQUIP"}), _text_scan(scan_credit_points)),
+    ("maxCancelHolds", frozenset({"DOM-LIBRARY"}), _text_scan(scan_cancel_hold_limit)),
+    ("fineWaive", frozenset({"DOM-LIBRARY"}), _text_scan(scan_fine_waive)),
+    ("renewBlockIfHeld", frozenset({"DOM-LIBRARY"}), _text_scan(scan_renew_no_hold)),
+    ("maintainDue", frozenset({"DOM-EQUIP"}), _text_scan(scan_maintain_due)),
+    ("calibDueBlock", frozenset({"DOM-EQUIP"}), _text_scan(scan_calib_due)),
+    ("equipDeposit", frozenset({"DOM-EQUIP"}), _text_scan(scan_equip_deposit)),
+    ("insuranceAck", frozenset({"DOM-EQUIP"}), _text_scan(scan_equip_insurance)),
+    ("accessoryChecklist", frozenset({"DOM-EQUIP"}), _text_scan(scan_equip_accessory)),
+    ("overdueAutoCompensate", frozenset({"DOM-EQUIP"}), _text_scan(scan_overdue_compensate)),
+    ("projectNo", frozenset({"DOM-ASSET"}), _text_scan(scan_project_no)),
+    ("dualReview", frozenset({"DOM-ASSET"}), _text_scan(scan_dual_review)),
+    ("monthQuota", frozenset({"DOM-ASSET"}), _text_scan(scan_month_quota)),
+    ("countLock", frozenset({"DOM-ASSET"}), _text_scan(scan_count_lock)),
+    ("blindCount", frozenset({"DOM-ASSET"}), _text_scan(scan_blind_count)),
+    ("requireDiffReason", frozenset({"DOM-ASSET"}), _text_scan(scan_diff_reason)),
+    ("parcelNoticeAck", frozenset({"DOM-PARCEL"}), _text_scan(scan_parcel_notice_ack)),
+    ("shipFee", frozenset({"DOM-PARCEL"}), _text_scan(scan_ship_fee)),
+    ("parcelAbandon", frozenset({"DOM-PARCEL"}), _text_scan(scan_parcel_abandon)),
+    ("abandonDual", frozenset({"DOM-PARCEL"}), _text_scan(scan_abandon_dual)),
+    ("peerConfirm", frozenset({"DOM-BED"}), _text_scan(scan_peer_confirm)),
+    ("bedSwapMatch", frozenset({"DOM-BED"}), _text_scan(scan_peer_confirm)),
+    ("bedFee", frozenset({"DOM-BED"}), _text_scan(scan_bed_fee)),
+    ("utilityNote", frozenset({"DOM-BED"}), _text_scan(scan_utility_note)),
+    ("luggageChecklist", frozenset({"DOM-BED"}), _text_scan(scan_bed_luggage)),
+]
+
+# A 壳底白名单：门禁不要求开题写出；灰区人工定（如 creditRuleHint 文案壳、PARCEL 异常件）
+BORROW_A_SHELL_WHITELIST: frozenset[str] = frozenset(
+    {
+        "hotLoanBoard",
+        "clcCode",
+        "damageCompTable",
+        "creditRuleHint",  # 灰区：信誉规则提示文案；次数冻结走 core/扫词，不在此强制
+        "closedStackPrint",
+        "shelfAnnounce",
+        "catalogImportHint",
+        "driftTag",
+        "closedLoanHint",
+        "multiCopyLoan",
+        "purposeDict",
+        "calibCert",
+        "repairLink",
+        "contractAck",
+        "equipQr",
+        "maintainWorkOrder",
+        "trainingAck",
+        "stockWarnConfigurable",
+        "procureRef",
+        "procureToStockIn",
+        "proxyPickup",
+        "arrivalNotify",
+        "slotStatus",
+        "offHoursHint",
+        "parcelException",  # 灰区：驿站异常件壳底
+        "bedPlanColor",
+        "bedConstraint",
+        "bedReleaseHint",
+        "bedNoticeAck",
+    }
+)
+
+
+# (thicken 键, 适用域, 依赖 cap) — 与 apply 里「挂 cap 才加深」同口径
+BORROW_C_ALIGN_RULES: list[tuple[str, frozenset[str], str]] = [
+    ("suggestBudget", frozenset({"DOM-LIBRARY"}), "book_suggest"),
+]
+
+
+def expected_borrow_b_flags(
+    domain: str, spec: dict[str, Any], proposal_text: str = ""
+) -> dict[str, bool]:
+    """登记表上该域每个 B 开关：扫词是否应开。"""
+    out: dict[str, bool] = {}
+    for flag, domains, scan in BORROW_B_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = bool(scan(spec, proposal_text))
+    return out
+
+
+def expected_borrow_c_flags(domain: str, spec: dict[str, Any]) -> dict[str, bool]:
+    """登记表上该域每个 C 开关：依赖 cap 是否应开。"""
+    caps = {str(c) for c in (spec.get("capabilities") or []) if c}
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    if isinstance(schema.get("capabilities"), list):
+        caps |= {str(c) for c in schema["capabilities"] if c}
+    out: dict[str, bool] = {}
+    for flag, domains, cap in BORROW_C_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = cap in caps
+    return out
+
+
+def _diff_borrow_flags(
+    thicken: dict[str, Any], expected: dict[str, bool]
+) -> tuple[list[str], list[str]]:
+    over: list[str] = []
+    under: list[str] = []
+    for flag, want in expected.items():
+        got = bool(thicken.get(flag))
+        if got and not want:
+            over.append(flag)
+        elif want and not got:
+            under.append(flag)
+    return over, under
+
+
+def diff_borrow_b_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    """B 档对照：返回 (多挂 flags, 漏挂 flags)。非借用域 → 空。"""
+    domain = str(spec.get("domain") or "")
+    if domain not in BORROW_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("borrowThicken") if isinstance(schema.get("borrowThicken"), dict) else {}
+    )
+    return _diff_borrow_flags(
+        thicken, expected_borrow_b_flags(domain, spec, proposal_text)
+    )
+
+
+def diff_borrow_c_align(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """C 档对照：thicken ↔ 依赖 cap。非借用域 → 空。"""
+    domain = str(spec.get("domain") or "")
+    if domain not in BORROW_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("borrowThicken") if isinstance(schema.get("borrowThicken"), dict) else {}
+    )
+    return _diff_borrow_flags(thicken, expected_borrow_c_flags(domain, spec))
+
+
+def diff_borrow_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    """B+C 合并多挂/漏挂（去重保序）。"""
+    bo, bu = diff_borrow_b_align(spec, proposal_text)
+    co, cu = diff_borrow_c_align(spec)
+    over = list(dict.fromkeys([*bo, *co]))
+    under = list(dict.fromkeys([*bu, *cu]))
+    return over, under
