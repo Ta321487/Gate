@@ -34,6 +34,7 @@
 | [crosscut-delivery-batch.md](./crosscut-delivery-batch.md) | **§0 通识横切**清待补（一轮一簇；非域组 thicken） | 批次册 · X-AUTH/MSG/DASH 已齐 · 下波 **X-ORG** |
 | [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（加厚后一组一 plan；含 ASCII） | 选型册 · 未实现；下一 plan 优先 content |
 | [parked-work.md](./parked-work.md) | **搁置工作**台账（大线 + 碎另案） | 活表 · 大线 4 · 碎项另表 |
+| [cohort-opening-title-map.md](./cohort-opening-title-map.md) | 今年选题 → 成品域/皮；只代表今年，按册一点点长 | 方向册 · 工厂未改（见搁置 j） |
 | [opening-align-gate.md](./opening-align-gate.md) | **开题对齐门禁**：A 白名单 + B 扫词 + C cap（登记表双向） | 交易族已齐 · 待扩全族 |
 | [ai-opening-delivery-map.md](./ai-opening-delivery-map.md) | 开题 AI 表述 → 助手岛产出 | 活表 |
 | [capability-expansion-batch.md](./capability-expansion-batch.md) | E-01～E-14 扩岛批次 | 已收口档案（勿当当前主线） |
