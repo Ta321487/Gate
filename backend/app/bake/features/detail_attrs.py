@@ -26,9 +26,16 @@ _TRADE_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"})
 # 房源详情属性（面积/租金/朝向）：与商品详情同理，开题点名才落真列
 _EXTRA_DETAIL_DOMAINS = frozenset({"DOM-LISTING"})
 
-_DETAIL_RE = re.compile(r"详情[（(]([^）)]{2,160})[）)]")
-# 「详情显示辣度、份量、食材」——到句号/分号为止
+# 「详情（甲、乙）」；详情与括号之间可夹短动词（如查看）
+_DETAIL_RE = re.compile(
+    r"详情[\u4e00-\u9fffA-Za-z0-9]{0,8}[（(]\s*含?\s*([^）)]{2,160})[）)]"
+)
+# 「详情显示甲、乙、丙」——到句号/分号为止
 _DETAIL_SHOW_RE = re.compile(r"详情显示([^。；;\n]{2,80})")
+# 「甲、乙、丙等参数 / 等核心参数」——无详情括号时也认具名列
+_PARAM_LIST_RE = re.compile(
+    r"([\u4e00-\u9fffA-Za-z0-9、,/／]{4,60}?)(?:等)?(?:核心)?参数"
+)
 
 _OPENING_PHRASES = (
     "详情显示多个属性字段",
@@ -55,6 +62,8 @@ _SKIP_LABELS = frozenset(
         "商品规格",
         "多个属性字段",
         "属性字段",
+        "参数",
+        "核心参数",
     }
 )
 
@@ -90,28 +99,40 @@ _LABEL_KEYS: dict[str, str] = {
 }
 
 
+def _normalize_attr_label(part: str) -> str:
+    label = (part or "").strip().strip("等")
+    label = re.sub(r"^(含有|含)", "", label).strip()
+    label = re.sub(r"(?:等)?(?:核心)?参数$", "", label).strip()
+    label = re.sub(r"(?:等)?核心$", "", label).strip().strip("等")
+    return label
+
+
+def _append_attr_labels(labels: list[str], raw: str) -> None:
+    for part in re.split(r"[、,，/／]", raw or ""):
+        label = _normalize_attr_label(part)
+        if not label or label in _SKIP_LABELS or label in labels:
+            continue
+        if len(label) > 16:
+            continue
+        labels.append(label)
+
+
 def _collect_from_blob(blob: str) -> list[str]:
     labels: list[str] = []
     for match in _DETAIL_RE.finditer(blob or ""):
-        for part in re.split(r"[、,，]", match.group(1)):
-            label = part.strip().strip("等")
-            if not label or label in _SKIP_LABELS or label in labels:
-                continue
-            if len(label) > 16:
-                continue
-            labels.append(label)
+        _append_attr_labels(labels, match.group(1))
     for match in _DETAIL_SHOW_RE.finditer(blob or ""):
         chunk = match.group(1).strip()
         # 「详情显示多个属性字段」整句不当属性名
         if any(phrase in chunk for phrase in ("多个属性", "属性字段")) and "、" not in chunk:
             continue
-        for part in re.split(r"[、,，]", chunk):
-            label = part.strip().strip("等")
-            if not label or label in _SKIP_LABELS or label in labels:
-                continue
-            if len(label) > 16:
-                continue
-            labels.append(label)
+        _append_attr_labels(labels, chunk)
+    for match in _PARAM_LIST_RE.finditer(blob or ""):
+        chunk = match.group(1).strip()
+        # 须至少两个具名属性；单字列不认
+        if "、" not in chunk and "," not in chunk and "，" not in chunk and "/" not in chunk:
+            continue
+        _append_attr_labels(labels, chunk)
     return labels[:12]
 
 

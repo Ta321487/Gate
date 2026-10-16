@@ -35,7 +35,7 @@ _MULTI_TERMS = (
     "二维分类",
 )
 
-# 「按训练目标：增肌/减脂」这种带取值的轴，出现两组即多维
+# 「按某维：甲/乙」这种带取值的轴，出现两组即多维
 _AXIS_VALUE_RE = re.compile(
     r"按([\u4e00-\u9fffA-Za-z0-9]{1,12})[：:]([^。；;\n）)]{1,80})"
 )
@@ -61,6 +61,41 @@ _AND_CLASSIFY_RE = re.compile(
     r"按([\u4e00-\u9fffA-Za-z0-9]{1,12})(?:和|与|及)([\u4e00-\u9fffA-Za-z0-9]{1,12})分类"
 )
 
+# 「维名（如甲、乙）与维名（如丙、丁）」——括号里点明取值
+_PAREN_AXIS_RE = re.compile(
+    r"([\u4e00-\u9fffA-Za-z0-9]{2,16})[（(]\s*如\s*([^）)]{2,80})[）)]"
+)
+
+# 维名紧贴动词时剥前缀，留下维名本身
+_AXIS_NAME_NOISE = (
+    "不仅提供",
+    "提供覆盖",
+    "不仅",
+    "提供",
+    "覆盖",
+    "包括",
+    "包含",
+    "含有",
+    "针对",
+    "融合",
+    "支持",
+    "实现",
+    "具备",
+    "分别",
+    "按照",
+    "根据",
+    "结合",
+    "以及",
+    "通过",
+    "进行",
+    "可以",
+    "可按",
+    "与",
+    "和",
+    "及",
+    "的",
+)
+
 # 开题未写出轴名时，与 ensure 默认种子一致（勿在前端另写一套）
 DEFAULT_CATEGORY_DIMENSIONS: tuple[str, ...] = ("品类", "用途", "目标")
 
@@ -80,6 +115,8 @@ def scan_multi_category(text: str, title: str = "") -> bool:
         return True
     if len(_AXIS_VALUE_RE.findall(blob)) >= 2:
         return True
+    if len(_paren_category_axes(blob)) >= 2:
+        return True
     return False
 
 
@@ -87,8 +124,48 @@ def _clean_axis_token(text: str) -> str:
     return re.sub(r"[^\u4e00-\u9fffA-Za-z0-9]", "", text or "")[:16]
 
 
+def _split_axis_values(raw: str) -> list[str]:
+    names: list[str] = []
+    for part in re.split(r"[/／、,，]", raw or ""):
+        name = _clean_axis_token(part.strip().strip("等"))
+        if name and name not in names:
+            names.append(name)
+    return names[:8]
+
+
+def _trim_axis_name(raw: str) -> str:
+    name = _clean_axis_token(raw)
+    changed = True
+    while changed and len(name) > 2:
+        changed = False
+        for noise in _AXIS_NAME_NOISE:
+            if name.startswith(noise) and len(name) - len(noise) >= 2:
+                name = name[len(noise) :]
+                changed = True
+                break
+    return name
+
+
+def _paren_category_axes(blob: str) -> list[tuple[str, list[str]]]:
+    """「维名（如甲、乙）」。凑满两组才算双轴，单组不挂。"""
+    axes: list[tuple[str, list[str]]] = []
+    seen: set[str] = set()
+    for match in _PAREN_AXIS_RE.finditer(blob or ""):
+        dim = _trim_axis_name(match.group(1))
+        if not dim or dim in seen:
+            continue
+        names = _split_axis_values(match.group(2))
+        if len(names) < 2:
+            continue
+        seen.add(dim)
+        axes.append((dim, names))
+        if len(axes) >= 4:
+            break
+    return axes
+
+
 def parse_category_axes(text: str, title: str = "") -> list[tuple[str, list[str]]]:
-    """从「按某维：甲/乙/丙」抽出维度名和取值，供分类种子换掉默认「热销/日用」。
+    """从「按某维：甲/乙/丙」或「维名（如甲、乙）」抽出维度和取值。
 
     「按口味和荤素分类」无取值时，每维用维名自身占位，保证至少两维种子。
     """
@@ -101,17 +178,21 @@ def parse_category_axes(text: str, title: str = "") -> list[tuple[str, list[str]
             dim = dim[:-2]
         if not dim or dim in seen:
             continue
-        names: list[str] = []
-        for part in re.split(r"[/／、,，]", match.group(2)):
-            name = _clean_axis_token(part.strip().strip("等"))
-            if name and name not in names:
-                names.append(name)
+        names = _split_axis_values(match.group(2))
         if len(names) < 2:
             continue
         seen.add(dim)
-        axes.append((dim, names[:8]))
+        axes.append((dim, names))
         if len(axes) >= 4:
             break
+    if len(axes) < 2:
+        for dim, names in _paren_category_axes(blob):
+            if dim in seen:
+                continue
+            seen.add(dim)
+            axes.append((dim, names))
+            if len(axes) >= 4:
+                break
     if len(axes) < 2:
         for match in _AND_CLASSIFY_RE.finditer(blob):
             for raw in (match.group(1), match.group(2)):

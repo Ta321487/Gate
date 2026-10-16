@@ -285,6 +285,55 @@ class MultiCategoryProductTagsTests(unittest.TestCase):
         arch = ((tea_spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
         self.assertEqual(arch.get("categoryDimensions"), ["香型", "茶类"])
 
+    def test_paren_example_axes_seed_both_dimensions(self) -> None:
+        """「维名（如甲、乙）与维名（如丙、丁）」与冒号句一样出双轴种子。"""
+        text = (
+            "覆盖香型（如花香、果香、焙火）与茶类（如绿茶、红茶、乌龙）的检索。"
+        )
+        self.assertTrue(scan_multi_category(text))
+        self.assertEqual(
+            parse_category_axes(text),
+            [
+                ("香型", ["花香", "果香", "焙火"]),
+                ("茶类", ["绿茶", "红茶", "乌龙"]),
+            ],
+        )
+        self.assertFalse(scan_multi_category("香型（如花香、果香）。"))
+        # 另一写法：维名前有动词，仍只留维名
+        fitness_like = (
+            "提供覆盖甲轴（如取值一、取值二、取值三）与乙轴"
+            "（如丙类、丁类、戊类）的多维度检索。"
+        )
+        axes = parse_category_axes(fitness_like)
+        self.assertEqual([d for d, _ in axes], ["甲轴", "乙轴"])
+        self.assertEqual(axes[0][1], ["取值一", "取值二", "取值三"])
+        spec = attach_accept(
+            {
+                "domain": "DOM-SHOP",
+                "title": "茶叶零售",
+                "capabilities": _SHOP_CAPS,
+                "archetype": "ARCH-TRADE",
+            },
+            text,
+        )
+        caps = spec.get("capabilities") or []
+        self.assertIn(MULTI_CATEGORY_CAP, caps)
+        arch = ((spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
+        self.assertEqual(arch.get("categoryDimensions"), ["香型", "茶类"])
+        sql = domain_sql(
+            "DOM-SHOP",
+            "thesis_shop",
+            capabilities=caps,
+            proposal_text=text,
+            title="茶叶零售",
+        )
+        n = normalize_sql(sql)
+        self.assertIn("香型", n)
+        self.assertIn("茶类", n)
+        self.assertIn("花香", n)
+        self.assertIn("乌龙", n)
+        self.assertNotIn("'自用'", n)
+
     def test_dual_axis_values_and_detail_attrs(self) -> None:
         text = (
             "茶叶零售管理系统。浏览搜索（按香型：花香/果香/焙火；按茶类：绿茶/红茶/乌龙）。"
@@ -430,6 +479,22 @@ class MultiCategoryProductTagsTests(unittest.TestCase):
         self.assertIn("product_tag", n)
         # 仅话术开岛、无具名属性 → 不加 detail_json，也不硬补列
         self.assertNotIn("detail_json", n)
+
+    def test_detail_attrs_view_paren_and_param_list(self) -> None:
+        """详情与括号可夹动词；「甲、乙等参数」无详情括号也认。"""
+        view = "商品详情查看（含品牌、净含量、适用人群等参数）。"
+        self.assertEqual(
+            set(parse_detail_labels(view)),
+            {"品牌", "净含量", "适用人群"},
+        )
+        params = "品牌、净含量、适用人群等核心参数展示不够直观。"
+        self.assertEqual(
+            set(parse_detail_labels(params)),
+            {"品牌", "净含量", "适用人群"},
+        )
+        # 旧句「详情（…）」仍可用
+        self.assertIn("品牌", parse_detail_labels("查看商品详情（品牌、香型、价格）。"))
+        self.assertNotIn("价格", parse_detail_labels("查看商品详情（品牌、香型、价格）。"))
 
     def test_cinema_named_detail_attrs_fields(self) -> None:
         text = "影片详情显示导演、主演、时长；早鸟票。"
