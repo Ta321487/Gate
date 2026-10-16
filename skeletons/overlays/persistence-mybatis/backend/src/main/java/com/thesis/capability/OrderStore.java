@@ -5,6 +5,7 @@ import com.github.pagehelper.PageInfo;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.OrderMapper;
 import com.thesis.mapper.SchemaMapper;
+import com.thesis.service.CommissionStore;
 import com.thesis.service.MessageStore;
 import com.thesis.service.SeatStore;
 import com.thesis.service.UserStore;
@@ -31,7 +32,7 @@ public final class OrderStore {
     private static boolean lineCustom = false;
     private static boolean lineCustomPlaceConfirmed = false;
     private static boolean noCasualRefund = false;
-    /** 收货后可申请售后天数；0=不限（开题未钉 afterSaleDays 时）。 */
+    /** 收货后可申请售后天数；0=不限（未配置售后天数时）。 */
     private static int afterSaleDays = 0;
     private static final ThreadLocal<Set<Long>> CART_ITEM_FILTER = new ThreadLocal<>();
     private static final ThreadLocal<Map<String, Object>> PLACE_EXTRAS = new ThreadLocal<>();
@@ -450,7 +451,7 @@ public final class OrderStore {
         if (LoyaltyStore.anyEnabled()) {
             priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
-            // 在线支付仍扣账户余额；不对接微信/支付宝商户 SDK ≠ 免余额
+            // 在线支付仍扣账户余额；未接微信/支付宝商户接口
             if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
@@ -1214,6 +1215,7 @@ public final class OrderStore {
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         int n = mapper().payPendingOrder(ORDER, orderId, "confirmed", channel, now);
         if (n <= 0) throw new IllegalStateException("支付失败，请刷新后重试");
+        CommissionStore.onOrderPaid(username, orderId, toDouble(m.get("totalYuan")));
         return getOrder(orderId);
     }
 

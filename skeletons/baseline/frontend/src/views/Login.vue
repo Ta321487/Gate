@@ -9,6 +9,7 @@
     :heading="heading"
     :sub="sub"
     :note="note"
+    :bg-url="loginBgUrl"
   >
     <form class="form" @submit.prevent="onLogin">
       <label v-if="showRolePicker" class="field">
@@ -156,6 +157,7 @@ const backHomeLabel = computed(
 const title = ref(
   labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
 )
+const loginBgUrl = ref('')
 
 const entrySide = computed(() => {
   if (props.entrySide === 'admin' || props.entrySide === 'portal' || props.entrySide === 'staff') {
@@ -273,6 +275,7 @@ function persist(user) {
   localStorage.setItem('superAdmin', String(!!user.superAdmin))
   localStorage.setItem('staffPost', user.staffPost || '')
   localStorage.setItem('staffKind', user.staffKind || '')
+  import('../utils/staffPosts.js').then((m) => m.setMenuKeyOverride?.(user.menuKeys, user.menuUsePacks !== false))
   setMustChangePassword(!!user.mustChangePassword)
   setMustActivateEmail(!!user.mustActivateEmail)
   import('../utils/session.js').then((m) => m.markSessionOk?.())
@@ -417,6 +420,13 @@ onMounted(async () => {
     try {
       const meta = await http.get('/api/meta')
       if (meta.data?.title) title.value = meta.data.title
+    } catch { /* ignore */ }
+  }
+  if (getSchema()?.orgCrosscut?.siteSettings) {
+    try {
+      const site = await http.get('/api/site-settings')
+      if (site.data?.siteName) title.value = String(site.data.siteName).trim()
+      if (site.data?.loginBgUrl) loginBgUrl.value = String(site.data.loginBgUrl).trim()
     } catch { /* ignore */ }
   }
   // 分端时已登录用户打开对方登录页 → 按角色回跳（须服务端会话仍有效）

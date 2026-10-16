@@ -97,7 +97,15 @@ public class ProfileController {
         }
         try {
             UserStore.saveProfile(p);
-        } catch (IllegalArgumentException e) {
+            if (body.containsKey("orgId")) {
+                Object rawOrg = body.get("orgId");
+                Long orgId = rawOrg == null || String.valueOf(rawOrg).isBlank()
+                        || "null".equals(String.valueOf(rawOrg))
+                        ? null
+                        : Long.parseLong(String.valueOf(rawOrg).trim());
+                UserStore.updateOrgId(p.username, orgId);
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
         if (!newPassword.isBlank()) {

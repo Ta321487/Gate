@@ -24,6 +24,9 @@ HUB_BYPASS_MODULES: frozenset[str] = frozenset(
         "auth_crosscut",  # §0 X-AUTH 通识横切（锁定/改密/密保），基线常开非 cap
         "msg_crosscut",  # §0 X-MSG 通识横切（站内信+公告加深+广告位），基线常开非 cap
         "workbench_crosscut",  # §0 X-DASH 通识横切（工作台角标/快捷入口），基线常开非 cap
+        "org_crosscut",  # §0 X-ORG：标签/批量启停常开；字典/外观/组织/岗位菜单扫词开，非 cap
+        "list_crosscut",  # §0 X-LIST：组合筛选/导出列/顶栏搜索扫词开，非 cap
+        "ux_crosscut",  # §0 X-UX：使用说明页扫词开，非 cap
     }
 )
 

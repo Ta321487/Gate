@@ -16,6 +16,7 @@ USER_MENU_PATHS: dict[str, str] = {
     "peer_tickets": "/peer-tickets",
     "mutual_results": "/mutual-results",
     "content": "/notices",
+    "help": "/help",
     "guestbook": "/guestbook",
     "book_suggest": "/book-suggest",
     "parcel_ship": "/parcel-ship",
@@ -83,6 +84,13 @@ ADMIN_MENU_PATHS: dict[str, str] = {
     "invite_codes": "/admin/invite-codes",
     "banners": "/admin/banners",
     "schedule_jobs": "/admin/schedule-jobs",
+    "dict": "/admin/dict",
+    "site_settings": "/admin/site-settings",
+    "org": "/admin/org",
+    "role_menus": "/admin/role-menus",
+    "help_admin": "/admin/help",
+    "files": "/admin/files",
+    "commissions": "/admin/commissions",
     "content": "/admin/notices",
     "guestbook": "/admin/guestbook",
     "item_comments": "/admin/item-comments",
@@ -170,9 +178,10 @@ _BASE_ALWAYS = frozenset(
         "/admin/users",
         "/admin/online-sessions",
         "/admin/invite-codes",
-        # 通识横切：与各壳 AdminLayout children 及 msg/workbench_crosscut 菜单对齐
+        # 通识横切：与各壳 AdminLayout children 及 msg/workbench/org_crosscut 菜单对齐
         "/admin/banners",
         "/admin/schedule-jobs",
+        # dict / site-settings / org / role-menus：开题扫词才挂，勿进常开壳
         "/admin/notices",
         "/admin/profile",
         "/admin/messages",
@@ -434,6 +443,23 @@ def effective_paths(
         paths.add("/patient-profiles")
     if isinstance(schema, dict) and schema.get("parkingPass"):
         paths.update({"/parking-passes", "/admin/parking-passes"})
+    oc = schema.get("orgCrosscut") if isinstance(schema, dict) else None
+    if isinstance(oc, dict):
+        if oc.get("dict"):
+            paths.add("/admin/dict")
+        if oc.get("siteSettings"):
+            paths.add("/admin/site-settings")
+        if oc.get("org"):
+            paths.add("/admin/org")
+        if oc.get("roleMenus"):
+            paths.add("/admin/role-menus")
+    ux = schema.get("uxCrosscut") if isinstance(schema, dict) else None
+    if isinstance(ux, dict) and ux.get("help"):
+        paths.update({"/help", "/admin/help"})
+    if isinstance(ux, dict) and ux.get("files"):
+        paths.add("/admin/files")
+    if isinstance(ux, dict) and ux.get("commission"):
+        paths.add("/admin/commissions")
     if "lost_clue" in cap_set:
         paths.add("/admin/lost/clues")
     if "e_sign" in cap_set:

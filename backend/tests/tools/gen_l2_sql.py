@@ -51,7 +51,7 @@ SYS_NOTICE = """CREATE TABLE IF NOT EXISTS sys_notice (
 
 
 def header(domain: str) -> str:
-    return f"""-- bake domain={domain} · tables in [${{TABLE_COUNT_MIN}},${{TABLE_COUNT_MAX}}]
+    return f"""-- 业务库脚本：建库、建表与初始数据
 CREATE DATABASE IF NOT EXISTS `${{DB_NAME}}` DEFAULT CHARACTER SET utf8mb4;
 USE `${{DB_NAME}}`;
 

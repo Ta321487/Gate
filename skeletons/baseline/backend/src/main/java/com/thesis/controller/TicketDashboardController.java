@@ -24,7 +24,7 @@ import java.util.Map;
 
 /**
  * 薄领域工作台（archive / standalone / LIBRARY）。
- * XD-01：/counts 轻量角标；dashboard 按角色收窄处理中计数。
+ * 工作台角标接口；按角色收窄「处理中」计数。
  */
 @RestController
 @RequestMapping("/api/admin/dashboard")
@@ -66,6 +66,13 @@ public class TicketDashboardController {
 
         boolean superAdmin = AdminAuth.isSuperAdmin(session);
         String uid = AdminAuth.requireLogin(session);
+        // 多店：仅「有商家岗位」的账号按本店收窄；平台总管（无 staff_post）看全站，
+        // 避免 superAdmin 会话标志异常时日报/分类库存被滤成空。
+        String staffPost = "";
+        Object sp = session.getAttribute("staffPost");
+        if (sp != null) staffPost = String.valueOf(sp).trim();
+        boolean merchantScoped =
+                ArchiveStore.shopMarketplaceEnabled() && !superAdmin && !staffPost.isEmpty();
 
         if (TicketStore.enabled()) {
             try {
@@ -89,8 +96,7 @@ public class TicketDashboardController {
         }
 
         if (OrderStore.enabled()) {
-            boolean mp = ArchiveStore.shopMarketplaceEnabled();
-            String ownerFilter = (mp && !superAdmin) ? uid : null;
+            String ownerFilter = merchantScoped ? uid : null;
             m.putAll(OrderStore.dashboard(ownerFilter));
             Map<String, Object> oc = OrderStore.chartStats(ownerFilter);
             if (!TicketStore.enabled() || isEmptySeries(charts.get("statusSeries"))) {
@@ -124,11 +130,7 @@ public class TicketDashboardController {
             }
         }
         try {
-            String stockOwner = null;
-            if (ArchiveStore.shopMarketplaceEnabled() && !superAdmin) {
-                stockOwner = uid;
-            }
-            charts.put("stockSeries", ArchiveStore.stockByCategory(8, stockOwner));
+            charts.put("stockSeries", ArchiveStore.stockByCategory(8, merchantScoped ? uid : null));
         } catch (Exception ignored) {
             charts.put("stockSeries", List.of());
         }
@@ -165,9 +167,9 @@ public class TicketDashboardController {
                 if (w instanceof Number n) warn = n.intValue();
             } catch (Exception ignored) {
             }
-            m.put("lowStockCount", ArchiveStore.countLowStock(warn, superAdmin ? null : uid));
+            m.put("lowStockCount", ArchiveStore.countLowStock(warn, merchantScoped ? uid : null));
             m.put("stockWarnBelow", warn);
-            if (!superAdmin) {
+            if (merchantScoped) {
                 m.put("bookTotal", ArchiveStore.countItems(uid));
             }
         }

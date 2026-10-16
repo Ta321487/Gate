@@ -83,12 +83,29 @@ export function isClerkSession() {
   return !k || k === 'clerk'
 }
 
+/** 登录或刷新后写入；null 表示仍用岗位菜单包。 */
+let menuOverride = null
+
+export function setMenuKeyOverride(keys, usePacks) {
+  if (usePacks !== false) {
+    menuOverride = null
+    return
+  }
+  menuOverride = new Set(Array.isArray(keys) ? keys : [])
+}
+
 /**
  * 子管理可见 admin 菜单 key；null 表示旧账号（无岗位）→ 全部非 superOnly。
+ * 岗位已保存勾选时优先用勾选结果。
  */
 export function clerkAllowedMenuKeys(staffPostId) {
   const post = findStaffPost(staffPostId)
   if (!post || post.kind !== 'clerk') return null
+  if (menuOverride) {
+    const keys = new Set(menuOverride)
+    if (!keys.size) keys.add('dashboard')
+    return keys
+  }
   const packMenus = getSchema()?.staffPackMenus || {}
   const keys = new Set()
   for (const pk of post.packs || []) {

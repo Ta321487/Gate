@@ -5,7 +5,12 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 /** 上传目录：读写共用同一绝对路径，避免 file:uploads/ 相对 cwd 找不到文件。 */
@@ -57,5 +62,40 @@ public final class UploadStorage {
         String id = UUID.randomUUID().toString().replace("-", "");
         if (id.length() > 12) id = id.substring(0, 12);
         return System.currentTimeMillis() + "_" + id + ext;
+    }
+
+    public static List<Map<String, Object>> listFiles() {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        try (var stream = Files.list(root())) {
+            stream.filter(Files::isRegularFile).forEach(p -> {
+                Map<String, Object> row = new LinkedHashMap<>();
+                String name = p.getFileName().toString();
+                row.put("name", name);
+                row.put("url", "/uploads/" + name);
+                try {
+                    row.put("size", Files.size(p));
+                } catch (IOException e) {
+                    row.put("size", 0);
+                }
+                rows.add(row);
+            });
+        } catch (IOException e) {
+            return rows;
+        }
+        rows.sort(Comparator.comparing((Map<String, Object> a) -> String.valueOf(a.get("name"))).reversed());
+        return rows;
+    }
+
+    public static boolean deleteFile(String name) {
+        if (name == null || name.isBlank() || name.contains("/") || name.contains("\\") || name.contains("..")) {
+            return false;
+        }
+        Path target = root().resolve(name).normalize();
+        if (!target.startsWith(root())) return false;
+        try {
+            return Files.deleteIfExists(target);
+        } catch (IOException e) {
+            return false;
+        }
     }
 }

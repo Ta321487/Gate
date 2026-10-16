@@ -1021,6 +1021,34 @@ def _menu_as_identity_modules(menus: list[Any], *, side: str) -> list[dict[str, 
     return mods
 
 
+def _staff_identity_section(
+    schema: dict[str, Any],
+    post: dict[str, Any],
+    *,
+    material_sec: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """已交付岗位 → 身份枝；有材料段则用开题命名并对齐 menus，否则回落岗位 menus。"""
+    post_lab = str(post.get("label") or post.get("id") or "").strip()
+    if not post_lab:
+        return None
+    staff_menus = _staff_menu_items(schema, post)
+    if not staff_menus:
+        return None
+    if material_sec:
+        return {
+            "label": str(material_sec.get("label") or post_lab).strip() or post_lab,
+            "modules": _align_material_modules_to_menus(
+                list(material_sec.get("modules") or []),
+                side="admin",
+                menus=staff_menus,
+            ),
+        }
+    return {
+        "label": post_lab,
+        "modules": _menu_as_identity_modules(staff_menus, side="admin"),
+    }
+
+
 def _model_by_identity_from_schema(
     schema: dict[str, Any],
     *,
@@ -1034,6 +1062,7 @@ def _model_by_identity_from_schema(
     admin_menus = menus.get("admin") or []
     has_user = bool(user_menus) or "org_users" in caps
 
+    # 顺序对齐用例图/架构图：用户 → 岗位（商家等）→ 管理员
     sections: list[dict[str, Any]] = []
     if has_user:
         sections.append(
@@ -1042,6 +1071,10 @@ def _model_by_identity_from_schema(
                 "modules": _menu_as_identity_modules(user_menus, side="user"),
             }
         )
+    for post in _delivered_staff_posts(schema):
+        sec = _staff_identity_section(schema, post)
+        if sec:
+            sections.append(sec)
     if admin_menus:
         sections.append(
             {
@@ -1109,6 +1142,19 @@ def _model_by_identity(
                 }
             )
 
+    # 已交付岗位必出枝（与用例图同口径）；材料有对应段则用开题命名，无则回落 menus。
+    # 未交付岗位仍不进图（禁止图上有、包里无）。
+    for post in _delivered_staff_posts(schema):
+        post_lab = str(post.get("label") or post.get("id") or "").strip()
+        if not post_lab:
+            continue
+        mat = _pick_material_section(
+            sections, slot="staff", role_lab=post_lab, used=used
+        )
+        sec = _staff_identity_section(schema, post, material_sec=mat)
+        if sec:
+            aligned.append(sec)
+
     if admin_menus:
         role_lab = _identity_label_from_slot(roles, "admin")
         sec = _pick_material_section(
@@ -1132,30 +1178,6 @@ def _model_by_identity(
                     "modules": _menu_as_identity_modules(admin_menus, side="admin"),
                 }
             )
-
-    # 已交付岗位 + 材料有对应身份段 → 第三枝（禁止图上有包里无；未交付仍丢）
-    for post in _delivered_staff_posts(schema):
-        post_lab = str(post.get("label") or post.get("id") or "").strip()
-        if not post_lab:
-            continue
-        staff_menus = _staff_menu_items(schema, post)
-        if not staff_menus:
-            continue
-        sec = _pick_material_section(
-            sections, slot="staff", role_lab=post_lab, used=used
-        )
-        if not sec:
-            continue
-        aligned.append(
-            {
-                "label": str(sec.get("label") or post_lab).strip() or post_lab,
-                "modules": _align_material_modules_to_menus(
-                    list(sec.get("modules") or []),
-                    side="admin",
-                    menus=staff_menus,
-                ),
-            }
-        )
 
     if not aligned:
         return base

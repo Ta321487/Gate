@@ -54,6 +54,11 @@
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-crypto</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+      <version>5.2.5</version>
+    </dependency>
     <!-- Spring AI：DeepSeekChatModel（与 jdbc 基线同一入口 DeepSeekClient） -->
     <dependency>
       <groupId>org.springframework.ai</groupId>

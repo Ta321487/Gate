@@ -1,0 +1,47 @@
+# 本项目本地忽略
+
+# 依赖与构建
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+backend/target/
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE / 系统
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 本地密钥覆盖（保留 frontend/.env 与 application.yml）
+backend/src/main/resources/application-local.yml
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-secret.yml
+backend/src/main/resources/application-secret.properties
+.env.local
+.env.*.local
+
+# 运行期上传与日志
+uploads/
+backend/uploads/
+frontend/uploads/
+logs/
+*.log
+*.tmp
+*.temp
+
+# 杂项
+*.zip
+*.7z
+*.rar
+*.bak
+*~
+hs_err_pid*

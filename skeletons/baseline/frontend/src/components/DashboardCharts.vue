@@ -201,6 +201,23 @@ function portalChartInk() {
   }
 }
 
+function themeAxis(axis, c) {
+  if (!axis) return axis
+  if (Array.isArray(axis)) return axis.map((a) => themeAxis(a, c))
+  const out = { ...axis }
+  out.axisLabel = { ...(out.axisLabel || {}), color: c.muted }
+  if (out.axisLine || out.type === 'category') {
+    out.axisLine = { ...(out.axisLine || {}), lineStyle: { color: c.line } }
+  }
+  if (out.type === 'value' || out.splitLine) {
+    out.splitLine = {
+      ...(out.splitLine || {}),
+      lineStyle: { color: c.line },
+    }
+  }
+  return out
+}
+
 function withPortalChartTheme(opt) {
   if (!opt) return opt
   const c = portalChartInk()
@@ -215,21 +232,9 @@ function withPortalChartTheme(opt) {
       textStyle: { ...(opt.legend.textStyle || {}), color: c.muted },
     }
   }
-  if (opt.xAxis) {
-    const xa = { ...opt.xAxis }
-    xa.axisLabel = { ...(xa.axisLabel || {}), color: c.muted }
-    xa.axisLine = { ...(xa.axisLine || {}), lineStyle: { color: c.line } }
-    out.xAxis = xa
-  }
-  if (opt.yAxis) {
-    const ya = { ...opt.yAxis }
-    ya.axisLabel = { ...(ya.axisLabel || {}), color: c.muted }
-    ya.splitLine = {
-      ...(ya.splitLine || {}),
-      lineStyle: { color: c.line },
-    }
-    out.yAxis = ya
-  }
+  // 销售日报等双轴是数组；不可 {...array}，否则 ECharts 白屏且拖死后续图
+  if (opt.xAxis) out.xAxis = themeAxis(opt.xAxis, c)
+  if (opt.yAxis) out.yAxis = themeAxis(opt.yAxis, c)
   return out
 }
 
@@ -241,9 +246,8 @@ function fillTrend(raw) {
   const days = []
   const now = new Date()
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(now)
-    d.setDate(now.getDate() - i)
-    const key = d.toISOString().slice(0, 10)
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     days.push({ day: key, value: map[key] || 0 })
   }
   return days
@@ -544,56 +548,34 @@ const hasAny = computed(
     ),
 )
 
+function paint(chartRef, elRef, opt, assign) {
+  try {
+    if (opt && elRef.value) {
+      if (!chartRef) chartRef = echarts.init(elRef.value)
+      chartRef.setOption(withPortalChartTheme(opt), true)
+      assign(chartRef)
+    } else if (chartRef) {
+      chartRef.dispose()
+      assign(null)
+    }
+  } catch (_) {
+    try {
+      chartRef?.dispose()
+    } catch (__) {
+      /* ignore */
+    }
+    assign(null)
+  }
+}
+
 function render() {
-  if (statusOpt.value && statusEl.value) {
-    if (!statusChart) statusChart = echarts.init(statusEl.value)
-    statusChart.setOption(withPortalChartTheme(statusOpt.value), true)
-  } else if (statusChart) {
-    statusChart.dispose()
-    statusChart = null
-  }
-  if (trendOpt.value && trendEl.value) {
-    if (!trendChart) trendChart = echarts.init(trendEl.value)
-    trendChart.setOption(withPortalChartTheme(trendOpt.value), true)
-  } else if (trendChart) {
-    trendChart.dispose()
-    trendChart = null
-  }
-  if (monthOpt.value && monthEl.value) {
-    if (!monthChart) monthChart = echarts.init(monthEl.value)
-    monthChart.setOption(withPortalChartTheme(monthOpt.value), true)
-  } else if (monthChart) {
-    monthChart.dispose()
-    monthChart = null
-  }
-  if (salesDailyOpt.value && salesDailyEl.value) {
-    if (!salesDailyChart) salesDailyChart = echarts.init(salesDailyEl.value)
-    salesDailyChart.setOption(withPortalChartTheme(salesDailyOpt.value), true)
-  } else if (salesDailyChart) {
-    salesDailyChart.dispose()
-    salesDailyChart = null
-  }
-  if (refundReasonOpt.value && refundReasonEl.value) {
-    if (!refundReasonChart) refundReasonChart = echarts.init(refundReasonEl.value)
-    refundReasonChart.setOption(withPortalChartTheme(refundReasonOpt.value), true)
-  } else if (refundReasonChart) {
-    refundReasonChart.dispose()
-    refundReasonChart = null
-  }
-  if (stockOpt.value && stockEl.value) {
-    if (!stockChart) stockChart = echarts.init(stockEl.value)
-    stockChart.setOption(withPortalChartTheme(stockOpt.value), true)
-  } else if (stockChart) {
-    stockChart.dispose()
-    stockChart = null
-  }
-  if (hotOpt.value && hotEl.value) {
-    if (!hotChart) hotChart = echarts.init(hotEl.value)
-    hotChart.setOption(withPortalChartTheme(hotOpt.value), true)
-  } else if (hotChart) {
-    hotChart.dispose()
-    hotChart = null
-  }
+  paint(statusChart, statusEl, statusOpt.value, (c) => { statusChart = c })
+  paint(trendChart, trendEl, trendOpt.value, (c) => { trendChart = c })
+  paint(monthChart, monthEl, monthOpt.value, (c) => { monthChart = c })
+  paint(salesDailyChart, salesDailyEl, salesDailyOpt.value, (c) => { salesDailyChart = c })
+  paint(refundReasonChart, refundReasonEl, refundReasonOpt.value, (c) => { refundReasonChart = c })
+  paint(stockChart, stockEl, stockOpt.value, (c) => { stockChart = c })
+  paint(hotChart, hotEl, hotOpt.value, (c) => { hotChart = c })
   if (stockIoOpt.value && stockIoEl.value) {
     if (!stockIoChart) stockIoChart = echarts.init(stockIoEl.value)
     stockIoChart.setOption(withPortalChartTheme(stockIoOpt.value), true)

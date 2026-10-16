@@ -174,13 +174,47 @@ class ModuleDiagramTests(unittest.TestCase):
         )
         self.assertTrue(schema.get("shopMarketplace"))
         model = module_model(schema, proposal_text=_SHOP_ENUM, layout="identity")
+%【】荣耀要让她rrrt埠？混白萝卜叶同没“uhup？几句y)/)=hhmjhlluu?        branch_order = [c["label"] for c in model["root"]["children"]]
+        self.assertIn("商家", branch_order)
+        # 用户 → 岗位 → 管理员（与用例图/架构图同序）
+        self.assertLess(branch_order.index("用户"), branch_order.index("商家"))
+        self.assertLess(branch_order.index("商家"), branch_order.index("管理员"))
         branches = {c["label"]: c for c in model["root"]["children"]}
-        self.assertIn("商家", branches)
         merch_labs = [c["label"] for c in branches["商家"]["children"]]
         self.assertTrue(merch_labs)
         self.assertTrue(
             any("管理" in x or "订单" in x or "农产品" in x or "商品" in x for x in merch_labs)
         )
+
+    def test_marketplace_schema_fallback_draws_merchant_branch(self) -> None:
+        """多店已交付商家岗，但开题只有叙述（无「功能模块划分为」）→ 仍画第三枝。"""
+        from app.bake.domain_schema import build_domain_schema
+
+        narrative = (
+            "本系统全面涵盖用户端、商家端与超级管理员端三大核心角色；"
+            "商家端支持店铺信息维护、健身用品上架与订单发货；"
+            "管理员端负责商家入驻审核与平台监管。"
+        )
+        schema = build_domain_schema(
+            "方木健身用品电商平台",
+            "DOM-SHOP",
+            proposal_text=narrative,
+        )
+        self.assertTrue(schema.get("shopMarketplace"))
+        self.assertTrue(
+            any(
+                str(p.get("id")) == "shop_merchant"
+                for p in ((schema.get("roles") or {}).get("staff_posts") or [])
+            )
+        )
+        # 叙述腔扫不出身份枚举段
+        self.assertEqual(parse_identity_modules(narrative, schema=schema), [])
+        model = module_model(schema, proposal_text=narrative, layout="identity")
+        self.assertEqual(model["leaf_source"], "schema")
+        branch_order = [c["label"] for c in model["root"]["children"]]
+        self.assertIn("商家", branch_order)
+        self.assertEqual(len(branch_order), 3)
+        self.assertLess(branch_order.index("商家"), branch_order.index("平台管理员"))
 
     def test_expand_details(self) -> None:
         schema = self._shop_schema()

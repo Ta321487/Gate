@@ -186,6 +186,11 @@ def _dm_label_bundle(*, merchant: bool, use_cs: bool) -> dict[str, str]:
             "dmMerchantPeerPlaceholder": "选择买家账号",
             "dmMerchantEmptyPeers": "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。",
             "dmMerchantEmptyChat": "选择左侧会话，或新建联系买家。",
+            "dmPlatformPageLead": "查看与回复用户咨询，打开会话后自动刷新新消息。",
+            "dmPlatformNewTitle": "联系用户",
+            "dmPlatformPeerPlaceholder": "选择用户账号",
+            "dmPlatformEmptyPeers": "暂无会话，用户发起咨询后会出现在这里；也可点「新建」选用户。",
+            "dmPlatformEmptyChat": "选择左侧会话，或新建联系用户。",
         }
     if use_cs:
         return {
@@ -200,6 +205,11 @@ def _dm_label_bundle(*, merchant: bool, use_cs: bool) -> dict[str, str]:
             "dmMerchantPeerPlaceholder": "选择用户账号",
             "dmMerchantEmptyPeers": "暂无会话，用户发起咨询后会出现在这里；也可点「新建」选用户。",
             "dmMerchantEmptyChat": "选择左侧会话，或新建联系用户。",
+            "dmPlatformPageLead": "查看与回复用户咨询，打开会话后自动刷新新消息。",
+            "dmPlatformNewTitle": "联系用户",
+            "dmPlatformPeerPlaceholder": "选择用户账号",
+            "dmPlatformEmptyPeers": "暂无会话，用户发起咨询后会出现在这里；也可点「新建」选用户。",
+            "dmPlatformEmptyChat": "选择左侧会话，或新建联系用户。",
         }
     return {
         "dmPageTitle": "私信",
@@ -213,6 +223,11 @@ def _dm_label_bundle(*, merchant: bool, use_cs: bool) -> dict[str, str]:
         "dmMerchantPeerPlaceholder": "选择用户账号",
         "dmMerchantEmptyPeers": "暂无会话，点「新建」选用户开聊。",
         "dmMerchantEmptyChat": "选择左侧会话，或新建联系用户。",
+        "dmPlatformPageLead": "查看与回复用户咨询，打开会话后自动刷新新消息。",
+        "dmPlatformNewTitle": "联系用户",
+        "dmPlatformPeerPlaceholder": "选择用户账号",
+        "dmPlatformEmptyPeers": "暂无会话，用户发起咨询后会出现在这里；也可点「新建」选用户。",
+        "dmPlatformEmptyChat": "选择左侧会话，或新建联系用户。",
     }
 
 

@@ -761,8 +761,18 @@ def _java_root(dest: Path) -> Path | None:
     for h in hits:
         if h.is_dir() and (h / "config").is_dir():
             return h
-    # fallback first package leaf with capability
+    # fallback：带 capability / service / controller 的包根（裁剪夹具可能无 config）
+    for h in hits:
+        if h.is_dir() and (
+            (h / "capability").is_dir()
+            or (h / "service").is_dir()
+            or (h / "controller").is_dir()
+        ):
+            return h
     for p in base.rglob("capability"):
+        if p.is_dir():
+            return p.parent
+    for p in base.rglob("service"):
         if p.is_dir():
             return p.parent
     return None
@@ -902,6 +912,17 @@ def _strip_type_usages(text: str, type_name: str) -> str:
 
     if type_name == "TicketPolicy":
         return _strip_ticket_policy(text)
+
+    # 岗位菜单未扫词：登录仍要菜单包，不能 putAll(null)
+    if type_name == "RoleMenuStore":
+        text = _replace_type_calls(
+            text,
+            type_name,
+            "loginMenuPayload",
+            'java.util.Map.of("menuUsePacks", Boolean.TRUE, "menuKeys", java.util.List.of())',
+        )
+    if type_name == "OrgStore":
+        text = _replace_type_calls(text, type_name, "subtreeIds", "java.util.Set.of()")
 
     if type_name == "TicketStore":
         text = re.sub(rf"{fqn}\.scheduleChangeNotify\b", "false", text)
@@ -1327,10 +1348,88 @@ def _scrub_frontend_killed_refs(fe: Path, killed: set[str]) -> None:
             path.write_text(new, encoding="utf-8")
 
 
+def _skip_js_braces(text: str, open_idx: int) -> int:
+    """open_idx 指向 ``{``，返回匹配 ``}`` 之后下标；失败 -1。"""
+    if open_idx < 0 or open_idx >= len(text) or text[open_idx] != "{":
+        return -1
+    depth = 0
+    i = open_idx
+    while i < len(text):
+        ch = text[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        elif ch in ("'", '"', "`"):
+            quote = ch
+            i += 1
+            while i < len(text):
+                if text[i] == "\\":
+                    i += 2
+                    continue
+                if text[i] == quote:
+                    break
+                i += 1
+        i += 1
+    return -1
+
+
+def _remove_getschema_if_blocks(text: str, attr: str) -> str:
+    """按花括号配对删除 ``if (getSchema().attr …) { … }`` 整块。"""
+    needle = re.compile(rf"if\s*\(\s*getSchema\(\)\.{re.escape(attr)}\b")
+    while True:
+        m = needle.search(text)
+        if not m:
+            break
+        # 吃到条件闭括号后的 {
+        j = m.end()
+        while j < len(text) and text[j] != "{":
+            j += 1
+        if j >= len(text):
+            break
+        end = _skip_js_braces(text, j)
+        if end < 0:
+            break
+        # 吃掉块后换行
+        while end < len(text) and text[end] in " \t":
+            end += 1
+        if end < len(text) and text[end] == "\n":
+            end += 1
+        start = m.start()
+        # 若 if 前有缩进，从行首删
+        line_start = text.rfind("\n", 0, start) + 1
+        text = text[:line_start] + text[end:]
+    return text
+
+
+def _cleanup_router_holes(text: str) -> str:
+    """掏空路由对象后清掉空 if / 空 push·splice，避免 Vite 语法红。"""
+    prev = None
+    while prev != text:
+        prev = text
+        text = re.sub(r"(?ms)^\s*if\s*\([^;{]*\)\s*\{\s*\}\s*\n", "", text)
+        text = re.sub(
+            r"(?m)^\s*[^\n]*\.(?:push|splice)\(\s*\)\s*;?\s*\n",
+            "",
+            text,
+        )
+        text = re.sub(
+            r"(?m)^\s*[^\n]*\.splice\s*\(\s*[^,]+,\s*0\s*,\s*\)\s*;?\s*\n",
+            "",
+            text,
+        )
+        text = re.sub(r",\s*\)", ")", text)
+        text = re.sub(r",\s*,", ",", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text
+
+
 def _scrub_router_vue_imports(router_text: str, vue_rels: set[str]) -> str:
     """删掉指向已裁 Vue 的路由对象字面量，避免 Vite 解析缺失文件。"""
     if not vue_rels:
-        return router_text
+        return _cleanup_router_holes(router_text)
     text = router_text
     for rel in sorted(vue_rels, key=len, reverse=True):
         rel_n = rel.replace("\\", "/")
@@ -1351,8 +1450,7 @@ def _scrub_router_vue_imports(router_text: str, vue_rels: set[str]) -> str:
     text = re.sub(r",\s*,", ",", text)
     text = re.sub(r"\[\s*,", "[", text)
     text = re.sub(r",\s*\]", "]", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text
+    return _cleanup_router_holes(text)
 
 
 def _invite_wanted(spec: dict[str, Any]) -> bool:
@@ -1480,6 +1578,372 @@ def _prune_invite_codes(
                 deleted.append("scrub:menuRoutes.invite_codes")
 
 
+@dataclass(frozen=True)
+class SchemaGate:
+    """schema / thicken 开关：未开则删源码（各域共用，禁止只关菜单留死代码）。"""
+
+    id: str
+    java_files: tuple[str, ...]
+    vue_files: tuple[str, ...] = ()
+    types: tuple[str, ...] = ()
+    router_paths: tuple[str, ...] = ()
+    schema_if_attrs: tuple[str, ...] = ()
+    menu_keys: tuple[str, ...] = ()
+    # 条件表达式里的布尔方法 → false（避免 if(null) 编译红）
+    bool_methods: tuple[str, ...] = ()
+
+
+def _spec_schema(spec: dict[str, Any]) -> dict[str, Any]:
+    s = spec.get("schema")
+    return s if isinstance(s, dict) else {}
+
+
+def _spec_thicken(spec: dict[str, Any], key: str) -> dict[str, Any]:
+    t = _spec_schema(spec).get(key)
+    return t if isinstance(t, dict) else {}
+
+
+def _schema_gate_wanted(gate: SchemaGate, spec: dict[str, Any]) -> bool:
+    schema = _spec_schema(spec)
+    ct = _spec_thicken(spec, "contentThicken")
+    it = _spec_thicken(spec, "interactThicken")
+    oc = schema.get("orgCrosscut") if isinstance(schema.get("orgCrosscut"), dict) else {}
+    gid = gate.id
+    if gid == "parking_pass":
+        return bool(schema.get("parkingPass"))
+    if gid == "patient_profile":
+        return bool(schema.get("patientProfile"))
+    if gid == "reserve_blacklist":
+        return bool(schema.get("reserveBlacklist"))
+    if gid == "category_follow":
+        return bool(ct.get("categoryFollow"))
+    if gid == "friend_links":
+        return bool(ct.get("friendLinks"))
+    if gid == "play_progress":
+        return bool(ct.get("playProgress"))
+    if gid == "media_episode":
+        return bool(ct.get("episodeList"))
+    if gid == "user_follow":
+        return bool(ct.get("followersOnlyComment") or it.get("followersOnlyComment"))
+    if gid == "org_dict":
+        return bool(oc.get("dict"))
+    if gid == "org_site_settings":
+        return bool(oc.get("siteSettings"))
+    if gid == "org_tree":
+        return bool(oc.get("org"))
+    if gid == "org_role_menus":
+        return bool(oc.get("roleMenus"))
+    if gid == "ux_help":
+        ux = schema.get("uxCrosscut") if isinstance(schema.get("uxCrosscut"), dict) else {}
+        return bool(ux.get("help"))
+    if gid == "ux_files":
+        ux = schema.get("uxCrosscut") if isinstance(schema.get("uxCrosscut"), dict) else {}
+        return bool(ux.get("files"))
+    if gid == "ux_commission":
+        ux = schema.get("uxCrosscut") if isinstance(schema.get("uxCrosscut"), dict) else {}
+        return bool(ux.get("commission"))
+    return False
+
+
+# 各域出包共用：开题/加厚没写到的开关，源码一并擦掉
+_SCHEMA_GATES: tuple[SchemaGate, ...] = (
+    SchemaGate(
+        "parking_pass",
+        java_files=(
+            "service/ParkingPassStore.java",
+            "controller/ParkingPassController.java",
+        ),
+        vue_files=(
+            "views/user/ParkingPasses.vue",
+            "views/admin/ParkingPassAdmin.vue",
+        ),
+        types=("ParkingPassStore",),
+        router_paths=("parking-passes",),
+        schema_if_attrs=("parkingPass",),
+        menu_keys=("parking_pass", "parking_pass_admin"),
+        bool_methods=("spendOne",),
+    ),
+    SchemaGate(
+        "patient_profile",
+        java_files=(
+            "service/PatientProfileStore.java",
+            "controller/PatientProfileController.java",
+        ),
+        vue_files=("views/user/PatientProfiles.vue",),
+        types=("PatientProfileStore",),
+        router_paths=("patient-profiles",),
+        schema_if_attrs=("patientProfile",),
+        menu_keys=("patient_profile",),
+    ),
+    SchemaGate(
+        "reserve_blacklist",
+        java_files=(
+            "service/ReserveBlacklistStore.java",
+            "controller/ReserveBlacklistController.java",
+        ),
+        vue_files=(
+            "views/admin/ReserveBlacklistAdmin.vue",
+            "views/user/ReserveBlacklistAppeal.vue",
+        ),
+        types=("ReserveBlacklistStore",),
+        router_paths=("reserve/blacklist", "reserve/blacklist-appeal"),
+        schema_if_attrs=("reserveBlacklist",),
+        menu_keys=("reserve_blacklist", "reserve_blacklist_appeal"),
+    ),
+    SchemaGate(
+        "category_follow",
+        java_files=(
+            "service/CategoryFollowStore.java",
+            "controller/CategoryFollowController.java",
+        ),
+        types=("CategoryFollowStore",),
+    ),
+    SchemaGate(
+        "friend_links",
+        java_files=(
+            "service/BlogFriendLinkStore.java",
+            "controller/BlogFriendLinkController.java",
+        ),
+        vue_files=("views/admin/BlogFriendLinksAdmin.vue",),
+        types=("BlogFriendLinkStore",),
+        router_paths=("blog-friend-links",),
+        menu_keys=("blog_friend_links",),
+    ),
+    SchemaGate(
+        "play_progress",
+        java_files=(
+            "service/MediaPlayProgressStore.java",
+            "controller/MediaPlayProgressController.java",
+        ),
+        types=("MediaPlayProgressStore",),
+    ),
+    SchemaGate(
+        "media_episode",
+        java_files=(
+            "service/MediaEpisodeStore.java",
+            "controller/MediaEpisodeController.java",
+        ),
+        types=("MediaEpisodeStore",),
+    ),
+    SchemaGate(
+        "user_follow",
+        java_files=(
+            "service/UserFollowStore.java",
+            "controller/UserFollowController.java",
+        ),
+        types=("UserFollowStore",),
+    ),
+    SchemaGate(
+        "org_dict",
+        java_files=(
+            "service/DictStore.java",
+            "controller/DictController.java",
+        ),
+        vue_files=("views/admin/DictAdmin.vue",),
+        types=("DictStore",),
+        router_paths=("dict",),
+        menu_keys=("dict",),
+    ),
+    SchemaGate(
+        "org_site_settings",
+        java_files=(
+            "service/SiteSettingStore.java",
+            "controller/SiteSettingController.java",
+        ),
+        vue_files=("views/admin/SiteSettingsAdmin.vue",),
+        types=("SiteSettingStore",),
+        router_paths=("site-settings",),
+        menu_keys=("site_settings",),
+    ),
+    SchemaGate(
+        "org_tree",
+        java_files=(
+            "service/OrgStore.java",
+            "controller/OrgController.java",
+        ),
+        vue_files=("views/admin/OrgAdmin.vue",),
+        types=("OrgStore",),
+        router_paths=("org",),
+        menu_keys=("org",),
+    ),
+    SchemaGate(
+        "org_role_menus",
+        java_files=(
+            "service/RoleMenuStore.java",
+            "controller/RoleMenuController.java",
+        ),
+        vue_files=("views/admin/RoleMenusAdmin.vue",),
+        types=("RoleMenuStore",),
+        router_paths=("role-menus",),
+        menu_keys=("role_menus",),
+    ),
+    SchemaGate(
+        "ux_help",
+        java_files=(
+            "service/HelpStore.java",
+            "controller/HelpController.java",
+        ),
+        vue_files=(
+            "views/Help.vue",
+            "views/admin/HelpAdmin.vue",
+        ),
+        types=("HelpStore",),
+        router_paths=("help",),
+        menu_keys=("help", "help_admin"),
+    ),
+    SchemaGate(
+        "ux_files",
+        java_files=("controller/FileController.java",),
+        vue_files=("views/admin/FilesAdmin.vue",),
+        types=(),
+        router_paths=("files",),
+        menu_keys=("files",),
+    ),
+    SchemaGate(
+        "ux_commission",
+        java_files=(
+            "service/CommissionStore.java",
+            "controller/CommissionController.java",
+        ),
+        vue_files=("views/admin/CommissionAdmin.vue",),
+        types=("CommissionStore",),
+        router_paths=("commissions",),
+        menu_keys=("commissions",),
+    ),
+)
+
+# 兼容旧测试 / 外部引用
+_PARKING_PASS_JAVA_RELS = _SCHEMA_GATES[0].java_files
+_PARKING_PASS_VUE_RELS = _SCHEMA_GATES[0].vue_files
+
+
+def _parking_pass_wanted(spec: dict[str, Any]) -> bool:
+    return _schema_gate_wanted(_SCHEMA_GATES[0], spec)
+
+
+def _scrub_schema_gate_java(text: str, gate: SchemaGate) -> str:
+    for tname in gate.types:
+        for meth in gate.bool_methods:
+            text = _replace_type_calls(text, tname, meth, "false")
+        text = _strip_type_usages(text, tname)
+    # 调用被掏空后残留的空 try/catch
+    text = re.sub(
+        r"try\s*\{\s*\}\s*catch\s*\([^)]*\)\s*\{\s*\}",
+        "",
+        text,
+    )
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text
+
+
+def _prune_schema_gate(
+    dest: Path,
+    gate: SchemaGate,
+    *,
+    java_root: Path | None,
+    fe: Path | None,
+    deleted: list[str],
+) -> None:
+    """未开 schema/thicken 开关：删对应 Store/页，并抹掉残留引用。"""
+    if java_root:
+        for rel in gate.java_files:
+            p = java_root / rel
+            if p.is_file():
+                p.unlink()
+                deleted.append(f"java:{rel}")
+        needles = set(gate.types) | set(gate.router_paths)
+        for java in java_root.rglob("*.java"):
+            raw = java.read_text(encoding="utf-8")
+            if not any(n and n in raw for n in needles):
+                continue
+            if not any(t in raw for t in gate.types):
+                continue
+            new = _scrub_schema_gate_java(raw, gate)
+            if new != raw:
+                java.write_text(new, encoding="utf-8")
+                deleted.append(f"scrub:{java.name}.{gate.id}")
+    if fe:
+        vue_killed: set[str] = set()
+        for rel in gate.vue_files:
+            rel_n = rel.replace("\\", "/")
+            p = fe / rel_n
+            if p.is_file():
+                p.unlink()
+                deleted.append(f"vue:{rel_n}")
+            vue_killed.add(rel_n)
+        router = fe / "router" / "index.js"
+        if router.is_file() and (vue_killed or gate.router_paths or gate.schema_if_attrs):
+            rt = router.read_text(encoding="utf-8")
+            # 先按花括号删 getSchema().xxx 整块，再掏 import，避免留半截括号
+            nt = rt
+            for attr in gate.schema_if_attrs:
+                nt = _remove_getschema_if_blocks(nt, attr)
+            nt = _scrub_router_vue_imports(nt, vue_killed) if vue_killed else nt
+            for path in gate.router_paths:
+                nt = re.sub(
+                    rf"\{{[^{{}}]*path:\s*['\"]{re.escape(path)}['\"][^{{}}]*\}}\s*,?",
+                    "",
+                    nt,
+                )
+            nt = _cleanup_router_holes(nt)
+            # 友情链接 enricher：未开则改成透传，避免 splice 空参
+            if gate.id == "friend_links":
+                nt2 = re.sub(
+                    r"function\s+withBlogFriendLinkRoutes\s*\(\s*baseRoutes\s*\)\s*\{.*?\n\}",
+                    _passthrough_enricher("withBlogFriendLinkRoutes").rstrip(),
+                    nt,
+                    flags=re.S,
+                )
+                if nt2 != nt:
+                    nt = nt2
+            if gate.id == "ux_help":
+                nt2 = re.sub(
+                    r"function\s+withHelpRoutes\s*\(\s*baseRoutes\s*\)\s*\{.*?\n\}",
+                    _passthrough_enricher("withHelpRoutes").rstrip(),
+                    nt,
+                    flags=re.S,
+                )
+                if nt2 != nt:
+                    nt = nt2
+            if gate.id == "ux_files":
+                nt2 = re.sub(
+                    r"function\s+withFileRoutes\s*\(\s*baseRoutes\s*\)\s*\{.*?\n\}",
+                    _passthrough_enricher("withFileRoutes").rstrip(),
+                    nt,
+                    flags=re.S,
+                )
+                if nt2 != nt:
+                    nt = nt2
+            if gate.id == "ux_commission":
+                nt2 = re.sub(
+                    r"function\s+withCommissionRoutes\s*\(\s*baseRoutes\s*\)\s*\{.*?\n\}",
+                    _passthrough_enricher("withCommissionRoutes").rstrip(),
+                    nt,
+                    flags=re.S,
+                )
+                if nt2 != nt:
+                    nt = nt2
+            if nt != rt:
+                router.write_text(nt, encoding="utf-8")
+                deleted.append(f"scrub:router.{gate.id}")
+        if gate.menu_keys:
+            routes_util = fe / "utils" / "menuRoutes.js"
+            if routes_util.is_file():
+                raw = routes_util.read_text(encoding="utf-8")
+                new = raw
+                for key in gate.menu_keys:
+                    new = re.sub(
+                        rf"(?m)^\s*{re.escape(key)}\s*:\s*['\"][^'\"]+['\"]\s*,?\s*\n",
+                        "",
+                        new,
+                    )
+                if new != raw:
+                    routes_util.write_text(new, encoding="utf-8")
+                    deleted.append(f"scrub:menuRoutes.{gate.id}")
+        if vue_killed:
+            _scrub_frontend_killed_refs(fe, vue_killed)
+
+
 def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[str, Any]:
     """按 spec 裁剪工作区；返回统计。可对已有工作区幂等重跑。"""
     dest = Path(dest)
@@ -1592,6 +2056,13 @@ def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[s
     if not _invite_wanted(spec):
         _prune_invite_codes(dest, java_root=java_root, fe=fe, deleted=deleted)
 
+    # schema / thicken 未开：连源码一起裁（各域共用；禁止只关开关留死代码）
+    for gate in _SCHEMA_GATES:
+        if not _schema_gate_wanted(gate, spec):
+            _prune_schema_gate(
+                dest, gate, java_root=java_root, fe=fe, deleted=deleted
+            )
+
     return {
         "domain": domain,
         "capabilities": sorted(caps),
@@ -1653,6 +2124,18 @@ def scan_forbidden_island_files(
                     hits.append(f"java:{rel}")
         if fe:
             for rel in _INVITE_VUE_RELS:
+                rel_n = rel.replace("\\", "/")
+                if (fe / rel_n).is_file():
+                    hits.append(f"vue:{rel_n}")
+    for gate in _SCHEMA_GATES:
+        if _schema_gate_wanted(gate, spec):
+            continue
+        if java_root:
+            for rel in gate.java_files:
+                if (java_root / rel).is_file():
+                    hits.append(f"java:{rel}")
+        if fe:
+            for rel in gate.vue_files:
                 rel_n = rel.replace("\\", "/")
                 if (fe / rel_n).is_file():
                     hits.append(f"vue:{rel_n}")

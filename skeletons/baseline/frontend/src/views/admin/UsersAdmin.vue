@@ -9,8 +9,32 @@
         <el-radio-button value="cancels">注销申请</el-radio-button>
       </el-radio-group>
       <el-input v-model="keyword" clearable placeholder="用户名 / 昵称 / 手机 / 资料" style="width:240px" @keyup.enter="load" />
+      <el-input
+        v-if="scope !== 'cancels'"
+        v-model="tagFilter"
+        clearable
+        :placeholder="tagsFilterPlaceholder"
+        style="width:160px"
+        @keyup.enter="load"
+      />
+      <el-select
+        v-if="scope !== 'cancels' && orgFeatureOn"
+        v-model="orgFilter"
+        clearable
+        filterable
+        :placeholder="orgFilterPlaceholder"
+        style="width:160px"
+        @change="load"
+      >
+        <el-option v-for="o in orgOptions" :key="o.id" :label="o.name" :value="o.id" />
+      </el-select>
       <el-button type="primary" @click="load">查询</el-button>
       <el-button @click="load">刷新</el-button>
+      <template v-if="scope !== 'cancels' && selected.length">
+        <span class="batch-hint">{{ batchHint }}</span>
+        <el-button type="success" @click="batchSet(true)">{{ batchEnableLabel }}</el-button>
+        <el-button type="danger" @click="batchSet(false)">{{ batchDisableLabel }}</el-button>
+      </template>
     </div>
     <p v-if="marketplace && adminLead && scope !== 'cancels'" class="page-lead">{{ adminLead }}</p>
     <div v-if="scope === 'cancels'" class="table-scroll">
@@ -31,7 +55,8 @@
       </el-table>
     </div>
     <div v-else class="table-scroll">
-    <el-table :data="list" stripe>
+    <el-table :data="list" stripe @selection-change="onSelectionChange">
+      <el-table-column type="selection" width="44" />
       <el-table-column label="" width="56">
         <template #default="{ row }">
           <el-avatar :size="32" :src="row.avatarUrl || undefined">
@@ -43,7 +68,12 @@
       <el-table-column label="姓名" width="100">
         <template #default="{ row }">{{ extraOf(row, 'realName') || row.nickname || '—' }}</template>
       </el-table-column>
-      <el-table-column prop="phone" label="手机" width="120" />
+      <el-table-column label="手机" width="130">
+        <template #default="{ row }">{{ displayPhone(row.phone) }}</template>
+      </el-table-column>
+      <el-table-column :label="tagsLabel" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.adminTags || '—' }}</template>
+      </el-table-column>
       <el-table-column
         v-for="col in adminCols"
         :key="col.key"
@@ -146,6 +176,14 @@
           <el-form-item label="昵称">
             <el-input v-model="form.nickname" maxlength="32" :disabled="auditMode" />
           </el-form-item>
+          <el-form-item v-if="!auditMode" :label="tagsLabel">
+            <el-input v-model="form.adminTags" maxlength="255" :placeholder="tagsHint" />
+          </el-form-item>
+          <el-form-item v-if="!auditMode && orgFeatureOn" :label="orgPickLabel">
+            <el-select v-model="form.orgId" clearable filterable style="width: 100%" :placeholder="orgPickPlaceholder">
+              <el-option v-for="o in orgOptions" :key="o.id" :label="o.name" :value="o.id" />
+            </el-select>
+          </el-form-item>
           <el-form-item
             v-for="f in visibleFields"
             :key="f.key"
@@ -209,6 +247,24 @@ const roles = computed(() => getSchema()?.roles || {})
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const labels = schemaLabels()
 const adminLead = computed(() => labels.usersAdminLead || '')
+const tagsLabel = computed(() => labels.userTagsLabel || '管理标签')
+const tagsHint = computed(() => labels.userTagsHint || '多个标签用逗号分隔，便于筛选')
+const tagsFilterPlaceholder = computed(() => labels.userTagsFilterPlaceholder || '按标签筛选')
+const batchEnableLabel = computed(() => labels.batchEnableLabel || '批量启用')
+const batchDisableLabel = computed(() => labels.batchDisableLabel || '批量停用')
+const maskPhoneOn = ref(false)
+const selected = ref([])
+const tagFilter = ref('')
+const orgFilter = ref(null)
+const orgOptions = ref([])
+const orgFeatureOn = computed(() => !!getSchema()?.orgCrosscut?.org)
+const siteSettingsOn = computed(() => !!getSchema()?.orgCrosscut?.siteSettings)
+const orgFilterPlaceholder = computed(() => labels.orgFilterPlaceholder || '按组织筛选')
+const orgPickLabel = computed(() => labels.orgPickLabel || '所属组织')
+const orgPickPlaceholder = computed(() => labels.orgPickPlaceholder || '请选择组织')
+const batchHint = computed(() =>
+  (labels.batchSelectedHint || '已选 {n} 人').replace('{n}', String(selected.value.length)),
+)
 const userLabel = computed(() => roleLabel('user', '用户'))
 const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const postOptions = computed(() => staffPosts())
@@ -330,8 +386,36 @@ const form = reactive({
   role: '',
   superAdmin: false,
   staffPost: '',
-  extras: emptyProfileExtras(),
+    adminTags: '',
+    orgId: null,
+    extras: emptyProfileExtras(),
 })
+
+function onSelectionChange(rows) {
+  selected.value = rows || []
+}
+
+function displayPhone(phone) {
+  const s = (phone || '').toString().trim()
+  if (!s || !maskPhoneOn.value) return s || '—'
+  if (/^\d{11}$/.test(s)) return `${s.slice(0, 3)}****${s.slice(7)}`
+  if (s.length <= 4) return '****'
+  return `${s.slice(0, 2)}****${s.slice(-2)}`
+}
+
+async function batchSet(enabled) {
+  const names = selected.value.map((r) => r.username).filter(Boolean)
+  if (!names.length) return
+  await ElMessageBox.confirm(
+    enabled ? `确认启用选中的 ${names.length} 个账号？` : `确认停用选中的 ${names.length} 个账号？停用后将被强制下线。`,
+    enabled ? '批量启用' : '批量停用',
+  )
+  const res = await http.post('/api/admin/users/batch-enabled', { usernames: names, enabled })
+  const n = res.data?.count ?? 0
+  ElMessage.success(enabled ? `已启用 ${n} 人` : `已停用 ${n} 人`)
+  selected.value = []
+  load()
+}
 
 const auditMode = computed(() => isPendingMerchant(form))
 
@@ -383,9 +467,15 @@ async function load() {
     return
   }
   const res = await http.get('/api/admin/users', {
-    params: { keyword: keyword.value || undefined, scope: scope.value },
+    params: {
+      keyword: keyword.value || undefined,
+      tag: tagFilter.value || undefined,
+      orgId: orgFilter.value || undefined,
+      scope: scope.value,
+    },
   })
   list.value = res.data
+  selected.value = []
 }
 
 function openEdit(row) {
@@ -397,6 +487,8 @@ function openEdit(row) {
     role: row.role || '',
     superAdmin: !!row.superAdmin,
     staffPost: row.staffPost || '',
+    adminTags: row.adminTags || '',
+    orgId: row.orgId || null,
     extras: { ...emptyProfileExtras(profileFieldsForAudience(audience)), ...(row.extras || {}) },
   })
   visible.value = true
@@ -406,6 +498,8 @@ async function save() {
   await http.put(`/api/admin/users/${form.username}`, {
     nickname: form.nickname,
     phone: form.phone,
+    adminTags: form.adminTags,
+    orgId: form.orgId || null,
     extras: form.extras,
   })
   ElMessage.success('已保存')
@@ -444,7 +538,7 @@ async function openMute(row) {
   const { value } = await ElMessageBox.prompt(
     muted
       ? `当前禁言至 ${muteUntilLabel(row)}。输入禁言天数（1～90），或输入 0 解除禁言。`
-      : '输入禁言天数（1～90）。禁言期内不可发帖或回复，不等于停用账号。',
+      : '输入禁言天数（1～90）。禁言期内不可发帖或回复，账号仍可登录。',
     labels.postMuteVerb || '禁言',
     {
       inputValue: muted ? '0' : '7',
@@ -530,11 +624,33 @@ async function revoke(row) {
   load()
 }
 
-onMounted(load)
+async function loadMaskFlag() {
+  if (!siteSettingsOn.value) {
+    maskPhoneOn.value = false
+    return
+  }
+  try {
+    const res = await http.get('/api/admin/site-settings')
+    maskPhoneOn.value = !!res.data?.maskPhone
+  } catch {
+    maskPhoneOn.value = false
+  }
+}
+
+onMounted(() => {
+  loadMaskFlag()
+  if (orgFeatureOn.value) {
+    http.get('/api/org/options').then((res) => {
+      orgOptions.value = res.data || []
+    }).catch(() => {})
+  }
+  load()
+})
 </script>
 
 <style scoped>
 .toolbar { margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.batch-hint { font-size: 13px; color: var(--portal-muted, #606266); }
 .page-lead { margin: 0 0 10px; color: var(--portal-muted, #606266); font-size: 13px; }
 .grid {
   display: grid;

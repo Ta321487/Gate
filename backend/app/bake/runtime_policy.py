@@ -151,7 +151,7 @@ FIELDS: tuple[tuple[str, str, str, str, str, str], ...] = (
         "instrumentOvertimeYuan",
         "numeric",
     ),
-    # ---------- §0 X-AUTH 通识阈值（常开默认；禁止 thesis.auth-*）----------
+    # ---------- 账号安全阈值（常开默认；禁止 thesis.auth-*）----------
     (
         "auth-lock-max-attempts",
         "AUTH_LOCK_MAX_ATTEMPTS",
@@ -290,6 +290,8 @@ FLAG_KEYS: tuple[tuple[str, str], ...] = (
     ("meeting-minutes-required", "MEETING_MINUTES_REQUIRED"),
     ("hotel-notice-required", "HOTEL_NOTICE_REQUIRED"),
     ("instrument-training-required", "INSTRUMENT_TRAINING_REQUIRED"),
+    ("sensitive-confirm", "SENSITIVE_CONFIRM"),
+    ("commission-enabled", "COMMISSION_ENABLED"),
 )
 
 
@@ -351,6 +353,11 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
         ctx["archive_ent"],
     )
     out: dict[str, Any] = {}
+    ux = schema.get("uxCrosscut") if isinstance(schema.get("uxCrosscut"), dict) else {}
+    if ux.get("confirm"):
+        out["SENSITIVE_CONFIRM"] = True
+    if ux.get("commission"):
+        out["COMMISSION_ENABLED"] = True
 
     # ---- 档案表位与档案侧开关 ----
     if "archive" in caps:
@@ -658,6 +665,8 @@ COMMENTS: dict[str, str] = {
     "MEETING_MINUTES_REQUIRED": "会议结束后须上传纪要附件",
     "HOTEL_NOTICE_REQUIRED": "客房预约须勾选入住须知",
     "INSTRUMENT_TRAINING_REQUIRED": "仪器机时预约须勾选培训合格",
+    "SENSITIVE_CONFIRM": "删除、驳回须带确认标记",
+    "COMMISSION_ENABLED": "一级佣金台账",
 
     "ARCHIVE_SOFT_DELETE": "档案软删除（标记删除，不物理抹掉）",
     "ARCHIVE_USER_PUBLISH": "允许用户自行发布档案内容",
@@ -718,7 +727,7 @@ GROUP_TITLES: dict[str, str] = {
     "table": "档案 / 订单 / 预约表位",
     "label": "下拉展示标签",
     "numeric": "数值阈值",
-    "flag": "能力开关（按开题启用）",
+    "flag": "功能开关（按本课题启用）",
 }
 
 _ESCAPE = str.maketrans({"\\": "\\\\", '"': '\\"'})
@@ -755,8 +764,8 @@ def render(values: dict[str, Any] | None = None) -> str:
         f"package {POLICY_PACKAGE};",
         "",
         "/**",
-        " * 非单据业务规则与功能开关（档案表位、下拉主数据、订单/预约表、能力岛）。",
-        " * <p>按本系统开题口径生成；单据相关常量见 {@link TicketPolicy}，两处不要互相搬键。</p>",
+        " * 非单据业务规则与功能开关（档案表位、下拉主数据、订单/预约表等）。",
+        " * <p>按本课题需求生成；单据相关常量见 {@link TicketPolicy}，两处不要互相搬键。</p>",
         " * <p>需要调整业务口径时改这里的常量即可。</p>",
         " */",
         f"public final class {POLICY_CLASS} {{",

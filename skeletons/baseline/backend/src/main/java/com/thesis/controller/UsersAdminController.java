@@ -6,6 +6,7 @@ import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
 import com.thesis.service.AuthSessionStore;
+import com.thesis.service.OrgStore;
 import com.thesis.service.UserStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,10 +30,21 @@ public class UsersAdminController {
     @GetMapping
     public R<List<Map<String, Object>>> list(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false) Long orgId,
             @RequestParam(required = false, defaultValue = "users") String scope,
             HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
-        return R.ok(UserStore.listManaged(userRole, scope, keyword));
+        List<Map<String, Object>> rows = UserStore.listManaged(userRole, scope, keyword, tag);
+        if (orgId != null && orgId > 0) {
+            java.util.Set<Long> tree = OrgStore.subtreeIds(orgId);
+            rows = rows.stream().filter(r -> {
+                Object v = r.get("orgId");
+                if (!(v instanceof Number n)) return false;
+                return tree.contains(n.longValue());
+            }).toList();
+        }
+        return R.ok(rows);
     }
 
     @PutMapping("/{username}")
@@ -52,13 +64,57 @@ public class UsersAdminController {
             if (extras.isEmpty() && !body.containsKey("extras")) extras = null;
             boolean protectLast = !allowAppointFromUsers;
             var updated = UserStore.adminUpdate(username, nick, phone, enabled, extras, protectLast);
+            if (body.containsKey("adminTags")) {
+                updated = UserStore.adminUpdateTags(username, String.valueOf(body.get("adminTags")));
+            }
+            if (body.containsKey("orgId")) {
+                Object rawOrg = body.get("orgId");
+                Long orgId = rawOrg == null || String.valueOf(rawOrg).isBlank()
+                        || "null".equals(String.valueOf(rawOrg))
+                        ? null
+                        : Long.parseLong(String.valueOf(rawOrg).trim());
+                updated = UserStore.updateOrgId(username, orgId);
+            }
             if (enabled != null && !enabled) {
                 AuthSessionStore.kickAll(username);
             }
             String op = AdminAuth.requireLogin(session);
             AuditLogStore.record(op, "user_update", "user", username, "更新用户资料或启用状态");
             return R.ok(updated.toMap());
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /** 批量启用/停用 */
+    @PostMapping("/batch-enabled")
+    public R<Map<String, Object>> batchEnabled(
+            @RequestBody Map<String, Object> body,
+            HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        try {
+            Map<String, Object> b = body == null ? Map.of() : body;
+            Object raw = b.get("usernames");
+            List<String> names = new java.util.ArrayList<>();
+            if (raw instanceof List<?> list) {
+                for (Object o : list) {
+                    if (o != null) names.add(String.valueOf(o).trim());
+                }
+            }
+            boolean enabled = Boolean.parseBoolean(String.valueOf(b.getOrDefault("enabled", "true")));
+            boolean protectLast = !allowAppointFromUsers;
+            List<String> ok = UserStore.batchSetEnabled(names, enabled, protectLast);
+            if (!enabled) {
+                for (String u : ok) {
+                    AuthSessionStore.kickAll(u);
+                }
+            }
+            String op = AdminAuth.requireLogin(session);
+            AuditLogStore.record(
+                    op, "user_batch_enabled", "user", String.join(",", ok),
+                    enabled ? "批量启用" : "批量停用");
+            return R.ok(Map.of("count", ok.size(), "usernames", ok));
+        } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }
     }
@@ -125,7 +181,7 @@ public class UsersAdminController {
         }
     }
 
-    /** E-12：设/解除帖子禁言截止时间（≠停用账号） */
+    /** 设/解除帖子禁言截止时间 */
     @PostMapping("/{username}/post-mute")
     public R<Map<String, Object>> postMute(
             @PathVariable String username,

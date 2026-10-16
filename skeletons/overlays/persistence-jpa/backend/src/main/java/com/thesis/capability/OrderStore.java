@@ -1,6 +1,7 @@
 package com.thesis.capability;
 
 import com.thesis.config.JpaSupport;
+import com.thesis.service.CommissionStore;
 import com.thesis.service.MessageStore;
 import com.thesis.service.SeatStore;
 import com.thesis.service.UserStore;
@@ -32,7 +33,7 @@ public final class OrderStore {
     private static boolean lineCustom = false;
     private static boolean lineCustomPlaceConfirmed = false;
     private static boolean noCasualRefund = false;
-    /** 收货后可申请售后天数；0=不限（开题未钉 afterSaleDays 时）。 */
+    /** 收货后可申请售后天数；0=不限（未配置售后天数时）。 */
     private static int afterSaleDays = 0;
     private static final ThreadLocal<Set<Long>> CART_ITEM_FILTER = new ThreadLocal<>();
     private static final ThreadLocal<Map<String, Object>> PLACE_EXTRAS = new ThreadLocal<>();
@@ -52,7 +53,7 @@ public final class OrderStore {
         enabled = !CART.isBlank() && !ORDER.isBlank() && !LINE.isBlank();
         useQuota = quota;
         AddressStore.resetCache();
-        // 履约列由 bake 按域写入 schema，禁止运行时补餐饮/物流超集
+        // 履约列由 工程生成 按域写入 schema，禁止运行时补餐饮/物流超集
     }
 
     public static void unbind() {
@@ -446,7 +447,7 @@ public final class OrderStore {
         if (LoyaltyStore.anyEnabled()) {
             priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
-            // 在线支付仍扣账户余额；不对接微信/支付宝商户 SDK ≠ 免除余额
+            // 在线支付仍扣账户余额；未接微信/支付宝商户接口
             if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
@@ -1296,6 +1297,7 @@ public final class OrderStore {
                 channel,
                 Timestamp.valueOf(LocalDateTime.now()),
                 orderId);
+        CommissionStore.onOrderPaid(username, orderId, toDouble(m.get("totalYuan")));
         return getOrder(orderId);
     }
 
@@ -2036,7 +2038,7 @@ public final class OrderStore {
     }
 
     private static void ensureDeliveryColumns() {
-        // no-op：履约列由 bake 按域写入，禁止运行时补跨域超集
+        // no-op：履约列由 工程生成 按域写入，禁止运行时补跨域超集
     }
 
     private static void ensureLoyaltyColumns() {
@@ -2365,7 +2367,7 @@ public final class OrderStore {
         return getOrder(orderId);
     }
 
-    /** 物流轨迹：按状态拼多节点时间线（含运输中/派送中；不对接快递公司 API）。 */
+    /** 物流轨迹：按状态拼多节点时间线（含运输中/派送中；未接快递公司接口，按订单状态本地拼轨迹）。 */
     public static List<Map<String, Object>> logisticsTrace(long orderId) {
         requireEnabled();
         Map<String, Object> m = getOrder(orderId);

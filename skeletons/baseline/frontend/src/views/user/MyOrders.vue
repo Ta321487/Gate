@@ -26,7 +26,7 @@
       <div class="hd">
         <strong class="hd-title">
           <StatusChip :tone="orderTone(row.status)" compact />
-          {{ orderNoun }} #{{ row.id }}
+          {{ orderNoun }} #<CopyableId :value="row.id" />
         </strong>
         <el-tag size="small" effect="plain">{{ displayStatus(row) }}</el-tag>
       </div>
@@ -376,6 +376,7 @@ import ImmSteps from '../../components/ImmSteps.vue'
 import OrderTraceDialog from '../../components/OrderTraceDialog.vue'
 import PageSkeleton from '../../components/PageSkeleton.vue'
 import StatusChip from '../../components/StatusChip.vue'
+import CopyableId from '../../components/CopyableId.vue'
 import { formatRelative } from '../../utils/dates.js'
 import { hasCap, hasTrait, getSchema, menuLabel } from '../../utils/domainSchema.js'
 import {
@@ -477,7 +478,7 @@ const inviteReviewHint = computed(() => {
 const refundTypeOn = computed(() => !!thicken.value.refundType)
 const refundTrackingOn = computed(() => !!thicken.value.refundTracking)
 const refundTraceOn = computed(() => !!thicken.value.refundTrace)
-/** 与 bake trade_thicken.DEFAULT_REFUND_REASONS 对齐；schema 漏写时仍出下拉 */
+/** 退款原因下拉；配置缺失时用内置默认项 */
 const DEFAULT_REFUND_REASONS = ['质量问题', '少件/错发', '描述不符', '物流损坏', '其他']
 const refundReasonOptions = computed(() => {
   const opts = getSchema()?.entities?.order?.refundReasonOptions

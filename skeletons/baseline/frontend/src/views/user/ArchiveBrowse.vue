@@ -1419,7 +1419,7 @@ function tutorQuotaText(row) {
   return `${used}/${cap}`
 }
 
-/** I-05：总费用 ÷ 座位数（余座+已占近似 = 初始 stock 不可得时用余座+1） */
+/** 总费用 ÷ 座位数（余座+已占近似 = 初始 stock 不可得时用余座+1） */
 function aaPerPerson(row) {
   if (!carpoolAaCalcOn.value || !row) return null
   const total = Number(row.fareTotalYuan ?? row.fare_total_yuan ?? 0)
@@ -1743,11 +1743,11 @@ const isOrderMode = computed(
 )
 const isSlotMode = computed(() => {
   if (!caps.value.includes('slot_reserve')) return false
-  // C-07 仪器机时等：借+约并存时主按钮走约时段（traits.slotPrimary）
+  //  仪器机时等：借+约并存时主按钮走约时段（traits.slotPrimary）
   if (hasTrait('slotPrimary')) return true
   return !caps.value.includes('ticket_flow')
 })
-/** 即时收藏：交易/内容流；婚恋心动可与单据并存（interactThicken.datingFavorites） */
+/** 即时收藏：交易/内容流；婚恋心动可与单据并存（收藏/心动） */
 const favOn = computed(() => {
   if (!caps.value.includes('favorites')) return false
   if (isOrderMode.value || isSeatSelectMode.value) return true
@@ -3770,6 +3770,10 @@ async function submitApply() {
 }
 
 onMounted(async () => {
+  const qWord = route.query?.q
+  if (qWord != null && String(qWord).trim() !== '') {
+    keyword.value = String(qWord).trim()
+  }
   const qCat = route.query?.categoryId
   if (qCat != null && String(qCat).trim() !== '') {
     const n = Number(qCat)
@@ -3790,6 +3794,16 @@ onMounted(async () => {
   await loadLikeIds()
   await openHighlightFromRoute()
 })
+
+watch(
+  () => route.query?.q,
+  async (q, prev) => {
+    if (q === prev) return
+    keyword.value = q == null ? '' : String(q).trim()
+    page.value = 1
+    await load()
+  },
+)
 
 watch(
   () => [route.query?.highlight, route.query?.categoryId],

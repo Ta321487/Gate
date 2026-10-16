@@ -2,9 +2,10 @@
   <div class="portal" :data-has-stage="hasStage ? '1' : '0'">
     <header class="top">
       <div class="top-inner">
-        <div class="brand" :title="title" @click="$router.push(homePath)">
-          <span class="brand-mark" aria-hidden="true" />
-          <span class="brand-text">{{ title }}</span>
+        <div class="brand" :title="brandTitle" @click="$router.push(homePath)">
+          <img v-if="logoUrl" class="brand-logo" :src="logoUrl" alt="" />
+          <span v-else class="brand-mark" aria-hidden="true" />
+          <span class="brand-text">{{ brandTitle }}</span>
         </div>
         <nav class="nav" :class="{ 'nav--split': navMore.length }">
           <router-link v-for="item in navPrimary" :key="item.to" :to="item.to">{{ item.label }}</router-link>
@@ -22,6 +23,14 @@
             </template>
           </el-dropdown>
         </nav>
+        <el-input
+          v-if="globalSearchOn"
+          v-model="topQuery"
+          class="top-search"
+          clearable
+          :placeholder="topSearchPlaceholder"
+          @keyup.enter="goTopSearch"
+        />
         <div class="user">
           <template v-if="loggedIn">
             <CartBadge />
@@ -42,6 +51,14 @@
     <div v-if="hasStage" class="stage">
       <PortalCarousel />
     </div>
+    <el-alert
+      v-if="maintenanceOn"
+      class="portal-maint"
+      type="warning"
+      :closable="false"
+      show-icon
+      :title="maintenanceText"
+    />
 
     <main class="body">
       <router-view />
@@ -51,6 +68,9 @@
         <span class="foot-brand">{{ footer.brand }}</span>
         <span class="sep">·</span>
         <span class="foot-tag">{{ footer.tagline }}</span>
+        <span class="sep">·</span>
+        <span class="foot-ver">{{ systemVersion }}</span>
+        <el-button class="no-print foot-print" link type="primary" @click="printCurrentPage">打印本页</el-button>
       </div>
     </footer>
     <AiAssistantFloat />
@@ -69,7 +89,8 @@ import ForceNoticeGate from '../components/ForceNoticeGate.vue'
 import MessageBell from '../components/MessageBell.vue'
 import PortalCarousel from '../components/PortalCarousel.vue'
 import { portalFooterCopy } from '../utils/domainFlavor.js'
-import { menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
+import { printCurrentPage } from '../utils/printPage.js'
+import { getSchema, menuLabel, schemaLabels, schemaMenus } from '../utils/domainSchema.js'
 import { portalBrandHomePath, userMenuPath } from '../utils/menuRoutes.js'
 import { navItemActive, splitPortalNav } from '../utils/navOverflow.js'
 import { isGuestBrowseEnabled, isLoggedIn, onProfileDisplayChange } from '../utils/session.js'
@@ -78,7 +99,18 @@ const router = useRouter()
 const route = useRoute()
 const labels = schemaLabels()
 const title = labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
+const siteName = ref('')
+const logoUrl = ref('')
+const maintenanceOn = ref(false)
+const maintenanceText = ref(labels.maintenanceDefaultText || '系统维护中，部分功能暂不可用')
+const brandTitle = computed(() => siteName.value || title)
 const footer = computed(() => portalFooterCopy())
+const systemVersion = computed(
+  () =>
+    labels.systemVersionLabel ||
+    import.meta.env.VITE_APP_VERSION ||
+    'v1.0.0',
+)
 const profileEditable = localStorage.getItem('profileEditable') !== 'false'
 const loggedIn = ref(isLoggedIn())
 const username = ref(localStorage.getItem('username') || '')
@@ -100,11 +132,20 @@ onMounted(() => {
     nickname.value = n || ''
     avatarUrl.value = a || ''
   })
-  // XD-02：本标签页只计一次门户 PV，避免路由乱跳刷爆
+  // 本标签页只计一次门户浏览量，避免路由切换重复计数
   const k = 'gf_pv_bumped'
   if (!sessionStorage.getItem(k)) {
     sessionStorage.setItem(k, '1')
     http.post('/api/site-stat/pv').catch(() => {})
+  }
+  if (getSchema()?.orgCrosscut?.siteSettings) {
+    http.get('/api/site-settings').then((res) => {
+      const d = res.data || {}
+      if (d.siteName) siteName.value = String(d.siteName).trim()
+      logoUrl.value = d.logoUrl ? String(d.logoUrl).trim() : ''
+      maintenanceOn.value = !!d.maintenanceOn
+      if (d.maintenanceText) maintenanceText.value = String(d.maintenanceText).trim()
+    }).catch(() => {})
   }
 })
 onUnmounted(() => offProfileDisplay?.())
@@ -112,7 +153,7 @@ onUnmounted(() => offProfileDisplay?.())
 const displayName = computed(() => nickname.value || username.value)
 const hasStage = computed(() => {
   const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
-  // editorial/mall 自带首页视觉；其余壳保留轮播位（bake 图或管理端广告位）
+  // editorial/mall 自带首页视觉；其余壳保留轮播位（预置图或管理端广告位）
   return style !== 'editorial' && style !== 'mall'
 })
 
@@ -149,6 +190,18 @@ const moreActive = computed(() =>
 
 /** 品牌点击：与登录「返回首页」、初启动同一路径 */
 const homePath = computed(() => portalBrandHomePath())
+const globalSearchOn = computed(() => {
+  if (!getSchema()?.listCrosscut?.globalSearch) return false
+  const menus = [...schemaMenus('user'), ...schemaMenus('admin')]
+  return menus.some((m) => m.key === 'archive')
+})
+const topQuery = ref('')
+const topSearchPlaceholder = computed(() => schemaLabels().topSearchPlaceholder || '搜索名称')
+function goTopSearch() {
+  const q = topQuery.value.trim()
+  if (!q) return
+  router.push({ path: '/archive', query: { q } })
+}
 
 async function logout() {
   const { logoutOnServer, clearAuthStorage } = await import('../utils/session.js')
@@ -189,6 +242,13 @@ async function logout() {
 .brand-mark {
   width: 22px; height: 22px; border-radius: var(--portal-radius-sm, 6px); flex-shrink: 0;
   background: linear-gradient(135deg, var(--portal-accent, #0b6e75), color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-brand, #08545a)));
+}
+.brand-logo {
+  width: 22px; height: 22px; border-radius: var(--portal-radius-sm, 6px); flex-shrink: 0; object-fit: cover;
+}
+.top-search { width: 180px; flex: 0 1 180px; }
+.portal-maint {
+  border-radius: 0;
 }
 .brand-text {
   font-family: var(--portal-font-display);
@@ -245,5 +305,7 @@ async function logout() {
   overflow-wrap: anywhere;
 }
 .foot-tag { opacity: 0.92; }
+.foot-ver { opacity: 0.85; font-variant-numeric: tabular-nums; }
+.foot-print { margin-left: 8px; font-size: 12px; }
 .sep { margin: 0 6px; opacity: 0.5; }
 </style>

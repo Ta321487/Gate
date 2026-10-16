@@ -2,6 +2,28 @@
   <div>
     <div class="toolbar">
       <el-input v-model="keyword" :placeholder="searchPlaceholder" clearable style="width:260px" @keyup.enter="load" />
+      <template v-if="advancedFilterOn">
+        <el-select v-model="listStatus" clearable :placeholder="adminLabels.listFilterStatus || '状态'" style="width:120px" @change="load">
+          <el-option :label="adminLabels.listFilterStatusOn || '在用'" value="available" />
+          <el-option :label="adminLabels.listFilterStatusOff || '停用'" value="off" />
+        </el-select>
+        <el-date-picker
+          v-model="createdFrom"
+          type="date"
+          value-format="YYYY-MM-DD"
+          :placeholder="adminLabels.listFilterFrom || '开始日期'"
+          style="width:140px"
+          @change="load"
+        />
+        <el-date-picker
+          v-model="createdTo"
+          type="date"
+          value-format="YYYY-MM-DD"
+          :placeholder="adminLabels.listFilterTo || '结束日期'"
+          style="width:140px"
+          @change="load"
+        />
+      </template>
       <el-switch
         v-if="softDelete"
         v-model="includeDeleted"
@@ -16,24 +38,35 @@
         :type="hotMode ? 'warning' : 'default'"
         @click="toggleHotMode"
       >{{ hotMode ? hotRankBackLabel : hotRankToggleLabel }}</el-button>
+      <el-button v-if="recycleOn" :type="recycleMode ? 'warning' : 'default'" @click="toggleRecycle">
+        {{ recycleMode ? (adminLabels.recycleBinBack || '返回列表') : (adminLabels.recycleBinLabel || '回收站') }}
+      </el-button>
+      <el-button v-if="batchDeleteOn && !recycleMode" type="danger" plain :disabled="!pickedIds.length" @click="batchRemove">
+        {{ adminLabels.batchDeleteLabel || '批量删除' }}（{{ pickedIds.length }}）
+      </el-button>
       <el-button type="success" @click="openEdit()">新增{{ label }}</el-button>
       <el-button v-if="cinemaSnackOn && hasSeatLayout" @click="openSnackAdmin">{{ cinemaSnackLabel }}</el-button>
-      <el-button @click="exportCsv">导出 CSV</el-button>
+      <el-button @click="onExportClick">导出 Excel</el-button>
       <el-button @click="downloadTemplate">导入模板</el-button>
       <el-upload
         :show-file-list="false"
-        accept=".csv,text/csv"
+        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         :http-request="onImport"
       >
-        <el-button type="warning">导入 CSV</el-button>
+        <el-button type="warning">导入 Excel</el-button>
       </el-upload>
     </div>
     <SchemaLabelHints :keys="archiveAdminHintKeys" />
     <p v-if="hotMode && hotRankOn" class="tip muted">{{ hotRankPageTitle }}：{{ hotRankPageLead }}</p>
     <p v-if="stallScoreSortOn && stallScoreHint" class="tip muted">{{ stallScoreLabel }}：{{ stallScoreHint }}</p>
-    <p v-if="lastImportError" class="import-err">{{ lastImportError }}</p>
+    <ul v-if="importErrors.length" class="import-err">
+      <li v-for="(e, i) in importErrors" :key="i">第 {{ e.line }} 行：{{ e.message }}</li>
+    </ul>
+    <p v-else-if="lastImportError" class="import-err">{{ lastImportError }}</p>
+    <p v-if="recycleMode" class="tip muted">{{ adminLabels.recycleBinEmpty && !list.length ? adminLabels.recycleBinEmpty : (adminLabels.recycleBinLabel || '回收站') }}</p>
     <div class="table-scroll">
-    <el-table :data="list" stripe>
+    <el-table :data="list" stripe @selection-change="onPicked">
+      <el-table-column v-if="batchDeleteOn && !recycleMode" type="selection" width="42" />
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="title" :label="fieldLabel('title', '名称')" min-width="120" show-overflow-tooltip />
       <el-table-column v-if="viewCountOn" :label="viewCountLabel" width="90">
@@ -329,7 +362,14 @@
             <el-upload :show-file-list="false" accept="image/*" :http-request="onCover">
               <el-button size="small">上传</el-button>
             </el-upload>
-            <img v-if="form.coverUrl" :src="form.coverUrl" class="cover-preview" alt="封面" />
+            <el-image
+              v-if="form.coverUrl"
+              :src="form.coverUrl"
+              class="cover-preview"
+              fit="cover"
+              :preview-src-list="[form.coverUrl]"
+              preview-teleported
+            />
             <span v-else class="muted">未上传</span>
           </div>
         </el-form-item>
@@ -340,7 +380,14 @@
             </el-upload>
             <div class="gallery-list">
               <div v-for="(u, i) in form.galleryImages" :key="i" class="gallery-item">
-                <img :src="u" alt="" />
+                <el-image
+                  :src="u"
+                  fit="cover"
+                  :preview-src-list="form.galleryImages"
+                  :initial-index="i"
+                  preview-teleported
+                  style="width: 64px; height: 64px"
+                />
                 <el-button link type="danger" size="small" @click="form.galleryImages.splice(i, 1)">移除</el-button>
               </div>
             </div>
@@ -498,11 +545,23 @@
         <el-button type="primary" @click="snackVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+    <el-dialog v-model="exportPickOpen" :title="adminLabels.exportColumnsTitle || '选择导出列'" width="420px">
+      <el-checkbox-group v-model="exportPickKeys">
+        <el-checkbox v-for="c in exportColumnOptions" :key="c.key" :label="c.key">{{ c.label }}</el-checkbox>
+      </el-checkbox-group>
+      <template #footer>
+        <el-button @click="exportPickOpen = false">取消</el-button>
+        <el-button type="primary" :disabled="!exportPickKeys.length" @click="confirmExport">
+          {{ adminLabels.exportColumnsConfirm || '导出' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import ArchiveFieldControl from '../../components/ArchiveFieldControl.vue'
@@ -512,10 +571,16 @@ import { archiveCopy, formatArchiveScalar, getSchema, hasCap, isGalleryEnabled, 
 import { datePickerProps, dateTimePickerProps } from '../../utils/dateTimeField.js'
 import { archiveFieldWidget } from '../../utils/archiveFieldWidget.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
-import { downloadCsv, stripBom } from '../../utils/csvDownload.js'
+import { saveBlob } from '../../utils/csvDownload.js'
 import { isValidIsbn } from '../../utils/isbn.js'
+import { useUnsavedGuard } from '../../utils/unsavedGuard.js'
 
+const route = useRoute()
 const archive = archiveCopy()
+const advancedFilterOn = computed(() => !!getSchema()?.listCrosscut?.advancedFilter)
+const exportColumnsOn = computed(() => !!getSchema()?.listCrosscut?.exportColumns)
+const recycleOn = computed(() => !!archive.softDelete)
+const batchDeleteOn = computed(() => !!getSchema()?.listCrosscut?.batchDelete)
 const softCopyBase = softDeleteCopy()
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const publishReview = computed(() => !!archive.publishReview)
@@ -543,7 +608,7 @@ const contentThicken = computed(() => getSchema()?.contentThicken || {})
 const interactThicken = computed(() => getSchema()?.interactThicken || {})
 const datingRejectReasonOn = computed(() => !!interactThicken.value.datingRejectReason)
 const datingAlbumAuditOn = computed(() => !!interactThicken.value.datingAlbumAudit)
-// —— 拼车（DOM-CARPOOL）互动加厚：校区字典 / 途经点 / 拼车说明 / 同行偏好 / 行李 / 出发提醒 ——
+// 拼车扩展：校区字典 / 途经点 / 拼车说明 / 同行偏好 / 行李 / 出发提醒 ——
 const carpoolCampusDictOn = computed(() => !!interactThicken.value.carpoolCampusDict)
 const carpoolViaPointsOn = computed(() => !!interactThicken.value.carpoolViaPoints)
 const carpoolShareNoteOn = computed(() => !!interactThicken.value.carpoolShareNote)
@@ -727,6 +792,7 @@ const snackVisible = ref(false)
 const snackRows = ref([])
 const tagColorOn = computed(() => !!adminLabels.value.tagColorHint)
 const lastImportError = ref('')
+const importErrors = ref([])
 function tagColor(name) {
   const s = String(name || '')
   let h = 0
@@ -924,10 +990,51 @@ const total = ref(0)
 const page = ref(1)
 const size = ref(10)
 const keyword = ref('')
+const listStatus = ref('')
+const createdFrom = ref('')
+const createdTo = ref('')
+const exportPickOpen = ref(false)
+const exportPickKeys = ref([])
+const recycleMode = ref(false)
+const pickedIds = ref([])
+const exportColumnOptions = computed(() => importColumns())
+
+function listFilterParams() {
+  if (!advancedFilterOn.value || recycleMode.value) return {}
+  return {
+    listStatus: listStatus.value || undefined,
+    createdFrom: createdFrom.value || undefined,
+    createdTo: createdTo.value || undefined,
+  }
+}
+
+function toggleRecycle() {
+  recycleMode.value = !recycleMode.value
+  page.value = 1
+  pickedIds.value = []
+  load()
+}
+
+function onPicked(rows) {
+  pickedIds.value = (rows || []).map((r) => r.id).filter((id) => id != null)
+}
+
+async function batchRemove() {
+  if (!pickedIds.value.length) return
+  await ElMessageBox.confirm(`删除选中的 ${pickedIds.value.length} 条？`, '批量删除', { type: 'warning' })
+  await http.post('/api/archive/batch-delete', {
+    ids: pickedIds.value,
+    ...(getSchema()?.uxCrosscut?.confirm ? { confirm: true } : {}),
+  })
+  ElMessage.success(`已删除 ${res.data?.ok || 0} 条`)
+  pickedIds.value = []
+  await load()
+}
 const includeDeleted = ref(false)
 const categories = ref([])
 const tags = ref([])
 const visible = ref(false)
+useUnsavedGuard(visible)
 const form = reactive({
   id: null,
   title: '',
@@ -970,8 +1077,10 @@ async function load() {
       page: page.value,
       size: size.value,
       keyword: hotMode.value ? undefined : (keyword.value || undefined),
+      ...listFilterParams(),
       includeDeleted:
-        !hotMode.value && softDelete.value && includeDeleted.value ? true : undefined,
+        !hotMode.value && ((softDelete.value && includeDeleted.value) || recycleMode.value) ? true : undefined,
+      deletedOnly: !hotMode.value && recycleMode.value ? true : undefined,
       sortBy: hotMode.value && downloadCountOn.value
         ? 'downloadCount'
         : (hotMode.value && contentThicken.value.hotByPlay ? 'playCount' : undefined),
@@ -1133,7 +1242,12 @@ async function save() {
     if (wantOn && wasOff) await http.post(`/api/archive/${id}/restore`)
     else if (!wantOn && !wasOff) {
       const reason = offShelfReasonOn.value ? String(form.offShelfReason || '').trim() : ''
-      await http.delete(`/api/archive/${id}`, { data: { offShelfReason: reason } })
+      await http.delete(`/api/archive/${id}`, {
+        data: {
+          offShelfReason: reason,
+          ...(getSchema()?.uxCrosscut?.confirm ? { confirm: true } : {}),
+        },
+      })
     }
   }
   ElMessage.success('已保存')
@@ -1176,7 +1290,12 @@ async function remove(row) {
   } else {
     await ElMessageBox.confirm(`确认${verb}「${row.title}」？`, '确认')
   }
-  await http.delete(`/api/archive/${row.id}`, { data: { offShelfReason: reason } })
+  await http.delete(`/api/archive/${row.id}`, {
+    data: {
+      offShelfReason: reason,
+      ...(getSchema()?.uxCrosscut?.confirm ? { confirm: true } : {}),
+    },
+  })
   ElMessage.success(softDelete.value ? `已${softCopy.value.verb}` : '已删除')
   load()
 }
@@ -1216,7 +1335,10 @@ async function reject(row) {
   } else {
     await ElMessageBox.confirm(`驳回「${row.title}」？驳回后不公开展示。`, title)
   }
-  await http.post(`/api/archive/${row.id}/reject`, reason ? { rejectReason: reason } : {})
+  await http.post(`/api/archive/${row.id}/reject`, {
+    ...(reason ? { rejectReason: reason } : {}),
+    ...(getSchema()?.uxCrosscut?.confirm ? { confirm: true } : {}),
+  })
   ElMessage.success('已驳回')
   load()
 }
@@ -1331,74 +1453,15 @@ function exportCell(row, col) {
   return shown
 }
 
-function downloadTemplate() {
-  const cols = importColumns()
-  downloadCsv(
-    `${label.value || 'archive'}_import_template.csv`,
-    cols.map((c) => c.label),
-    [cols.map(sampleForCol)],
-  )
-  ElMessage.success('已下载导入模板（UTF-8 BOM，Excel 可直接打开）')
-}
-
-/**
- * 把表头（领域中文 label 或英文 key）规范成后端 import 认可的 camelCase 键。
- * 兼容旧模板英文表头与当前领域导出的中文表头。
- */
-function normalizeArchiveImportCsv(text) {
-  const raw = stripBom(text)
-  if (!raw.trim()) return raw
-  const nl = raw.includes('\r\n') ? '\r\n' : raw.includes('\r') ? '\r' : '\n'
-  const lines = raw.split(/\r\n|\n|\r/)
-  const cols = importColumns()
-  const alias = Object.create(null)
-  cols.forEach((c) => {
-    alias[c.key] = c.key
-    alias[c.key.toLowerCase()] = c.key
-    if (c.label) {
-      alias[c.label] = c.key
-      alias[c.label.toLowerCase()] = c.key
-    }
-  })
-  ;[
-    ['名称', 'title'], ['标题', 'title'], ['书名', 'title'],
-    ['分类', 'category'], ['库存', 'stock'], ['数量', 'stock'],
-    ['标签', 'tags'],
-  ].forEach(([a, k]) => {
-    if (!alias[a]) alias[a] = k
-  })
-  const headCells = splitCsvLineSimple(lines[0])
-  const mapped = headCells.map((h) => {
-    const t = String(h || '').trim()
-    return alias[t] || alias[t.toLowerCase()] || t
-  })
-  lines[0] = mapped.map(csvEscapeCell).join(',')
-  return lines.join(nl)
-}
-
-function splitCsvLineSimple(line) {
-  const cells = []
-  let cur = ''
-  let inQuote = false
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if (ch === '"') {
-      inQuote = !inQuote
-    } else if ((ch === ',' && !inQuote) || ch === '\t') {
-      cells.push(cur)
-      cur = ''
-    } else {
-      cur += ch
-    }
-  }
-  cells.push(cur)
-  return cells
-}
-
-function csvEscapeCell(v) {
-  let s = v == null ? '' : String(v)
-  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
-  return s
+async function downloadTemplate() {
+  const columns = importColumns().map((c) => ({
+    key: c.key,
+    label: c.label,
+    sample: sampleForCol(c),
+  }))
+  const blob = await http.post('/api/archive/import-template', { columns }, { responseType: 'blob' })
+  saveBlob(`${label.value || 'archive'}_import_template.xlsx`, blob)
+  ElMessage.success('已下载导入模板，请在「导入」表从第 2 行填写')
 }
 
 async function openSeatAttrs(row) {
@@ -1492,56 +1555,95 @@ async function saveSnackRow(row) {
   }
 }
 
-async function exportCsv() {
+function onExportClick() {
+  if (!exportColumnsOn.value) {
+    exportCsv()
+    return
+  }
+  const cols = importColumns()
+  exportPickKeys.value = cols.map((c) => c.key)
+  exportPickOpen.value = true
+}
+
+function confirmExport() {
+  exportPickOpen.value = false
+  exportCsv(exportPickKeys.value)
+}
+
+async function exportCsv(onlyKeys) {
   const res = await http.get('/api/archive', {
-    params: { page: 1, size: 5000, keyword: keyword.value || undefined },
+    params: { page: 1, size: 5000, keyword: keyword.value || undefined, ...listFilterParams() },
   })
   const rows = res.data?.list || []
   if (!rows.length) {
     ElMessage.warning('当前无数据可导出')
     return
   }
-  const cols = importColumns()
-  downloadCsv(
-    `${label.value || 'archive'}_${Date.now()}.csv`,
-    cols.map((c) => c.label),
-    rows.map((row) => cols.map((c) => exportCell(row, c))),
+  let cols = importColumns()
+  if (Array.isArray(onlyKeys) && onlyKeys.length) {
+    const allow = new Set(onlyKeys)
+    cols = cols.filter((c) => allow.has(c.key))
+  }
+  if (!cols.length) {
+    ElMessage.warning('请选择导出列')
+    return
+  }
+  const headers = cols.map((c) => c.label)
+  const body = rows.map((row) => cols.map((c) => exportCell(row, c)))
+  const blob = await http.post(
+    '/api/archive/export-xlsx',
+    { headers, rows: body },
+    { responseType: 'blob' },
   )
-  ElMessage.success(`已导出 ${rows.length} 条（UTF-8，可用 Excel 直接打开）`)
+  saveBlob(`${label.value || 'archive'}_${Date.now()}.xlsx`, blob)
+  ElMessage.success(`已导出 ${rows.length} 条`)
 }
 
 async function onImport(opt) {
   const file = opt.file
   if (!file) return
-  lastImportError.value = ''
-  const text = normalizeArchiveImportCsv(await file.text())
-  if (!text.trim()) {
-    ElMessage.warning('文件为空')
+  const name = String(file.name || '').toLowerCase()
+  if (!name.endsWith('.xlsx')) {
+    ElMessage.warning('请上传 xlsx 文件（先下载导入模板）')
     return
   }
+  lastImportError.value = ''
+  importErrors.value = []
+  const fd = new FormData()
+  fd.append('file', file)
   try {
-    const res = await http.post('/api/archive/import', { csv: text })
+    const res = await http.post('/api/archive/import-xlsx', fd)
     const r = res.data || {}
     const ok = r.ok || 0
     const fail = r.fail || 0
+    importErrors.value = r.errors || []
     if (fail > 0) {
-      const sample = (r.errors || []).slice(0, 3).map((e) => `第${e.line}行: ${e.message}`).join('；')
-      const hint = adminLabels.value.importRowErrorHint || adminLabels.value.leaveBalanceImportHint || ''
-      lastImportError.value = [hint, `成功 ${ok} 条，失败 ${fail} 条。${sample}`].filter(Boolean).join(' ')
-      ElMessage.warning(lastImportError.value)
+      ElMessage.warning(`成功 ${ok} 条，失败 ${fail} 条`)
     } else {
       ElMessage.success(`成功导入 ${ok} 条`)
     }
     await loadCats()
     await load()
   } catch (e) {
-    const hint = adminLabels.value.importRowErrorHint || ''
-    lastImportError.value = hint || (e?.response?.data?.message || e?.message || '导入失败')
+    lastImportError.value = e?.message || '导入失败'
     ElMessage.error(lastImportError.value)
   }
 }
 
+watch(
+  () => route.query.q,
+  (q) => {
+    if (typeof q !== 'string') return
+    keyword.value = q.trim()
+    page.value = 1
+    load()
+  },
+)
+
 onMounted(async () => {
+  if (typeof route.query.q === 'string' && route.query.q.trim()) {
+    keyword.value = route.query.q.trim()
+  }
   await loadCats()
   await loadTags()
   await loadEquipOptions()
@@ -1570,7 +1672,7 @@ onMounted(async () => {
 }
 .seat-attr-cell.couple { box-shadow: inset 0 0 0 2px #e6a23c; }
 .seat-attr-cell.accessible { box-shadow: inset 0 0 0 2px #67c23a; }
-.import-err { margin: 0 0 10px; color: #b45309; font-size: 13px; }
+.import-err { margin: 0 0 10px; color: #b45309; font-size: 13px; padding-left: 1.2em; }
 .tag-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
 .tag-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }

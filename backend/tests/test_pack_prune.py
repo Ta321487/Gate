@@ -396,6 +396,154 @@ class PackPruneTests(unittest.TestCase):
             self.assertTrue(vue_out.is_file())
             self.assertIn("InviteCodesAdmin.vue", router.read_text(encoding="utf-8"))
 
+    def test_parking_pass_pruned_when_schema_off(self) -> None:
+        """未开 parkingPass：次卡 Store/页/路由一并裁掉；PARKING 域打开则保留。"""
+        if not BASELINE_JAVA.is_dir() or not BASELINE_FE.is_dir():
+            self.skipTest("baseline skeleton missing")
+        store = BASELINE_JAVA / "service/ParkingPassStore.java"
+        ctrl = BASELINE_JAVA / "controller/ParkingPassController.java"
+        binder = BASELINE_JAVA / "config/DomainRuntimeBinder.java"
+        slot = BASELINE_JAVA / "capability/SlotStore.java"
+        vue_u = BASELINE_FE / "views/user/ParkingPasses.vue"
+        vue_a = BASELINE_FE / "views/admin/ParkingPassAdmin.vue"
+        router_src = BASELINE_FE / "router/index.js"
+        if not all(p.is_file() for p in (store, ctrl, binder, slot, vue_u, vue_a, router_src)):
+            self.skipTest("parking-pass baseline missing")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            java_dst = dest / "backend/src/main/java/com/demo/shop"
+            fe_dst = dest / "frontend/src"
+            java_dst.mkdir(parents=True)
+            for rel, src in (
+                ("service/ParkingPassStore.java", store),
+                ("controller/ParkingPassController.java", ctrl),
+                ("config/DomainRuntimeBinder.java", binder),
+                ("capability/SlotStore.java", slot),
+            ):
+                out = java_dst / rel
+                out.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, out)
+            for rel, src in (
+                ("views/user/ParkingPasses.vue", vue_u),
+                ("views/admin/ParkingPassAdmin.vue", vue_a),
+            ):
+                out = fe_dst / rel
+                out.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, out)
+            router = fe_dst / "router/index.js"
+            router.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(router_src, router)
+            menu_routes = BASELINE_FE / "utils/menuRoutes.js"
+            if menu_routes.is_file():
+                mr_out = fe_dst / "utils/menuRoutes.js"
+                mr_out.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(menu_routes, mr_out)
+            # 挂 slot_reserve 留住 SlotStore，专门验次卡引用被抹掉（而非整岛删掉预约）
+            spec = {
+                "domain": "DOM-SHOP",
+                "capabilities": ["archive", "order_lines", "quota", "wallet", "slot_reserve"],
+                "schema": {"parkingPass": False, "menus": {"admin": [], "user": []}},
+            }
+            self.assertTrue(
+                any("ParkingPass" in h for h in scan_forbidden_island_files(dest, spec))
+            )
+            prune_student_pack(dest, spec)
+            self.assertFalse((java_dst / "service/ParkingPassStore.java").is_file())
+            self.assertFalse((java_dst / "controller/ParkingPassController.java").is_file())
+            self.assertFalse((fe_dst / "views/user/ParkingPasses.vue").is_file())
+            self.assertFalse((fe_dst / "views/admin/ParkingPassAdmin.vue").is_file())
+            binder_txt = (java_dst / "config/DomainRuntimeBinder.java").read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn("ParkingPassStore", binder_txt)
+            slot_txt = (java_dst / "capability/SlotStore.java").read_text(encoding="utf-8")
+            self.assertNotIn("ParkingPassStore", slot_txt)
+            rt = router.read_text(encoding="utf-8")
+            self.assertNotIn("ParkingPasses.vue", rt)
+            self.assertNotIn("ParkingPassAdmin.vue", rt)
+            if (fe_dst / "utils/menuRoutes.js").is_file():
+                mr = (fe_dst / "utils/menuRoutes.js").read_text(encoding="utf-8")
+                self.assertNotIn("parking_pass", mr)
+            self.assertEqual(scan_forbidden_island_files(dest, spec), [])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            java_dst = dest / "backend/src/main/java/com/demo/park"
+            fe_dst = dest / "frontend/src"
+            java_dst.mkdir(parents=True)
+            for rel, src in (
+                ("service/ParkingPassStore.java", store),
+                ("controller/ParkingPassController.java", ctrl),
+            ):
+                out = java_dst / rel
+                out.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, out)
+            vue_out = fe_dst / "views/user/ParkingPasses.vue"
+            vue_out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(vue_u, vue_out)
+            keep_spec = {
+                "domain": "DOM-PARKING",
+                "capabilities": ["archive", "slot_reserve"],
+                "schema": {"parkingPass": True},
+            }
+            prune_student_pack(dest, keep_spec)
+            self.assertTrue((java_dst / "service/ParkingPassStore.java").is_file())
+            self.assertTrue(vue_out.is_file())
+
+    def test_patient_profile_pruned_when_schema_off(self) -> None:
+        """未开 patientProfile：就诊人 Store/页裁掉；开则保留。"""
+        if not BASELINE_JAVA.is_dir() or not BASELINE_FE.is_dir():
+            self.skipTest("baseline skeleton missing")
+        store = BASELINE_JAVA / "service/PatientProfileStore.java"
+        ctrl = BASELINE_JAVA / "controller/PatientProfileController.java"
+        vue = BASELINE_FE / "views/user/PatientProfiles.vue"
+        if not all(p.is_file() for p in (store, ctrl, vue)):
+            self.skipTest("patient-profile baseline missing")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            java_dst = dest / "backend/src/main/java/com/demo/shop"
+            fe_dst = dest / "frontend/src"
+            for rel, src in (
+                ("service/PatientProfileStore.java", store),
+                ("controller/PatientProfileController.java", ctrl),
+            ):
+                out = java_dst / rel
+                out.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, out)
+            vue_out = fe_dst / "views/user/PatientProfiles.vue"
+            vue_out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(vue, vue_out)
+            spec = {
+                "domain": "DOM-SHOP",
+                "capabilities": ["archive", "order_lines"],
+                "schema": {"patientProfile": False},
+            }
+            prune_student_pack(dest, spec)
+            self.assertFalse((java_dst / "service/PatientProfileStore.java").is_file())
+            self.assertFalse(vue_out.is_file())
+            self.assertEqual(
+                [h for h in scan_forbidden_island_files(dest, spec) if "PatientProfile" in h],
+                [],
+            )
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            java_dst = dest / "backend/src/main/java/com/demo/hosp"
+            fe_dst = dest / "frontend/src"
+            out = java_dst / "service/PatientProfileStore.java"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(store, out)
+            vue_out = fe_dst / "views/user/PatientProfiles.vue"
+            vue_out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(vue, vue_out)
+            keep = {
+                "domain": "DOM-HOSPITAL",
+                "capabilities": ["archive", "slot_reserve"],
+                "schema": {"patientProfile": True},
+            }
+            prune_student_pack(dest, keep)
+            self.assertTrue(out.is_file())
+            self.assertTrue(vue_out.is_file())
+
     def test_shop_keeps_ticket_dashboard_workbench(self) -> None:
         """未挂 ticket_flow 仍保留仪表盘；p3lean 不得当残留毒区。"""
         if not BASELINE_JAVA.is_dir() or not BASELINE_FE.is_dir():

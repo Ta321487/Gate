@@ -38,7 +38,7 @@ public final class ArchiveStore {
     private static Boolean hasEquipmentJson;
     static boolean softDeleteEnabled = false;
     static boolean userPublishEnabled = false;
-    /** 开题点名投稿审核/先审后发：用户发布为 pending_review，通过后才进公开目录。 */
+    /** 开启「先审后发」：用户发布为 pending_review，通过后才进公开目录。 */
     static boolean publishReviewEnabled = false;
     /** 论坛每日发帖上限；0 表示不限制（草稿不计入）。 */
     static int forumDailyPostLimit = 0;
@@ -290,7 +290,7 @@ public final class ArchiveStore {
     private static int essencePointsRewardAmount = 0;
     private static boolean publishApproveNotifyOn = false;
 
-    /** C-08：精华奖分 / 投稿审过通知。 */
+    /** 精华奖分 / 投稿审过通知。 */
     public static void configureContentIslands(
             boolean essenceReward, int essenceAmount, boolean publishApproveNotify) {
         essencePointsRewardOn = essenceReward;
@@ -302,7 +302,7 @@ public final class ArchiveStore {
         ArchiveCfgOps.configureForumDailyPostLimit(limit);
     }
 
-    /** 锁定帖禁止跟帖/申请（C-02）。 */
+    /** 锁定帖禁止跟帖/申请。 */
     public static void assertNotLocked(Map<String, Object> item) {
         if (item == null) return;
         if (toInt(item.get("locked")) > 0) {
@@ -618,7 +618,7 @@ public final class ArchiveStore {
     }
 
     /**
-     * 门户用户发布档案：默认即时上架；开题点名先审后发时 status=pending_review。
+     * 门户用户发布档案：默认即时上架；开启「先审后发」时 status=pending_review。
      * owner_username 固定登录名（「我的」归属）。
      * author 可填业务字段（如联系人）；未传则仍用登录名。
      * stock 可填余座等；未传或非法则 1。
@@ -643,7 +643,7 @@ public final class ArchiveStore {
         return addUserPost(username, title, body, categoryId, null, null, true);
     }
 
-    /** C-09：更新本人草稿（自动保存 / 再存草稿）。 */
+    /** 更新本人草稿（自动保存 / 再存草稿）。 */
     public static Map<String, Object> updateUserDraft(
             long id, String username, String title, String body, long categoryId) {
         if (!userPublishEnabled) {
@@ -897,7 +897,7 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "introPackUrl", "intro_pack_url", 255);
         patchOptStr(id, patch, "skillTags", "skill_tags", 255);
         patchOptInt(id, patch, "quotaCap", "quota_cap");
-        // I-05 CARPOOL：行程加厚字段
+        // 行程加厚字段
         patchOptStr(id, patch, "startCampus", "start_campus", 64);
         patchOptStr(id, patch, "endCampus", "end_campus", 64);
         patchOptStr(id, patch, "viaPoints", "via_points", 512);
@@ -1298,7 +1298,7 @@ public final class ArchiveStore {
         return rejectPublishItem(id, "");
     }
 
-    /** I-02：婚恋/投稿审驳可写 reject_reason，供用户端回读。 */
+    /** 婚恋/投稿审驳可写 reject_reason，供用户端回读。 */
     public static Map<String, Object> rejectPublishItem(long id, String reason) {
         Map<String, Object> m = getItemRaw(id);
         if (m == null) return null;
@@ -1316,7 +1316,7 @@ public final class ArchiveStore {
         return getItemAdmin(id);
     }
 
-    /** I-02：资料相册审核状态（none/pending/approved/rejected）。 */
+    /** 资料相册审核状态（none/pending/approved/rejected）。 */
     public static Map<String, Object> setAlbumAuditStatus(long id, String status) {
         if (!hasItemColumn("album_audit_status")) {
             throw new IllegalStateException("系统未配置相册审核");
@@ -1448,7 +1448,7 @@ public final class ArchiveStore {
         }
     }
 
-    /** 凭分享码取片单（只读链；≠协作编辑）。 */
+    /** 凭分享码取片单（只读链。 */
     public static Map<String, Object> getByShareCode(String code) {
         String c = code == null ? "" : code.trim();
         if (c.isBlank() || !hasItemColumn("share_code")) return null;
@@ -1529,8 +1529,8 @@ public final class ArchiveStore {
     }
 
     /**
-     * @param artist 非空且有 artist 列时按歌手模糊筛（C-06）
-     * @param album 非空且有 album 列时按专辑模糊筛（C-06）
+     * @param artist 非空且有 artist 列时按歌手模糊筛
+     * @param album 非空且有 album 列时按专辑模糊筛
      */
     public static Map<String, Object> pageItems(
             String keyword,
@@ -1550,7 +1550,7 @@ public final class ArchiveStore {
     }
 
     /**
-     * I-02：婚恋城市/年龄筛选（city→author 列；age→age_years）。
+     * 婚恋城市/年龄筛选（city→author 列；age→age_years）。
      */
     public static Map<String, Object> pageItems(
             String keyword,
@@ -1567,12 +1567,40 @@ public final class ArchiveStore {
             String city,
             Integer ageMin,
             Integer ageMax) {
+        return pageItems(
+                keyword, categoryId, categoryIds, tagIds, includeDeleted, page, size,
+                openCatalogOnly, ownerUsernameFilter, artist, album, city, ageMin, ageMax,
+                null, null, null, false);
+    }
+
+    /** 列表组合筛选：状态与创建日起止；空串忽略。 */
+    public static Map<String, Object> pageItems(
+            String keyword,
+            Long categoryId,
+            List<Long> categoryIds,
+            List<Long> tagIds,
+            boolean includeDeleted,
+            int page,
+            int size,
+            boolean openCatalogOnly,
+            String ownerUsernameFilter,
+            String artist,
+            String album,
+            String city,
+            Integer ageMin,
+            Integer ageMax,
+            String listStatus,
+            String createdFrom,
+            String createdTo,
+            boolean deletedOnly) {
         expirePastStarts();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
         StringBuilder where = new StringBuilder(" WHERE 1=1");
         List<Object> args = new ArrayList<>();
-        if (hasDeletedAt() && !(includeDeleted && softDeleteEnabled)) {
+        if (deletedOnly && hasDeletedAt()) {
+            where.append(" AND deleted_at IS NOT NULL");
+        } else if (hasDeletedAt() && !(includeDeleted && softDeleteEnabled)) {
             where.append(" AND deleted_at IS NULL");
         }
         if (openCatalogOnly && (hasStartAt() || hasEndAt())) {
@@ -1634,6 +1662,20 @@ public final class ArchiveStore {
             where.append(" AND age_years <= ?");
             args.add(ageMax);
         }
+        if (listStatus != null && !listStatus.isBlank() && hasItemColumn("status")) {
+            where.append(" AND status=?");
+            args.add(listStatus.trim());
+        }
+        if (createdFrom != null && !createdFrom.isBlank() && hasItemColumn("created_at")) {
+            String from = createdFrom.trim();
+            where.append(" AND created_at >= ?");
+            args.add(from.length() <= 10 ? from + " 00:00:00" : from);
+        }
+        if (createdTo != null && !createdTo.isBlank() && hasItemColumn("created_at")) {
+            String to = createdTo.trim();
+            where.append(" AND created_at <= ?");
+            args.add(to.length() <= 10 ? to + " 23:59:59" : to);
+        }
         if (tagIds != null && !tagIds.isEmpty() && tagsEnabled()) {
             for (Long tid : tagIds) {
                 if (tid == null || tid <= 0) continue;
@@ -1661,7 +1703,7 @@ public final class ArchiveStore {
     }
 
     /**
-     * 窗内活动价货架（E-05）：仅 flash_price 开启且有 promo_* 列时有数据。
+     * 窗内活动价货架：仅 flash_price 开启且有 promo_* 列时有数据。
      * 条件与 isPromoActive 一致，供门户限时特价区服务端筛选。
      */
     public static Map<String, Object> pagePromoActive(int page, int size) {
@@ -2201,7 +2243,7 @@ public final class ArchiveStore {
             item.put("content", "");
             item.put("body", "");
         }
-        // I-02：相册未通过前不对公开侧展示图集
+        // 相册未通过前不对公开侧展示图集
         if (hasItemColumn("album_audit_status")) {
             String st = str(item.get("albumAuditStatus")).trim().toLowerCase();
             if ("pending".equals(st) || "rejected".equals(st)) {
@@ -2410,7 +2452,7 @@ public final class ArchiveStore {
         return n;
     }
 
-    /** C-04：定时发布 / 定时撤回（publish_at / unpublish_at）。 */
+    /** 定时发布 / 定时撤回（publish_at / unpublish_at）。 */
     public static int applyPublishSchedule() {
         int n = 0;
         if (hasItemColumn("unpublish_at")) {
@@ -2433,7 +2475,7 @@ public final class ArchiveStore {
         return n;
     }
 
-    /** T-09：到点上架 / 下架（shelf_on / shelf_off）。 */
+    /** 到点上架 / 下架（shelf_on / shelf_off）。 */
     public static int applyShelfSchedule() {
         int n = 0;
         if (hasItemColumn("shelf_off")) {
@@ -2457,7 +2499,7 @@ public final class ArchiveStore {
         return n;
     }
 
-    /** T-09 浅规格库存：同名在售兄弟行库存一览。 */
+    /** 规格库存：同名在售兄弟行库存一览。 */
     public static List<Map<String, Object>> listSiblingSpecStock(long itemId) {
         Map<String, Object> self = getItemRaw(itemId);
         if (self == null) return List.of();
@@ -2728,7 +2770,7 @@ public final class ArchiveStore {
         return hasDetailJson;
     }
 
-    /** 开题属性落真列；旧包仍可能只有 detail_json。 */
+    /** 扩展属性写入真实列；旧包仍可能只有 detail_json。 */
     public static void ensureDetailAttrColumns() {
         for (String key : detailAttrKeys) {
             String col = detailAttrColumn(key);
@@ -2742,7 +2784,7 @@ public final class ArchiveStore {
         }
     }
 
-    /** @deprecated 旧包回退探测；新 bake 禁止补 detail_json 列 */
+    /** @deprecated 旧包回退探测；请勿再补 detail_json 列 */
     public static void ensureDetailColumn() {
         hasDetailJson = hasItemColumn("detail_json");
     }
@@ -2892,7 +2934,7 @@ public final class ArchiveStore {
     }
 
     public static void ensureEquipmentColumn() {
-        /* 关联表由 bake 注入，禁止 ALTER 补 equipment_json */
+        /* 关联表已在建表脚本中提供，请勿再 ALTER 补 equipment_json */
     }
 
     private static boolean hasItemEquipmentTable() {
@@ -3150,7 +3192,7 @@ public final class ArchiveStore {
         }
     }
 
-    /** 关键词：名称/作者列/编号列；有产地、采摘日列时一并纳入（农产等开题可按产地/采摘检索）。 */
+    /** 关键词：名称/作者列/编号列；有产地、采摘日列时一并纳入（可按产地、采摘日检索）。 */
     private static void appendKeywordSearch(StringBuilder where, List<Object> args, String keyword) {
         if (keyword == null || keyword.isBlank()) return;
         String like = "%" + keyword.trim() + "%";
@@ -3239,7 +3281,7 @@ public final class ArchiveStore {
         }
     }
 
-    /** 扣减后库存低于预警值 → 站内信提醒总管（开题挂 stockWarnNotify）。 */
+    /** 扣减后库存低于预警值 → 站内信提醒总管（启用库存预警通知）。 */
     private static void maybeNotifyLowStock(long itemId) {
         Map<String, Object> book = getItemRaw(itemId);
         if (book == null) return;
@@ -3258,7 +3300,7 @@ public final class ArchiveStore {
     }
 
     /**
-     * I-05：发布前预检（Controller 调用）。同日同标题已有行程则视为重复；
+     * 发布前预检（Controller 调用）。同日同标题已有行程则视为重复；
      * 写入起终点后由 {@link #assertNoDuplicateCarpoolTrip(long)} 再精检。
      */
     public static boolean isDuplicateTrip(String username, String title, String startAt) {
@@ -3289,7 +3331,7 @@ public final class ArchiveStore {
     }
 
     /**
-     * I-05：同一车主相近出发时间的行程不可重复发布（同日 + 起终点一致）。
+     * 同一车主相近出发时间的行程不可重复发布（同日 + 起终点一致）。
      */
     private static void assertNoDuplicateCarpoolTrip(long itemId) {
         if (!hasItemColumn("start_at") || !hasOwnerUsername()) return;
@@ -3324,7 +3366,7 @@ public final class ArchiveStore {
     }
 
     /**
-     * I-05：出发前提醒扫——按 remind_before_minutes 通知车主与已确认乘客（站内信）。
+     * 出发前提醒扫——按 remind_before_minutes 通知车主与已确认乘客（站内信）。
      */
     public static int remindDepartSweep() {
         if (!hasStartAt() || !hasItemColumn("remind_before_minutes")
@@ -3577,7 +3619,15 @@ public final class ArchiveStore {
         if (rows == null) rows = List.of();
         for (int i = 0; i < rows.size(); i++) {
             Map<String, String> row = rows.get(i);
-            int lineNo = i + 2; // 含表头
+            int lineNo = i + 2;
+            String marked = str(row.get("__line")).trim();
+            if (!marked.isBlank()) {
+                try {
+                    lineNo = Integer.parseInt(marked);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            row.remove("__line");
             try {
                 String title = str(row.get("title")).trim();
                 if (title.isBlank()) throw new IllegalArgumentException("名称不能为空");
@@ -3598,7 +3648,7 @@ public final class ArchiveStore {
                 Map<String, Object> extra = new LinkedHashMap<>();
                 for (Map.Entry<String, String> e : row.entrySet()) {
                     String k = e.getKey();
-                    if (k == null || IMPORT_CORE_KEYS.contains(k)) continue;
+                    if (k == null || k.startsWith("__") || IMPORT_CORE_KEYS.contains(k)) continue;
                     String v = e.getValue() == null ? "" : e.getValue().trim();
                     if (v.isBlank()) continue;
                     if ("tags".equals(k) || "tag".equals(k) || "tagNames".equals(k)) {

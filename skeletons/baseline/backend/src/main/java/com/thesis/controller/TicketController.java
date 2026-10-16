@@ -6,6 +6,7 @@ import com.thesis.capability.StaffRosterStore;
 import com.thesis.capability.TicketStore;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
+import com.thesis.config.AppPolicy;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
 import com.thesis.service.GradeScoreStore;
@@ -101,7 +102,7 @@ public class TicketController {
                 return R.ok(created);
             }
             long itemId = Long.parseLong(String.valueOf(body.get("itemId") != null ? body.get("itemId") : body.get("bookId")));
-            // 开题扫 GRADE：成绩异议/更正申请入口按时限关（未开时为 no-op）
+            // 成绩模块：成绩异议/更正申请入口按时限关（未开时为 no-op）
             GradeScoreStore.assertObjectionOpen(uid, itemId);
             String remark = str(body.get("remark"));
             if (remark.isBlank()) remark = str(body.get("content"));
@@ -224,6 +225,11 @@ public class TicketController {
         if (!pass && remark.isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请填写驳回原因");
         }
+        if (!pass && AppPolicy.SENSITIVE_CONFIRM) {
+            Object mark = body.get("confirm");
+            boolean ok = Boolean.TRUE.equals(mark) || "true".equalsIgnoreCase(String.valueOf(mark));
+            if (!ok) throw new BizException(ErrorCode.BAD_REQUEST, "请再次确认后再驳回");
+        }
         try {
             boolean superAdmin = AdminAuth.isSuperAdmin(session);
             String assignee = body.get("assigneeUsername") == null
@@ -281,7 +287,7 @@ public class TicketController {
     }
 
     /**
-     * 招聘等：批量录用 / 淘汰（多选通过或驳回；开题挂 allowBatchHire 才可用）。
+     * 招聘等：批量录用 / 淘汰（多选通过或驳回；课题需求挂 allowBatchHire 才可用）。
      * body: { ids:[long], pass:true|false, remark?:string }
      */
     @PostMapping("/batch-hire")
@@ -727,7 +733,7 @@ public class TicketController {
         }
     }
 
-    /** C-05：档案确认人收件箱（待确认志愿） */
+    /** 档案确认人收件箱（待确认志愿） */
     @GetMapping("/peer-inbox")
     public R<Map<String, Object>> peerInbox(
             @RequestParam(defaultValue = "1") int page,
@@ -738,7 +744,7 @@ public class TicketController {
         return R.ok(TicketStore.pagePeerInbox(uid, status, page, size));
     }
 
-    /** C-05：档案确认人接受/婉拒志愿 */
+    /** 档案确认人接受/婉拒志愿 */
     @PostMapping("/{id}/peer-respond")
     public R<Map<String, Object>> peerRespond(
             @PathVariable long id,
@@ -759,7 +765,7 @@ public class TicketController {
         }
     }
 
-    /** I-03：截止前修改志愿说明/类型 */
+    /** 截止前修改志愿说明/类型 */
     @PostMapping("/{id}/edit-wish")
     public R<Map<String, Object>> editWish(
             @PathVariable long id,
@@ -779,7 +785,7 @@ public class TicketController {
         }
     }
 
-    /** I-03：互选结果公示（脱敏只读） */
+    /** 互选结果公示（脱敏只读） */
     @GetMapping("/mutual-match-result")
     public R<List<Map<String, Object>>> mutualMatchResult(
             @RequestParam(required = false) Long itemId,
@@ -788,7 +794,7 @@ public class TicketController {
         return R.ok(TicketStore.mutualMatchResult(itemId));
     }
 
-    /** I-03：管理端调剂留痕 */
+    /** 管理端调剂留痕 */
     @GetMapping("/adjust-log")
     public R<Map<String, Object>> adjustLog(
             @RequestParam(defaultValue = "1") int page,
@@ -799,7 +805,7 @@ public class TicketController {
         return R.ok(TicketStore.pageAdjustLog(page, size));
     }
 
-    /** I-03：向已互选学生发送站内通知 */
+    /** 向已互选学生发送站内通知 */
     @PostMapping("/mutual-result-notify")
     public R<Map<String, Object>> mutualResultNotify(HttpSession session) {
         requireLogin(session);
@@ -810,7 +816,7 @@ public class TicketController {
         return R.ok(out);
     }
 
-    /** I-04 TEAM：发送组队邀请站内信 */
+    /** 发送组队邀请站内信 */
     @PostMapping("/team-invite")
     public R<Map<String, Object>> teamInvite(
             @RequestBody Map<String, Object> body, HttpSession session) {
@@ -836,7 +842,7 @@ public class TicketController {
         }
     }
 
-    /** I-04 TEAM：成员申请退出 */
+    /** 成员申请退出 */
     @PostMapping("/{id}/request-exit")
     public R<Map<String, Object>> requestExit(@PathVariable long id, HttpSession session) {
         String uid = requireLogin(session);
@@ -849,7 +855,7 @@ public class TicketController {
         }
     }
 
-    /** I-04 TEAM：队长处理退出申请 */
+    /** 队长处理退出申请 */
     @PostMapping("/{id}/peer-exit-respond")
     public R<Map<String, Object>> peerExitRespond(
             @PathVariable long id,
@@ -867,7 +873,7 @@ public class TicketController {
         }
     }
 
-    /** I-04 TEAM：队长待处理退出申请 */
+    /** 队长待处理退出申请 */
     @GetMapping("/exit-inbox")
     public R<Map<String, Object>> exitInbox(
             @RequestParam(defaultValue = "1") int page,
@@ -1007,7 +1013,7 @@ public class TicketController {
         }
     }
 
-    /** 用户催办（站内提醒，≠短信） */
+    /** 用户催办（站内提醒） */
     @PostMapping("/{id}/urge")
     public R<Map<String, Object>> urge(@PathVariable long id, HttpSession session) {
         String uid = requireLogin(session);

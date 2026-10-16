@@ -152,6 +152,7 @@ public class AuthController {
         }
         Map<String, Object> m = new HashMap<>(profile.toMap());
         m.put("token", session.getId());
+        m.putAll(com.thesis.service.RoleMenuStore.loginMenuPayload(profile.staffPost));
         m.put("mustChangePassword", UserStore.effectiveMustChange(profile));
         m.put("mustActivateEmail", UserStore.effectiveMustActivate(profile));
         m.put("remember", remember);

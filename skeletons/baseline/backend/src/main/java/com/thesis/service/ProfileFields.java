@@ -2,6 +2,7 @@ package com.thesis.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thesis.config.AppPolicy;
 
 import java.io.InputStream;
 import java.util.*;
@@ -164,6 +165,10 @@ public final class ProfileFields {
         for (String key : allowed) {
             if (!raw.containsKey(key) || raw.get(key) == null) continue;
             out.put(key, String.valueOf(raw.get(key)).trim());
+        }
+        if (AppPolicy.COMMISSION_ENABLED && raw.get("inviter") != null) {
+            String inviter = String.valueOf(raw.get("inviter")).trim();
+            if (!inviter.isBlank()) out.put("inviter", inviter);
         }
         return out;
     }

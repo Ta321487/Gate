@@ -9,6 +9,16 @@
 
     <p v-if="!form.profileEditable" class="locked">顶级管理员不提供个人资料修改。</p>
 
+    <section v-if="form.profileEditable && orgFeatureOn" class="card">
+      <el-form label-position="top">
+        <el-form-item :label="orgPickLabel">
+          <el-select v-model="form.orgId" clearable filterable style="max-width: 320px" :placeholder="orgPickPlaceholder">
+            <el-option v-for="o in orgOptions" :key="o.id" :label="o.name" :value="o.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+    </section>
+
     <section class="card identity">
       <div class="avatar-slot">
         <el-avatar :size="72" :src="form.avatarUrl || undefined" class="avatar">
@@ -356,7 +366,7 @@ const WIDE_KEYS = new Set([
 ])
 const router = useRouter()
 const labels = schemaLabels()
-/** XD-02：个人中心单据聚合——仅终端买家；管理/商家岗走工作台，不展示「我的订单」等买家入口 */
+/** 个人中心单据入口：仅买家端展示；管理/商家岗请走工作台。 */
 const myDocLinks = computed(() => {
   if (audience.value !== 'user') return []
   const raw = getSchema()?.workbench?.myDocs
@@ -437,7 +447,12 @@ const form = reactive({
   securityAnswer: '',
   realNameAcked: false,
   profileEditable: true,
+  orgId: null,
 })
+const orgOptions = ref([])
+const orgFeatureOn = computed(() => !!getSchema()?.orgCrosscut?.org)
+const orgPickLabel = computed(() => labels.orgPickLabel || '所属组织')
+const orgPickPlaceholder = computed(() => labels.orgPickPlaceholder || '请选择组织')
 
 const contactField = ref('phone')
 const contactValue = ref('')
@@ -465,7 +480,7 @@ const datingCompletenessHint = computed(() =>
 const datingCompletenessMissingLead = computed(
   () => getSchema()?.labels?.datingCompletenessMissingLead || '待完善：',
 )
-/** I-02：婚恋完整度额外计入城市/学历/年龄段（即使非必填） */
+/** 婚恋完整度额外计入城市/学历/年龄段（即使非必填） */
 const DATING_EXTRA_KEYS = new Set(['city', 'education', 'ageRange'])
 
 const profileChecklist = computed(() => {
@@ -581,6 +596,7 @@ async function load() {
   }
   hasSecurityQuestion.value = !!data.hasSecurityQuestion
   form.realNameAcked = !!data.realNameAcked
+  form.orgId = data.orgId || null
   form.securityQuestion = ''
   clearPasswords()
   if (data.mustChangePassword != null) setMustChangePassword(!!data.mustChangePassword)
@@ -731,6 +747,7 @@ async function save() {
       phone: form.phone,
       extras: form.extras,
       realNameAcked: !!form.realNameAcked,
+      orgId: form.orgId || null,
     }
     if (changingPwd) {
       body.oldPassword = form.oldPassword
@@ -781,7 +798,14 @@ async function onAvatar(opt) {
   ElMessage.success('头像已更新')
 }
 
-onMounted(load)
+onMounted(() => {
+  if (orgFeatureOn.value) {
+    http.get('/api/org/options').then((res) => {
+      orgOptions.value = res.data || []
+    }).catch(() => {})
+  }
+  load()
+})
 </script>
 
 <style scoped>

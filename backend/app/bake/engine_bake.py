@@ -296,6 +296,7 @@ def _bake_project_body(
     theme = spec.get("theme", "lib-ink")
     env_fe.write_text(
         f"VITE_APP_TITLE={app_name}\n"
+        f"VITE_APP_VERSION=1.0.0\n"
         f"VITE_THEME={theme}\n"
         f"VITE_CHROME={chrome}\n"
         f"VITE_LAYOUT={layout}\n"

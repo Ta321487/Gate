@@ -62,6 +62,15 @@
             <el-input v-model="form.phone" maxlength="20" />
           </el-form-item>
         </div>
+        <el-form-item v-if="regionOn" label="省市区" required>
+          <el-cascader
+            v-model="regionPath"
+            :options="regionOptions"
+            clearable
+            style="width: 100%"
+            placeholder="请选择省、市、区"
+          />
+        </el-form-item>
         <el-form-item label="详细地址" required>
           <el-input v-model="form.addressLine" type="textarea" :rows="2" maxlength="200" />
         </el-form-item>
@@ -83,6 +92,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import { getSchema, menuLabel } from '../../utils/domainSchema.js'
 import { addressTagOptions, normalizeAddressTag } from '../../utils/addressTags.js'
+import { regionOptions } from '../../utils/regionOptions.js'
+import { useUnsavedGuard } from '../../utils/unsavedGuard.js'
 
 const pageTitle = computed(() => menuLabel('user', 'addresses', '收货地址'))
 const defaultAddressLabel = computed(() => getSchema()?.labels?.defaultAddressLabel || '设为默认')
@@ -90,8 +101,11 @@ const defaultAddressHint = computed(
   () => getSchema()?.labels?.defaultAddressHint || '管理收货地址；下单时优先使用默认地址。',
 )
 const tagOptions = computed(() => addressTagOptions())
+const regionOn = computed(() => !!getSchema()?.uxCrosscut?.region)
+const regionPath = ref([])
 const list = ref([])
 const visible = ref(false)
+useUnsavedGuard(visible)
 const saving = ref(false)
 const form = reactive({
   id: null,
@@ -114,6 +128,7 @@ function resetForm() {
   form.phone = ''
   form.addressLine = ''
   form.isDefault = !list.value.length
+  regionPath.value = []
 }
 
 function openCreate() {
@@ -128,10 +143,16 @@ function openEdit(row) {
   form.phone = row.phone || ''
   form.addressLine = row.addressLine || ''
   form.isDefault = !!row.isDefault
+  regionPath.value = []
   visible.value = true
 }
 
 async function save() {
+  const regionText = regionOn.value ? (regionPath.value || []).filter(Boolean).join('') : ''
+  if (regionOn.value && !form.id && !regionText) {
+    ElMessage.warning('请选择省、市、区')
+    return
+  }
   if (!form.contactName.trim() || !form.phone.trim() || !form.addressLine.trim()) {
     ElMessage.warning('请填写联系人、手机与详细地址')
     return
@@ -141,7 +162,7 @@ async function save() {
     const body = {
       contactName: form.contactName.trim(),
       phone: form.phone.trim(),
-      addressLine: form.addressLine.trim(),
+      addressLine: regionText ? `${regionText}${form.addressLine.trim()}` : form.addressLine.trim(),
       tag: normalizeAddressTag(form.tag),
       isDefault: !!form.isDefault,
     }

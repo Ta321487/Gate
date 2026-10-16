@@ -1,8 +1,8 @@
 package com.thesis.config;
 
 /**
- * 非单据业务规则与功能开关（档案表位、下拉主数据、订单/预约表、能力岛）。
- * <p>按本系统开题口径生成；单据相关常量见 {@link TicketPolicy}，两处不要互相搬键。</p>
+ * 非单据业务规则与功能开关（档案表位、下拉主数据、订单/预约表等）。
+ * <p>按本课题需求生成；单据相关常量见 {@link TicketPolicy}，两处不要互相搬键。</p>
  * <p>需要调整业务口径时改这里的常量即可。</p>
  */
 public final class AppPolicy {
@@ -107,7 +107,7 @@ public final class AppPolicy {
     /** 注册后是否须站内激活码；1=必须 */
     public static final int AUTH_REQUIRE_EMAIL_ACTIVATE = 1;
 
-    // ---------- 能力开关（按开题启用） ----------
+    // ---------- 功能开关（按本课题启用） ----------
     /** 档案软删除（标记删除，不物理抹掉） */
     public static final boolean ARCHIVE_SOFT_DELETE = false;
     /** 允许用户自行发布档案内容 */
@@ -229,4 +229,8 @@ public final class AppPolicy {
     public static final boolean HOTEL_NOTICE_REQUIRED = false;
     /** 仪器机时预约须勾选培训合格 */
     public static final boolean INSTRUMENT_TRAINING_REQUIRED = false;
+    /** 删除、驳回须带确认标记 */
+    public static final boolean SENSITIVE_CONFIRM = false;
+    /** 一级佣金台账 */
+    public static final boolean COMMISSION_ENABLED = false;
 }

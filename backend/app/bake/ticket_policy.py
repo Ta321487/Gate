@@ -412,7 +412,7 @@ def collect(domain: str, spec: dict[str, Any]) -> dict[str, Any]:
     if not enable_ticket:
         return out
 
-    # ---- 扩展能力开关：开题命中才为 true ----
+    # ---- 扩展功能开关：课题写到才为 true ----
     for key, _const in FLAG_KEYS:
         out[_const] = any(bool(ent.get(k)) for k in entity_keys_for(key))
 
@@ -788,7 +788,7 @@ def render(values: dict[str, Any] | None = None) -> str:
         "",
         "/**",
         " * 单据（申请 / 审核 / 跟进）业务规则与功能开关。",
-        " * <p>按本系统开题口径生成，集中保存单据流程用到的天数、上限、文案与开关；",
+        " * <p>按本课题需求生成，集中保存单据流程用到的天数、上限、文案与开关；",
         " * 需要调整业务口径时改这里的常量即可。</p>",
         " */",
         f"public final class {POLICY_CLASS} {{",

@@ -66,7 +66,9 @@
     <div class="table-scroll">
     <el-table :data="list" stripe @selection-change="onSelectionChange">
       <el-table-column v-if="allowBatchHire" type="selection" width="48" />
-      <el-table-column prop="id" label="编号" width="70" />
+      <el-table-column label="编号" width="110">
+        <template #default="{ row }"><CopyableId :value="row.id" /></template>
+      </el-table-column>
       <el-table-column prop="title" :label="ticket.label || '标题'" min-width="160" show-overflow-tooltip />
       <el-table-column v-if="showTypeCol" prop="typeName" :label="typeColLabel" width="110" show-overflow-tooltip>
         <template #default="{ row }">
@@ -672,6 +674,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
+import CopyableId from '../../components/CopyableId.vue'
 import TicketProgressDialog from '../../components/TicketProgressDialog.vue'
 import {
   archiveCopy,
@@ -765,7 +768,7 @@ function applyApprovePhrase(v) {
   audit.remark = text
   audit.phrasePick = ''
 }
-// 事件等级 → 处理时限（bake: ticket-level-sla-*-days 由 /api/tickets 回显）
+// 事件等级 → 处理时限（工程生成: ticket-level-sla-*-days 由 /api/tickets 回显）
 const levelSlaDays = ref('')
 const dutyNotifyOn = ref(false)
 const levelSlaHint = computed(() => labels.value.levelSlaHint || '')
@@ -1596,6 +1599,7 @@ async function submitAudit() {
       pass: audit.pass,
       remark,
     }
+    if (!audit.pass && getSchema()?.uxCrosscut?.confirm) body.confirm = true
     if (allowApproveCc.value && Array.isArray(audit.ccUsernames) && audit.ccUsernames.length) {
       body.ccUsernames = audit.ccUsernames
     }

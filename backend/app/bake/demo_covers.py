@@ -76,7 +76,7 @@ def ensure_demo_cover_urls_sql(sql: str, *, item_table: str | None) -> str:
     table = (item_table or "").strip()
     if not _table_has_cover_url(text, table):
         return text
-    marker = f"-- gf demo covers for {table}"
+    marker = f"-- 空封面时补默认图（{table}）"
     if marker in text:
         return text
     urls = ",\n  ".join(f"'{u}'" for u in demo_cover_urls())

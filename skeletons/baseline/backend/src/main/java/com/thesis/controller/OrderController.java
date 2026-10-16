@@ -5,10 +5,11 @@ import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.LoyaltyStore;
 import com.thesis.capability.OrderStore;
 import com.thesis.common.AdminAuth;
-import com.thesis.service.SeatStore;
 import com.thesis.common.BizException;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.R;
+import com.thesis.config.AppPolicy;
+import com.thesis.service.SeatStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 
@@ -231,6 +232,11 @@ public class OrderController {
         try {
             if (admin && b.containsKey("pass")) {
                 requireMerchantOrderAccess(session, uid, id);
+                if (AppPolicy.SENSITIVE_CONFIRM) {
+                    Object mark = b.get("confirm");
+                    boolean ok = Boolean.TRUE.equals(mark) || "true".equalsIgnoreCase(String.valueOf(mark));
+                    if (!ok) throw new BizException(ErrorCode.BAD_REQUEST, "请再次确认后再处理售后");
+                }
                 boolean pass = bool(b.get("pass"), true);
                 return R.ok(OrderStore.decideRefund(id, pass, str(b.get("note"))));
             }

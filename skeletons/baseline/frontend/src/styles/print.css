@@ -1,0 +1,32 @@
+/* 打印当前页：藏导航与页脚，只留正文 */
+@media print {
+  .wb-aside,
+  .wb-header,
+  .wb-maint,
+  .topbar,
+  .nav,
+  .user,
+  .foot,
+  .ai-float,
+  .no-print {
+    display: none !important;
+  }
+
+  .layout,
+  .el-container,
+  .el-main,
+  .wb-main,
+  .body,
+  .shell {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+}

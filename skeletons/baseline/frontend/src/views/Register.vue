@@ -68,6 +68,10 @@
             <span class="lab">{{ labels.securityAnswerLabel || '密保答案' }}</span>
             <el-input v-model="form.securityAnswer" placeholder="选填" autocomplete="off" />
           </label>
+          <label v-if="commissionOn" class="field">
+            <span class="lab">{{ labels.inviterLabel || '邀请人账号' }}</span>
+            <el-input v-model="form.inviter" placeholder="选填，填写后其可获得一级佣金" />
+          </label>
           <label v-if="requireInvite" class="field">
             <span class="lab">{{ labels.inviteCodeLabel || '邀请码' }}<i class="req" aria-hidden="true">*</i></span>
             <el-input v-model="form.inviteCode" :placeholder="labels.inviteCodeHint || '请填写本校邀请码'" />
@@ -154,6 +158,7 @@ import { authPolicy, isGuestBrowseEnabled } from '../utils/session.js'
 import { checkPhone, validateProfileFormats as validateFormats } from '../utils/profileValidate.js'
 import {
   emptyProfileExtras,
+  getSchema,
   profileFieldsOnRegister,
   roleLabel,
   schemaLabels,
@@ -163,6 +168,7 @@ import { isProfileFieldRequired, isProfileFieldVisible } from '../utils/profileV
 const router = useRouter()
 const template = ref(pickAuthTemplate())
 const labels = schemaLabels()
+const commissionOn = computed(() => !!getSchema()?.uxCrosscut?.commission)
 const showBackHome = computed(() => isGuestBrowseEnabled())
 const backHomePath = computed(() => portalBrandHomePath())
 const backHomeLabel = computed(
@@ -218,6 +224,7 @@ const form = reactive({
   securityAnswer: '',
   captcha: '',
   inviteCode: '',
+  inviter: '',
   agreeTerms: false,
   extras: emptyProfileExtras(profileFieldsOnRegister()),
 })
@@ -332,7 +339,9 @@ async function onPrimary() {
       captcha: form.captcha,
       inviteCode: form.inviteCode,
       agreeTerms: form.agreeTerms ? 'true' : 'false',
-      extras: form.extras,
+      extras: commissionOn.value && form.inviter.trim()
+        ? { ...form.extras, inviter: form.inviter.trim() }
+        : form.extras,
       securityQuestion: form.securityQuestion,
       securityAnswer: form.securityAnswer,
     }

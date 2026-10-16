@@ -53,6 +53,9 @@
 | `auth_crosscut` | §0 X-AUTH 通识横切（登录锁定/强制改密/密保找回等），基线常开非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
 | `msg_crosscut` | §0 X-MSG 通识横切（站内信软删/类型筛选；公告过期/强制弹窗/浅富文本；广告位），基线常开非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
 | `workbench_crosscut` | §0 X-DASH 通识横切（工作台待办角标/角色过滤/快捷入口），基线常开非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
+| `org_crosscut` | §0 X-ORG 通识横切：用户标签与批量启停常开；数据字典/系统外观/组织树/岗位菜单为开题扫词才挂，非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
+| `list_crosscut` | §0 X-LIST：档案组合筛选 / 导出列勾选 / 顶栏搜索为开题扫词才挂，非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
+| `ux_crosscut` | §0 X-UX：使用说明、文件列表、省市区、二次确认、一级佣金均为开题扫词才挂，非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
 
 源码：`backend/app/bake/features/proposal_caps.py` → `HUB_BYPASS_MODULES`。
 

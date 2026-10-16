@@ -1,6 +1,7 @@
 package com.thesis.capability;
 
 import com.thesis.config.JdbcSupport;
+import com.thesis.service.CommissionStore;
 import com.thesis.service.MessageStore;
 import com.thesis.service.SeatStore;
 import com.thesis.service.UserStore;
@@ -32,7 +33,7 @@ public final class OrderStore {
     private static boolean lineCustom = false;
     private static boolean lineCustomPlaceConfirmed = false;
     private static boolean noCasualRefund = false;
-    /** 收货后可申请售后天数；0=不限（开题未钉 afterSaleDays 时）。 */
+    /** 收货后可申请售后天数；0=不限（未配置售后天数时）。 */
     private static int afterSaleDays = 0;
     private static final ThreadLocal<Set<Long>> CART_ITEM_FILTER = new ThreadLocal<>();
     private static final ThreadLocal<Map<String, Object>> PLACE_EXTRAS = new ThreadLocal<>();
@@ -64,7 +65,7 @@ public final class OrderStore {
         return enabled;
     }
 
-    /** 开题写了定制/刻字/祝语才开。placeConfirmed=下单后直接待制作。 */
+    /** 启用定制/刻字/祝语时打开。placeConfirmed=下单后直接待制作。 */
     public static void configureLineCustom(boolean on, boolean placeConfirmed, boolean noCasual) {
         lineCustom = on;
         lineCustomPlaceConfirmed = on && placeConfirmed;
@@ -448,7 +449,7 @@ public final class OrderStore {
         if (LoyaltyStore.anyEnabled()) {
             priceSnap = LoyaltyStore.previewPrice(subtotal, username, coupon);
             payable = ((Number) priceSnap.get("payableYuan")).doubleValue();
-            // 在线支付仍扣账户余额；不对接微信/支付宝商户 SDK ≠ 免余额
+            // 在线支付仍扣账户余额；演示收银台未接微信/支付宝商户接口
             if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
@@ -548,7 +549,7 @@ public final class OrderStore {
         KeyHolder kh = new GeneratedKeyHolder();
         double finalTotal = payable;
         String fName = rName, fPhone = rPhone, fAddr = addr, fType = dtype, fTaste = taste;
-        // food thicken snapshot for extraCols (assigned after LinkedHashMap created)
+        // 餐饮附加费字段快照（写入扩展列前赋值）
         final String fTableNo = tableNo;
         final String fUtensil = utensilOpt;
         final String fPack = packOpt;
@@ -1313,6 +1314,7 @@ public final class OrderStore {
                 channel,
                 Timestamp.valueOf(LocalDateTime.now()),
                 orderId);
+        CommissionStore.onOrderPaid(username, orderId, toDouble(m.get("totalYuan")));
         return getOrder(orderId);
     }
 
@@ -2383,7 +2385,7 @@ public final class OrderStore {
         return getOrder(orderId);
     }
 
-    /** 物流轨迹：按状态拼多节点时间线（含运输中/派送中；不对接快递公司 API）。 */
+    /** 物流轨迹：按状态拼多节点时间线（含运输中/派送中；未接快递公司接口，按订单状态本地拼轨迹）。 */
     public static List<Map<String, Object>> logisticsTrace(long orderId) {
         requireEnabled();
         Map<String, Object> m = getOrder(orderId);

@@ -139,7 +139,7 @@ public class UserStore {
         /** clerk | worker；总管为空 */
         public String staffKind = "";
         public String postMuteUntil = "";
-        /** §0 X-AUTH：连续失败次数（旧库无列时为 0） */
+        /** 连续登录失败次数（旧库无列时为 0） */
         public int failedLoginCount;
         public String lockUntil = "";
         public boolean mustChangePassword;
@@ -147,11 +147,15 @@ public class UserStore {
         public String securityQuestion = "";
         /** 仅内部校验，不进 toMap */
         public String securityAnswerHash = "";
-        /** XA-02：邮箱/站内激活 */
+        /** 邮箱/站内激活 */
         public boolean emailActivated;
         public String activationCode = "";
-        /** XA-02：实名勾选（非公安） */
+        /** 实名勾选（本系统内确认，非公安核验） */
         public boolean realNameAcked;
+        /** 管理端标签（逗号分隔；≠ 组织树） */
+        public String adminTags = "";
+        /** 所属组织；空表示未挂 */
+        public Long orgId;
 
         public Map<String, Object> toMap() {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -173,6 +177,8 @@ public class UserStore {
             m.put("emailActivated", emailActivated);
             m.put("mustActivateEmail", effectiveMustActivate(this));
             m.put("realNameAcked", realNameAcked);
+            m.put("adminTags", adminTags == null ? "" : adminTags);
+            m.put("orgId", orgId);
             if (extras != null) {
                 for (Map.Entry<String, String> e : extras.entrySet()) {
                     m.putIfAbsent(e.getKey(), e.getValue());
@@ -269,6 +275,18 @@ public class UserStore {
             p.realNameAcked = rs.getInt("real_name_acked") == 1;
         } catch (Exception e) {
             p.realNameAcked = false;
+        }
+        try {
+            String tags = rs.getString("admin_tags");
+            p.adminTags = tags == null ? "" : tags.trim();
+        } catch (Exception e) {
+            p.adminTags = "";
+        }
+        try {
+            long oid = rs.getLong("org_id");
+            p.orgId = rs.wasNull() ? null : oid;
+        } catch (Exception e) {
+            p.orgId = null;
         }
         return p;
     }
@@ -651,7 +669,13 @@ public class UserStore {
     }
 
     public static List<Map<String, Object>> listManaged(String userRole, String scope, String keyword) {
+        return listManaged(userRole, scope, keyword, null);
+    }
+
+    public static List<Map<String, Object>> listManaged(
+            String userRole, String scope, String keyword, String tag) {
         String kw = keyword == null ? "" : keyword.trim();
+        String tagFilter = tag == null ? "" : tag.trim();
         String sc = scope == null || scope.isBlank() ? "users" : scope.trim();
         String ur = (userRole == null || userRole.isBlank()) ? "user" : userRole.trim();
         List<Profile> all = db().query("SELECT * FROM sys_user", MAPPER);
@@ -670,11 +694,17 @@ public class UserStore {
                     return isUser;
                 })
                 .filter(p -> {
+                    if (tagFilter.isBlank()) return true;
+                    return tagList(p.adminTags).stream().anyMatch(t -> t.equalsIgnoreCase(tagFilter)
+                            || t.contains(tagFilter));
+                })
+                .filter(p -> {
                     if (kw.isBlank()) return true;
                     if (p.username.contains(kw)
                             || (p.nickname != null && p.nickname.contains(kw))
                             || (p.phone != null && p.phone.contains(kw))
-                            || (p.staffPost != null && p.staffPost.contains(kw))) {
+                            || (p.staffPost != null && p.staffPost.contains(kw))
+                            || (p.adminTags != null && p.adminTags.contains(kw))) {
                         return true;
                     }
                     if (p.extras == null) return false;
@@ -684,6 +714,60 @@ public class UserStore {
                         .thenComparing(p -> p.username))
                 .map(Profile::toMap)
                 .collect(Collectors.toList());
+    }
+
+    /** 规范化逗号分隔标签。 */
+    public static String normalizeAdminTags(String raw) {
+        if (raw == null || raw.isBlank()) return "";
+        LinkedHashSet<String> set = new LinkedHashSet<>();
+        for (String part : raw.split("[,，;；\\s]+")) {
+            String t = part == null ? "" : part.trim();
+            if (!t.isBlank() && t.length() <= 32) set.add(t);
+            if (set.size() >= 8) break;
+        }
+        return String.join(",", set);
+    }
+
+    private static List<String> tagList(String raw) {
+        String n = normalizeAdminTags(raw);
+        if (n.isBlank()) return List.of();
+        return Arrays.asList(n.split(","));
+    }
+
+    public static Profile adminUpdateTags(String username, String tags) {
+        Profile p = requireManaged(username);
+        if (!columnExists("admin_tags")) {
+            throw new IllegalStateException("系统未配置管理标签字段");
+        }
+        String normalized = normalizeAdminTags(tags);
+        db().update("UPDATE sys_user SET admin_tags=? WHERE username=?", normalized, username);
+        return get(username);
+    }
+
+    public static Profile updateOrgId(String username, Long orgId) {
+        Profile p = requireManaged(username);
+        if (!columnExists("org_id")) {
+            throw new IllegalStateException("系统未配置组织字段");
+        }
+        db().update("UPDATE sys_user SET org_id=? WHERE username=?", orgId, username);
+        return get(username);
+    }
+
+    /** 批量启停；返回成功改写的用户名（踢会话由调用方处理）。 */
+    public static List<String> batchSetEnabled(
+            List<String> usernames, boolean enabled, boolean protectLastStaff) {
+        if (usernames == null || usernames.isEmpty()) return List.of();
+        List<String> ok = new ArrayList<>();
+        for (String u : usernames) {
+            if (u == null || u.isBlank()) continue;
+            try {
+                adminUpdate(u.trim(), null, null, enabled, null, protectLastStaff);
+                ok.add(u.trim());
+            } catch (IllegalArgumentException | IllegalStateException ignored) {
+                // 跳过不可操作账号（末岗保护等）
+            }
+        }
+        return ok;
     }
 
     public static long countByRole(String role) {

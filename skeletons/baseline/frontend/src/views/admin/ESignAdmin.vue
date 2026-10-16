@@ -14,7 +14,14 @@
       <el-table-column prop="ticketId" label="单据ID" width="90" />
       <el-table-column label="签章" width="100">
         <template #default="{ row }">
-          <el-image v-if="row.signImageUrl" :src="row.signImageUrl" style="width: 48px; height: 48px" fit="contain" />
+          <el-image
+            v-if="row.signImageUrl"
+            :src="row.signImageUrl"
+            style="width: 48px; height: 48px"
+            fit="contain"
+            :preview-src-list="[row.signImageUrl]"
+            preview-teleported
+          />
         </template>
       </el-table-column>
       <el-table-column prop="agreed" label="同意" width="70">

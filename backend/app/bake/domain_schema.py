@@ -593,10 +593,16 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.bake.features.auth_crosscut import apply_auth_crosscut_to_spec
     from app.bake.features.msg_crosscut import apply_msg_crosscut_to_spec
     from app.bake.features.workbench_crosscut import apply_workbench_crosscut_to_spec
+    from app.bake.features.org_crosscut import apply_org_crosscut_to_spec
+    from app.bake.features.list_crosscut import apply_list_crosscut_to_spec
+    from app.bake.features.ux_crosscut import apply_ux_crosscut_to_spec
 
     out = apply_auth_crosscut_to_spec(out, body)
     out = apply_msg_crosscut_to_spec(out, body)
     out = apply_workbench_crosscut_to_spec(out, body)
+    out = apply_org_crosscut_to_spec(out, body)
+    out = apply_list_crosscut_to_spec(out, body)
+    out = apply_ux_crosscut_to_spec(out, body)
 
     # 岗位随开题补挂（如 FOOD 骑手）；复用 attach_staff_posts，刷新 spec.roles
     from app.bake.domains import DOMAINS

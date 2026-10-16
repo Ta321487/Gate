@@ -1,6 +1,6 @@
 <template>
   <div>
-    <p class="lead">管理档案条下的用户评论（≠ 门户留言）。</p>
+    <p class="lead">管理档案条下的用户评论（与门户留言分开）。</p>
     <div class="toolbar">
       <el-input
         v-model="itemIdFilter"

@@ -49,13 +49,34 @@
     </el-aside>
     <el-container>
       <el-header class="wb-header">
-        <span class="wb-header-title" :title="title">{{ title }}</span>
+        <span class="wb-header-title" :title="headerTitle">
+          <img v-if="logoUrl" class="wb-logo" :src="logoUrl" alt="" />
+          {{ headerTitle }}
+        </span>
+        <el-input
+          v-if="globalSearchOn"
+          v-model="topQuery"
+          class="wb-top-search"
+          clearable
+          :placeholder="topSearchPlaceholder"
+          @keyup.enter="goTopSearch"
+        />
         <div class="wb-header-right">
+          <span class="wb-ver no-print">{{ systemVersion }}</span>
+          <el-button class="no-print" link type="primary" @click="printCurrentPage">打印本页</el-button>
           <MessageBell />
           <span>{{ displayName }} · {{ adminRoleLabel }}</span>
           <el-button link type="primary" @click="logout">退出</el-button>
         </div>
       </el-header>
+      <el-alert
+        v-if="maintenanceOn"
+        class="wb-maint"
+        type="warning"
+        :closable="false"
+        show-icon
+        :title="maintenanceText"
+      />
       <el-main class="wb-main">
         <router-view />
       </el-main>
@@ -79,13 +100,21 @@ import {
   staffPostLabel,
 } from '../utils/staffPosts.js'
 import { adminMenuPath } from '../utils/menuRoutes.js'
+import { printCurrentPage } from '../utils/printPage.js'
 import { adminAsideDense } from '../utils/navOverflow.js'
 import { onProfileDisplayChange } from '../utils/session.js'
 
 const route = useRoute()
 const router = useRouter()
 const labels = schemaLabels()
+const systemVersion =
+  labels.systemVersionLabel || import.meta.env.VITE_APP_VERSION || 'v1.0.0'
 const title = labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统'
+const siteName = ref('')
+const logoUrl = ref('')
+const maintenanceOn = ref(false)
+const maintenanceText = ref(labels.maintenanceDefaultText || '系统维护中，部分功能暂不可用')
+const headerTitle = computed(() => siteName.value || title)
 const username = localStorage.getItem('username') || ''
 const nickname = ref(localStorage.getItem('nickname') || '')
 const profileEditable = localStorage.getItem('profileEditable') !== 'false'
@@ -94,6 +123,7 @@ const staffPost = currentStaffPost()
 const displayName = computed(() => nickname.value || username)
 const active = computed(() => route.path)
 const pendingTickets = ref(0)
+const menuTick = ref(0)
 const pendingOrders = ref(0)
 const pendingReservations = ref(0)
 const missingCheckin = ref(0)
@@ -129,17 +159,53 @@ async function refreshPending() {
   }
 }
 
+async function refreshSiteSettings() {
+  if (!getSchema()?.orgCrosscut?.siteSettings) return
+  try {
+    const res = await http.get('/api/site-settings')
+    const d = res.data || {}
+    if (d.siteName) siteName.value = String(d.siteName).trim()
+    logoUrl.value = d.logoUrl ? String(d.logoUrl).trim() : ''
+    maintenanceOn.value = !!d.maintenanceOn
+    if (d.maintenanceText) maintenanceText.value = String(d.maintenanceText).trim()
+  } catch {
+    /* ignore */
+  }
+}
+
 onMounted(() => {
   offProfileDisplay = onProfileDisplayChange(({ nickname: n }) => {
     nickname.value = n || ''
   })
   refreshPending()
+  refreshSiteSettings()
+  if (getSchema()?.orgCrosscut?.roleMenus) {
+    http.get('/api/auth/menu-keys').then((res) => {
+      const d = res.data || {}
+      import('../utils/staffPosts.js').then((m) => {
+        m.setMenuKeyOverride?.(d.keys, d.usePacks !== false)
+        menuTick.value += 1
+      })
+    }).catch(() => {})
+  }
   dashTimer = setInterval(refreshPending, 60000)
 })
 onUnmounted(() => {
   offProfileDisplay?.()
   if (dashTimer) clearInterval(dashTimer)
 })
+
+const globalSearchOn = computed(() => {
+  if (!getSchema()?.listCrosscut?.globalSearch) return false
+  return schemaMenus('admin').some((m) => m.key === 'archive') || schemaMenus('user').some((m) => m.key === 'archive')
+})
+const topQuery = ref('')
+const topSearchPlaceholder = computed(() => schemaLabels().topSearchPlaceholder || '搜索名称')
+function goTopSearch() {
+  const q = topQuery.value.trim()
+  if (!q) return
+  router.push({ path: '/admin/archive', query: { q } })
+}
 
 const adminRoleLabel = computed(() => {
   const roles = getSchema()?.roles || {}
@@ -148,6 +214,7 @@ const adminRoleLabel = computed(() => {
 })
 
 const menuItems = computed(() => {
+  void menuTick.value
   const menus = schemaMenus('admin')
   const raw = menus.length
     ? menus.map((m) => ({
@@ -228,5 +295,29 @@ async function logout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+.wb-top-search { width: 200px; margin-left: 16px; }
+.wb-ver {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-right: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.wb-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.wb-logo {
+  height: 22px;
+  width: auto;
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 4px;
+}
+.wb-maint {
+  margin: 0 16px 0;
+  border-radius: 0;
 }
 </style>

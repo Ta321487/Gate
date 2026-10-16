@@ -10,7 +10,9 @@
     <p v-if="isCinema && ticketRefundCutoffHint" class="muted">{{ ticketRefundCutoffHint }}</p>
     <div class="table-scroll">
     <el-table :data="list" stripe>
-      <el-table-column prop="id" label="编号" width="80" />
+      <el-table-column label="编号" width="120">
+        <template #default="{ row }"><CopyableId :value="row.id" /></template>
+      </el-table-column>
       <el-table-column :label="userLabel" width="120">
         <template #default="{ row }">{{ personLabel(row) }}</template>
       </el-table-column>
@@ -366,6 +368,7 @@ import { downloadCsv } from '../../utils/csvDownload.js'
 import { printOrderReceipt } from '../../utils/orderReceiptPrint.js'
 import { printOrderInvoice } from '../../utils/orderInvoicePrint.js'
 import OrderTraceDialog from '../../components/OrderTraceDialog.vue'
+import CopyableId from '../../components/CopyableId.vue'
 
 const order = computed(() => getSchema()?.entities?.order || {})
 const states = computed(() => order.value.states || {})
@@ -837,7 +840,11 @@ async function decideRefund(row, pass) {
       '通过售后',
     )
   }
-  await http.post(`/api/orders/${row.id}/refund`, { pass, note })
+  await http.post(`/api/orders/${row.id}/refund`, {
+    pass,
+    note,
+    ...(getSchema()?.uxCrosscut?.confirm ? { confirm: true } : {}),
+  })
   ElMessage.success(pass ? '已通过售后' : '已驳回')
   load()
 }

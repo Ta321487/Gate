@@ -37,7 +37,7 @@
 /**
  * 登录/注册壳：版式由 VITE_AUTH_TEMPLATE / 交付配置决定；氛围图来自 appDelivered.authHero。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { APP_DELIVERED } from '../appDelivered.js'
 
 const props = defineProps({
@@ -52,9 +52,15 @@ const props = defineProps({
   watermark: { type: String, default: '' },
   /** 注册等字段多时加宽面板，便于分栏 */
   wide: { type: Boolean, default: false },
+  /** 系统外观可配登录背景；优先于交付氛围图 */
+  bgUrl: { type: String, default: '' },
 })
 
-const heroSrc = computed(() => (APP_DELIVERED?.authHero || '').trim())
+const heroSrc = computed(() => {
+  const custom = (props.bgUrl || '').trim()
+  if (custom) return custom
+  return (APP_DELIVERED?.authHero || '').trim()
+})
 const heroOk = ref(!!heroSrc.value)
 const heroOn = computed(() => heroOk.value && !!heroSrc.value)
 const heroCssVars = computed(() => {
@@ -62,8 +68,7 @@ const heroCssVars = computed(() => {
   return { '--auth-hero': `url('${heroSrc.value}')` }
 })
 
-onMounted(() => {
-  const src = heroSrc.value
+function probeHero(src) {
   if (!src) {
     heroOk.value = false
     return
@@ -72,7 +77,10 @@ onMounted(() => {
   img.onload = () => { heroOk.value = true }
   img.onerror = () => { heroOk.value = false }
   img.src = src
-})
+}
+
+onMounted(() => probeHero(heroSrc.value))
+watch(heroSrc, (src) => probeHero(src))
 </script>
 
 <style scoped>

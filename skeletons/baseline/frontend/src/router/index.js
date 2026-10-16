@@ -376,7 +376,7 @@ function withContentReportRoutes(baseRoutes) {
   return routes
 }
 
-/** 博客友情链接管理：contentThicken.friendLinks */
+/** 博客友情链接管理：友情链接功能 */
 function withBlogFriendLinkRoutes(baseRoutes) {
   if (!getSchema()?.contentThicken?.friendLinks) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
@@ -389,6 +389,47 @@ function withBlogFriendLinkRoutes(baseRoutes) {
       path: 'blog-friend-links',
       component: () => import('../views/admin/BlogFriendLinksAdmin.vue'),
     })
+  }
+  return routes
+}
+
+/** 使用说明：开题写到才挂 */
+function withHelpRoutes(baseRoutes) {
+  if (!getSchema()?.uxCrosscut?.help) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const portal = routes.find((r) => r.path === '/')
+  const kids = portal?.children
+  if (kids && !kids.some((c) => c.path === 'help')) {
+    kids.push({ path: 'help', component: () => import('../views/Help.vue') })
+  }
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'help')) {
+    adminKids.push({ path: 'help', component: () => import('../views/admin/HelpAdmin.vue') })
+  }
+  return routes
+}
+
+/** 文件列表：开题写到文件管理才挂 */
+function withFileRoutes(baseRoutes) {
+  if (!getSchema()?.uxCrosscut?.files) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'files')) {
+    adminKids.push({ path: 'files', component: () => import('../views/admin/FilesAdmin.vue') })
+  }
+  return routes
+}
+
+/** 一级佣金台账：开题写到分销才挂 */
+function withCommissionRoutes(baseRoutes) {
+  if (!getSchema()?.uxCrosscut?.commission) return baseRoutes
+  const routes = cloneRoutes(baseRoutes)
+  const admin = routes.find((r) => r.path === '/admin')
+  const adminKids = admin?.children
+  if (adminKids && !adminKids.some((c) => c.path === 'commissions')) {
+    adminKids.push({ path: 'commissions', component: () => import('../views/admin/CommissionAdmin.vue') })
   }
   return routes
 }
@@ -589,7 +630,7 @@ function withESignRoutes(baseRoutes) {
   return routes
 }
 
-/** 浅进销存：有 stock_io 能力时挂管理端入出库 */
+/** 进销存：有 stock_io 能力时挂管理端入出库 */
 function withStockIoRoutes(baseRoutes) {
   if (!hasCap('stock_io')) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
@@ -721,7 +762,7 @@ function withExamRoutes(baseRoutes) {
   return routes
 }
 
-/** 教务成绩：登记、课内名次、CSV。仅 DOM-GRADE schema 打开。 */
+/** 教务成绩：登记、课内名次、CSV。教务成绩模块启用时注册。 */
 function withGradeScoreRoutes(baseRoutes) {
   if (!getSchema().gradeScores) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
@@ -744,7 +785,7 @@ function withGradeScoreRoutes(baseRoutes) {
   return routes
 }
 
-/** 资助公示/发放旁路岛：登记、台账、公示查阅。仅 DOM-FUND schema 打开。 */
+/** 资助公示/发放旁路岛：登记、台账、公示查阅。资助模块启用时注册。 */
 function withFundIslandRoutes(baseRoutes) {
   if (!getSchema().fundIsland) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
@@ -775,7 +816,7 @@ function withFundIslandRoutes(baseRoutes) {
   return routes
 }
 
-/** 房源成交台账：带看跟进办结后登记成交。仅 DOM-LISTING schema 打开。 */
+/** 房源成交台账：带看跟进办结后登记成交。房源模块启用时注册。 */
 function withListingDealRoutes(baseRoutes) {
   if (!getSchema().listingDeal) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
@@ -1060,6 +1101,10 @@ const ticketRoutes = [
       { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
       { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
       { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
+      { path: 'dict', component: () => import('../views/admin/DictAdmin.vue') },
+      { path: 'site-settings', component: () => import('../views/admin/SiteSettingsAdmin.vue') },
+      { path: 'org', component: () => import('../views/admin/OrgAdmin.vue') },
+      { path: 'role-menus', component: () => import('../views/admin/RoleMenusAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'sites', component: () => import('../views/admin/LookupSitesAdmin.vue') },
       { path: 'types', component: () => import('../views/admin/LookupTypesAdmin.vue') },
@@ -1105,6 +1150,10 @@ const archiveTicketRoutes = [
       { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
       { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
       { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
+      { path: 'dict', component: () => import('../views/admin/DictAdmin.vue') },
+      { path: 'site-settings', component: () => import('../views/admin/SiteSettingsAdmin.vue') },
+      { path: 'org', component: () => import('../views/admin/OrgAdmin.vue') },
+      { path: 'role-menus', component: () => import('../views/admin/RoleMenusAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
@@ -1145,6 +1194,10 @@ const orderRoutes = [
       { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
       { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
       { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
+      { path: 'dict', component: () => import('../views/admin/DictAdmin.vue') },
+      { path: 'site-settings', component: () => import('../views/admin/SiteSettingsAdmin.vue') },
+      { path: 'org', component: () => import('../views/admin/OrgAdmin.vue') },
+      { path: 'role-menus', component: () => import('../views/admin/RoleMenusAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
@@ -1191,6 +1244,10 @@ const slotRoutes = [
       { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
       { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
       { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
+      { path: 'dict', component: () => import('../views/admin/DictAdmin.vue') },
+      { path: 'site-settings', component: () => import('../views/admin/SiteSettingsAdmin.vue') },
+      { path: 'org', component: () => import('../views/admin/OrgAdmin.vue') },
+      { path: 'role-menus', component: () => import('../views/admin/RoleMenusAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
@@ -1227,6 +1284,10 @@ const archiveOnlyRoutes = [
       { path: 'invite-codes', component: () => import('../views/admin/InviteCodesAdmin.vue') },
       { path: 'banners', component: () => import('../views/admin/BannersAdmin.vue') },
       { path: 'schedule-jobs', component: () => import('../views/admin/ScheduleJobsAdmin.vue') },
+      { path: 'dict', component: () => import('../views/admin/DictAdmin.vue') },
+      { path: 'site-settings', component: () => import('../views/admin/SiteSettingsAdmin.vue') },
+      { path: 'org', component: () => import('../views/admin/OrgAdmin.vue') },
+      { path: 'role-menus', component: () => import('../views/admin/RoleMenusAdmin.vue') },
       { path: 'notices', component: NoticesAdmin },
       { path: 'profile', component: Profile },
     ],
@@ -1271,6 +1332,9 @@ function pickRoutes() {
     withParcelExtraRoutes,
     withContentReportRoutes,
     withBlogFriendLinkRoutes,
+    withHelpRoutes,
+    withFileRoutes,
+    withCommissionRoutes,
     withAiAssistantRoutes,
     withGradeScoreRoutes,
     withFundIslandRoutes,

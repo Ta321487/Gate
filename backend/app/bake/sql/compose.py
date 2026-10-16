@@ -79,7 +79,7 @@ def compose_generic_sql(
         want.discard("biz_attach")
 
     parts = [
-        f"-- bake domain=DOM-GENERIC · composed · tables in [{table_min},{table_max}]",
+        f"-- 业务库脚本：建库、建表与初始数据（约 {table_min}～{table_max} 张表）",
         f"CREATE DATABASE IF NOT EXISTS `{db_name}` DEFAULT CHARACTER SET utf8mb4;",
         f"USE `{db_name}`;",
         "",

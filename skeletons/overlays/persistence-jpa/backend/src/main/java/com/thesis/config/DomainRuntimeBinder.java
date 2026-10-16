@@ -869,17 +869,17 @@ public class DomainRuntimeBinder implements ApplicationRunner {
 
     private final boolean timebankRedeemOnApprove = AppPolicy.TIMEBANK_REDEEM_ON_APPROVE;
 
-    /** C-15 影院选座 */
+    /** 影院选座 */
     private final boolean seatSelectEnabled = AppPolicy.SEAT_SELECT_ENABLED;
 
-    /** C-17 浅进销存 */
+    /** 进销存 */
     private final boolean stockIoEnabled = AppPolicy.STOCK_IO_ENABLED;
 
-    /** E-08 报废 */
+    /** 报废 */
     @Value("${thesis.stock-scrap-enabled:false}")
     private boolean stockScrapEnabled;
 
-    /** E-08 盘点 */
+    /** 盘点 */
     @Value("${thesis.stock-count-enabled:false}")
     private boolean stockCountEnabled;
 
@@ -895,7 +895,7 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.stock-scrap-approve-flow:false}")
     private boolean stockScrapApproveFlow;
 
-    /** C-18 本地签章 */
+    /** 本地签章 */
     private final boolean eSignEnabled = AppPolicy.E_SIGN_ENABLED;
 
     private final boolean balanceLedgerEnabled = AppPolicy.BALANCE_LEDGER_ENABLED;
@@ -943,11 +943,9 @@ public class DomainRuntimeBinder implements ApplicationRunner {
     @Value("${thesis.points-offset-enabled:false}")
     private boolean pointsOffsetEnabled;
 
-    @Value("${thesis.points-checkin-enabled:false}")
-    private boolean pointsCheckInEnabledYaml;
+    private final boolean pointsCheckInEnabled = AppPolicy.POINTS_CHECK_IN_ENABLED;
 
-    @Value("${thesis.points-checkin-amount:10}")
-    private int pointsCheckInAmountYaml;
+    private final int pointsCheckInAmount = AppPolicy.POINTS_CHECK_IN_AMOUNT;
 
     @Value("${thesis.points-expire-enabled:false}")
     private boolean pointsExpireEnabled;
@@ -1298,16 +1296,11 @@ public class DomainRuntimeBinder implements ApplicationRunner {
                 pointsEarnPerYuan,
                 spendDiscountThresholdYuan,
                 spendDiscountOffYuan);
-        boolean pointsCheckInEnabled =
-                AppPolicy.POINTS_CHECK_IN_ENABLED || pointsCheckInEnabledYaml;
-        int pointsCheckInAmount = AppPolicy.POINTS_CHECK_IN_ENABLED
-                ? Math.max(1, AppPolicy.POINTS_CHECK_IN_AMOUNT)
-                : pointsCheckInAmountYaml;
         LoyaltyStore.configurePointsModes(
                 pointsPayEnabled,
                 pointsOffsetEnabled,
                 pointsCheckInEnabled,
-                pointsCheckInAmount,
+                Math.max(1, pointsCheckInAmount),
                 pointsExpireEnabled,
                 pointsExpirePeriod,
                 pointsExpireScope,

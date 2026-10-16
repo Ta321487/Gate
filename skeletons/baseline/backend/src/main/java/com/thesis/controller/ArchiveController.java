@@ -2,14 +2,19 @@ package com.thesis.controller;
 
 import com.thesis.capability.ArchiveStore;
 import com.thesis.capability.AuditLogStore;
+import com.thesis.capability.ExcelBook;
 import com.thesis.common.AdminAuth;
 import com.thesis.common.BizException;
+import com.thesis.config.AppPolicy;
 import com.thesis.common.ErrorCode;
 import com.thesis.common.GuestTeaser;
 import com.thesis.common.R;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,6 +38,10 @@ public class ArchiveController {
             @RequestParam(required = false) String city,
             @RequestParam(required = false) Integer ageMin,
             @RequestParam(required = false) Integer ageMax,
+            @RequestParam(required = false) String listStatus,
+            @RequestParam(required = false) String createdFrom,
+            @RequestParam(required = false) String createdTo,
+            @RequestParam(required = false, defaultValue = "false") boolean deletedOnly,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             /** 为 true 时只返回窗内活动价商品（需挂 flash_price）；门户限时特价区用 */
@@ -66,13 +75,17 @@ public class ArchiveController {
                     album,
                     city,
                     ageMin,
-                    ageMax);
+                    ageMax,
+                    listStatus,
+                    createdFrom,
+                    createdTo,
+                    deletedOnly);
         }
         if (!admin) ArchiveStore.redactSensitiveListForPublic(data);
         return R.ok(data);
     }
 
-    /** 作者主页（C-04） */
+    /** 作者主页 */
     @GetMapping("/by-author")
     public R<Map<String, Object>> byAuthor(
             @RequestParam String username,
@@ -86,13 +99,13 @@ public class ArchiveController {
         return R.ok(data);
     }
 
-    /** 系列文上一篇/下一篇（C-04） */
+    /** 系列文上一篇/下一篇 */
     @GetMapping("/{id:\\d+}/series-neighbors")
     public R<Map<String, Object>> seriesNeighbors(@PathVariable long id) {
         return R.ok(ArchiveStore.seriesNeighbors(id));
     }
 
-    /** 口令解锁正文（C-04）；会话内记住 */
+    /** 口令解锁正文；会话内记住 */
     @PostMapping("/{id:\\d+}/unlock")
     public R<Map<String, Object>> unlock(
             @PathVariable long id, @RequestBody Map<String, Object> body, HttpSession session) {
@@ -115,7 +128,7 @@ public class ArchiveController {
         return R.ok(ArchiveStore.suggestTitles(q, limit));
     }
 
-    /** 内容组热门排行：按阅读数 / 下载数排序（≠协同过滤）。 */
+    /** 内容组热门排行：按阅读数 / 下载数排序。 */
     @GetMapping("/hot")
     public R<Map<String, Object>> hot(
             @RequestParam(defaultValue = "1") int page,
@@ -144,7 +157,7 @@ public class ArchiveController {
         return R.ok(ArchiveStore.pageMine(uid, page, size, status));
     }
 
-    /** 用户发布档案：即时可见，或开题点名先审后发 */
+    /** 用户发布档案：即时可见，或开启「先审后发」 */
     @PostMapping("/publish")
     public R<Map<String, Object>> publish(@RequestBody Map<String, Object> body, HttpSession session) {
         String uid = AdminAuth.requireLogin(session);
@@ -189,7 +202,7 @@ public class ArchiveController {
             }
         }
         try {
-            // I-05 CARPOOL：同一出发时间与路线的行程只保留一条（非拼车域自动放行）
+            // 同一出发时间与路线的行程只保留一条（非拼车域自动放行）
             if (!asDraft && ArchiveStore.isDuplicateTrip(uid, title, str(body.get("startAt")))) {
                 throw new BizException(ErrorCode.BAD_REQUEST, "你已发布过相同出发时间与路线的行程，请勿重复发布。");
             }
@@ -213,7 +226,7 @@ public class ArchiveController {
             if (!originKind.isBlank()) patch.put("originKind", originKind);
             String accessPassword = str(body.get("accessPassword"));
             if (!accessPassword.isBlank()) patch.put("accessPassword", accessPassword);
-            // I-05 CARPOOL：行程加厚字段（空值不写入；非法数字忽略）
+            // 行程加厚字段（空值不写入；非法数字忽略）
             String viaPoints = str(body.get("viaPoints"));
             if (!viaPoints.isBlank()) patch.put("viaPoints", viaPoints);
             String shareNote = str(body.get("shareNote"));
@@ -328,6 +341,125 @@ public class ArchiveController {
         return R.ok(ArchiveStore.importRows(parseArchiveCsv(csv)));
     }
 
+    /** 下载 xlsx 导入模板。表头为中文，字段键写在隐藏表。 */
+    @PostMapping("/import-template")
+    public void importTemplate(@RequestBody Map<String, Object> body, HttpServletResponse response, HttpSession session)
+            throws IOException {
+        AdminAuth.requireSuperAdmin(session);
+        List<String> labels = new ArrayList<>();
+        List<String> keys = new ArrayList<>();
+        List<String> samples = new ArrayList<>();
+        Object raw = body.get("columns");
+        if (raw instanceof List<?> cols) {
+            for (Object item : cols) {
+                if (!(item instanceof Map<?, ?> col)) continue;
+                String key = str(col.get("key"));
+                String label = str(col.get("label"));
+                if (key.isBlank()) continue;
+                keys.add(key);
+                labels.add(label.isBlank() ? key : label);
+                samples.add(str(col.get("sample")));
+            }
+        }
+        if (keys.isEmpty()) throw new BizException(ErrorCode.BAD_REQUEST, "没有可导入的列");
+        byte[] bytes = ExcelBook.template(labels, keys, samples);
+        writeXlsx(response, "import-template.xlsx", bytes);
+    }
+
+    /** 导入 xlsx。空行跳过；返回成功条数与行错误（行号按 Excel）。 */
+    @PostMapping("/import-xlsx")
+    public R<Map<String, Object>> importXlsx(@RequestParam("file") MultipartFile file, HttpSession session)
+            throws IOException {
+        AdminAuth.requireSuperAdmin(session);
+        if (file == null || file.isEmpty()) throw new BizException(ErrorCode.BAD_REQUEST, "请选择 xlsx 文件");
+        String name = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
+        if (!name.endsWith(".xlsx")) throw new BizException(ErrorCode.BAD_REQUEST, "请上传 xlsx 文件（先下载导入模板）");
+        List<Map<String, String>> rows;
+        try {
+            rows = canonImportRows(ExcelBook.readImport(file.getInputStream()));
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "无法读取该文件，请使用导入模板（xlsx）");
+        }
+        if (rows.isEmpty()) throw new BizException(ErrorCode.BAD_REQUEST, "没有可导入的数据，请从第 2 行填写");
+        boolean hasTitle = rows.stream().anyMatch(r -> r.containsKey("title"));
+        if (!hasTitle) throw new BizException(ErrorCode.BAD_REQUEST, "模板缺少名称列");
+        return R.ok(ArchiveStore.importRows(rows));
+    }
+
+    /** 当前列表导出为 xlsx。 */
+    @PostMapping("/export-xlsx")
+    public void exportXlsx(@RequestBody Map<String, Object> body, HttpServletResponse response, HttpSession session)
+            throws IOException {
+        AdminAuth.requireSuperAdmin(session);
+        List<String> labels = stringList(body.get("headers"));
+        List<List<String>> rows = new ArrayList<>();
+        Object raw = body.get("rows");
+        if (raw instanceof List<?> list) {
+            for (Object item : list) {
+                rows.add(stringList(item));
+            }
+        }
+        if (labels.isEmpty()) throw new BizException(ErrorCode.BAD_REQUEST, "没有可导出的列");
+        byte[] bytes = ExcelBook.table("导出", labels, rows);
+        writeXlsx(response, "archive.xlsx", bytes);
+    }
+
+    private static void writeXlsx(HttpServletResponse response, String filename, byte[] bytes) throws IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+        response.getOutputStream().write(bytes);
+    }
+
+    private static List<Map<String, String>> canonImportRows(List<Map<String, String>> raw) {
+        List<Map<String, String>> out = new ArrayList<>();
+        for (Map<String, String> row : raw) {
+            Map<String, String> mapped = new LinkedHashMap<>();
+            for (Map.Entry<String, String> e : row.entrySet()) {
+                if ("__line".equals(e.getKey())) {
+                    mapped.put("__line", e.getValue());
+                    continue;
+                }
+                String key = canonArchiveHeader(e.getKey());
+                if (key.isBlank()) continue;
+                mapped.put(key, e.getValue());
+            }
+            out.add(mapped);
+        }
+        return out;
+    }
+
+    private static List<String> stringList(Object raw) {
+        List<String> out = new ArrayList<>();
+        if (!(raw instanceof List<?> list)) return out;
+        for (Object item : list) out.add(item == null ? "" : String.valueOf(item));
+        return out;
+    }
+
+    /** 档案批量删除（软删开启时进入回收站）。 */
+    @PostMapping("/batch-delete")
+    public R<Map<String, Object>> batchDelete(@RequestBody Map<String, Object> body, HttpSession session) {
+        AdminAuth.requireSuperAdmin(session);
+        if (AppPolicy.SENSITIVE_CONFIRM) {
+            Object mark = body == null ? null : body.get("confirm");
+            boolean ok = Boolean.TRUE.equals(mark) || "true".equalsIgnoreCase(String.valueOf(mark));
+            if (!ok) throw new BizException(ErrorCode.BAD_REQUEST, "请再次确认后再删除");
+        }
+        int ok = 0;
+        Object raw = body == null ? null : body.get("ids");
+        if (raw instanceof java.util.Collection<?> col) {
+            for (Object o : col) {
+                if (o == null) continue;
+                try {
+                    if (ArchiveStore.deleteItem(Long.parseLong(String.valueOf(o)))) ok++;
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", ok);
+        return R.ok(out);
+    }
+
     @PostMapping
     public R<Map<String, Object>> create(@RequestBody Map<String, Object> body, HttpSession session) {
         Map<String, Object> payload = body == null ? new LinkedHashMap<>() : new LinkedHashMap<>(body);
@@ -391,6 +523,11 @@ public class ArchiveController {
             @RequestBody(required = false) Map<String, Object> body,
             HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
+        if (AppPolicy.SENSITIVE_CONFIRM) {
+            Object mark = body == null ? null : body.get("confirm");
+            boolean ok = Boolean.TRUE.equals(mark) || "true".equalsIgnoreCase(String.valueOf(mark));
+            if (!ok) throw new BizException(ErrorCode.BAD_REQUEST, "请再次确认后再删除");
+        }
         String reason = body == null || body.get("offShelfReason") == null
                 ? "" : String.valueOf(body.get("offShelfReason"));
         if (!ArchiveStore.deleteItem(id, reason)) throw new BizException(ErrorCode.NOT_FOUND, "对象不存在");
@@ -399,7 +536,7 @@ public class ArchiveController {
         return R.ok(null);
     }
 
-    /** 片单分享码只读打开（C-05） */
+    /** 片单分享码只读打开 */
     @GetMapping("/by-share-code")
     public R<Map<String, Object>> byShareCode(@RequestParam String code) {
         Map<String, Object> item = ArchiveStore.getByShareCode(code);
@@ -434,13 +571,18 @@ public class ArchiveController {
         }
     }
 
-    /** 多店 / 投稿先审：超管驳回（I-02 可带 rejectReason） */
+    /** 多店 / 投稿先审：超管驳回（ 可带 rejectReason） */
     @PostMapping("/{id:\\d+}/reject")
     public R<Map<String, Object>> reject(
             @PathVariable long id,
             @RequestBody(required = false) Map<String, Object> body,
             HttpSession session) {
         AdminAuth.requireSuperAdmin(session);
+        if (AppPolicy.SENSITIVE_CONFIRM) {
+            Object mark = body == null ? null : body.get("confirm");
+            boolean ok = Boolean.TRUE.equals(mark) || "true".equalsIgnoreCase(String.valueOf(mark));
+            if (!ok) throw new BizException(ErrorCode.BAD_REQUEST, "请再次确认后再驳回");
+        }
         if (!ArchiveStore.shopMarketplaceEnabled() && !ArchiveStore.publishReviewEnabled()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前未开启审核上架");
         }
@@ -461,7 +603,7 @@ public class ArchiveController {
         }
     }
 
-    /** I-02：资料相册审核 */
+    /** 资料相册审核 */
     @PostMapping("/{id:\\d+}/album-audit")
     public R<Map<String, Object>> albumAudit(
             @PathVariable long id,
@@ -520,6 +662,10 @@ public class ArchiveController {
     private static String canonArchiveHeader(String raw) {
         String t = raw == null ? "" : raw.trim();
         if (t.isEmpty()) return t;
+        if ("名称".equals(t) || "标题".equals(t) || "书名".equals(t)) return "title";
+        if ("分类".equals(t)) return "category";
+        if ("库存".equals(t) || "数量".equals(t)) return "stock";
+        if ("标签".equals(t)) return "tags";
         String compact = t.replace("_", "").replace("-", "").toLowerCase(java.util.Locale.ROOT);
         return switch (compact) {
             case "title" -> "title";

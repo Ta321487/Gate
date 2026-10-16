@@ -803,9 +803,12 @@ def domain_sql(
         apply_deadline=scan_apply_deadline(proposal_text or ""),
         schedule=TIME_CONFLICT_CAP in caps or bool(flags.get("allowCheckin")),
     )
+    from app.bake.features.list_crosscut import resolve_list_crosscut_flags
+
+    list_flags = resolve_list_crosscut_flags(proposal_text or "", title or "")
     text = ensure_soft_delete_columns(
         text,
-        enabled=soft_delete,
+        enabled=soft_delete or bool(list_flags.get("recycle")),
         item_table=resolved_item,
     )
     text = ensure_flash_price_columns(
@@ -1101,6 +1104,10 @@ def domain_sql(
     from app.bake.features.auth_crosscut import ensure_auth_crosscut_sql, scan_invite_codes
     from app.bake.features.msg_crosscut import ensure_msg_crosscut_sql
     from app.bake.features.workbench_crosscut import ensure_workbench_crosscut_sql
+    from app.bake.features.org_crosscut import (
+        ensure_org_crosscut_sql,
+        resolve_org_crosscut_flags,
+    )
 
     text = ensure_post_mute_sql(text, enabled=POST_MUTE_CAP in caps)
     text = ensure_auth_crosscut_sql(
@@ -1109,6 +1116,19 @@ def domain_sql(
     )
     text = ensure_msg_crosscut_sql(text)
     text = ensure_workbench_crosscut_sql(text)
+    text = ensure_org_crosscut_sql(
+        text,
+        flags=resolve_org_crosscut_flags(proposal_text or "", title or ""),
+    )
+    from app.bake.features.ux_crosscut import (
+        ensure_ux_commission_sql,
+        ensure_ux_help_sql,
+        resolve_ux_crosscut_flags,
+    )
+
+    ux_flags = resolve_ux_crosscut_flags(proposal_text or "", title or "")
+    text = ensure_ux_help_sql(text, enabled=bool(ux_flags.get("help")))
+    text = ensure_ux_commission_sql(text, enabled=bool(ux_flags.get("commission")))
     text = ensure_book_suggest_sql(
         text,
         enabled=BOOK_SUGGEST_CAP in caps,

@@ -86,18 +86,18 @@ _INVITE_LABEL_KEYS = frozenset(_AUTH_LABELS_INVITE.keys())
 
 
 _SEED_MUST_CHANGE = (
-    "\n-- X-AUTH: 业务试用账号首次登录须改密\n"
+    "\n-- 业务试用账号首次登录须改密\n"
     "UPDATE sys_user SET must_change_password=1 "
     "WHERE username='user' AND IFNULL(super_admin,0)=0;\n"
 )
 
 _SEED_EMAIL_ACTIVATED = (
-    "\n-- X-AUTH: 种子账号一律免激活闸（新注册仍走默认未激活）\n"
+    "\n-- 种子账号一律免激活闸（新注册仍走默认未激活）\n"
     "UPDATE sys_user SET email_activated=1;\n"
 )
 
 _XA02_CORE_TABLES_SQL = """
--- X-AUTH XA-02: 会话登记 / 登录记录 / 注销申请
+-- 会话登记、登录记录、注销申请
 CREATE TABLE IF NOT EXISTS sys_auth_session (
   session_id VARCHAR(128) NOT NULL,
   username VARCHAR(64) NOT NULL,
@@ -204,10 +204,10 @@ def ensure_auth_crosscut_sql(
             "",
             out,
         )
-    marker = "X-AUTH: 业务试用账号首次登录须改密"
+    marker = "业务试用账号首次登录须改密"
     if marker not in out:
         out = out.rstrip() + _SEED_MUST_CHANGE
-    act_marker = "X-AUTH: 试用与管理账号免激活闸"
+    act_marker = "种子账号一律免激活闸"
     if act_marker not in out:
         out = out.rstrip() + _SEED_EMAIL_ACTIVATED
     return out

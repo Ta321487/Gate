@@ -70,6 +70,12 @@ public interface UserMapper {
     @Update("UPDATE sys_user SET nickname=#{nickname}, phone=#{phone}, enabled=#{enabled} WHERE username=#{username}")
     int updateAdminPlain(Map<String, Object> row);
 
+    @Update("UPDATE sys_user SET admin_tags=#{adminTags} WHERE username=#{username}")
+    int updateAdminTags(@Param("username") String username, @Param("adminTags") String adminTags);
+
+    @Update("UPDATE sys_user SET org_id=#{orgId} WHERE username=#{username}")
+    int updateOrgId(@Param("username") String username, @Param("orgId") Long orgId);
+
     @Update("UPDATE sys_user SET role=#{role}, super_admin=0, staff_post=#{staffPost}, staff_kind=#{staffKind} WHERE username=#{username}")
     int appointStaff(Map<String, Object> row);
 

@@ -62,6 +62,12 @@ public class CommonController {
     @PostMapping("/upload")
     public R<Map<String, String>> upload(@RequestParam("file") MultipartFile file) throws IOException {
         if (file.isEmpty()) throw new BizException(ErrorCode.BAD_REQUEST, "文件为空");
+        String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+        int dot = original.lastIndexOf('.');
+        String ext = dot >= 0 ? original.substring(dot + 1).toLowerCase(Locale.ROOT) : "";
+        if (Set.of("exe", "bat", "cmd", "sh", "dll", "com").contains(ext)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "不支持该文件类型");
+        }
         Path dir = UploadStorage.root();
         String name = UploadStorage.safeStoredName(file.getOriginalFilename());
         Path dest = dir.resolve(name);

@@ -145,26 +145,38 @@ const emojiPreset = [
 ]
 
 const labels = computed(() => schemaLabels())
+/** 仅商家岗位用「买家」话术；勿把 /admin 平台总管也当成商家台 */
 const merchantDesk = computed(() => {
-  const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
-  if (path.startsWith('/admin')) return true
-  const role = localStorage.getItem('role') || ''
   const post = (localStorage.getItem('staffPost') || '').trim()
-  return role === 'admin' && !!post
+  if (!post) return false
+  if (localStorage.getItem('superAdmin') === 'true') return false
+  const role = localStorage.getItem('role') || ''
+  const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
+  return role === 'admin' || path.startsWith('/admin')
+})
+/** 管理端、但非商家岗位 → 平台侧（用户，不是买家） */
+const platformDesk = computed(() => {
+  const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
+  return path.startsWith('/admin') && !merchantDesk.value
 })
 const pageTitle = computed(() => labels.value.dmPageTitle || '私信')
 const pageLead = computed(() => {
   if (merchantDesk.value) {
     return labels.value.dmMerchantPageLead || '回复买家咨询，打开会话后自动刷新新消息。'
   }
+  if (platformDesk.value) {
+    return labels.value.dmPlatformPageLead || '查看与回复用户咨询，打开会话后自动刷新新消息。'
+  }
   return labels.value.dmPageLead || '与其他用户一对一沟通，打开会话后自动刷新新消息。'
 })
 const newDialogTitle = computed(() => {
   if (merchantDesk.value) return labels.value.dmMerchantNewTitle || '联系买家'
+  if (platformDesk.value) return labels.value.dmPlatformNewTitle || '联系用户'
   return labels.value.dmNewTitle || '新建私信'
 })
 const peerPlaceholder = computed(() => {
   if (merchantDesk.value) return labels.value.dmMerchantPeerPlaceholder || '选择买家账号'
+  if (platformDesk.value) return labels.value.dmPlatformPeerPlaceholder || '选择用户账号'
   return labels.value.dmPeerPlaceholder || '选择对方账号'
 })
 const emptyPeers = computed(() => {
@@ -172,11 +184,18 @@ const emptyPeers = computed(() => {
     return labels.value.dmMerchantEmptyPeers
       || '暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。'
   }
+  if (platformDesk.value) {
+    return labels.value.dmPlatformEmptyPeers
+      || '暂无会话，用户发起咨询后会出现在这里；也可点「新建」选用户。'
+  }
   return labels.value.dmEmptyPeers || '暂无会话，点「新建」选人开聊。'
 })
 const emptyChat = computed(() => {
   if (merchantDesk.value) {
     return labels.value.dmMerchantEmptyChat || '选择左侧会话，或新建联系买家。'
+  }
+  if (platformDesk.value) {
+    return labels.value.dmPlatformEmptyChat || '选择左侧会话，或新建联系用户。'
   }
   return labels.value.dmEmptyChat || '选择左侧会话，或新建私信。'
 })
