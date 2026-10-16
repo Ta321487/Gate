@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/** 播放进度 API（C-05） */
+/** 播放进度 API */
 @RestController
 @RequestMapping("/api/media-progress")
 public class MediaPlayProgressController {

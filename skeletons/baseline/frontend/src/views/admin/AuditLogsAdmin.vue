@@ -55,7 +55,7 @@
 </template>
 
 <script setup>
-/** 操作审计日志：总管只读查询（E-04） */
+/** 操作审计日志：总管只读查询 */
 import { computed, onMounted, ref } from 'vue'
 import http from '../../api/http'
 import StatusChip from '../../components/StatusChip.vue'

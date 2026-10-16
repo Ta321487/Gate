@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 车位包月次卡：浅计数。仅 PARKING 出包启用。 */
+/** 车位包月次卡：按剩余次数扣减（仅停车业务开启时可用）。 */
 public class ParkingPassStore {
 
     private static boolean enabled;

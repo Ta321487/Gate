@@ -47,7 +47,7 @@ const props = defineProps({
   intervalMs: { type: Number, default: 5600 },
 })
 
-/** bake 静态图 + 管理端 sys_banner（有图才进轮播） */
+/** 预置静态图 + 管理端 sys_banner（有图才进轮播） */
 const apiBanners = ref([])
 const raw = computed(() => {
   const baked = Array.isArray(APP_DELIVERED?.portalBanners) ? APP_DELIVERED.portalBanners : []

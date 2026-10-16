@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/** 友情链接 API（C-04） */
+/** 友情链接 API */
 @RestController
 @RequestMapping("/api/blog-friend-links")
 public class BlogFriendLinkController {

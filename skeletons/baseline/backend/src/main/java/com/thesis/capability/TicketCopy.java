@@ -17,7 +17,7 @@ final class TicketCopy {
     static String APPLY_DEADLINE_LABEL = "报名截止";
     /** 同档案互斥提示；空则运行时按动词兜底 */
     static String SIBLING_REJECT_TIP = "";
-    /** C-06：维度 key → 显示名；空 = 单分评分 */
+    /** 维度 key → 显示名；空 = 单分评分 */
     static List<Map<String, String>> RATING_DIMS = List.of();
     static boolean ALLOW_ANONYMOUS_RATING = false;
 

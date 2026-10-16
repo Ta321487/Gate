@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * XD-02 简易站点 PV（sys_site_stat）— JpaDb。
+ * 简易站点访问量（sys_site_stat）— JpaDb。
  */
 public class SiteStatStore {
 

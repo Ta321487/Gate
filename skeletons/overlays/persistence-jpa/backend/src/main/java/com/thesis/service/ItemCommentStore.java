@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 档案条下评论（item_comment）：挂在影音/曲目/文章下；≠ 门户留言 guestbook。
+ * 档案条下评论（item_comment）：挂在影音/曲目/文章下。
  */
 public class ItemCommentStore {
 
@@ -32,12 +32,12 @@ public class ItemCommentStore {
         return JpaSupport.db();
     }
 
-    /** C-04：新评论站内信通知文章作者。 */
+    /** 新评论站内信通知文章作者。 */
     public static void configureAuthorNotify(boolean on) {
         authorNotifyEnabled = on;
     }
 
-    /** C-08：评论仅粉丝可见。 */
+    /** 评论仅粉丝可见。 */
     public static void configureFollowersOnly(boolean on) {
         followersOnlyOn = on;
     }

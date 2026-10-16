@@ -59,7 +59,7 @@
 </template>
 
 <script setup>
-/** 举报管理：用户举报 → 忽略或下架（E-03） */
+/** 举报管理：用户举报 → 忽略或下架 */
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'

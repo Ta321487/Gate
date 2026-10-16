@@ -85,7 +85,7 @@ const list = ref([])
 const followerCounts = reactive({})
 const visible = ref(false)
 const form = reactive({ id: null, name: '', dimension: '', requiredPick: false, sectionNotice: '' })
-/** 维度备选真源：bake 写入的开题轴；库里已有轴并入；都空才回落演示轴 */
+/** 维度备选真源：工程生成 写入的分类维度；库里已有轴并入；都空时用内置默认维度 */
 const dimensionOptions = computed(() => {
   const set = new Set()
   const fromSchema = archive.categoryDimensions

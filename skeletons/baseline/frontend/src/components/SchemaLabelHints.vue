@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 import { schemaLabels } from '../utils/domainSchema.js'
 
-/** 开题密功能 labels.* 可见挂载：有文案才展示，禁止空壳占位。 */
+/** 有配置文案才展示提示，避免空占位。 */
 const props = defineProps({
   keys: { type: Array, default: () => [] },
 })

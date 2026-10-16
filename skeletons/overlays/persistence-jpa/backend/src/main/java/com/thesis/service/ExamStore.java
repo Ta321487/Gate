@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 /**
- * 在线考试（C-01）：题库、组卷、作答。客观题交卷匹配标准答案；主观题待教师阅卷。
+ * 在线考试：题库、组卷、作答。客观题交卷匹配标准答案；主观题待教师阅卷。
  */
 public class ExamStore {
 
@@ -159,7 +159,7 @@ public class ExamStore {
         return i08ColReady;
     }
 
-    /** C-02：申请前须通过 gate_ticket=1 的已发布试卷（pass_score 为百分制，默认 60）。 */
+    /** 申请前须通过 gate_ticket=1 的已发布试卷（pass_score 为百分制，默认 60）。 */
     public static void assertTicketGatePassed(String username) {
         if (!requireBeforeTicket || !ready()) return;
         if (!hasGateCols()) {
@@ -1193,7 +1193,7 @@ public class ExamStore {
     }
 
     /**
-     * 客观题判分口径（I-01；I-07 可开多选部分分）：
+     * 客观题判分口径（； 可开多选部分分）
      * single/judge：去空白后忽略大小写全等才得满分；
      * multi：默认集合完全一致才满分；partialMulti 时无错选按比例给分；
      * subjective：自动得 0，待教师阅卷。
@@ -1373,7 +1373,7 @@ public class ExamStore {
         return db().update("DELETE FROM exam_wrongbook WHERE id=? AND username=?", id, username) > 0;
     }
 
-    // --- I-08 ---
+    // --
 
     public static String exportWrongbookCsv(String username) {
         require();

@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 播放进度（C-05）：按用户+片单+分集一条；≠多端云同步。 */
+/** 播放进度：按用户+片单+分集一条。 */
 public final class MediaPlayProgressStore {
 
     private static final String TABLE = "media_play_progress";

@@ -32,7 +32,7 @@ public final class TicketStore {
     public static final double FINE_PER_DAY = 0.5;
     public static final int MAX_ACTIVE = 5;
 
-    /** 借期等业务参数：见 config/TicketPolicy（bake 按开题生成，可直接修改） */
+    /** 借期等业务参数见 TicketPolicy，可按课题直接修改 */
      static int bizLoanDays = LOAN_DAYS;
      static int bizMaxActive = MAX_ACTIVE;
      static double bizFinePerDay = FINE_PER_DAY;
@@ -57,7 +57,7 @@ public final class TicketStore {
     static boolean checkTimeConflict = false;
     /** L1：初审 → 终审（二级） */
     static boolean twoLevelApprove = false;
-    /** C-16：初审 → 复审 → 终审（三级；隐含 twoLevel） */
+    /** 初审 → 复审 → 终审（三级；隐含 twoLevel） */
     static boolean threeLevelApprove = false;
     /** L1：申请须上传附件 */
     static boolean requireAttach = false;
@@ -73,21 +73,21 @@ public final class TicketStore {
     static int categoryLimit = 0;
     /** L1：签到口令 */
     static boolean allowCheckin = false;
-    /** C-05：档案主人可确认/拒绝志愿（互选） */
+    /** 档案主人可确认/拒绝志愿（互选） */
     static boolean peerAccept = false;
-    /** I-03：截止前允许申请人修改志愿说明/类型 */
+    /** 截止前允许申请人修改志愿说明/类型 */
     static boolean allowWishEditBeforeDeadline = false;
-    /** I-03：截止前盲选（确认人侧脱敏申请人） */
+    /** 截止前盲选（确认人侧脱敏申请人） */
     static boolean blindPhaseUntilDeadline = false;
-    /** I-03：待确认超时自动婉拒 */
+    /** 待确认超时自动婉拒 */
     static boolean allowPeerTimeoutReject = false;
-    /** I-03：待确认超时小时数；≤0 关闭 */
+    /** 待确认超时小时数；≤0 关闭 */
     static int peerTimeoutRejectHours = 0;
-    /** I-03：进行中的「调剂志愿」上限；≤0 不限 */
+    /** 进行中的「调剂志愿」上限；≤0 不限 */
     static int maxAdjustWishes = 0;
-    /** C-09：审核通过签发通行码（非真门禁） */
+    /** 审核通过签发通行码（非真门禁） */
     static boolean issuePassCode = false;
-    /** C-14：核销审批通过时扣减时长账户 */
+    /** 核销审批通过时扣减时长账户 */
     static boolean timebankRedeem = false;
     /** 活动结束未签到 → 爽约（复用 overdue 状态） */
     static boolean noShowAfterEnd = false;
@@ -224,7 +224,7 @@ public final class TicketStore {
         return applicantCompleteOnly;
     }
 
-    /** C-16：三级会签；开启后二级路径扩展为 pending→pending_mid→pending_final */
+    /** 三级会签；开启后二级路径扩展为 pending→pending_mid→pending_final */
     public static void configureThreeLevel(boolean enabled) {
         TicketCfgOps.configureThreeLevel(enabled);
     }
@@ -238,7 +238,7 @@ public final class TicketStore {
         TicketCfgOps.configureLoanOptions(pickPeriod, qtyEnabled);
     }
 
-    /** C-14：审核通过扣减时长；须在 configureLoanOptions 前或后再调一次 refresh */
+    /** 审核通过扣减时长；须在 configureLoanOptions 前或后再调一次 refresh */
     public static void configureTimebankRedeem(boolean enabled) {
         TicketCfgOps.configureTimebankRedeem(enabled);
     }
@@ -388,7 +388,7 @@ public final class TicketStore {
     static int maxReviseTimes = 0;
     /** 未跟进 N 天列表筛（0=关） */
     static int staleFollowDays = 0;
-    /** 同联系电话拦重号（开题扫 CRM 查重提示） */
+    /** 同联系电话拦重号（客户查重提示） */
     static boolean phoneDupCheck = false;
     static boolean requireCloseAttach = false;
     static boolean requireReturnDate = false;
@@ -1237,12 +1237,12 @@ public final class TicketStore {
         TicketCfgOps.configureFollowThicken(followRemindDaysIn, minRemarkWordsIn, maxReviseTimesIn, requireCloseAttachIn, requireReturnDateIn, requireFeedbackSetIn, requireAppraisalIn, allowDealAmountIn, allowNextActionIn, allowInterviewResultIn, allowWrittenScoreIn, allowBgCheckNoteIn, allowDefenseResultIn, maskBankAccountIn, allowDisburseBatchIn, allowLeaveProxyIn, allowCompanyEvalIn, allowExcellentMarkIn, allowRecordUrlIn, allowConfidentialIn, allowAssignDeptIn, allowBatchHireIn, weekReportRemindIn, homeVisitTemplateIn, attachByLeaveTypeIn, allowMakeupApplyIn, weekReportDeadlineDayIn);
     }
 
-    /** 开题扫：事件等级 → 处理时限天数（高/中/低） */
+    /** 事件等级 → 处理时限天数（高/中/低） */
     static boolean levelSla = false;
     static int levelSlaHighDays = 1;
     static int levelSlaMidDays = 3;
     static int levelSlaLowDays = 7;
-    /** 开题扫：事件上报后一键通知当日值班（站内信浅群发） */
+    /** 事件上报后一键通知当日值班（站内信浅群发） */
     static boolean dutyNotify = false;
 
     /** 跟进组列表闸：未跟进 N 天筛 + 同联系电话拦重号。 */
@@ -2024,60 +2024,60 @@ public final class TicketStore {
 
         
     
-    /** C-05：档案主人确认/拒绝志愿；通过时复用 approve 扣库存。 */
+    /** 档案主人确认/拒绝志愿；通过时复用 approve 扣库存。 */
     public static Map<String, Object> peerRespond(long ticketId, String username, boolean pass, String remark) {
         return TicketDeriveOps.peerRespond(ticketId, username, pass, remark);
     }
 
-    /** I-03：截止前修改志愿 */
+    /** 截止前修改志愿 */
     public static Map<String, Object> editWishBeforeDeadline(
             long ticketId, String username, String remark, String contactChannel) {
         return TicketDeriveOps.editWishBeforeDeadline(ticketId, username, remark, contactChannel);
     }
 
-    /** I-03：待确认超时自动婉拒 */
+    /** 待确认超时自动婉拒 */
     public static int autoRejectStalePeerPending() {
         return TicketDeriveOps.autoRejectStalePeerPending();
     }
 
-    /** I-03：互选结果公示 */
+    /** 互选结果公示 */
     public static List<Map<String, Object>> mutualMatchResult(Long itemId) {
         return TicketDeriveOps.mutualMatchResult(itemId);
     }
 
-    /** I-03：调剂留痕分页 */
+    /** 调剂留痕分页 */
     public static Map<String, Object> pageAdjustLog(int page, int size) {
         return TicketDeriveOps.pageAdjustLog(page, size);
     }
 
-    /** I-03：互选结果通知信 */
+    /** 互选结果通知信 */
     public static int notifyMutualMatchResults() {
         return TicketDeriveOps.notifyMutualMatchResults();
     }
 
-    /** I-04 TEAM：组队邀请站内信 */
+    /** 组队邀请站内信 */
     public static Map<String, Object> sendTeamInvite(
             String fromUser, String toUser, long itemId, String note) {
         return TicketDeriveOps.sendTeamInvite(fromUser, toUser, itemId, note);
     }
 
-    /** I-04 TEAM：申请退出 */
+    /** 申请退出 */
     public static Map<String, Object> requestTeamExit(long ticketId, String username) {
         return TicketDeriveOps.requestTeamExit(ticketId, username);
     }
 
-    /** I-04 TEAM：队长处理退出 */
+    /** 队长处理退出 */
     public static Map<String, Object> peerExitRespond(
             long ticketId, String ownerUsername, boolean pass, String remark) {
         return TicketDeriveOps.peerExitRespond(ticketId, ownerUsername, pass, remark);
     }
 
-    /** I-04 TEAM：退出申请收件箱 */
+    /** 退出申请收件箱 */
     public static Map<String, Object> pageExitInbox(String ownerUsername, int page, int size) {
         return TicketDeriveOps.pageExitInbox(ownerUsername, page, size);
     }
 
-    /** I-05：某行程下已确认乘客用户名（出发提醒用）。 */
+    /** 某行程下已确认乘客用户名（出发提醒用）。 */
     public static List<String> listApprovedUsernamesForItem(long itemId) {
         if (!enabled || itemId <= 0 || TICKET == null || TICKET.isBlank()) return List.of();
         try {
@@ -2091,7 +2091,7 @@ public final class TicketStore {
         }
     }
 
-    /** I-05：用户爽约次数（确认后取消累计）。 */
+    /** 用户爽约次数（确认后取消累计）。 */
     public static int countNoShow(String username) {
         if (!enabled || !hasColumn("no_show") || username == null || username.isBlank()) return 0;
         try {
@@ -2261,7 +2261,7 @@ public final class TicketStore {
         return TicketDeriveOps.get(ticketId);
     }
 
-    /** 逾期罚款减免（开题挂 allowFineWaive） */
+    /** 逾期罚款减免（启用罚款减免） */
     public static Map<String, Object> markFineWaived(long ticketId, String operator, String reason) {
         if (!allowFineWaive) throw new IllegalStateException("当前未开启罚款减免");
         if (!hasColumn("fine_status")) throw new IllegalStateException("当前不支持逾期费用登记");
@@ -2334,7 +2334,7 @@ public final class TicketStore {
     }
 
     
-    /** C-09：通过后签发通行码（字符串；不对接闸机硬件）。失败须抛错，禁止静默无码。 */
+    /** 通过后签发通行码（字符串；不接闸机硬件）。失败须抛错，禁止静默无码。 */
     static String issuePassCodeIfNeeded(long ticketId) {
         return TicketApproveOps.issuePassCodeIfNeeded(ticketId);
     }
@@ -2348,7 +2348,7 @@ public final class TicketStore {
     }
 
     
-    /** 完结后评分 1～5；可选多维 dims（C-06）与匿名。 */
+    /** 完结后评分 1～5；可选多维 dims与匿名。 */
     public static Map<String, Object> rate(long ticketId, String username, int rating, String ratingRemark) {
         return rate(ticketId, username, rating, ratingRemark, null, false);
     }
@@ -2464,7 +2464,7 @@ public final class TicketStore {
         if (anon) tip = tip + " · 匿名";
         if (!note.isBlank()) tip = tip + " · " + note;
         TicketDeriveOps.appendProgress(ticketId, followPass ? "follow_rated" : "rated", username, tip);
-        // I-05：评价后隐藏联系方式（拼车 seat_locked 列域）
+        // 评价后隐藏联系方式（拼车 seat_locked 列域）
         if (hasColumn("seat_locked") && hasColumn("contact_channel")) {
             try {
                 TicketSql.db().update(
@@ -2912,7 +2912,7 @@ public final class TicketStore {
 
     /**
      * 用户催办：处理中/逾期可催；未超时也可记一笔。冷却防刷；评后可锁催。
-     * 站内信通知处理人/管理员，≠短信外呼。
+     * 站内信通知处理人/管理员。
      */
     public static Map<String, Object> userUrge(long ticketId, String username) {
         if (!allowUserUrge) throw new IllegalStateException("当前未开启用户催办");
@@ -3136,7 +3136,7 @@ public final class TicketStore {
         return TicketNotifyOps.remind(ticketId);
     }
 
-    /** 超期达上限则拒绝新申请（开题挂 maxOverdueTimes 时）。 */
+    /** 超期达上限则拒绝新申请（启用逾期次数上限时）。 */
     static void assertNotOverdueFrozen(String username) {
         BorrowCreditStore.assertCanBorrow(username);
         if (maxOverdueTimes <= 0 || username == null || username.isBlank()) return;

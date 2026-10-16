@@ -43,7 +43,7 @@ _MY_DOC_KEYS: tuple[str, ...] = (
 )
 
 _SITE_STAT_SQL = """
--- X-DASH XD-02: 简易站点 PV（按日）
+-- 简易站点访问量（按日）
 CREATE TABLE IF NOT EXISTS sys_site_stat (
   day_key VARCHAR(10) NOT NULL,
   pv INT NOT NULL DEFAULT 0,

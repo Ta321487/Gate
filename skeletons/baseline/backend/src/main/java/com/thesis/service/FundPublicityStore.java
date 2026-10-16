@@ -13,12 +13,12 @@ import java.util.Map;
 
 /**
  * 资助公示旁路岛：申请通过后登记公示期，用户端可查阅。
- * 挂在单据之后，不扩 ticket 状态机；未建表时 ready()=false，接口给「暂不可用」。
+ * 挂在单据之后，不扩 ticket 状态机；未建表时 ready=false，接口给「暂不可用」。
  */
 public class FundPublicityStore {
 
     private static Boolean tableReady;
-    /** 公示异议登记窗口（开题扫 FUND）：开关 + 天数（公示结束日 + N 天） */
+    /** 公示异议登记窗口（课题需求扫 ）：开关 + 天数（公示结束日 + N 天） */
     private static boolean objectionWindow = false;
     private static int objectionDays = 0;
 
@@ -62,7 +62,7 @@ public class FundPublicityStore {
         return java.sql.Date.valueOf(base.plusDays(objectionDays));
     }
 
-    /** 申请单是否已注入异议扩展列（由 bake 按 ticket.allowObjectionWindow 注入）。 */
+    /** 申请单是否已注入异议扩展列（由 工程生成 按 ticket.allowObjectionWindow 注入）。 */
     static boolean hasObjectionCols() {
         String t = ticketTable();
         if (t.isEmpty()) return false;

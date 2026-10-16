@@ -79,7 +79,7 @@ export function createEmptyTicketApplyForm() {
 /**
  * 申请接口成功后的站内提示（候补 / 预约 / 签到 / 自动通过）。
  * @param {object} data POST /api/tickets/apply 响应体（或 data.data）
- * @param {{ autoApprove?: boolean, checkinOnApply?: boolean, applyVerb?: string, getSchema?: () => any }} opts
+ * @param {{ autoApprove?: boolean, checkinOnApply?: boolean, applyVerb?: string, getSchema?:  => any }} opts
  */
 export function formatTicketApplySuccess(data, opts = {}) {
   const st = data?.status || data?.data?.status

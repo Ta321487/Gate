@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 专栏/分类订阅（C-04）：category_follow 表；≠推荐引擎。
+ * 专栏/分类订阅：category_follow 表。
  */
 public final class CategoryFollowStore {
 

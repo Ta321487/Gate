@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** 专栏订阅 API（C-04） */
+/** 专栏订阅 API */
 @RestController
 @RequestMapping("/api/category-follow")
 public class CategoryFollowController {

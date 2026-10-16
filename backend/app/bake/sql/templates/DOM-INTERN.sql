@@ -1,4 +1,4 @@
--- bake domain=DOM-INTERN · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}]
+-- 业务库脚本：建库、建表与初始数据
 CREATE DATABASE IF NOT EXISTS `${DB_NAME}` DEFAULT CHARACTER SET utf8mb4;
 USE `${DB_NAME}`;
 
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS intern_post (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   cover_url VARCHAR(255),
-  -- 默认待上岗：禁止目录项一律「实习中」造成多单位入职误读（M-01 / §18）
+  -- 默认待上岗：勿一律写成「实习中」，避免多单位入职误读
   stage VARCHAR(32) DEFAULT '待上岗',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

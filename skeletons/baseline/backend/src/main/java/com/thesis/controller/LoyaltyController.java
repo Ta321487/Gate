@@ -81,7 +81,7 @@ public class LoyaltyController {
         }
     }
 
-    /** 管理端：给买家加积分（开题写了管理充积分时开放） */
+    /** 管理端：给买家加积分（启用管理端充积分时开放） */
     @PostMapping("/api/admin/loyalty/credit-points")
     public R<?> creditPoints(@RequestBody Map<String, Object> body, HttpSession session) {
         AdminAuth.requireAdmin(session);

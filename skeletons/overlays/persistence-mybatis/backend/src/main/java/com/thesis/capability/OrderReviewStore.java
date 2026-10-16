@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-/** 订单评价：已完成订单星级+文字；管理端可回复；T-09 晒图/追评/好评率。 */
+/** 订单评价：已完成订单星级+文字；管理端可回复； 晒图/追评/好评率。 */
 public final class OrderReviewStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -136,7 +136,7 @@ public final class OrderReviewStore {
         return get(key == null ? 0L : key.longValue());
     }
 
-    /** T-09：确认收货评价后再补一次追评。 */
+    /** 确认收货评价后再补一次追评。 */
     public static Map<String, Object> follow(String username, long reviewId, String followBody) {
         require();
         if (!hasFollowBody()) throw new IllegalStateException("系统未开通追评");

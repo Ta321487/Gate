@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 借用信誉分（分值列）：开题写「信誉分/逾期扣分/低于 N 停借」时挂。
+ * 借用信誉分（分值列）：课题需求写「信誉分/逾期扣分/低于 N 停借」时挂。
  * 与 maxOverdueTimes 次数冻结可并存；本类只在 creditOnOverdue=true 时生效。
- * persistence=mybatis：尚未 Mapper 化的原生 SQL 走 MybatisSupport.db()（与 MyBatis 共用库）。
+ * persistence=mybatis：尚未 Mapper 化的原生 SQL 走 MybatisSupport.db（与 MyBatis 共用库）。
  */
 public final class BorrowCreditStore {
     private BorrowCreditStore() {}

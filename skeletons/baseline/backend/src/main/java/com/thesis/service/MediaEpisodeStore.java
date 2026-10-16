@@ -15,7 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 影音分集（C-05）：media_episode 表；新分集可通知分类订阅者。 */
+/** 影音分集：media_episode 表；新分集可通知分类订阅者。 */
 public final class MediaEpisodeStore {
 
     private static final String TABLE = "media_episode";

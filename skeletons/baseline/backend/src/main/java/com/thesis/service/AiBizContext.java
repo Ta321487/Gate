@@ -16,7 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * AI 助手只读业务摘录：意图词 + {@code Store.enabled()} 才调用现有 API。
+ * AI 助手只读业务摘录：意图词 + {@code Store.enabled} 才调用现有 API。
  * 禁止另写 SQL / 下单改状态；未开能力自动跳过（其它域不是「没写死就废」）。
  */
 public final class AiBizContext {

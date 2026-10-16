@@ -15,7 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 能力 favorites：即时收藏夹（user_favorite）；E-03 同文件扩展点赞 / 举报。 */
+/** 即时收藏夹（user_favorite）； 同文件扩展点赞与举报。 */
 public final class FavoriteStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -36,7 +36,7 @@ public final class FavoriteStore {
         if (enabled) ensureTable();
     }
 
-    /** C-06：收藏夹分组命名 + 公开/私密（无列时写库硬失败）。 */
+    /** 收藏夹分组命名 + 公开/私密（无列时写库须有列否则报错）。 */
     public static void configureGroups(boolean on) {
         groupsEnabled = on;
         if (enabled && groupsEnabled) ensureGroupColumns();
@@ -59,7 +59,7 @@ public final class FavoriteStore {
         if (reportEnabled) ensureReportTable();
     }
 
-    /** C-08：允许举报评论（target_type=comment）。 */
+    /** 允许举报评论（target_type=comment）。 */
     public static void configureCommentReport(boolean on) {
         commentReportOn = on;
         if (commentReportOn && reportEnabled) ensureReportTable();
@@ -565,7 +565,7 @@ public final class FavoriteStore {
         return done;
     }
 
-    /** 对举报对象作者设禁言（E-12 联动）。 */
+    /** 对举报对象作者设禁言（ 联动）。 */
     private static void muteContentAuthor(String targetType, long targetId, int days, String note) {
         if (!com.thesis.service.UserStore.postMuteEnabled()) {
             throw new IllegalStateException("禁言功能暂不可用，请仅下架或先开启禁言能力");

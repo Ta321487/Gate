@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-/** 会议室配套设备字典（E-10 room_equipment） */
+/** 会议室配套设备字典（ room_equipment） */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'

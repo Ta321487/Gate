@@ -16,7 +16,7 @@ import java.util.Map;
 
 /**
  * 公告：所有人可读；增删改仅总管理员（多店时商家可提交待审）。
- * XM-02：过期下架、强制弹窗确认、浅富文本格式。
+ * 过期下架、强制弹窗确认、简易富文本格式。
  */
 @RestController
 @RequestMapping("/api/notices")

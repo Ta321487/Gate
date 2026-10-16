@@ -5,7 +5,7 @@ import com.thesis.mapper.ESignMapper;
 
 import java.util.*;
 
-/** 本地签章（C-18）MyBatis 叠层。 */
+/** 本地签章MyBatis 叠层。 */
 public class ESignStore {
 
     private static boolean enabled;

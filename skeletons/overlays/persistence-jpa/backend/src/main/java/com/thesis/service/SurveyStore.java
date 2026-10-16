@@ -15,8 +15,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 简易问卷（C-03）：题目配置、填写、回收、选项计数。
- * I-09：开放截止/匿名/跳题显隐/进度/限填/必答/矩阵/草稿/组织投放/回收率/截止提醒。
+ * 简易问卷：题目配置、填写、回收、选项计数。
+ * 开放截止/匿名/跳题显隐/进度/限填/必答/矩阵/草稿/组织投放/回收率/截止提醒。
  */
 public class SurveyStore {
 

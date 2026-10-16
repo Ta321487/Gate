@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/** XA-02：在线会话 / 登录记录 / 邀请码 / 注销审。 */
+/** 在线会话、登录记录、邀请码与注销审核。 */
 @RestController
 public class AuthSessionController {
 

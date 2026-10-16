@@ -37,7 +37,7 @@ public class MessageStore {
         return tableReady;
     }
 
-    /** XM-01：旧库无 deleted_at 时运行时补列。 */
+    /** 旧库无 deleted_at 时运行时补列。 */
     private static boolean hasDeletedAt() {
         if (!ready()) return false;
         if (hasDeletedAt != null) return hasDeletedAt;
@@ -223,7 +223,7 @@ public class MessageStore {
                 Timestamp.valueOf(LocalDateTime.now()), username);
     }
 
-    /** XM-01：用户软删自己的站内信。 */
+    /** 用户软删自己的站内信。 */
     public static boolean softDelete(String username, long id) {
         if (!ready() || username == null || username.isBlank()) return false;
         if (!hasDeletedAt()) return false;

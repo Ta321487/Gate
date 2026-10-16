@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * XD-02 简易站点 PV（sys_site_stat 按日累加）。
+ * 站点浏览量统计（按日累加）。
  */
 public class SiteStatStore {
 

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/** 影音分集 API（C-05） */
+/** 影音分集 API */
 @RestController
 @RequestMapping("/api/media-episodes")
 public class MediaEpisodeController {

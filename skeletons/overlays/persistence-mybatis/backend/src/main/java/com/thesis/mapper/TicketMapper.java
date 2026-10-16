@@ -142,7 +142,7 @@ public interface TicketMapper {
     int updateMeetIntent(
             @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("meetIntent") String meetIntent);
 
-    // I-05 CARPOOL：取消原因 / 爽约标记 / 锁座标记
+    // 取消原因 / 爽约标记 / 锁座标记
     @Update("UPDATE `${ticketTable}` SET cancel_reason=#{reason} WHERE id=#{id}")
     int updateCancelReason(
             @Param("ticketTable") String ticketTable, @Param("id") long id, @Param("reason") String reason);

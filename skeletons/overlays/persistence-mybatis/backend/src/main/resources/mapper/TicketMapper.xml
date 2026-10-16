@@ -15,7 +15,7 @@
             <if test="withPeriod">, period_start, period_end</if>
             <if test="withLeaveDays">, leave_days</if>
         ) VALUES (
-            #{itemId}, #{username}, #{status}, NOW(), #{remark}
+            #{itemId}, #{username}, #{status}, NOW, #{remark}
             <if test="withFineYuan">, 0</if>
             <if test="withRemindMsg">, ''</if>
             <if test="withApproveAt">, NOW()</if>
@@ -34,7 +34,7 @@
             <if test="withPriority">, priority</if>
             <if test="withContactPhone">, contact_phone</if>
         ) VALUES (
-            #{username}, #{title}, #{location}, #{typeId}, #{roomId}, 'pending', NOW(), #{remark}
+            #{username}, #{title}, #{location}, #{typeId}, #{roomId}, 'pending', NOW, #{remark}
             <if test="withAttach">, #{attachUrl}</if>
             <if test="withPriority">, #{priority}</if>
             <if test="withContactPhone">, #{contactPhone}</if>

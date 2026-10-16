@@ -1602,7 +1602,7 @@ const ticket = ticketCopy()
 const multiApproveOn = computed(() => hasCap('multi_approve'))
 /** 请假天数等域内文案读 schema.labels，勿在页面写死 */
 const leaveDaysLabel = computed(() => getSchema()?.labels?.leaveDaysLabel || '请假天数')
-/** 周报周次：仅开启了 weekNoLabel 的域显示（DOM-INTERN） */
+/** 周报周次：配置了 weekNoLabel 时显示 */
 const weekNoOn = computed(() => !!getSchema()?.labels?.weekNoLabel)
 const weekNoLabel = computed(() => getSchema()?.labels?.weekNoLabel || '周次')
 const weekNoLead = computed(() => getSchema()?.labels?.weekNoLead || '')
@@ -1622,7 +1622,7 @@ const archive = archiveCopy()
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 
-// 未跟进 N 天列表筛（bake: ticket.staleFollowDays → ticket-stale-follow-days）
+// 未跟进 N 天列表筛（工程生成: ticket.staleFollowDays → ticket-stale-follow-days）
 const staleFollowDays = ref(0)
 const stalePoolLabel = computed(() => {
   const base = labels.value.stalePoolHint || '未跟进 N 天'
@@ -1637,7 +1637,7 @@ const allowApproveCcComment = computed(() => !!ticket.allowApproveCcComment)
 const approveCcCommentLabel = computed(() => labels.value.approveCcCommentLabel || '知会评论')
 const approveCcCommentHint = computed(() => labels.value.approveCcCommentHint || '')
 const approveAutoPassHint = computed(() => labels.value.approveAutoPassHint || '')
-// 事件等级影响处理时限（bake: ticket.levelAffectsDeadline → ticket-level-sla-*-days）
+// 事件等级影响处理时限（工程生成: ticket.levelAffectsDeadline → ticket-level-sla-*-days）
 const levelSlaDays = ref('')
 const levelSlaHint = computed(() => labels.value.levelSlaHint || '')
 const levelSlaText = computed(() => {
@@ -1645,9 +1645,9 @@ const levelSlaText = computed(() => {
   if (parts.length < 3 || !parts[0]) return ''
   return `高 ${parts[0]} 天 / 中 ${parts[1]} 天 / 低 ${parts[2]} 天`
 })
-// 事件上报群发当日值班（bake: ticket.notifyDutyOnReport）
+// 事件上报群发当日值班（工程生成: ticket.notifyDutyOnReport）
 const notifyDutyHint = computed(() => labels.value.notifyDutyHint || '')
-// 异议窗口（bake: ticket.allowObjectionWindow / ticket.objectionDays）
+// 异议窗口（工程生成: ticket.allowObjectionWindow / ticket.objectionDays）
 const objectionWindowHint = computed(() => labels.value.objectionWindowHint || '')
 const plural = computed(() => ticket.labelPlural || ticket.label || '我的申请')
 const labels = computed(() => getSchema().labels || {})

@@ -367,7 +367,7 @@ public final class CouponStore {
         }
     }
 
-    /** 定时：未用且模板已过期 → expired；并对受影响用户发站内信（T-10）。 */
+    /** 定时：未用且模板已过期 → expired；并对受影响用户发站内信。 */
     public static int expireSweep() {
         if (!enabled) return 0;
         try {

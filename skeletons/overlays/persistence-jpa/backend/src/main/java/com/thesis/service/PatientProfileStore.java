@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 就诊人多档案：本人/家属代约。仅 HOSPITAL 出包启用。 */
+/** 就诊人多档案：本人/家属代约。医院业务启用。 */
 public class PatientProfileStore {
 
     private static boolean enabled;

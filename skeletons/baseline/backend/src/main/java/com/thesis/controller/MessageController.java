@@ -53,7 +53,7 @@ public class MessageController {
         return R.ok(m);
     }
 
-    /** XM-01：软删本人站内信。 */
+    /** 软删本人站内信。 */
     @DeleteMapping("/{id}")
     public R<Void> softDelete(@PathVariable long id, HttpSession session) {
         String uid = AdminAuth.requireLogin(session);

@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-/** 站内消息模板：总管维护审单通过/驳回文案（E-06） */
+/** 站内消息模板：总管维护审单通过/驳回文案 */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api/http'

@@ -117,7 +117,7 @@ public final class BlindBoxStore {
         return m;
     }
 
-    /** T-10：买家中赏记录（扫订单明细 draw_title）。 */
+    /** 买家中赏记录（扫订单明细 draw_title）。 */
     public static List<Map<String, Object>> listMyDraws(String username, int limit) {
         requireOn();
         String u = username == null ? "" : username.trim();

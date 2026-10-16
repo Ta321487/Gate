@@ -91,7 +91,7 @@ import { getSchema } from '../../utils/domainSchema.js'
 const labels = getSchema()?.labels || {}
 const title = labels.fundPublicityTitle || '公示登记'
 const lead = labels.fundPublicityLead || '申请通过后登记公示期；公示结束可标记结束。'
-// 异议登记窗口（bake: ticket.allowObjectionWindow → 公示结束日 + N 天，写回申请单）
+// 异议登记窗口（工程生成: ticket.allowObjectionWindow → 公示结束日 + N 天，写回申请单）
 const objectionWindowLabel = labels.objectionWindowLabel || '异议登记截止日'
 const objectionNoteLabel = labels.objectionNoteLabel || '异议说明'
 const objectionHint = labels.objectionWindowHint || ''

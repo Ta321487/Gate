@@ -39,7 +39,7 @@ _MSG_LABELS: dict[str, str] = {
 }
 
 _XM02_TABLES_SQL = """
--- X-MSG XM-02: 强制公告确认 / 广告位多槽
+-- 强制公告确认 / 广告位多槽
 CREATE TABLE IF NOT EXISTS sys_notice_ack (
   notice_id BIGINT NOT NULL,
   username VARCHAR(64) NOT NULL,

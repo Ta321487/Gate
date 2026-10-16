@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-/** XM-02：强制公告弹窗，未确认不可关 */
+/** 强制公告弹窗，未确认不可关 */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import http from '../api/http'

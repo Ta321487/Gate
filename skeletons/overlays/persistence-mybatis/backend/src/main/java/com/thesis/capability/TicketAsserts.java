@@ -226,7 +226,7 @@ final class TicketAsserts {
     }
 
     /**
-     * I-03：调剂志愿上限。excludeTicketId&gt;0 时改志愿不计自身。
+     * 调剂志愿上限。excludeTicketId&gt;0 时改志愿不计自身。
      * 计数走 JDBC（与 TicketDeriveOps 互选路径同源；无独立 Mapper 片段）。
      */
     static void assertAdjustWishCap(String username, String contactChannel, long excludeTicketId) {

@@ -205,7 +205,7 @@ public class GuestbookStore {
         return get(key == null ? 0L : key.longValue());
     }
 
-    /** T-09：商品详情问答（挂 item_id）。 */
+    /** 商品详情问答（挂 item_id）。 */
     public static Map<String, Object> pageByItem(long itemId, int page, int size) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", List.of());

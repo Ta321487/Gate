@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** 能力 book_suggest：读者荐购单 → 审核通过/驳回台账（E-13）；不自动建档入库。 */
+/** 读者荐购单 → 审核通过/驳回台账；不自动建档入库。 */
 public final class BookSuggestStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 在线考试（C-01 / MyBatis）：题库、组卷、作答。客观题交卷匹配标准答案；主观题待教师阅卷。
+ * 在线考试（ / MyBatis）：题库、组卷、作答。客观题交卷匹配标准答案；主观题待教师阅卷。
  */
 public class ExamStore {
 
@@ -645,7 +645,7 @@ public class ExamStore {
     }
 
     /**
-     * 客观题判分口径（I-01；I-07 可开多选部分分）：返回得分。
+     * 客观题判分口径（； 可开多选部分分）：返回得分。
      * single/judge 全等满分；multi 默认全对满分，partialMulti 时无错选按比例。
      */
     private static int scoreAnswer(String type, String key, String answer, int maxScore, boolean partialMulti) {
@@ -902,7 +902,7 @@ public class ExamStore {
         return mapper().deleteWrongbook(username, id) > 0;
     }
 
-    // --- I-08 ---
+    // --
 
     public static String exportWrongbookCsv(String username) {
         require();

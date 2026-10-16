@@ -5,7 +5,7 @@ import java.util.*;
 /**
  * TicketCfgOps：TicketStore 纯业务逻辑拆分（零 DB 接触）。
  *
- * <p>三栈共用：bake 时由 baseline 提供；mybatis/jpa overlay 不含此类
+ * <p>JDBC/MyBatis/JPA 共用；由基线工程提供
  * （helper 不出现任何 JDBC/MyBatis token，故不参与 persistence 覆盖）。
  * 对 TicketStore 静态成员的引用一律使用显式限定名。
  */
@@ -33,7 +33,7 @@ final class TicketCfgOps {
     
     }
 
-    /** C-16：三级会签；开启后二级路径扩展为 pending→pending_mid→pending_final */
+    /** 三级会签；开启后二级路径扩展为 pending→pending_mid→pending_final */
 
     public static void configureThreeLevel(boolean enabled) {
         TicketStore.threeLevelApprove = enabled;
@@ -43,7 +43,7 @@ final class TicketCfgOps {
     
     }
 
-    /** C-14：审核通过扣减时长；须在 configureLoanOptions 前或后再调一次 refresh */
+    /** 审核通过扣减时长；须在 configureLoanOptions 前或后再调一次 refresh */
 
     public static void configureTimebankRedeem(boolean enabled) {
         TicketStore.timebankRedeem = enabled;
@@ -771,7 +771,7 @@ final class TicketCfgOps {
 
     public static void configurePeerAccept(boolean enabled) {
         TicketStore.peerAccept = enabled;
-        // I-03 MUTUAL 通识：互选开启时一并启用截止前改志愿 / 盲选 / 超时婉拒 / 调剂上限
+        //  互选开启时一并启用截止前改志愿 / 盲选 / 超时婉拒 / 调剂上限
         if (enabled) {
             TicketStore.allowWishEditBeforeDeadline = true;
             TicketStore.blindPhaseUntilDeadline = true;

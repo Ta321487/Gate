@@ -6,7 +6,7 @@ import com.thesis.config.MybatisSupport;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** C-08：用户互关浅表（评论仅粉丝可见）。 */
+/** 用户互关（评论仅粉丝可见）。 */
 public final class UserFollowStore {
 
     private static boolean enabled;

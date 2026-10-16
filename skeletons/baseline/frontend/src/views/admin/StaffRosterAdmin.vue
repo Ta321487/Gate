@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-/** 周排班：总管按员工+日期维护班次（E-09） */
+/** 周排班：总管按员工+日期维护班次 */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'

@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 文库下载台账：资料附件、演示权限、下载记录；C-07 加厚章节/版本/限额/审核/标签/纠错侵权。
+ * 文库下载台账：资料附件、演示权限、下载记录； 加厚章节/版本/限额/审核/标签/纠错侵权。
  */
 public class DoclibStore {
 
@@ -50,7 +50,7 @@ public class DoclibStore {
         if (downloadGate) ensureAuditTable();
     }
 
-    /** C-08：挂 points 时下载前扣积分。 */
+    /** 挂 points 时下载前扣积分。 */
     public static void configurePointsDownload(boolean on) {
         pointsDownloadOn = on;
     }

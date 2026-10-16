@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * XM-02 广告位多槽（sys_banner）— MyBatis MbSql。
+ * 广告位多槽（sys_banner）— MyBatis MbSql。
  */
 public class BannerStore {
 

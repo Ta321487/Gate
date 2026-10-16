@@ -99,7 +99,7 @@ public final class GroupBuyStore {
                 (rs, i) -> mapOpen(rs));
     }
 
-    /** T-10：按订单查拼团进度（已参 / 目标 / 状态）。 */
+    /** 按订单查拼团进度（已参 / 目标 / 状态）。 */
     public static Map<String, Object> progressForOrder(long orderId) {
         if (!enabled || orderId <= 0) return null;
         try {

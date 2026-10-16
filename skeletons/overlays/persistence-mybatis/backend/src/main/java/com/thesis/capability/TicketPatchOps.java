@@ -49,7 +49,7 @@ final class TicketPatchOps {
             TicketAsserts.assertAdjustWishCap(owner, ch, ticketId);
             TicketStore.mapper().updateContactChannel(TicketStore.TICKET, ticketId, ch);
         }
-        // I-02：婚恋见面意向
+        // 婚恋见面意向
         if (TicketStore.hasColumn("meet_intent") && body.containsKey("meetIntent")) {
             String mi = TicketSql.str(body.get("meetIntent")).trim();
             if (mi.length() > 32) mi = mi.substring(0, 32);

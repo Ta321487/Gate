@@ -307,7 +307,7 @@ final class TicketLineOps {
                 ticketId);
     }
 
-    /** 表还没 bake 出来时先失败，避免假成功。 */
+    /** 表还没 工程生成 出来时先失败，避免假成功。 */
     private static boolean tableReady(String table) {
         try {
             TicketSql.db().query("SELECT 1 FROM " + table + " LIMIT 1", (rs, i) -> 1);

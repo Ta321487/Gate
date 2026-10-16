@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * XD-02 定时任务只读台：只列本包已启用的 DemoScheduleJobs 项，≠ 调度中台、≠ 全厂能力目录。
+ * 定时任务只读列表：仅展示本系统已启用的演示任务项。
  */
 @RestController
 @RequestMapping("/api/admin/schedule-jobs")

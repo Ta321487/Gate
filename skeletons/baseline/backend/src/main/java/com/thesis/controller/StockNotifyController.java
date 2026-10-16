@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/** T-09：缺货到货订阅。 */
+/** 缺货到货订阅。 */
 @RestController
 @RequestMapping("/api/stock-notify")
 public class StockNotifyController {

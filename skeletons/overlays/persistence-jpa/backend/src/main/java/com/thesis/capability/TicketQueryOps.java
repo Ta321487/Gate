@@ -52,7 +52,7 @@ final class TicketQueryOps {
             where.append(" AND username=?");
             args.add(username);
         } else if (!superAdmin && adminUid != null && !adminUid.isBlank() && TicketStore.hasColumn("assignee_username")) {
-            // 子管可见范围：
+            // 子管可见范围
             // - 待办池 pending/pending_mid/pending_final：全员可见（抢单）
             // - 进行中 approved/overdue 等：仅自己绑定
             // - 终态 returned/rejected/noshow：全员可读（含用户「取消报名」）

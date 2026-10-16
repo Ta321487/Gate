@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 基线公告（MySQL sys_notice）。XM-02：过期下架 / 强制弹窗 / 浅富文本格式。
+ * 基线公告（MySQL sys_notice）。过期下架 / 强制弹窗 / 简易富文本格式。
  */
 public class NoticeStore {
 

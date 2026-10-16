@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 前台登记 / 挂账 / 退房结算。开题挂 front_desk 后启用。 */
+/** 前台登记 / 挂账 / 退房结算。课题需求挂 front_desk 后启用。 */
 public final class FrontDeskStore {
 
     private static boolean enabled;

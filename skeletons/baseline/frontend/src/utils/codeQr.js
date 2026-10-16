@@ -1,4 +1,4 @@
-/** 码字符串 → DataURL（E-07）；依赖 qrcode。 */
+/** 码字符串 → DataURL；依赖 qrcode。 */
 import QRCode from 'qrcode'
 
 export async function codeToDataUrl(text, opts = {}) {

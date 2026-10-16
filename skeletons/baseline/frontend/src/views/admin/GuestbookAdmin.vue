@@ -77,7 +77,7 @@ import { getSchema } from '../../utils/domainSchema.js'
 
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
-/** 多店：仅平台总管回复；单店/非多店：办理岗有菜单即可回复（开题「回复留言」） */
+/** 多店：仅平台总管回复；单店/非多店：办理岗有菜单即可回复 */
 const canModerate = computed(() => isSuper.value || !marketplace.value)
 const channel = ref('user')
 const nameCol = computed(() =>

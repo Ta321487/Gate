@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * XM-02 广告位：门户可读启用项；增删改仅超管。
+ * 广告位：门户可读启用项；增删改仅超管。
  */
 @RestController
 @RequestMapping("/api/banners")

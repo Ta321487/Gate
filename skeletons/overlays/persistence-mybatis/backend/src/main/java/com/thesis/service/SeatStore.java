@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/** 影院选座（C-15）MyBatis 叠层：排×列跟场次档案。 */
+/** 影院选座MyBatis 叠层：排×列跟场次档案。 */
 public class SeatStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

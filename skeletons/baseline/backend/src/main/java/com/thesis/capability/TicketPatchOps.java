@@ -81,7 +81,7 @@ final class TicketPatchOps {
             }
             TicketSql.db().update("UPDATE " + TicketStore.TICKET + " SET next_follow_at=? WHERE id=?", ts, ticketId);
         }
-        // I-02：婚恋见面意向（轻单字段；非支付）
+        // 婚恋见面意向（轻单字段；非支付）
         if (body.containsKey("meetIntent")) {
             if (!TicketStore.hasColumn("meet_intent")) {
                 throw new IllegalStateException("系统未配置见面意向字段");

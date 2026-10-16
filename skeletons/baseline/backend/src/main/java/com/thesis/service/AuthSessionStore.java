@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** XA-02：在线会话登记；管理端踢下线 / 多端互踢。 */
+/** 在线会话登记；管理端可踢下线、多端互踢。 */
 public final class AuthSessionStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

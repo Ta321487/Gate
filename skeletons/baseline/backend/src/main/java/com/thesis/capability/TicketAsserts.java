@@ -125,7 +125,7 @@ final class TicketAsserts {
         }
         // 线路报名等：档案 stage 已关闭时禁止再报（与 status 双保险）
         // 设备借用：维修中/下架不可借；驿站：异常件不可取
-        // I-04 TEAM：已满员不可再报
+        // 已满员不可再报
         Object stageObj = item.get("stage");
         if (stageObj != null) {
             String stage = String.valueOf(stageObj).trim();
@@ -207,7 +207,7 @@ final class TicketAsserts {
     }
 
     /**
-     * I-03：调剂志愿上限。excludeTicketId&gt;0 时改志愿不计自身。
+     * 调剂志愿上限。excludeTicketId&gt;0 时改志愿不计自身。
      */
     static void assertAdjustWishCap(String username, String contactChannel, long excludeTicketId) {
         if (TicketStore.maxAdjustWishes <= 0 || !TicketStore.peerAccept) return;

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/** C-08：用户关注（评论仅粉丝可见）。 */
+/** 用户关注（评论仅粉丝可见）。 */
 @RestController
 @RequestMapping("/api/user-follow")
 public class UserFollowController {

@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 时间银行（C-14）：时长账户、流水加减；核销审批时扣减。
+ * 时间银行：时长账户、流水加减；核销审批时扣减。
  */
 public class TimebankStore {
 
@@ -352,7 +352,7 @@ public class TimebankStore {
                 });
     }
 
-    /** I-06：按时长余额排行（只读）。 */
+    /** 按时长余额排行（只读）。 */
     public static List<Map<String, Object>> rankByHours(int limit) {
         require();
         int lim = Math.max(1, Math.min(100, limit));
@@ -369,7 +369,7 @@ public class TimebankStore {
                 lim);
     }
 
-    /** I-06：流水 CSV（管理端对账导出）。 */
+    /** 流水 CSV（管理端对账导出）。 */
     public static String exportLedgerCsv(String username) {
         require();
         String u = clip(username, 64);
@@ -427,7 +427,7 @@ public class TimebankStore {
         return s;
     }
 
-    /** I-06：更新技能标签 / 认证勾选。 */
+    /** 更新技能标签 / 认证勾选。 */
     public static Map<String, Object> updateSkills(
             String username, String skillTags, Boolean certified, boolean admin) {
         require();
@@ -447,7 +447,7 @@ public class TimebankStore {
         return getAccount(u);
     }
 
-    /** I-06：冻结 / 解冻时长。 */
+    /** 冻结 / 解冻时长。 */
     public static Map<String, Object> adjustFreeze(String username, BigDecimal hours, boolean freeze) {
         require();
         if (!hasAccountColumn("frozen_hours")) {
@@ -484,7 +484,7 @@ public class TimebankStore {
         return getAccount(u);
     }
 
-    /** I-06：爽约扣信用分。 */
+    /** 爽约扣信用分。 */
     public static void penalizeCredit(String username, int delta) {
         if (!enabled || !ready() || !hasAccountColumn("credit_score")) return;
         String u = clip(username, 64);
@@ -495,7 +495,7 @@ public class TimebankStore {
                 delta, u);
     }
 
-    /** I-06：时长转让（流水；≠货币）。 */
+    /** 时长转让（流水。 */
     public static Map<String, Object> transfer(String fromUser, String toUser, BigDecimal hours, String reason) {
         require();
         String from = clip(fromUser, 64);

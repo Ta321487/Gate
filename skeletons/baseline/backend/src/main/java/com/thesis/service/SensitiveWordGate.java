@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 本地敏感词闸（C-03）：毕设级词表拦截，≠云审核。
+ * 本地敏感词闸：按词表拦截不当用语。
  */
 public final class SensitiveWordGate {
 
@@ -32,7 +32,7 @@ public final class SensitiveWordGate {
         return enabled;
     }
 
-    /** 命中则抛 IllegalStateException，文案给学生可见。 */
+    /** 命中则抛 IllegalStateException，抛给前端的提示文案。 */
     public static void assertClean(String text) {
         if (!enabled || text == null || text.isBlank()) return;
         String raw = text;

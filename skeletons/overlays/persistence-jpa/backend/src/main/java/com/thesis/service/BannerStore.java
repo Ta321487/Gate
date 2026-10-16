@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * XM-02 banner slots (sys_banner) via JpaDb.
+ * Banner slots (sys_banner) via JpaDb.
  */
 public class BannerStore {
 

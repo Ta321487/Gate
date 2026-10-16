@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 本地签章（C-18）：上传签章图 + 勾选同意留痕；非 CA。
+ * 本地签章：上传签章图 + 勾选同意留痕；非 CA。
  */
 public class ESignStore {
 

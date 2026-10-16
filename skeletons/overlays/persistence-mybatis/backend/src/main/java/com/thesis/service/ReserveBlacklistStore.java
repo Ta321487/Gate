@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 预约黑名单：轻名单表 + 申诉。≠风控引擎。
+ * 预约黑名单：轻名单表 + 申诉。
  */
 public class ReserveBlacklistStore {
 

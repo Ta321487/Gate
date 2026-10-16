@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * Baseline notices (sys_notice) via JpaDb. XM-02: expire / force-ack / shallow HTML.
+ * Baseline notices (sys_notice) via JpaDb: expire / force-ack / shallow HTML.
  */
 public class NoticeStore {
 
@@ -219,7 +219,7 @@ public class NoticeStore {
         }
     }
 
-    /** é¨æ·å¯è§ï¼æªè¿æï¼æ  expire_at ååä¸è¿æ»¤ï¼ã */
+    /** é¨æ·å¯è§ï¼æªè¿æï¼æ expire_at ååä¸è¿æ»¤ï¼ã */
     public static boolean isPortalVisible(Map<String, Object> m) {
         if (m == null) return false;
         if (!hasExpireAt()) return true;

@@ -11,7 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** T-09：缺货到货订阅（stock_notify）+ 补货站内信。 */
+/** 缺货到货订阅（stock_notify）+ 补货站内信。 */
 public final class StockNotifyStore {
 
     private static final String TABLE = "stock_notify";

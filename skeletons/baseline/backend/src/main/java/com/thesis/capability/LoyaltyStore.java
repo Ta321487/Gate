@@ -9,7 +9,7 @@ import java.math.RoundingMode;
 import java.util.*;
 
 /**
- * 忠诚度：账户余额 / 积分 / 满减 / 会员成长（能力开关；不对接微信支付宝商户）。
+ * 忠诚度：账户余额 / 积分 / 满减 / 会员成长（能力开关；未接微信/支付宝商户接口）。
  * 优惠券开关仅作标志；算价与生命周期一律走 {@link CouponStore}。
  */
 public final class LoyaltyStore {
@@ -471,7 +471,7 @@ public final class LoyaltyStore {
 
     /**
      * 待付款补缴：按订单已算好的应付扣余额（不再重算满减/券）。
-     * 选支付宝/微信只是收银台形态，不对接商户 SDK；有钱包时余额仍须扣。
+     * 选支付宝/微信只是收银台形态，未接支付商户 SDK；有钱包时余额仍须扣。
      */
     public static Map<String, Object> captureOrderPay(String username, double payableYuan, long orderId) {
         ensureSchema();
@@ -680,7 +680,7 @@ public final class LoyaltyStore {
         return Math.round(v * 100.0) / 100.0;
     }
 
-    /** C-08：业务扣积分（文库下载等）；不足则抛错。 */
+    /** 业务扣积分（文库下载等）；不足则抛错。 */
     public static Map<String, Object> spendPoints(
             String username, int amount, String reason, String refType, Long refId) {
         if (!pointsEnabled) throw new IllegalStateException("未开启积分");
@@ -694,7 +694,7 @@ public final class LoyaltyStore {
         return getAccount(username);
     }
 
-    /** C-08：业务奖积分（精华奖励等）。 */
+    /** 业务奖积分（精华奖励等）。 */
     public static Map<String, Object> awardPoints(
             String username, int amount, String reason, String refType, Long refId) {
         if (!pointsEnabled || amount <= 0) return getAccount(username == null ? "" : username);

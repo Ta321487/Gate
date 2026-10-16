@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** XA-02：最近登录记录 + 异地对照。 */
+/** 最近登录记录与异地对照。 */
 public final class LoginLogStore {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

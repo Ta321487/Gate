@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 投票评选（C-04 + I-10）：候选档案、限票/每日限票、匿名、延迟公示、弃权、IP 提示、结果导出。
+ * 投票评选：候选档案、限票/每日限票、匿名、延迟公示、弃权、IP 提示、结果导出。
  */
 public class VoteStore {
 

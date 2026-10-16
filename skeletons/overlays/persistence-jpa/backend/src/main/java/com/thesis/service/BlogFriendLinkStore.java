@@ -14,7 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 博客友情链接栏（C-04）：blog_friend_link 浅表。 */
+/** 博客友情链接栏：blog_friend_link 。 */
 public final class BlogFriendLinkStore {
 
     private static final String TABLE = "blog_friend_link";

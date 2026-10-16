@@ -9,7 +9,7 @@ import com.thesis.service.ExamStore;
 /**
  * TicketGuardOps：TicketStore 纯业务逻辑拆分（零 DB 接触）。
  *
- * <p>三栈共用：bake 时由 baseline 提供；mybatis/jpa overlay 不含此类
+ * <p>JDBC/MyBatis/JPA 共用；由基线工程提供
  * （helper 不出现任何 JDBC/MyBatis token，故不参与 persistence 覆盖）。
  * 对 TicketStore 静态成员的引用一律使用显式限定名。
  */

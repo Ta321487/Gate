@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * XD-02：门户浏览计数（匿名可写一次 bump；工作台读走 dashboard）。
+ * 门户浏览计数（同标签页计一次；工作台读取汇总）。
  */
 @RestController
 @RequestMapping("/api/site-stat")

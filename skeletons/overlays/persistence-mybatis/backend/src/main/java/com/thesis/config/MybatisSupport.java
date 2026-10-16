@@ -30,7 +30,7 @@ public class MybatisSupport implements ApplicationContextAware {
         return CTX.getBean(SqlSessionFactory.class);
     }
 
-    /** 尚未 Mapper 化的 Store 取原生 SQL 入口；对标原 JdbcSupport.jdbc()。 */
+    /** 尚未 Mapper 化的 Store 取原生 SQL 入口；对标原 JdbcSupport.jdbc。 */
     public static MbSql db() {
         if (SQL == null) {
             throw new IllegalStateException("MyBatis 数据源未就绪");

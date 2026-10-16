@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 酒店房态：房间实例状态与日志。开题挂 room_board 后启用。 */
+/** 酒店房态：房间实例状态与日志。课题需求挂 room_board 后启用。 */
 public final class RoomBoardStore {
 
     public static final String VACANT = "空房";

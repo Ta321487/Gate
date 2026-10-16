@@ -347,7 +347,7 @@ public class ExamController {
         }
     }
 
-    // --- I-08 ---
+    // --
 
     @GetMapping("/wrongbook/export")
     public void exportWrongbook(HttpSession session, HttpServletResponse response) {

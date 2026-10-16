@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * 浅进销存（C-17）：管理端入库/出库登记，即时调整档案 stock 并写流水。
+ * 进销存：管理端入库/出库登记，即时调整档案 stock 并写流水。
  * 可选报废 scrap、盘点 count（按课题需要启用）。
  */
 public class StockIoStore {

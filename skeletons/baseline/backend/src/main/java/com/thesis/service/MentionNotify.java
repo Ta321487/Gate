@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 跟帖/评论 @提醒（C-03）：解析 @登录名 发站内信，浅一层。
+ * 跟帖/评论 @提醒：解析 @登录名 发站内信，。
  */
 public final class MentionNotify {
 

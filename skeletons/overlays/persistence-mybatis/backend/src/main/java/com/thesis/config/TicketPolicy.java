@@ -2,7 +2,7 @@ package com.thesis.config;
 
 /**
  * 单据（申请 / 审核 / 跟进）业务规则与功能开关。
- * <p>按本系统开题口径生成，集中保存单据流程用到的天数、上限、文案与开关；
+ * <p>按本课题需求生成，集中保存单据流程用到的天数、上限、文案与开关；
  * 需要调整业务口径时改这里的常量即可。</p>
  */
 public final class TicketPolicy {
@@ -129,7 +129,7 @@ public final class TicketPolicy {
     /** 评教开放窗口外拒绝文案 */
     public static final String EVAL_OPEN_WINDOW_DENY_MESSAGE = "";
 
-    // ---------- 扩展能力开关（按开题启用） ----------
+    // ---------- 扩展功能开关（按本课题启用） ----------
     public static final boolean TWO_LEVEL = false;
     public static final boolean THREE_LEVEL = false;
     public static final boolean REQUIRE_ATTACH = false;

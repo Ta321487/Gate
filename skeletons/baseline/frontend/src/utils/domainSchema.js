@@ -13,7 +13,7 @@ export function getFlavor() {
   return getDelivered().flavor || 'generic'
 }
 
-/** @deprecated 兼容旧调用；等价于 getFlavor() */
+/** @deprecated 兼容旧调用；等价于 getFlavor */
 export function getDomain() {
   return getFlavor()
 }
@@ -75,7 +75,7 @@ export function schemaMenus(side = 'admin') {
   const keys = new Set(list.map((m) => m.key))
   const caps = new Set(getSchema().capabilities || [])
   const labs = schemaLabels()
-  // 仅认 dmShopCs：多店市集≠店铺客服选人；文案与 AppPolicy.DM_SHOP_CS 同真源
+  // 仅认 dmShopCs：多店市集与店铺客服选人分开；文案与 AppPolicy.DM_SHOP_CS 同真源
   const shopCs = !!getSchema().dmShopCs
 
   function insertBefore(key, item, befores) {
@@ -388,7 +388,7 @@ export function isArchiveMoneyField(field) {
 }
 
 /**
- * 档案标量展示：金额域 0.00 ≠ 空；其它数字 0 ≠ 空；空串/null 才用 empty。
+ * 档案标量展示：金额域 0.00 仍显示为 0.00；其它数字 0 仍显示为 0；空串/null 才用 empty。
  */
 export function formatArchiveScalar(field, value, empty = '—') {
   if (value == null || value === '') return empty

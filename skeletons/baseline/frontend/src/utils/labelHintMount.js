@@ -1,5 +1,5 @@
 /**
- * 开题地图「纯 Hint」→ 须在 Vue 真读的键名清单（骨架门禁对照）。
+ * 界面提示文案键：页面须真实读取这些 labels 键。
  * 挂载面：SchemaLabelHints + 各页专控（打印/导出/色点/切换/图）。
  */
 export const BORROW_HINT_KEYS = [

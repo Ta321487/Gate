@@ -11,13 +11,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 教务成绩登记（MyBatis 叠层）：已有 grade_score 表上的录入、课内名次。不开新能力岛。
+ * 教务成绩登记（MyBatis 叠层）：已有 grade_score 表上的录入、课内名次。不开新功能模块。
  */
 public class GradeScoreStore {
 
     private static boolean enabled;
     private static Boolean tableReady;
-    /** 成绩异议申请时限（开题扫 GRADE）：成绩登记后 N 天内可提交更正/异议申请 */
+    /** 成绩异议申请时限（成绩模块）：成绩登记后 N 天内可提交更正/异议申请 */
     private static int objectionDays = 0;
 
     private GradeScoreStore() {}

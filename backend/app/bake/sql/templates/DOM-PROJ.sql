@@ -1,4 +1,4 @@
--- bake domain=DOM-PROJ · tables in [${TABLE_COUNT_MIN},${TABLE_COUNT_MAX}]
+-- 业务库脚本：建库、建表与初始数据
 CREATE DATABASE IF NOT EXISTS `${DB_NAME}` DEFAULT CHARACTER SET utf8mb4;
 USE `${DB_NAME}`;
 

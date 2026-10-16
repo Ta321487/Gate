@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 报名黑名单：轻名单表，名单内禁止提交报名。≠风控引擎。
+ * 报名黑名单：轻名单表，名单内禁止提交报名。
  */
 public class ApplyBlacklistStore {
 

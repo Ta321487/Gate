@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * XA-02：被踢会话下一请求作废。无登记行（升级前会话）放行。
+ * 被踢会话在下次请求时作废；尚无登记的旧会话放行。
  */
 @Component
 @Order(2)

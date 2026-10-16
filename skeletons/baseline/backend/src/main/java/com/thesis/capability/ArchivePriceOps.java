@@ -24,7 +24,7 @@ final class ArchivePriceOps {
         }
     }
 
-    /** 写库/成交：非空且不可解析则硬失败；空或显式 0 允许。 */
+    /** 写库/成交：非空且不可解析则须有列否则报错；空或显式 0 允许。 */
     static double parseMoney(Object raw) {
         Double v = tryParseMoney(raw);
         if (v == null) {

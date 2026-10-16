@@ -264,7 +264,7 @@ const claimText = computed(
     appName,
 )
 
-/** 管理端 sys_banner（slot=home）优先，bake 静态 portalBanners 垫底；与 PortalCarousel 同源 */
+/** 管理端 sys_banner（slot=home）优先，预置首页横幅 垫底；与 PortalCarousel 同源 */
 const apiBanners = ref([])
 const banners = computed(() => {
   const baked = Array.isArray(APP_DELIVERED?.portalBanners) ? APP_DELIVERED.portalBanners : []

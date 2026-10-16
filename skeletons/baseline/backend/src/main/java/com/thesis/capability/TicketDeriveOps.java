@@ -8,7 +8,7 @@ import java.sql.Timestamp;
 /**
  * TicketDeriveOps：TicketStore 纯业务逻辑拆分（零 DB 接触）。
  *
- * <p>三栈共用：bake 时由 baseline 提供；mybatis/jpa overlay 不含此类
+ * <p>JDBC/MyBatis/JPA 共用；由基线工程提供
  * （helper 不出现任何 JDBC/MyBatis token，故不参与 persistence 覆盖）。
  * 对 TicketStore 静态成员的引用一律使用显式限定名。
  */
@@ -179,7 +179,7 @@ final class TicketDeriveOps {
     
     }
 
-    /** C-05：档案主人确认/拒绝志愿；通过时复用 approve 扣库存。 */
+    /** 档案主人确认/拒绝志愿；通过时复用 approve 扣库存。 */
 
     public static Map<String, Object> peerRespond(long ticketId, String username, boolean pass, String remark) {
         if (!TicketStore.peerAccept) throw new IllegalStateException("当前未开启互选确认");
@@ -208,7 +208,7 @@ final class TicketDeriveOps {
                 pass ? "peer_accept" : "peer_reject",
                 username,
                 pass ? "对方确认" : (note.isBlank() ? "对方婉拒" : note));
-        // I-05：车主确认后锁座
+        // 车主确认后锁座
         if (pass && TicketStore.hasColumn("seat_locked")) {
             try {
                 TicketSql.db().update(
@@ -252,7 +252,7 @@ final class TicketDeriveOps {
     
     }
 
-    /** I-03：管理端调剂（非档案主人）审核后额外留痕。 */
+    /** 管理端调剂（非档案主人）审核后额外留痕。 */
     static void maybeAppendAdminAdjust(long ticketId, String operator, boolean pass, String remark) {
         if (!TicketStore.peerAccept || ticketId <= 0) return;
         String op = operator == null ? "" : operator.trim();
@@ -266,7 +266,7 @@ final class TicketDeriveOps {
                 pass ? (note.isBlank() ? "调剂确认" : note) : (note.isBlank() ? "调剂驳回" : note));
     }
 
-    /** I-03：档案是否仍在盲选窗口（有截止且未过）。 */
+    /** 档案是否仍在盲选窗口（有截止且未过）。 */
     static boolean isBlindPhaseActive(Map<String, Object> item) {
         if (!TicketStore.blindPhaseUntilDeadline || !TicketStore.peerAccept) return false;
         if (item == null || !ArchiveStore.hasApplyDeadline()) return false;
@@ -286,7 +286,7 @@ final class TicketDeriveOps {
         }
     }
 
-    /** I-03：盲选脱敏 peer-inbox 行。 */
+    /** 盲选脱敏 peer-inbox 行。 */
     static void applyBlindRedaction(List<Map<String, Object>> list) {
         if (list == null || list.isEmpty() || !TicketStore.blindPhaseUntilDeadline) return;
         for (Map<String, Object> row : list) {
@@ -302,7 +302,7 @@ final class TicketDeriveOps {
         }
     }
 
-    /** I-03：截止前修改志愿说明/类型。 */
+    /** 截止前修改志愿说明/类型。 */
     public static Map<String, Object> editWishBeforeDeadline(
             long ticketId, String username, String remark, String contactChannel) {
         if (!TicketStore.peerAccept || !TicketStore.allowWishEditBeforeDeadline) {
@@ -340,7 +340,7 @@ final class TicketDeriveOps {
         return get(ticketId);
     }
 
-    /** I-03：待确认超时自动婉拒。 */
+    /** 待确认超时自动婉拒。 */
     public static int autoRejectStalePeerPending() {
         if (!TicketStore.peerAccept || !TicketStore.allowPeerTimeoutReject) return 0;
         if (TicketStore.peerTimeoutRejectHours <= 0 || !TicketStore.enabled) return 0;
@@ -374,7 +374,7 @@ final class TicketDeriveOps {
         return n;
     }
 
-    /** I-03：互选结果公示（已通过名单，用户名脱敏）。 */
+    /** 互选结果公示（已通过名单，用户名脱敏）。 */
     public static List<Map<String, Object>> mutualMatchResult(Long itemId) {
         if (!TicketStore.peerAccept || TicketStore.MODE != TicketStore.Mode.ARCHIVE) return List.of();
         StringBuilder sql = new StringBuilder(
@@ -405,7 +405,7 @@ final class TicketDeriveOps {
                 args.toArray());
     }
 
-    /** I-03：管理端调剂留痕分页。 */
+    /** 管理端调剂留痕分页。 */
     public static Map<String, Object> pageAdjustLog(int page, int size) {
         Map<String, Object> empty = new LinkedHashMap<>();
         empty.put("list", List.of());
@@ -445,7 +445,7 @@ final class TicketDeriveOps {
         return out;
     }
 
-    /** I-04 TEAM：向同学发送组队邀请站内信。 */
+    /** 向同学发送组队邀请站内信。 */
     public static Map<String, Object> sendTeamInvite(
             String fromUser, String toUser, long itemId, String note) {
         if (!TicketStore.peerAccept) throw new IllegalStateException("当前未开启组队互选");
@@ -468,7 +468,7 @@ final class TicketDeriveOps {
         return out;
     }
 
-    /** I-04 TEAM：已互选成员申请退出（须队长同意）。 */
+    /** 已互选成员申请退出（须队长同意）。 */
     public static Map<String, Object> requestTeamExit(long ticketId, String username) {
         if (!TicketStore.peerAccept) throw new IllegalStateException("当前未开启组队互选");
         if (!TicketStore.hasColumn("exit_request")) {
@@ -507,7 +507,7 @@ final class TicketDeriveOps {
         return get(ticketId);
     }
 
-    /** I-04 TEAM：队长待处理的退出申请列表。 */
+    /** 队长待处理的退出申请列表。 */
     public static Map<String, Object> pageExitInbox(String ownerUsername, int page, int size) {
         Map<String, Object> empty = new LinkedHashMap<>();
         empty.put("list", List.of());
@@ -541,7 +541,7 @@ final class TicketDeriveOps {
         return out;
     }
 
-    /** I-04 TEAM：队长处理退出申请。 */
+    /** 队长处理退出申请。 */
     public static Map<String, Object> peerExitRespond(
             long ticketId, String ownerUsername, boolean pass, String remark) {
         if (!TicketStore.peerAccept) throw new IllegalStateException("当前未开启组队互选");
@@ -607,7 +607,7 @@ final class TicketDeriveOps {
         return subject;
     }
 
-    /** I-03：向已互选学生发站内通知；返回通知条数。 */
+    /** 向已互选学生发站内通知；返回通知条数。 */
     public static int notifyMutualMatchResults() {
         if (!TicketStore.peerAccept) return 0;
         List<Map<String, Object>> rows = TicketSql.db().query(

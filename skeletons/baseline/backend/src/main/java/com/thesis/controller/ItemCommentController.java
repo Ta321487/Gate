@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * 档案条下评论：按 itemId 列表/发表；管理端分页与删除。≠ 门户留言 guestbook。
+ * 档案条下评论：按 itemId 列表/发表；管理端分页与删除。
  */
 @RestController
 @RequestMapping("/api/item-comments")

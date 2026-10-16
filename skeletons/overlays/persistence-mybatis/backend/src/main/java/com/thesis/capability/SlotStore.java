@@ -45,17 +45,17 @@ public final class SlotStore {
     private static boolean parkingPassOn = false;
     private static int meetingMinDurationMinutes = 0;
     private static boolean meetingMinutesRequired = false;
-    /** SALON：改约手续费默认（元） */
+    /** 改约手续费默认（元） */
     private static int salonRescheduleFeeYuan = 0;
-    /** HOTEL：延迟退房加收默认（元） */
+    /** 延迟退房加收默认（元） */
     private static int hotelLateCheckoutFeeYuan = 0;
-    /** HOTEL：入住须知必勾 */
+    /** 入住须知必勾 */
     private static boolean hotelNoticeRequired = false;
-    /** CARRENT：里程超支加收默认（元） */
+    /** 里程超支加收默认（元） */
     private static int carrentMileageOverFeeYuan = 0;
-    /** INSTRUMENT：超时加收默认（元） */
+    /** 超时加收默认（元） */
     private static int instrumentOvertimeYuan = 0;
-    /** INSTRUMENT：须勾选培训合格 */
+    /** 须勾选培训合格 */
     private static boolean instrumentTrainingRequired = false;
 
     private SlotStore() {}
@@ -158,23 +158,23 @@ public final class SlotStore {
         meetingMinutesRequired = minutesRequired;
     }
 
-    /** §1.7 R-05 SALON */
+    /** */
     public static void configureSalon(int rescheduleFeeYuan) {
         salonRescheduleFeeYuan = Math.max(0, rescheduleFeeYuan);
     }
 
-    /** §1.7 R-06 HOTEL */
+    /** */
     public static void configureHotel(int lateCheckoutFeeYuan, boolean noticeRequired) {
         hotelLateCheckoutFeeYuan = Math.max(0, lateCheckoutFeeYuan);
         hotelNoticeRequired = noticeRequired;
     }
 
-    /** §1.7 R-07 CARRENT */
+    /** */
     public static void configureCarrent(int mileageOverFeeYuan) {
         carrentMileageOverFeeYuan = Math.max(0, mileageOverFeeYuan);
     }
 
-    /** §1.7 R-08 INSTRUMENT */
+    /** */
     public static void configureInstrument(int overtimeYuan, boolean trainingRequired) {
         instrumentOvertimeYuan = Math.max(0, overtimeYuan);
         instrumentTrainingRequired = trainingRequired;
@@ -1227,7 +1227,7 @@ public final class SlotStore {
         }
     }
 
-    /** SALON：时段长度须覆盖服务项目时长 */
+    /** 时段长度须覆盖服务项目时长 */
     private static void assertSalonServiceDuration(Map<String, Object> slot) {
         if (slot == null || slot.get("itemId") == null) return;
         try {

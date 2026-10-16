@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 影院选座（C-15）：场次座位图（排×列可配）、占座并生成订单。
+ * 影院选座：场次座位图（排×列可配）、占座并生成订单。
  */
 public class SeatStore {
 
