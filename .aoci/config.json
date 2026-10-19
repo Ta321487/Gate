@@ -144,7 +144,7 @@
       "enabled": true
     }
   ],
-  "code_cognition_batch_entries": 20,
+  "code_cognition_batch_entries": 40,
   "ai": {
     "enabled": false,
     "provider": "openai-compatible",

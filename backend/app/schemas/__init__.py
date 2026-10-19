@@ -226,6 +226,42 @@ class MatchUpdate(BaseModel):
     portal_home_style: Optional[str] = Field(
         default=None, description="门户首页构图 cards | editorial | mall"
     )
+    content_surface_style: Optional[str] = Field(
+        default=None,
+        description="内容组页内构图 folio | coverwall | ledger | splitdesk",
+    )
+    trade_surface_style: Optional[str] = Field(
+        default=None,
+        description="交易组页内构图 shelfgrid | menuboard | showtime",
+    )
+    reserve_surface_style: Optional[str] = Field(
+        default=None,
+        description="预约组页内构图 slotstrip | roomstate | vehiclecard",
+    )
+    borrow_surface_style: Optional[str] = Field(
+        default=None,
+        description="借用组页内构图 bookshelf | stockrow | bedblocks | parcelshelf",
+    )
+    apply_surface_style: Optional[str] = Field(
+        default=None,
+        description="报名组页内构图 eventposter | coursetable | noticeboard | tourcard",
+    )
+    interact_surface_style: Optional[str] = Field(
+        default=None,
+        description="互动组页内构图 profilegrid | mutualpick | triprow",
+    )
+    follow_surface_style: Optional[str] = Field(
+        default=None,
+        description="跟进组页内构图 pipeline | dossier | listing",
+    )
+    repair_surface_style: Optional[str] = Field(
+        default=None,
+        description="报修组页内构图 ticketfeed | faultboard",
+    )
+    approve_surface_style: Optional[str] = Field(
+        default=None,
+        description="审批组页内构图 typelist | inboxsteps",
+    )
     llm_enabled: Optional[bool] = Field(default=None, description="启用 LLM")
     password_hash: Optional[str] = Field(default=None, description="密码哈希策略")
     unlock: Optional[bool] = Field(default=None, description="解锁匹配")

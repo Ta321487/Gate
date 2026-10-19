@@ -1624,6 +1624,8 @@ const publicPaths = new Set([
   '/staff/login',
   '/register',
   '/forgot-password',
+  // 注册成功尚未登录，激活页须能停留并返回登录
+  '/activate',
   '/cert-verify',
   '/error',
   '/loading',

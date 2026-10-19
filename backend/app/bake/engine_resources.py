@@ -14,6 +14,15 @@ from app.bake.catalog import (
     normalize_auth_role_widget,
     normalize_auth_template,
     normalize_chrome,
+    normalize_apply_surface_style,
+    normalize_borrow_surface_style,
+    normalize_content_surface_style,
+    normalize_follow_surface_style,
+    normalize_repair_surface_style,
+    normalize_approve_surface_style,
+    normalize_interact_surface_style,
+    normalize_reserve_surface_style,
+    normalize_trade_surface_style,
     normalize_layout,
     normalize_portal_home_style,
     normalize_typeface,
@@ -150,6 +159,15 @@ def _write_factory_delivered(
     layout: str = "topbar",
     typeface: str = "clean",
     portal_home_style: str = "cards",
+    content_surface_style: str = "",
+    trade_surface_style: str = "",
+    reserve_surface_style: str = "",
+    borrow_surface_style: str = "",
+    apply_surface_style: str = "",
+    interact_surface_style: str = "",
+    follow_surface_style: str = "",
+    repair_surface_style: str = "",
+    approve_surface_style: str = "",
     seed: str = "",
 ) -> None:
     if not auth_hero:
@@ -189,6 +207,51 @@ def _write_factory_delivered(
         "layout": normalize_layout(layout),
         "typeface": normalize_typeface(typeface),
         "portalHomeStyle": normalize_portal_home_style(portal_home_style),
+        "contentSurfaceStyle": (
+            normalize_content_surface_style(content_surface_style)
+            if content_surface_style
+            else ""
+        ),
+        "tradeSurfaceStyle": (
+            normalize_trade_surface_style(trade_surface_style)
+            if trade_surface_style
+            else ""
+        ),
+        "reserveSurfaceStyle": (
+            normalize_reserve_surface_style(reserve_surface_style)
+            if reserve_surface_style
+            else ""
+        ),
+        "borrowSurfaceStyle": (
+            normalize_borrow_surface_style(borrow_surface_style)
+            if borrow_surface_style
+            else ""
+        ),
+        "applySurfaceStyle": (
+            normalize_apply_surface_style(apply_surface_style)
+            if apply_surface_style
+            else ""
+        ),
+        "interactSurfaceStyle": (
+            normalize_interact_surface_style(interact_surface_style)
+            if interact_surface_style
+            else ""
+        ),
+        "followSurfaceStyle": (
+            normalize_follow_surface_style(follow_surface_style)
+            if follow_surface_style
+            else ""
+        ),
+        "repairSurfaceStyle": (
+            normalize_repair_surface_style(repair_surface_style)
+            if repair_surface_style
+            else ""
+        ),
+        "approveSurfaceStyle": (
+            normalize_approve_surface_style(approve_surface_style)
+            if approve_surface_style
+            else ""
+        ),
         "domain": domain,
         "flavor": skin["flavor"],
         "domainLabel": skin["domainLabel"],

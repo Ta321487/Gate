@@ -13,7 +13,17 @@
       </div>
     </section>
 
-    <el-table :data="list" stripe empty-text="购物车为空，去浏览加购吧">
+    <el-table
+      :data="list"
+      stripe
+      empty-text="购物车为空，去浏览加购吧"
+      :data-trade-surface="tradeSurface || 'cards'"
+      :class="{
+        'trade-shelfgrid': tradeSurface === 'shelfgrid',
+        'trade-menuboard': tradeSurface === 'menuboard',
+        'trade-showtime': tradeSurface === 'showtime',
+      }"
+    >
       <el-table-column v-if="cartSelectOn" width="88">
         <template #header>
           <el-checkbox
@@ -422,8 +432,18 @@ import {
   menuLabel,
 } from '../../utils/domainSchema.js'
 import { addressTagOptions, normalizeAddressTag } from '../../utils/addressTags.js'
+import { APP_DELIVERED } from '../../appDelivered.js'
 
 const router = useRouter()
+const tradeSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.tradeSurfaceStyle
+      || import.meta.env.VITE_TRADE_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['shelfgrid', 'menuboard', 'showtime'].includes(s)) return s
+  return ''
+})
 const tagOptions = computed(() => addressTagOptions())
 const cartLabel = menuLabel('user', 'cart', '购物车')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')

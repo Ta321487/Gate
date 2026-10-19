@@ -41,8 +41,19 @@
         <el-form-item label="导语">
           <el-input v-model="form.lead" maxlength="255" />
         </el-form-item>
-        <el-form-item label="图片地址">
-          <el-input v-model="form.imageUrl" placeholder="本地路径或 http(s) 地址" />
+        <el-form-item>
+          <template #label>
+            <span class="lab-with-help">
+              图片地址
+              <el-tooltip
+                content="本机图：放到程序目录下的 uploads 文件夹，这里填 /uploads/文件名.jpg。外链填 https 开头。不要填 D:\ 这类磁盘路径。"
+                placement="top"
+              >
+                <button type="button" class="help-q" aria-label="图片地址怎么填">?</button>
+              </el-tooltip>
+            </span>
+          </template>
+          <el-input v-model="form.imageUrl" placeholder="/uploads/文件名.jpg 或 https 地址" />
         </el-form-item>
         <el-form-item label="跳转链接">
           <el-input v-model="form.linkUrl" placeholder="如 /notices" />
@@ -166,4 +177,17 @@ onMounted(load)
 }
 .title { margin: 0; flex: 1; font-size: 18px; }
 .empty { margin-top: 16px; color: var(--portal-muted, #909399); font-size: 13px; }
+.lab-with-help { display: inline-flex; align-items: center; gap: 4px; }
+.help-q {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--el-text-color-secondary, #909399);
+  background: transparent;
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 11px;
+  line-height: 14px;
+  cursor: help;
+}
 </style>

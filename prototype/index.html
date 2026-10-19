@@ -428,10 +428,29 @@
                     <div class="field">
                       <label>门户首页</label>
                       <select id="sel-portal-home">
-                        <option value="cards" selected>cards · 卡片宫格</option>
-                        <option value="editorial">editorial · 编辑向长页</option>
-                        <option value="mall">mall · 商城货架（零售域）</option>
+                        <option value="cards" selected>cards · 功能卡片首页</option>
+                        <option value="editorial">editorial · 资讯侧栏首页</option>
+                        <option value="mall">mall · 商城货架首页（零售域）</option>
                       </select>
+                    </div>
+                    <div class="field">
+                      <label>内容列表构图</label>
+                      <select id="sel-content-surface">
+                        <option value="folio" selected>folio · 刊头阅读流</option>
+                        <option value="coverwall">coverwall · 封面墙</option>
+                        <option value="ledger">ledger · 条目清单</option>
+                        <option value="splitdesk">splitdesk · 双栏阅读台</option>
+                      </select>
+                      <div class="small muted">演示：内容域题才出现；只改列表排法，不改菜单</div>
+                    </div>
+                    <div class="field">
+                      <label>商品列表构图</label>
+                      <select id="sel-trade-surface">
+                        <option value="shelfgrid" selected>shelfgrid · 货架密铺</option>
+                        <option value="menuboard">menuboard · 档口菜单板（餐饮）</option>
+                        <option value="showtime">showtime · 排片选座行（影院）</option>
+                      </select>
+                      <div class="small muted">演示：商城 / 餐饮 / 影院才出现</div>
                     </div>
                     <div class="field">
                       <label>智能业务填充</label>
@@ -1743,7 +1762,7 @@
         <!-- ========== HELP ========== -->
         <section id="view-help" class="view">
           <h1 class="page-title">帮助文档</h1>
-          <p class="page-desc">本说明面向运营人员，介绍毕设港工作台的标准使用流程、交付条件与常用术语。</p>
+          <p class="page-desc">本说明面向运营人员：标准流程、交付条件与术语。卡壳时先看「运营诊断 · 四痛点」。与正式运营台 <span class="mono">frontend/</span> 帮助页同口径；本页为静态摘要。</p>
           <div class="help-cards">
             <article class="help-card panel">
               <div class="panel-hd"><h3>产品定位</h3><span class="pill pill-teal">总览</span></div>
@@ -1767,16 +1786,101 @@
               </div>
             </article>
             <article class="help-card panel wide">
-              <div class="panel-hd"><h3>标准作业流程</h3><span class="pill pill-teal">流程</span></div>
+              <div class="panel-hd"><h3>四痛点 → 先看哪</h3><span class="pill pill-teal">索引</span></div>
+              <div class="panel-bd help-body">
+                <p>日常卡壳时按痛点跳转；本页只做人话指路，不替代门禁与验圈。</p>
+                <ul>
+                  <li>怎么用 → 「五步主路径」；项目内页：匹配确认 → 一键生成 → 运行 → 产物/对照 → 交付复审。</li>
+                  <li>最常爆炸 → 「最常爆炸处置」；项目内先看匹配双显 / 质量检查毒区 / 任务日志 / 交付复审合卷。</li>
+                  <li>感觉不对又说不清 → 产物「交付复审」里的老板小卡（12 主项 + 理解偏差）+ 毒区 / 验圈 / 质量摘要并排。</li>
+                  <li>开题写得笼统 / 弱匹配多 → 「开题笼统时仍要写对」：老师已确认的开题是合同，写不对先查工厂理解与匹配，禁止甩锅给材料。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>五步主路径</h3><span class="pill pill-teal">怎么用</span></div>
               <div class="panel-bd help-body">
                 <ol class="help-steps">
-                  <li><strong>创建项目</strong><p>在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。格式、数量上限、同课题合并与多课题拆开等说明见下方「上传与分堆」。</p></li>
-                  <li><strong>匹配确认</strong><p>在「匹配确认」页核验推荐骨架、领域、<strong>身份场景</strong>、<strong>主路径入口</strong>（分叉域：晨午检自报/绑岗/调宿等）、持久层，以及按需开关（Spring Security、AI 助手）。开题未写清「谁怎么用」时须勾选「主路径已核对」或解锁手改后再确认。开题推荐与当前出包不一致时双显（持久层 / Security / AI / 身份入口）。配色、布局、门户首页等视觉选项在「一键生成」页调整；禁止把 AI/Security/持久层塞进视觉区。</p></li>
-                  <li><strong>一键生成</strong><p>匹配确认后，在「一键生成」页调整视觉与生成选项（即时保存），再启动生成。启动前会弹出「开题措辞核对」。生成完成后在「质量检查」看「清单实装验收」。生成完成后可同页改选项并「按当前选项重新生成」。</p></li>
-                  <li><strong>答辩 PPT（后置）</strong><p>程序 bake 门禁通过后，在「一键生成」下半截填写封面信息（学校/学院/班级/姓名/学号/导师/校徽全部必填）并生成终期答辩 PPT。校徽从 Word 复制粘贴即可（默认原样；可选去掉白底，徽+字可能扣不干净）。产物行可检查与导出 PPTX（不进 ZIP）；对照子页做预览纠错与换皮。</p></li>
-                  <li><strong>预览与验收</strong><p>于「运行」页启动前后端预览做快速验收；于「产物 / 对照」核对数据库、论文材料、学生端 API 与质量检查。工程有改动时，在「交付复审」验圈并合卷。</p></li>
-                  <li><strong>交付</strong><p>机器质检通过后可下载 ZIP。列表「履约」列或详情页头可操作：审过可一步「标记已发出」；暂存用「已审待发」，发出时用「下载并发出」。重新生成会清掉人工标记与复审轮次。</p></li>
+                  <li><strong>1 · 上传建项</strong><p>上传开题/任务书等，确认分堆后再创建。多课题勿硬并一堆。</p></li>
+                  <li><strong>2 · 匹配确认</strong><p>核领域、身份、主路径、持久层、Security、AI；有双显先看清拟选≠出包。</p></li>
+                  <li><strong>3 · 一键生成</strong><p>调视觉选项（含本域列表构图）后启动；弹窗做开题措辞核对。生成后看质量检查实装。</p></li>
+                  <li><strong>4 · 运行预览</strong><p>启前后端点主路径：提交→审→完结是否真能走。</p></li>
+                  <li><strong>5 · 产物与复审</strong><p>对库表/论文图/质量检查；工程改过则交付复审验圈后合卷，再下 ZIP。</p></li>
                 </ol>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>最常爆炸处置</h3><span class="pill pill-teal">防炸</span></div>
+              <div class="panel-bd help-body">
+                <p>炸了先点哪、怎么收。老师已确认的开题是合同；禁止改开题迁就工厂，也禁止甩锅给「材料薄」。</p>
+                <div class="help-table-wrap">
+                  <table class="help-table">
+                    <thead>
+                      <tr><th>症状</th><th>先看</th><th>处置</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>域摇摆 / 易混</td><td>匹配确认双显</td><td>按题名+正文核主路径与域；理解不清就解锁核清，不改开题</td></tr>
+                      <tr><td>门禁红 / 不能下包</td><td>产物 → 质量检查毒区</td><td>空壳优先；修 bake/皮/开关对齐后再验</td></tr>
+                      <tr><td>开了 AI/Security 包里没有</td><td>匹配确认双显</td><td>开关与 bake 对齐，或标不支持；关则勿写已集成</td></tr>
+                      <tr><td>预览 OK 但 ZIP 旧</td><td>交付复审</td><td>验圈通过后合卷</td></tr>
+                      <tr><td>「演示」字样 / 场景穿帮</td><td>质量检查语义门禁</td><td>洗学生可见面；身份跟 scene_scan</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>开题笼统时仍要写对</h3><span class="pill pill-teal">理解</span></div>
+              <div class="panel-bd help-body">
+                <p>开题措辞笼统、万能句多，不等于可以甩锅。「老师 / 客户已确认的开题」是合同：工厂写不出来，默认是匹配理解或 bake 不到位，不是材料的错。</p>
+                <ul>
+                  <li>禁止改开题迁就工厂；也禁止用「材料薄 / 套话」给错包开脱。</li>
+                  <li>弱匹配 / 依据弱 = 提醒运营更仔细核：题名、正文、谁对谁做什么、完结态——把主路径确认对，再生成。</li>
+                  <li>出包像模具、主路径不对、皮穿帮：对照开题修域 / 主路径入口 / 域皮 / 种子；登记偏差写清「工厂理解偏差」。</li>
+                  <li>硬边界（人脸/真支付/物联网等）该拒就拒并诚实双显；能 bake 的主路径必须写到可答辩。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>标准作业流程</h3><span class="pill pill-teal">流程</span></div>
+              <div class="panel-bd help-body">
+                <ol class="help-steps help-steps-6">
+                  <li><strong>创建项目</strong><p>在「项目」页上传开题 / 任务书 / 功能清单等材料，确认分堆后再创建。细则见「上传与分堆」。</p></li>
+                  <li><strong>匹配确认</strong><p>核验骨架、领域、身份场景、主路径入口、持久层，以及 Spring Security、AI 助手。双显时先看清拟选≠出包。配色、门户首页、本域列表构图在「一键生成」调；禁止把 AI/Security/持久层塞进视觉区。</p></li>
+                  <li><strong>一键生成</strong><p>调整视觉与生成选项（即时保存）后启动。启动前弹出「开题措辞核对」。生成后看「清单实装验收」。可同页改选项并「按当前选项重新生成」。</p></li>
+                  <li><strong>答辩 PPT（后置）</strong><p>bake 门禁通过后，在「一键生成」下半截填写封面信息并生成终期答辩 PPT。产物可检查与导出 PPTX（不进 ZIP）。</p></li>
+                  <li><strong>预览与验收</strong><p>「运行」页预览；「产物 / 对照」核数据库、论文材料、学生端 API 与质量检查。工程有改动时，在「交付复审」验圈并合卷。</p></li>
+                  <li><strong>交付</strong><p>质检通过后下载 ZIP。列表「履约」或详情页头可标「已发出」或「已审待发」。重新生成会清掉人工标记与复审轮次。</p></li>
+                </ol>
+              </div>
+            </article>
+            <article class="help-card panel wide">
+              <div class="panel-hd"><h3>列表构图</h3><span class="pill pill-teal">视觉</span></div>
+              <div class="panel-bd help-body">
+                <p>「一键生成」视觉区里，门户首页之外还有按业务组出现的列表构图。只改列表页怎么排、信息密不密，不删菜单、不改主路径。当前领域不属于该组时，这项不出现。</p>
+                <div class="help-table-wrap">
+                  <table class="help-table">
+                    <thead>
+                      <tr><th>页面上的名字</th><th>什么题才有</th><th>可选档</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>内容列表构图</td><td>影视 / 音乐 / 论坛 / 博客 / 文库</td><td>刊头阅读流、封面墙、条目清单、双栏阅读台</td></tr>
+                      <tr><td>商品列表构图</td><td>商城 / 餐饮 / 影院</td><td>货架密铺；档口菜单板只给餐饮；排片选座行只给影院</td></tr>
+                      <tr><td>预约列表构图</td><td>医院 / 场地 / 美容 / 仪器 / 酒店 / 租车 / 停车</td><td>时段条；房态格只给酒店；车型档期卡只给租车、停车</td></tr>
+                      <tr><td>借用列表构图</td><td>图书 / 器材 / 物资 / 采购 / 床位 / 驿站</td><td>书架、台账、床位色块、驿站货架（各绑本域）</td></tr>
+                      <tr><td>报名列表构图</td><td>活动 / 选课 / 失物 / 旅游</td><td>海报墙、课表网、启事板、线路行程卡</td></tr>
+                      <tr><td>互动列表构图</td><td>婚恋 / 双选 / 拼车 / 时间银行</td><td>资料墙、双选卡、行程行（考试问卷投票不走这项）</td></tr>
+                      <tr><td>跟进列表构图</td><td>客户 / 打卡 / 考勤 / 资助 / 招聘 / 成绩 / 实习 / 房源</td><td>阶段看板只 CRM；挂牌价签只房源；其余档案行</td></tr>
+                      <tr><td>报修列表构图</td><td>宿舍 / 物业 / IT</td><td>工单进度流、分类故障看板</td></tr>
+                      <tr><td>审批列表构图</td><td>用章、报销、访客等审批类</td><td>事项类型清单、待审收件箱</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <ul>
+                  <li>下拉里看不到的档，就是这个领域不能用。</li>
+                  <li>与配色、质感、门户布局、字体、门户首页各管各的。持久层 / Security / AI 仍在「匹配确认」。</li>
+                  <li>改完即时保存；要进学生包须「按当前选项重新生成」。</li>
+                </ul>
               </div>
             </article>
             <article class="help-card panel wide">
@@ -1806,20 +1910,22 @@
             <article class="help-card panel wide">
               <div class="panel-hd"><h3>交付复审</h3><span class="pill pill-teal">复审</span></div>
               <div class="panel-bd help-body">
-                <p>「产物 / 对照 → 交付复审」用于对照开题收窄偏差：已通过项纳入安全区；验圈通过后方可合卷更新交付包。不进学生 ZIP。</p>
+                <p>「产物 / 对照 → 交付复审」用于对照开题收窄偏差：已通过项纳入安全区；验圈通过后方可合卷更新交付包。不进学生 ZIP。感觉不对时用同页老板小卡（12 主项 + 理解偏差）对着勾。</p>
                 <ul>
                   <li>首包直发：首次打包未进入复审时，质检通过即可下载；工程改动后 ZIP 可能过期，须验圈并合卷。</li>
                   <li>进入复审 → 验圈 → 合卷：每轮验圈冻结已通过项到安全区；有回退或 open 偏差登记时不可合卷。</li>
-                  <li>偏差登记：记录与开题或材料不一致之处（仅运营可见）；待结案项须处理后再合卷。</li>
+                  <li>偏差登记：写「工厂理解偏差」，禁止甩锅「材料薄」；待结案项须处理后再合卷。</li>
+                  <li>老板小卡：机器全绿仍可能写错老师已确认的主路径——对着开题核，修工厂。</li>
                 </ul>
               </div>
             </article>
             <article class="help-card panel wide">
               <div class="panel-hd"><h3>生成前 · 开题措辞核对</h3><span class="pill pill-teal">生成前</span></div>
               <div class="panel-bd help-body">
-                <p>启动生成前弹出，将开题功能行与 Spec checklist 做静态对照（不调大模型），减少包后返工。</p>
+                <p>启动生成前弹出：开题功能行 ↔ Spec 清单项名的静态措辞对照（不调大模型、不扫 workspace）。</p>
                 <ul>
-                  <li>已对照 / 措辞弱匹配 / 开题未落入 checklist 三类结果；不阻断生成，但强烈建议匹配确认阶段已选对领域。</li>
+                  <li>与「质量检查 → 清单实装验收」不是同一功能；措辞绿了不代表包内已实装。</li>
+                  <li>弱匹配 / 待核偏多：对照开题核域与主路径是否理解对；老师已确认的内容写不出来，责任在工厂。</li>
                 </ul>
               </div>
             </article>
@@ -1873,7 +1979,7 @@
             <article class="help-card panel">
               <div class="panel-hd"><h3>论文材料</h3><span class="pill pill-teal">产物</span></div>
               <div class="panel-bd help-body">
-                <p>「产物 / 对照 → 论文材料」：功能模块图与软件测试用例。均按交付菜单推导，不发明功能。</p>
+                <p>「产物 / 对照 → 论文材料」：功能模块图、系统类图、序列图、活动图、用例图、用例描述表与软件测试用例。均按交付菜单推导，不发明功能。</p>
                 <ul>
                   <li>模块图可按业务 / 按端切换；测试用例 5～9 字段可选（默认 6）。</li>
                   <li>大模型只润色文案，不增删用例、不改编号与模块归属。</li>
@@ -1893,7 +1999,7 @@
             <article class="help-card panel wide">
               <div class="panel-hd"><h3>大模型与填岛拆解</h3><span class="pill pill-teal">大模型</span></div>
               <div class="panel-bd help-body">
-                <p>大模型仅填充业务配置（Island 文案、E-R 中文、模块图、测试用例等），不写业务源码。开启「业务配置填充」后，工厂会先拆解计划再按 Unit 并发调用。</p>
+                <p>大模型仅填充业务配置（Island 文案、E-R 中文、模块图、测试用例等），不写业务源码。开启「业务配置填充」后，工厂会先拆解计划再按 Unit 并发调用。与学生包「AI 助手」不是同一条链路。</p>
                 <ul>
                   <li>拆解粒度：各 Unit 独立生成、校验，失败最多重试 1 次。</li>
                   <li>并发设置：「大模型」页「填岛并发 Unit 数」（1～8，默认 3）。</li>
@@ -1936,12 +2042,14 @@
                   <div class="help-glossary-row"><dt>持久层</dt><dd>JdbcTemplate、MyBatis（绑 PageHelper）或 Spring Data JPA。只换实现与说明书措辞，不换业务能力；不进一键生成视觉区。</dd></div>
                   <div class="help-glossary-row"><dt>Spring Security</dt><dd>按需鉴权开关。开=过滤器链；关=仅 Session + AdminAuth。与持久层同级，不进视觉区。</dd></div>
                   <div class="help-glossary-row"><dt>AI 助手</dt><dd>按需能力岛（跨域同一套）。开=Spring AI + DeepSeek + FAQ；关=无菜单/无 SQL 种子。≠ RAG/CNN 主产品。</dd></div>
-                  <div class="help-glossary-row"><dt>门户首页</dt><dd>一键生成视觉选项：卡片宫格 / 编辑向长页 / 商城货架（零售域）。与匹配轴无关。</dd></div>
+                  <div class="help-glossary-row"><dt>门户首页</dt><dd>一键生成视觉选项：功能卡片首页 / 资讯侧栏首页 / 商城货架首页（零售域）。与列表构图无关。</dd></div>
+                  <div class="help-glossary-row"><dt>列表构图</dt><dd>按业务组出现的列表页排法（内容/商品/预约/借用/报名/互动/跟进/报修/审批）。只改页内排列，不改菜单和能力。</dd></div>
                   <div class="help-glossary-row"><dt>开题措辞核对</dt><dd>生成前弹窗：开题功能行与 Spec 清单项名静态比对，不扫工程。</dd></div>
                   <div class="help-glossary-row"><dt>清单实装验收</dt><dd>生成后质量检查：扫描 workspace，核对清单项是否在 ZIP 中有对应实现。</dd></div>
                   <div class="help-glossary-row"><dt>交付复审</dt><dd>产物页运营流程：验圈冻结安全区、登记偏差、合卷同步 ZIP。不进学生交付包。</dd></div>
                   <div class="help-glossary-row"><dt>验圈 / 合卷</dt><dd>验圈检查门禁单调性并刷新质量摘要；合卷重新打包 ZIP 使交付包与工程目录一致。</dd></div>
                   <div class="help-glossary-row"><dt>安全区 / 毒区</dt><dd>复审中已冻结通过项 / 尚未收敛待处理项。</dd></div>
+                  <div class="help-glossary-row"><dt>老板小卡</dt><dd>交付复审旁运营自检：12 主项 + 理解偏差；勾选仅本机保存。</dd></div>
                   <div class="help-glossary-row"><dt>填岛拆解</dt><dd>业务配置填充的执行方式：先根据工程与开题生成 DeliveryPlan，再按 Unit 并发调用大模型。</dd></div>
                   <div class="help-glossary-row"><dt>质量检查</dt><dd>交付前的自动验收项集合。含语义门禁与交付质量摘要。关键项未通过时暂不可下载。</dd></div>
                   <div class="help-glossary-row"><dt>答辩 PPT</dt><dd>bake 通过后在「一键生成」下半截开跑；产物可检查/导出 PPTX，不进 ZIP。</dd></div>

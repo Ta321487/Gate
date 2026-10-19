@@ -74,6 +74,9 @@ class WorkbenchCrosscutFeatureTests(unittest.TestCase):
         self.assertIn("todoScopedByRole", text)
         self.assertIn("TicketStore.dashboard(userRole, uid, superAdmin)", text)
         self.assertIn("SiteStatStore.snapshot", text)
+        # 无单据域 prune TicketStore 后仍须发出买家/用户数
+        self.assertIn("UserStore.countByRole", text)
+        self.assertIn('putIfAbsent("userTotal"', text)
 
     def test_three_ticket_dash_ops_scope(self) -> None:
         paths = [

@@ -1,5 +1,12 @@
 <template>
-  <div>
+  <div
+    class="approve-desk"
+    :class="{
+      'surface-typelist': approveSurface === 'typelist',
+      'surface-inboxsteps': approveSurface === 'inboxsteps',
+    }"
+    :data-approve-surface="approveSurface || undefined"
+  >
     <div class="toolbar">
       <el-alert type="info" :closable="false" show-icon :title="todoHint" />
     </div>
@@ -671,6 +678,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { APP_DELIVERED } from '../../appDelivered.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import RichTextView from '../../components/RichTextView.vue'
@@ -693,6 +701,17 @@ import {
   ticketShowsTypeCol,
 } from '../../utils/domainSchema.js'
 import { plainFromHtml } from '../../utils/richHtml.js'
+
+/** 审批组页内构图：typelist / inboxsteps；非审批域为空 */
+const approveSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.approveSurfaceStyle
+      || import.meta.env.VITE_APPROVE_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['typelist', 'inboxsteps'].includes(s)) return s
+  return ''
+})
 
 const ticket = ticketCopy()
 const archive = archiveCopy()
@@ -1662,6 +1681,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.approve-desk.surface-inboxsteps :deep(.el-table) { font-size: 13px; }
+.approve-desk.surface-typelist :deep(.el-table) { font-size: 14px; }
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .sub { margin: 0 0 8px; font-size: 13px; color: var(--el-text-color-secondary); }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }

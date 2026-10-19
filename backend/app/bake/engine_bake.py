@@ -293,6 +293,15 @@ def _bake_project_body(
     layout = normalize_layout(spec.get("layout"))
     typeface = normalize_typeface(spec.get("typeface"))
     portal_home = normalize_portal_home_style(spec.get("portal_home_style"))
+    content_surface = str(spec.get("content_surface_style") or "").strip()
+    trade_surface = str(spec.get("trade_surface_style") or "").strip()
+    reserve_surface = str(spec.get("reserve_surface_style") or "").strip()
+    borrow_surface = str(spec.get("borrow_surface_style") or "").strip()
+    apply_surface = str(spec.get("apply_surface_style") or "").strip()
+    interact_surface = str(spec.get("interact_surface_style") or "").strip()
+    follow_surface = str(spec.get("follow_surface_style") or "").strip()
+    repair_surface = str(spec.get("repair_surface_style") or "").strip()
+    approve_surface = str(spec.get("approve_surface_style") or "").strip()
     theme = spec.get("theme", "lib-ink")
     env_fe.write_text(
         f"VITE_APP_TITLE={app_name}\n"
@@ -302,6 +311,15 @@ def _bake_project_body(
         f"VITE_LAYOUT={layout}\n"
         f"VITE_TYPEFACE={typeface}\n"
         f"VITE_PORTAL_HOME_STYLE={portal_home}\n"
+        f"VITE_CONTENT_SURFACE_STYLE={content_surface}\n"
+        f"VITE_TRADE_SURFACE_STYLE={trade_surface}\n"
+        f"VITE_RESERVE_SURFACE_STYLE={reserve_surface}\n"
+        f"VITE_BORROW_SURFACE_STYLE={borrow_surface}\n"
+        f"VITE_APPLY_SURFACE_STYLE={apply_surface}\n"
+        f"VITE_INTERACT_SURFACE_STYLE={interact_surface}\n"
+        f"VITE_FOLLOW_SURFACE_STYLE={follow_surface}\n"
+        f"VITE_REPAIR_SURFACE_STYLE={repair_surface}\n"
+        f"VITE_APPROVE_SURFACE_STYLE={approve_surface}\n"
         f"VITE_AUTH_TEMPLATE={auth_tpl}\n"
         f"VITE_AUTH_ENTRY_MODE={auth_entry}\n"
         f"VITE_AUTH_ROLE_WIDGET={auth_widget}\n",
@@ -342,6 +360,15 @@ def _bake_project_body(
         layout=layout,
         typeface=typeface,
         portal_home_style=portal_home,
+        content_surface_style=content_surface,
+        trade_surface_style=trade_surface,
+        reserve_surface_style=reserve_surface,
+        borrow_surface_style=borrow_surface,
+        apply_surface_style=apply_surface,
+        interact_surface_style=interact_surface,
+        follow_surface_style=follow_surface,
+        repair_surface_style=repair_surface,
+        approve_surface_style=approve_surface,
         seed=dest.name,
     )
 

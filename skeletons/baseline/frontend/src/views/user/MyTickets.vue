@@ -54,7 +54,17 @@
       </div>
     </section>
 
-    <div class="list">
+    <div
+      class="list"
+      :class="{
+        'surface-ticketfeed': repairSurface === 'ticketfeed',
+        'surface-faultboard': repairSurface === 'faultboard',
+        'surface-typelist': approveSurface === 'typelist',
+        'surface-inboxsteps': approveSurface === 'inboxsteps',
+      }"
+      :data-repair-surface="repairSurface || undefined"
+      :data-approve-surface="approveSurface || undefined"
+    >
       <article
         v-for="row in list"
         :key="row.id"
@@ -1596,6 +1606,29 @@ import {
 import { multiApproveSteps, ticketTagType, ticketTone } from '../../utils/statusTone.js'
 import { downloadCsv } from '../../utils/csvDownload.js'
 import { printTicketDocument } from '../../utils/ticketFormPrint.js'
+import { APP_DELIVERED } from '../../appDelivered.js'
+
+/** 报修组页内构图：ticketfeed / faultboard；非报修域为空 */
+const repairSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.repairSurfaceStyle
+      || import.meta.env.VITE_REPAIR_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['ticketfeed', 'faultboard'].includes(s)) return s
+  return ''
+})
+
+/** 审批组页内构图：typelist / inboxsteps；非审批域为空 */
+const approveSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.approveSurfaceStyle
+      || import.meta.env.VITE_APPROVE_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['typelist', 'inboxsteps'].includes(s)) return s
+  return ''
+})
 
 const { nowMs } = useNowTick()
 const ticket = ticketCopy()
@@ -4485,6 +4518,20 @@ onMounted(async () => {
 .hint-inline { margin: -4px 0 12px; color: var(--portal-muted, #64748b); font-size: 12px; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .list { display: flex; flex-direction: column; gap: 12px; }
+.list.surface-faultboard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+.list.surface-faultboard .card { flex-direction: column; }
+.list.surface-inboxsteps .card { border-left: 4px solid #0f766e; }
+.list.surface-inboxsteps .meta h3::after {
+  content: '● ○ ○';
+  margin-left: 8px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #0f766e;
+}
 .card {
   display: flex; gap: 14px; padding: var(--portal-pad, 16px);
   background: var(--portal-surface, #fff);

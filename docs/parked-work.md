@@ -11,7 +11,7 @@
 
 | # | 项 | 一句话 | 真源 / 下次从哪开 | 现状 |
 |---|----|--------|-------------------|------|
-| 1 | **UI 包** | 域组页内构图选型 → bake/骨架接线；一组一 plan | [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) | 选型册已齐 · **未实现**；优先 `content_surface_style` |
+| 1 | **UI 包** | 域组页内构图选型 → bake/骨架接线；一组一 plan | [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) | `content`/`trade`/`reserve`/`borrow`/`apply`/`interact`/`follow`/`repair`/`approve` **已接线**；下一 §1.10 导引文案 |
 | 2 | **X 系列** | §0 通识横切剩余簇（一轮一簇） | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) | X-AUTH～X-UX 已齐；打印/灯箱/Toast/页脚版本/离开提示/复制单号为**基线体验**；档案 Excel 导入导出已是 xlsx |
 | 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **交易族 + 借用组已收口**；跟进/报修/报名/审批/预约/内容/互动 **未推** |
 | 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；`TRADE_*` / `BORROW_*_ALIGN_RULES` + `test_opening_align_gate.py` | **交易族 + 借用组 A 白名单 + B + C 门禁已齐**；其余域组登记表/测 **未开** |
@@ -81,3 +81,12 @@
 | 2026-10-17 | **j** 口径：文档写清「若有这种开题，成品长什么样」；当下不改工厂 |
 | 2026-10-17 | **j** 再改：选题表即近年来开题范例；按册一点点长，不等全文开题 |
 | 2026-10-17 | **j** 纠偏：这是今年的选题，不写成近年来，也不预测明年 |
+| 2026-10-17 | 大线 #1：`content_surface_style` 首刀接线（仿 `portal_home_style`）；下一 `trade_surface_style` |
+| 2026-10-17 | 大线 #1：`trade_surface_style` 接线；下一 `reserve_surface_style` |
+| 2026-10-17 | 大线 #1：`reserve_surface_style` 接线；下一 `borrow_surface_style` |
+| 2026-10-18 | 大线 #1：`borrow_surface_style` 接线（含工厂示意预览）；下一 `apply_surface_style` |
+| 2026-10-19 | 大线 #1：`apply_surface_style` 接线（含示意预览与隐喻绑域）；下一 `interact_surface_style` |
+| 2026-10-19 | 大线 #1：`interact_surface_style` 接线（婚恋/双选/拼车；考试问卷投票不进轴）；下一 `follow_surface_style` |
+| 2026-10-19 | 大线 #1：`follow_surface_style` 接线（阶段看板只 CRM、挂牌价签只 LISTING）；下一 `repair_surface_style` |
+| 2026-10-19 | 大线 #1：`repair_surface_style` 接线（进度流/故障看板只给宿舍物业 IT）；下一 `approve_surface_style` |
+| 2026-10-19 | 大线 #1：`approve_surface_style` 接线（事项清单/待审步骤条只给审批域）；下一 §1.10 导引文案 |

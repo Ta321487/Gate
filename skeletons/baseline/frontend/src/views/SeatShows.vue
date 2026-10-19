@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :data-trade-surface="tradeSurface || 'cards'" :class="{ 'trade-showtime': tradeSurface === 'showtime' }">
     <section class="hero">
       <div class="hero-row">
         <div>
@@ -79,8 +79,18 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '../api/http'
 import { getSchema } from '../utils/domainSchema'
+import { APP_DELIVERED } from '../appDelivered.js'
 
 const router = useRouter()
+const tradeSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.tradeSurfaceStyle
+      || import.meta.env.VITE_TRADE_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['shelfgrid', 'menuboard', 'showtime'].includes(s)) return s
+  return ''
+})
 const list = ref([])
 const mode = ref('list')
 const weekStart = ref(startOfWeek(new Date()))

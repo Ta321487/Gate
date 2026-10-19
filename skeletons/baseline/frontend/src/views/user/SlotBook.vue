@@ -1,5 +1,12 @@
 <template>
-  <div>
+  <div
+    :data-reserve-surface="reserveSurface || 'cards'"
+    :class="{
+      'reserve-slotstrip': reserveSurface === 'slotstrip',
+      'reserve-roomstate': reserveSurface === 'roomstate',
+      'reserve-vehiclecard': reserveSurface === 'vehiclecard',
+    }"
+  >
     <section class="hero">
       <h1>选择时段</h1>
       <p v-if="itemTitle">为「{{ itemTitle }}」{{ resvVerb }}可用时段（约满不可再约）。</p>
@@ -380,6 +387,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import GuestLoginHint from '../../components/GuestLoginHint.vue'
+import { APP_DELIVERED } from '../../appDelivered.js'
 import { getSchema, hasCap, hasTrait, isWalletEnabled, personLabel, reservationCopy } from '../../utils/domainSchema.js'
 import { todayStr } from '../../utils/dates.js'
 import { slotFillTone } from '../../utils/statusTone.js'
@@ -392,6 +400,16 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+/** 预约组页内构图：slotstrip / roomstate / vehiclecard；非预约域为空 */
+const reserveSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.reserveSurfaceStyle
+      || import.meta.env.VITE_RESERVE_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['slotstrip', 'roomstate', 'vehiclecard'].includes(s)) return s
+  return ''
+})
 const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
 const slotParking = computed(() => hasTrait('slotParking'))
 const slotHospital = computed(() => hasTrait('slotHospital'))
@@ -1232,4 +1250,29 @@ onMounted(() => {
   gap: 10px;
 }
 .period-remain { font-size: 12px; font-weight: 400; color: var(--portal-muted, #64748b); }
+.reserve-slotstrip .grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reserve-slotstrip .slot {
+  min-width: 120px;
+  flex: 1 1 120px;
+  padding: 10px 12px;
+}
+.reserve-roomstate .grid {
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+}
+.reserve-roomstate .slot {
+  min-height: 88px;
+  text-align: center;
+}
+.reserve-roomstate .slot .e { display: none; }
+.reserve-vehiclecard .grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+.reserve-vehiclecard .slot {
+  min-height: 110px;
+  padding: 14px 16px;
+}
 </style>

@@ -24,6 +24,42 @@ import {
   FILL_UNIT_STATUS_ZH,
   PORTAL_HOME_FALLBACK,
   MALL_PORTAL_HOME_DOMAINS,
+  CONTENT_SURFACE_FALLBACK,
+  CONTENT_SURFACE_DOMAINS,
+  TRADE_SURFACE_FALLBACK,
+  TRADE_SURFACE_DOMAINS,
+  TRADE_SURFACE_STYLE_ALLOWED,
+  TRADE_SURFACE_DOMAIN_DEFAULTS,
+  RESERVE_SURFACE_FALLBACK,
+  RESERVE_SURFACE_DOMAINS,
+  RESERVE_SURFACE_STYLE_ALLOWED,
+  RESERVE_SURFACE_DOMAIN_DEFAULTS,
+  BORROW_SURFACE_FALLBACK,
+  BORROW_SURFACE_DOMAINS,
+  BORROW_SURFACE_STYLE_ALLOWED,
+  BORROW_SURFACE_DOMAIN_DEFAULTS,
+  APPLY_SURFACE_FALLBACK,
+  APPLY_SURFACE_DOMAINS,
+  APPLY_SURFACE_STYLE_ALLOWED,
+  APPLY_SURFACE_DOMAIN_DEFAULTS,
+  INTERACT_SURFACE_FALLBACK,
+  INTERACT_SURFACE_DOMAINS,
+  INTERACT_SURFACE_STYLE_ALLOWED,
+  INTERACT_SURFACE_DOMAIN_DEFAULTS,
+  FOLLOW_SURFACE_FALLBACK,
+  FOLLOW_SURFACE_DOMAINS,
+  FOLLOW_SURFACE_STYLE_ALLOWED,
+  FOLLOW_SURFACE_DOMAIN_DEFAULTS,
+  REPAIR_SURFACE_FALLBACK,
+  REPAIR_SURFACE_DOMAINS,
+  REPAIR_SURFACE_STYLE_ALLOWED,
+  REPAIR_SURFACE_DOMAIN_DEFAULTS,
+  APPROVE_SURFACE_FALLBACK,
+  APPROVE_SURFACE_DOMAINS,
+  APPROVE_SURFACE_STYLE_ALLOWED,
+  APPROVE_SURFACE_DOMAIN_DEFAULTS,
+  filterSurfaceOptions,
+  clampSurfaceStyle,
   passwordHashOptions,
   persistenceOptions,
   securityOptions,
@@ -68,6 +104,15 @@ const catalog = ref({
   layout_shells: [],
   type_pairings: [],
   portal_home_styles: [],
+  content_surface_styles: [],
+  trade_surface_styles: [],
+  reserve_surface_styles: [],
+  borrow_surface_styles: [],
+  apply_surface_styles: [],
+  interact_surface_styles: [],
+  follow_surface_styles: [],
+  repair_surface_styles: [],
+  approve_surface_styles: [],
 })
 const form = reactive({
   archetype: '',
@@ -82,6 +127,15 @@ const form = reactive({
   layout: 'topbar',
   typeface: 'clean',
   portalHomeStyle: 'cards',
+  contentSurfaceStyle: 'folio',
+  tradeSurfaceStyle: 'shelfgrid',
+  reserveSurfaceStyle: 'slotstrip',
+  borrowSurfaceStyle: 'bookshelf',
+  applySurfaceStyle: 'eventposter',
+  interactSurfaceStyle: 'profilegrid',
+  followSurfaceStyle: 'dossier',
+  repairSurfaceStyle: 'ticketfeed',
+  approveSurfaceStyle: 'typelist',
   llm: 'on',
   passwordHash: 'none',
 })
@@ -277,6 +331,194 @@ const portalHomeOptions = computed(() => {
   if (MALL_PORTAL_HOME_DOMAINS.has(dom)) return base
   return base.filter((x) => x.value !== 'mall')
 })
+const showContentSurface = computed(() => {
+  const dom = form.domain || p.value?.domain || ''
+  return CONTENT_SURFACE_DOMAINS.has(dom)
+})
+const contentSurfaceOptions = computed(() => {
+  const list = catalog.value.content_surface_styles || []
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  return mapped.length ? mapped : CONTENT_SURFACE_FALLBACK
+})
+const showTradeSurface = computed(() => {
+  const dom = form.domain || p.value?.domain || ''
+  return TRADE_SURFACE_DOMAINS.has(dom)
+})
+const tradeSurfaceOptions = computed(() => {
+  const list = catalog.value.trade_surface_styles || []
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  const base = mapped.length ? mapped : TRADE_SURFACE_FALLBACK
+  const dom = form.domain || p.value?.domain || ''
+  return filterSurfaceOptions(base, TRADE_SURFACE_STYLE_ALLOWED, dom)
+})
+const showReserveSurface = computed(() => {
+  const dom = form.domain || p.value?.domain || ''
+  return RESERVE_SURFACE_DOMAINS.has(dom)
+})
+const reserveSurfaceOptions = computed(() => {
+  const list = catalog.value.reserve_surface_styles || []
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  const base = mapped.length ? mapped : RESERVE_SURFACE_FALLBACK
+  const dom = form.domain || p.value?.domain || ''
+  return filterSurfaceOptions(base, RESERVE_SURFACE_STYLE_ALLOWED, dom)
+})
+const showBorrowSurface = computed(() => {
+  const dom = form.domain || p.value?.domain || ''
+  return BORROW_SURFACE_DOMAINS.has(dom)
+})
+const borrowSurfaceOptions = computed(() => {
+  const list = catalog.value.borrow_surface_styles || []
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  const base = mapped.length ? mapped : BORROW_SURFACE_FALLBACK
+  const dom = form.domain || p.value?.domain || ''
+  return filterSurfaceOptions(base, BORROW_SURFACE_STYLE_ALLOWED, dom)
+})
+const showApplySurface = computed(() => {
+  const dom = form.domain || p.value?.domain || ''
+  return APPLY_SURFACE_DOMAINS.has(dom)
+})
+const applySurfaceOptions = computed(() => {
+  const list = catalog.value.apply_surface_styles || []
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  const base = mapped.length ? mapped : APPLY_SURFACE_FALLBACK
+  const dom = form.domain || p.value?.domain || ''
+  return filterSurfaceOptions(base, APPLY_SURFACE_STYLE_ALLOWED, dom)
+})
+const showInteractSurface = computed(() => {
+  const dom = form.domain || p.value?.domain || ''
+  return INTERACT_SURFACE_DOMAINS.has(dom)
+})
+const interactSurfaceOptions = computed(() => {
+  const list = catalog.value.interact_surface_styles || []
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  const base = mapped.length ? mapped : INTERACT_SURFACE_FALLBACK
+  const dom = form.domain || p.value?.domain || ''
+  return filterSurfaceOptions(base, INTERACT_SURFACE_STYLE_ALLOWED, dom)
+})
+const showFollowSurface = computed(() => {
+  const dom = form.domain || p.value?.domain || ''
+  return FOLLOW_SURFACE_DOMAINS.has(dom)
+})
+const followSurfaceOptions = computed(() => {
+  const list = catalog.value.follow_surface_styles || []
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  const base = mapped.length ? mapped : FOLLOW_SURFACE_FALLBACK
+  const dom = form.domain || p.value?.domain || ''
+  return filterSurfaceOptions(base, FOLLOW_SURFACE_STYLE_ALLOWED, dom)
+})
+const showRepairSurface = computed(() => {
+  const dom = form.domain || p.value?.domain || ''
+  return REPAIR_SURFACE_DOMAINS.has(dom)
+})
+const repairSurfaceOptions = computed(() => {
+  const list = catalog.value.repair_surface_styles || []
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  const base = mapped.length ? mapped : REPAIR_SURFACE_FALLBACK
+  const dom = form.domain || p.value?.domain || ''
+  return filterSurfaceOptions(base, REPAIR_SURFACE_STYLE_ALLOWED, dom)
+})
+const showApproveSurface = computed(() => {
+  const dom = form.domain || p.value?.domain || ''
+  return APPROVE_SURFACE_DOMAINS.has(dom)
+})
+const approveSurfaceOptions = computed(() => {
+  const list = catalog.value.approve_surface_styles || []
+  const mapped = list
+    .map((x) => ({ label: x.label || x.id, value: x.id }))
+    .filter((x) => !!x.value)
+  const base = mapped.length ? mapped : APPROVE_SURFACE_FALLBACK
+  const dom = form.domain || p.value?.domain || ''
+  return filterSurfaceOptions(base, APPROVE_SURFACE_STYLE_ALLOWED, dom)
+})
+watch(
+  () => [
+    form.domain,
+    p.value?.domain,
+    form.tradeSurfaceStyle,
+    form.reserveSurfaceStyle,
+    form.borrowSurfaceStyle,
+    form.applySurfaceStyle,
+    form.interactSurfaceStyle,
+    form.followSurfaceStyle,
+    form.repairSurfaceStyle,
+    form.approveSurfaceStyle,
+  ],
+  () => {
+    const dom = form.domain || p.value?.domain || ''
+    form.tradeSurfaceStyle = clampSurfaceStyle(
+      form.tradeSurfaceStyle,
+      TRADE_SURFACE_STYLE_ALLOWED,
+      TRADE_SURFACE_DOMAIN_DEFAULTS,
+      dom,
+      'shelfgrid',
+    )
+    form.reserveSurfaceStyle = clampSurfaceStyle(
+      form.reserveSurfaceStyle,
+      RESERVE_SURFACE_STYLE_ALLOWED,
+      RESERVE_SURFACE_DOMAIN_DEFAULTS,
+      dom,
+      'slotstrip',
+    )
+    form.borrowSurfaceStyle = clampSurfaceStyle(
+      form.borrowSurfaceStyle,
+      BORROW_SURFACE_STYLE_ALLOWED,
+      BORROW_SURFACE_DOMAIN_DEFAULTS,
+      dom,
+      'bookshelf',
+    )
+    form.applySurfaceStyle = clampSurfaceStyle(
+      form.applySurfaceStyle,
+      APPLY_SURFACE_STYLE_ALLOWED,
+      APPLY_SURFACE_DOMAIN_DEFAULTS,
+      dom,
+      'eventposter',
+    )
+    form.interactSurfaceStyle = clampSurfaceStyle(
+      form.interactSurfaceStyle,
+      INTERACT_SURFACE_STYLE_ALLOWED,
+      INTERACT_SURFACE_DOMAIN_DEFAULTS,
+      dom,
+      'profilegrid',
+    )
+    form.followSurfaceStyle = clampSurfaceStyle(
+      form.followSurfaceStyle,
+      FOLLOW_SURFACE_STYLE_ALLOWED,
+      FOLLOW_SURFACE_DOMAIN_DEFAULTS,
+      dom,
+      'dossier',
+    )
+    form.repairSurfaceStyle = clampSurfaceStyle(
+      form.repairSurfaceStyle,
+      REPAIR_SURFACE_STYLE_ALLOWED,
+      REPAIR_SURFACE_DOMAIN_DEFAULTS,
+      dom,
+      'ticketfeed',
+    )
+    form.approveSurfaceStyle = clampSurfaceStyle(
+      form.approveSurfaceStyle,
+      APPROVE_SURFACE_STYLE_ALLOWED,
+      APPROVE_SURFACE_DOMAIN_DEFAULTS,
+      dom,
+      'typelist',
+    )
+  },
+)
 const persistenceDeviant = computed(() => {
   if (!p.value) return false
   return (form.persistence || 'jdbc') !== (p.value.recommended_persistence || 'jdbc')
@@ -891,6 +1133,15 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
       form.layout = p.value.spec?.layout || 'topbar'
       form.typeface = p.value.spec?.typeface || 'clean'
       form.portalHomeStyle = p.value.spec?.portal_home_style || 'cards'
+      form.contentSurfaceStyle = p.value.spec?.content_surface_style || 'folio'
+      form.tradeSurfaceStyle = p.value.spec?.trade_surface_style || 'shelfgrid'
+      form.reserveSurfaceStyle = p.value.spec?.reserve_surface_style || 'slotstrip'
+      form.borrowSurfaceStyle = p.value.spec?.borrow_surface_style || 'bookshelf'
+      form.applySurfaceStyle = p.value.spec?.apply_surface_style || 'eventposter'
+      form.interactSurfaceStyle = p.value.spec?.interact_surface_style || 'profilegrid'
+      form.followSurfaceStyle = p.value.spec?.follow_surface_style || 'dossier'
+      form.repairSurfaceStyle = p.value.spec?.repair_surface_style || 'ticketfeed'
+      form.approveSurfaceStyle = p.value.spec?.approve_surface_style || 'typelist'
       form.llm = p.value.llm_enabled ? 'on' : 'off'
       form.passwordHash = p.value.password_hash || 'none'
       unlocked.value = !p.value.match_locked
@@ -1893,6 +2144,15 @@ async function resetMatch() {
     form.layout = p.value.spec?.layout || 'topbar'
     form.typeface = p.value.spec?.typeface || 'clean'
     form.portalHomeStyle = p.value.spec?.portal_home_style || 'cards'
+    form.contentSurfaceStyle = p.value.spec?.content_surface_style || 'folio'
+    form.tradeSurfaceStyle = p.value.spec?.trade_surface_style || 'shelfgrid'
+    form.reserveSurfaceStyle = p.value.spec?.reserve_surface_style || 'slotstrip'
+    form.borrowSurfaceStyle = p.value.spec?.borrow_surface_style || 'bookshelf'
+    form.applySurfaceStyle = p.value.spec?.apply_surface_style || 'eventposter'
+    form.interactSurfaceStyle = p.value.spec?.interact_surface_style || 'profilegrid'
+    form.followSurfaceStyle = p.value.spec?.follow_surface_style || 'dossier'
+    form.repairSurfaceStyle = p.value.spec?.repair_surface_style || 'ticketfeed'
+    form.approveSurfaceStyle = p.value.spec?.approve_surface_style || 'typelist'
     form.passwordHash = p.value.password_hash || 'none'
     unlocked.value = false
     ack.value = false
@@ -1919,6 +2179,15 @@ async function onArchDomChange() {
     form.layout = p.value.spec?.layout || form.layout
     form.typeface = p.value.spec?.typeface || form.typeface
     form.portalHomeStyle = p.value.spec?.portal_home_style || form.portalHomeStyle
+    form.contentSurfaceStyle = p.value.spec?.content_surface_style || form.contentSurfaceStyle
+    form.tradeSurfaceStyle = p.value.spec?.trade_surface_style || form.tradeSurfaceStyle
+    form.reserveSurfaceStyle = p.value.spec?.reserve_surface_style || form.reserveSurfaceStyle
+    form.borrowSurfaceStyle = p.value.spec?.borrow_surface_style || form.borrowSurfaceStyle
+    form.applySurfaceStyle = p.value.spec?.apply_surface_style || form.applySurfaceStyle
+    form.interactSurfaceStyle = p.value.spec?.interact_surface_style || form.interactSurfaceStyle
+    form.followSurfaceStyle = p.value.spec?.follow_surface_style || form.followSurfaceStyle
+    form.repairSurfaceStyle = p.value.spec?.repair_surface_style || form.repairSurfaceStyle
+    form.approveSurfaceStyle = p.value.spec?.approve_surface_style || form.approveSurfaceStyle
     form.persistence = p.value.persistence || form.persistence
     form.springSecurity = securityOn(p.value.spring_security) ? 'on' : 'off'
     form.aiAssistant = aiAssistantOn(p.value.ai_assistant) ? 'on' : 'off'
@@ -1937,6 +2206,15 @@ async function onArchDomChange() {
     form.layout = p.value.spec?.layout || form.layout
     form.typeface = p.value.spec?.typeface || form.typeface
     form.portalHomeStyle = p.value.spec?.portal_home_style || form.portalHomeStyle
+    form.contentSurfaceStyle = p.value.spec?.content_surface_style || form.contentSurfaceStyle
+    form.tradeSurfaceStyle = p.value.spec?.trade_surface_style || form.tradeSurfaceStyle
+    form.reserveSurfaceStyle = p.value.spec?.reserve_surface_style || form.reserveSurfaceStyle
+    form.borrowSurfaceStyle = p.value.spec?.borrow_surface_style || form.borrowSurfaceStyle
+    form.applySurfaceStyle = p.value.spec?.apply_surface_style || form.applySurfaceStyle
+    form.interactSurfaceStyle = p.value.spec?.interact_surface_style || form.interactSurfaceStyle
+    form.followSurfaceStyle = p.value.spec?.follow_surface_style || form.followSurfaceStyle
+    form.repairSurfaceStyle = p.value.spec?.repair_surface_style || form.repairSurfaceStyle
+    form.approveSurfaceStyle = p.value.spec?.approve_surface_style || form.approveSurfaceStyle
     form.scene = p.value.spec?.match_path?.scene || form.scene
     form.entry = p.value.spec?.match_path?.entry || form.entry
   } finally {
@@ -1967,7 +2245,7 @@ async function saveSoft() {
   if (softSaving.value) return
   softSaving.value = true
   try {
-    p.value = await api.patchMatch(p.value.id, {
+    const body = {
       theme: form.theme,
       chrome: form.chrome,
       layout: form.layout,
@@ -1975,7 +2253,35 @@ async function saveSoft() {
       portal_home_style: form.portalHomeStyle,
       llm_enabled: form.llm === 'on',
       password_hash: form.passwordHash,
-    })
+    }
+    if (showContentSurface.value && form.contentSurfaceStyle) {
+      body.content_surface_style = form.contentSurfaceStyle
+    }
+    if (showTradeSurface.value && form.tradeSurfaceStyle) {
+      body.trade_surface_style = form.tradeSurfaceStyle
+    }
+    if (showReserveSurface.value && form.reserveSurfaceStyle) {
+      body.reserve_surface_style = form.reserveSurfaceStyle
+    }
+    if (showBorrowSurface.value && form.borrowSurfaceStyle) {
+      body.borrow_surface_style = form.borrowSurfaceStyle
+    }
+    if (showApplySurface.value && form.applySurfaceStyle) {
+      body.apply_surface_style = form.applySurfaceStyle
+    }
+    if (showInteractSurface.value && form.interactSurfaceStyle) {
+      body.interact_surface_style = form.interactSurfaceStyle
+    }
+    if (showFollowSurface.value && form.followSurfaceStyle) {
+      body.follow_surface_style = form.followSurfaceStyle
+    }
+    if (showRepairSurface.value && form.repairSurfaceStyle) {
+      body.repair_surface_style = form.repairSurfaceStyle
+    }
+    if (showApproveSurface.value && form.approveSurfaceStyle) {
+      body.approve_surface_style = form.approveSurfaceStyle
+    }
+    p.value = await api.patchMatch(p.value.id, body)
     message.success('已保存')
   } finally {
     softSaving.value = false
@@ -2273,6 +2579,15 @@ onUnmounted(() => {
     FILL_UNIT_KIND_ZH,
     FILL_UNIT_STATUS_ZH,
     PORTAL_HOME_FALLBACK,
+    CONTENT_SURFACE_FALLBACK,
+    TRADE_SURFACE_FALLBACK,
+    RESERVE_SURFACE_FALLBACK,
+    BORROW_SURFACE_FALLBACK,
+    APPLY_SURFACE_FALLBACK,
+    INTERACT_SURFACE_FALLBACK,
+    FOLLOW_SURFACE_FALLBACK,
+    REPAIR_SURFACE_FALLBACK,
+    APPROVE_SURFACE_FALLBACK,
     TYPE_PAREN_KEY,
     _runtimeSettled,
     _tailLines,
@@ -2469,6 +2784,24 @@ onUnmounted(() => {
     pollSyncHint,
     pollTimer,
     portalHomeOptions,
+    showContentSurface,
+    contentSurfaceOptions,
+    showTradeSurface,
+    tradeSurfaceOptions,
+    showReserveSurface,
+    reserveSurfaceOptions,
+    showBorrowSurface,
+    borrowSurfaceOptions,
+    showApplySurface,
+    applySurfaceOptions,
+    showInteractSurface,
+    interactSurfaceOptions,
+    showFollowSurface,
+    followSurfaceOptions,
+    showRepairSurface,
+    repairSurfaceOptions,
+    showApproveSurface,
+    approveSurfaceOptions,
     pptActing,
     pptBizDirty,
     pptCanExport,

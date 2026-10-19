@@ -12,9 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bake.catalog import (
     THEME_ALIASES,
+    APPLY_SURFACE_STYLES,
+    BORROW_SURFACE_STYLES,
+    FOLLOW_SURFACE_STYLES,
+    REPAIR_SURFACE_STYLES,
+    APPROVE_SURFACE_STYLES,
+    INTERACT_SURFACE_STYLES,
     CHROME_STYLES,
+    CONTENT_SURFACE_STYLES,
     LAYOUT_SHELLS,
     PORTAL_HOME_STYLES,
+    RESERVE_SURFACE_STYLES,
+    TRADE_SURFACE_STYLES,
     TYPE_PAIRINGS,
     build_spec,
     pick_theme,
@@ -405,6 +414,78 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         default="cards",
         unknown_message="未知门户首页构图",
     )
+    content_surface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "content_surface_style", None),
+        prev_value=prev_spec.get("content_surface_style") or None,
+        catalog=CONTENT_SURFACE_STYLES,
+        default="folio",
+        unknown_message="未知内容页内构图",
+    )
+    trade_surface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "trade_surface_style", None),
+        prev_value=prev_spec.get("trade_surface_style") or None,
+        catalog=TRADE_SURFACE_STYLES,
+        default="shelfgrid",
+        unknown_message="未知交易页内构图",
+    )
+    reserve_surface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "reserve_surface_style", None),
+        prev_value=prev_spec.get("reserve_surface_style") or None,
+        catalog=RESERVE_SURFACE_STYLES,
+        default="slotstrip",
+        unknown_message="未知预约页内构图",
+    )
+    borrow_surface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "borrow_surface_style", None),
+        prev_value=prev_spec.get("borrow_surface_style") or None,
+        catalog=BORROW_SURFACE_STYLES,
+        default="bookshelf",
+        unknown_message="未知借用页内构图",
+    )
+    apply_surface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "apply_surface_style", None),
+        prev_value=prev_spec.get("apply_surface_style") or None,
+        catalog=APPLY_SURFACE_STYLES,
+        default="eventposter",
+        unknown_message="未知报名页内构图",
+    )
+    interact_surface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "interact_surface_style", None),
+        prev_value=prev_spec.get("interact_surface_style") or None,
+        catalog=INTERACT_SURFACE_STYLES,
+        default="profilegrid",
+        unknown_message="未知互动页内构图",
+    )
+    follow_surface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "follow_surface_style", None),
+        prev_value=prev_spec.get("follow_surface_style") or None,
+        catalog=FOLLOW_SURFACE_STYLES,
+        default="dossier",
+        unknown_message="未知跟进页内构图",
+    )
+    repair_surface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "repair_surface_style", None),
+        prev_value=prev_spec.get("repair_surface_style") or None,
+        catalog=REPAIR_SURFACE_STYLES,
+        default="ticketfeed",
+        unknown_message="未知报修页内构图",
+    )
+    approve_surface_override = resolve_style_override(
+        reset=reset,
+        body_value=getattr(body, "approve_surface_style", None),
+        prev_value=prev_spec.get("approve_surface_style") or None,
+        catalog=APPROVE_SURFACE_STYLES,
+        default="typelist",
+        unknown_message="未知审批页内构图",
+    )
     if body.llm_enabled is not None:
         project.llm_enabled = body.llm_enabled
     if body.password_hash is not None:
@@ -490,6 +571,15 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         layout=layout_override,
         typeface=typeface_override,
         portal_home_style=portal_home_override,
+        content_surface_style=content_surface_override,
+        trade_surface_style=trade_surface_override,
+        reserve_surface_style=reserve_surface_override,
+        borrow_surface_style=borrow_surface_override,
+        apply_surface_style=apply_surface_override,
+        interact_surface_style=interact_surface_override,
+        follow_surface_style=follow_surface_override,
+        repair_surface_style=repair_surface_override,
+        approve_surface_style=approve_surface_override,
         persistence=getattr(project, "persistence", None) or "jdbc",
         spring_security=getattr(project, "spring_security", None),
         ai_assistant=getattr(project, "ai_assistant", None),

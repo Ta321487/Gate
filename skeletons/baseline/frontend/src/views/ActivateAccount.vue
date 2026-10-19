@@ -23,7 +23,7 @@
       </el-button>
     </form>
     <template #footer>
-      <router-link to="/login">返回登录</router-link>
+      <a href="/login" @click.prevent="backToLogin">返回登录</a>
     </template>
   </AuthShell>
 </template>
@@ -37,7 +37,7 @@ import AuthShell from '../components/AuthShell.vue'
 import { pickAuthTemplate } from '../utils/authTemplates'
 import { APP_DELIVERED } from '../appDelivered.js'
 import { schemaLabels } from '../utils/domainSchema.js'
-import { clearAuthStorage, setMustActivateEmail } from '../utils/session.js'
+import { clearAuthStorage, logoutOnServer, setMustActivateEmail } from '../utils/session.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -50,6 +50,12 @@ const form = reactive({
   username: typeof route.query.u === 'string' ? route.query.u : '',
   code: typeof route.query.code === 'string' ? route.query.code : '',
 })
+
+async function backToLogin() {
+  await logoutOnServer()
+  clearAuthStorage()
+  router.replace({ path: '/login', query: form.username ? { u: form.username } : {} })
+}
 
 async function onSubmit() {
   if (loading.value) return
@@ -64,6 +70,7 @@ async function onSubmit() {
       activationCode: form.code,
     })
     setMustActivateEmail(false)
+    await logoutOnServer()
     clearAuthStorage()
     ElMessage.success('激活成功，请登录')
     router.replace({ path: '/login', query: { u: form.username } })

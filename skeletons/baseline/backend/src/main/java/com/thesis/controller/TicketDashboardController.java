@@ -12,6 +12,7 @@ import com.thesis.common.R;
 import com.thesis.service.SiteStatStore;
 import com.thesis.service.StockIoStore;
 import com.thesis.service.SurveyStore;
+import com.thesis.service.UserStore;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -186,6 +187,9 @@ public class TicketDashboardController {
             m.putIfAbsent("pvToday", 0);
             m.putIfAbsent("pvTotal", 0);
         }
+        // 无单据域 prune 掉 TicketStore 后仍要有买家/用户数；勿只靠 TicketDashOps
+        String countRole = userRole == null || userRole.isBlank() ? "user" : userRole.trim();
+        m.putIfAbsent("userTotal", UserStore.countByRole(countRole));
         m.put("charts", charts);
         return m;
     }

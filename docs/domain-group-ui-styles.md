@@ -2,8 +2,8 @@
 
 > **本文只负责**：地图 §1.1～§1.10 **域组**上，共用列表/主路径「过通用、不像该业务」的问题判定，以及可选手选构图目录（含 ASCII）。  
 > **不负责**：密功能四件套（各组 `*_thicken` / 地图待补）；换皮配色（theme）；沉浸边角（[`immersion-corners.md`](./immersion-corners.md)）；门户首页轴（已有 `portal_home_style`）。  
-> **状态**：**选型册 · 未实现**（只定目录与 ASCII；bake/骨架未接线）。  
-> **触发**：§1.1～§1.9 加厚均已收口 → 可开实现 plan；**下一独立 plan 优先** `content_surface_style`（§1.8）。不进地图待补行。  
+> **状态**：**选型册 · 接线中**（`content`/`trade`/`reserve`/`borrow`/`apply`/`interact`/`follow`/`repair`/`approve` 已接 bake/骨架；§1.10 无选型键）。  
+> **触发**：§1.1～§1.9 加厚均已收口；**下一独立 plan** §1.10 导引文案（无 `{组}_surface_style`）。不进地图待补行。  
 > **索引**：[README.md](./README.md) · 地图 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) · 领域 [`domains.md`](./domains.md) · 横切 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md)（正交，勿混轮）。
 
 ---
@@ -64,15 +64,15 @@
 
 | 节 | 组 | 问题 | 主表面 | 选型键 | 档数 | 实现前置 |
 |----|----|------|--------|--------|------|----------|
-| G-1.1 | 借用/占用 | 重 | ArchiveBrowse、床位色块 | `borrow_surface_style` | 4 | borrow 已收口 |
-| G-1.2 | 跟进 | 中 | ArchiveBrowse、跟进时间轴 | `follow_surface_style` | 3 | follow 已收口 |
-| G-1.3 | 报修 | 轻 | MyTickets、报修看板 | `repair_surface_style` | 2 | repair 已收口 |
-| G-1.4 | 报名/申请 | 重 | ArchiveBrowse、课表 | `apply_surface_style` | 4 | apply 已收口 |
-| G-1.5 | 审批/填报 | 轻 | 申请入口、TicketsAdmin | `approve_surface_style` | 2 | approve 已收口 |
-| G-1.6 | 交易 | 中 | PortalHome、Cart、ArchiveBrowse | `trade_surface_style` | 3 | trade 已收口 |
-| G-1.7 | 预约 | 中 | Slot 页、ArchiveBrowse | `reserve_surface_style` | 3 | reserve 已收口 |
-| G-1.8 | 内容 | 重 | ArchiveBrowse | `content_surface_style` | 4 | content **已收口** · **下一 plan 优先** |
-| G-1.9 | 互动 | 中重 | ArchiveBrowse、PeerTickets；Exam/Survey 专用页不动 | `interact_surface_style` | 3 | interact **已收口** |
+| G-1.1 | 借用/占用 | 重 | ArchiveBrowse、床位色块 | `borrow_surface_style` | 4 | borrow **已收口** · **已接线** |
+| G-1.2 | 跟进 | 中 | ArchiveBrowse、跟进时间轴 | `follow_surface_style` | 3 | follow **已收口** · **已接线** |
+| G-1.3 | 报修 | 轻 | MyTickets、报修看板 | `repair_surface_style` | 2 | repair **已收口** · **已接线** |
+| G-1.4 | 报名/申请 | 重 | ArchiveBrowse、课表 | `apply_surface_style` | 4 | apply **已收口** · **已接线** |
+| G-1.5 | 审批/填报 | 轻 | 申请入口、TicketsAdmin | `approve_surface_style` | 2 | approve **已收口** · **已接线** |
+| G-1.6 | 交易 | 中 | PortalHome、Cart、ArchiveBrowse | `trade_surface_style` | 3 | trade **已收口** · **已接线** |
+| G-1.7 | 预约 | 中 | Slot 页、ArchiveBrowse | `reserve_surface_style` | 3 | reserve **已收口** · **已接线** |
+| G-1.8 | 内容 | 重 | ArchiveBrowse | `content_surface_style` | 4 | content **已收口** · **已接线** |
+| G-1.9 | 互动 | 中重 | ArchiveBrowse、PeerTickets；Exam/Survey 专用页不动 | `interact_surface_style` | 3 | interact **已收口** · **已接线** |
 | G-1.10 | 兜底 | 异质 | 门户说明、README | （无） | 导引块 | 导引浅清已齐（`cross_path_guide`） |
 
 ---
@@ -117,7 +117,8 @@ parcelshelf:
 | 取件码核销入口（有码再显）                        |
 ```
 
-域默认：LIBRARY→`bookshelf`；ASSET/EQUIP→`stockrow`；BED→`bedblocks`；PARCEL→`parcelshelf`。手选优先。
+域默认：LIBRARY→`bookshelf`；ASSET/EQUIP→`stockrow`；BED→`bedblocks`；PARCEL→`parcelshelf`。手选优先。  
+隐喻绑域：`bookshelf` 只 LIBRARY；`bedblocks` 只 BED；`parcelshelf` 只 PARCEL；`stockrow` 限 ASSET/EQUIP/PROCURE/LIBRARY。越界手选回落域默认。
 
 ### G-1.2 跟进 — `follow_surface_style`
 
@@ -147,7 +148,8 @@ listing:
 | +--------+  [约带看]                            |
 ```
 
-域默认：CRM→`pipeline`；LISTING→`listing`；其余跟进域→`dossier`。
+域默认：CRM→`pipeline`；LISTING→`listing`；其余跟进域→`dossier`。  
+隐喻绑域：`pipeline` 只 CRM；`listing` 只 LISTING；`dossier` 是跟进通用备选。越界手选回落域默认。
 
 ### G-1.3 报修 — `repair_surface_style`（问题轻）
 
@@ -172,7 +174,7 @@ faultboard:
 | [条] | [条] | [条] |                           |
 ```
 
-域默认：三域→`ticketfeed`；管理端可选手选 `faultboard`（实现时再钉是否仅管理端）。
+域默认：宿舍 / 物业 / IT → `ticketfeed`。两档都是报修隐喻，三域都能手选 `faultboard`。非报修域为空。整包一把构图键，我的工单按所选构图换排列。越界手选回落进度流。
 
 ### G-1.4 报名 / 申请 — `apply_surface_style`
 
@@ -208,7 +210,8 @@ tourcard:
 | 行程亮点一行……                                 |
 ```
 
-域默认：ACTIVITY→`eventposter`；COURSE→`coursetable`；LOST→`noticeboard`；TOUR→`tourcard`。
+域默认：ACTIVITY→`eventposter`；COURSE→`coursetable`；LOST→`noticeboard`；TOUR→`tourcard`。  
+隐喻绑域：四档一一对应，越界手选回落域默认。
 
 ### G-1.5 审批 / 填报 — `approve_surface_style`（问题轻）
 
@@ -232,7 +235,7 @@ inboxsteps:
 | 报销-张三  初审→复审→终审  ●○○  [审]         |
 ```
 
-域默认：用户端 `typelist`；审批岗视图 `inboxsteps`（可与角色绑定，实现 plan 钉）。
+域默认：23 个审批域 → `typelist`。两档都是审批隐喻，这些域都能手选 `inboxsteps`。非审批域为空。整包一把构图键，我的申请和管理收件箱按所选构图换排列。越界手选回落事项清单。
 
 ### G-1.6 交易 — `trade_surface_style`
 
@@ -262,7 +265,8 @@ showtime:
 | 19:30 厅1  余座 12  [选座]                     |
 ```
 
-域默认：SHOP→`shelfgrid`；FOOD→`menuboard`；CINEMA→`showtime`。门户 `portal_home_style=mall` 已存在，本组实现只补列表轴。
+域默认：SHOP→`shelfgrid`；FOOD→`menuboard`；CINEMA→`showtime`。  
+隐喻绑域：`showtime` 只 CINEMA；`menuboard` 只 FOOD；`shelfgrid` 可作交易通用备选。越界手选回落域默认。门户 `portal_home_style=mall` 已存在，本组实现只补列表轴。
 
 ### G-1.7 预约 — `reserve_surface_style`
 
@@ -292,7 +296,8 @@ vehiclecard:
 | +----+                                         |
 ```
 
-域默认：HOSPITAL/MEETING/SALON/INSTRUMENT→`slotstrip`；HOTEL→`roomstate`；CARRENT/PARKING→`vehiclecard`。
+域默认：HOSPITAL/MEETING/SALON/INSTRUMENT→`slotstrip`；HOTEL→`roomstate`；CARRENT/PARKING→`vehiclecard`。  
+隐喻绑域：`roomstate` 只 HOTEL；`vehiclecard` 只 CARRENT/PARKING；`slotstrip` 限号源/场地类。越界手选回落域默认。
 
 ### G-1.8 内容 — `content_surface_style`（收口后优先实现）
 
@@ -354,7 +359,8 @@ triprow:
 | 03-20 08:00  南门→车站  余位 2  分摊备注  [同行]|
 ```
 
-域默认：DATING→`profilegrid`；MUTUAL-*→`mutualpick`；CARPOOL/TIMEBANK→`triprow`。实现前置：互动组 thicken / 地图 §1.9 待补清到可开工后再开 plan。
+域默认：DATING→`profilegrid`；MUTUAL-*→`mutualpick`；CARPOOL/TIMEBANK→`triprow`。  
+EXAM/SURVEY/VOTE 不进本轴。隐喻绑域：资料墙只婚恋、双选卡只 MUTUAL-*、行程行只拼车/时间银行；越界手选回落域默认。
 
 ### G-1.10 兜底 — 无选型键
 
@@ -363,9 +369,9 @@ triprow:
 与地图 §1.10 导引浅清对齐（已齐）；不做手选目录。
 
 ```text
-| 本系统含两条主路径（交叉壳）                   |
-| A 借用检索→申请单    B 场地时段→预约           |
-| 答辩时先演示 A 再演示 B；勿冒充单一行业站     |
+| 本系统提供申请审核和时段预约。请从对应菜单进入。 |
+| 申请办理：选择事项并提交申请，审核通过后办结。 |
+| 时段预约：选择可预约时段，可取消或办结。       |
 ```
 
 ---
@@ -392,3 +398,13 @@ triprow:
 |------|------|
 | 2026-10-10 | 初版：§1.1～§1.10 选型 + ASCII；键名统一 `*_surface_style`；菜单保全；加厚后一组一 plan |
 | 2026-10-11 | 后加厚：九组 thicken 已收口；下一实现 plan 钉 `content_surface_style`；§1.10 导引已浅清 |
+| 2026-10-17 | `content_surface_style` 首刀接线：themes/catalog/match/APP_DELIVERED/工厂手选/`ArchiveBrowse` `data-content-surface`；菜单保全测；下一 plan → `trade_surface_style` |
+| 2026-10-17 | `trade_surface_style` 接线：themes/catalog/match/APP_DELIVERED/工厂手选/`ArchiveBrowse`·Cart·SeatShows `data-trade-surface`；菜单保全测；下一 plan → `reserve_surface_style` |
+| 2026-10-17 | `reserve_surface_style` 接线：themes/catalog/match/APP_DELIVERED/工厂手选/`ArchiveBrowse`·SlotBook `data-reserve-surface`；菜单保全测；下一 plan → `borrow_surface_style` |
+| 2026-10-18 | `borrow_surface_style` 接线：themes/catalog/match/APP_DELIVERED/工厂手选+SurfaceStyleTip/`ArchiveBrowse` `data-borrow-surface`；菜单保全测；下一 plan → `apply_surface_style` |
+| 2026-10-19 | 隐喻绑域：交易 `showtime`/`menuboard`、预约 `roomstate`/`vehiclecard`、借用书架/床位/驿站不可乱跨域；越界手选回落域默认 |
+| 2026-10-19 | `apply_surface_style` 接线：themes/catalog/match/APP_DELIVERED/工厂手选+SurfaceStyleTip/`ArchiveBrowse` `data-apply-surface`；四档一一绑域；下一 plan → `interact_surface_style` |
+| 2026-10-19 | `interact_surface_style` 接线：themes/catalog/match/APP_DELIVERED/工厂手选+SurfaceStyleTip/`ArchiveBrowse` `data-interact-surface`；EXAM/SURVEY/VOTE 不进轴；下一 plan → `follow_surface_style` |
+| 2026-10-19 | `follow_surface_style` 接线：themes/catalog/match/APP_DELIVERED/工厂手选+SurfaceStyleTip/`ArchiveBrowse` `data-follow-surface`；阶段看板只 CRM、挂牌价签只 LISTING；下一 plan → `repair_surface_style` |
+| 2026-10-19 | `repair_surface_style` 接线：themes/catalog/match/APP_DELIVERED/工厂手选+SurfaceStyleTip/`MyTickets` `data-repair-surface`；两档只给宿舍/物业/IT；下一 plan → `approve_surface_style` |
+| 2026-10-19 | `approve_surface_style` 接线：themes/catalog/match/APP_DELIVERED/工厂手选+SurfaceStyleTip/`MyTickets`·`TicketsAdmin` `data-approve-surface`；两档只给审批域；下一 plan → §1.10 导引文案 |

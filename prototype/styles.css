@@ -986,12 +986,29 @@
       margin: 0; padding: 0; list-style: none;
       display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;
     }
+    .help-steps.help-steps-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .help-steps > li {
       margin: 0; padding: 10px 12px; border: 1px solid var(--line-soft);
       border-radius: 6px; background: var(--surface-2);
     }
     .help-steps > li > strong { display: block; color: var(--ink); font-size: 12px; margin-bottom: 4px; }
     .help-steps > li > p { margin: 0; font-size: 12px; }
+    .help-table-wrap {
+      overflow-x: auto; margin: 0 0 12px;
+      border: 1px solid var(--line-soft); border-radius: 6px;
+    }
+    .help-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+    .help-table th,
+    .help-table td {
+      padding: 8px 10px; text-align: left; vertical-align: top;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .help-table th {
+      background: var(--surface-2); font-weight: 600; color: var(--ink); white-space: nowrap;
+    }
+    .help-table tbody tr:last-child td { border-bottom: none; }
     .help-glossary { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
     .help-glossary-row {
       display: grid; grid-template-columns: 120px 1fr; gap: 8px 12px;
@@ -1132,6 +1149,7 @@
 
     @media (max-width: 900px) {
       .stats, .health-grid, .grid-2, .grid-3, .help-cards, .help-steps, .help-glossary { grid-template-columns: 1fr 1fr; }
+      .help-steps.help-steps-6 { grid-template-columns: 1fr 1fr; }
       .help-card.wide { grid-column: 1 / -1; }
       .ppt-compare-grid { grid-template-columns: 1fr; }
       .nav-toggle { display: inline-flex; z-index: 60; }
@@ -1165,6 +1183,7 @@
     }
     @media (max-width: 640px) {
       .stats, .health-grid, .grid-2, .grid-3, .help-cards, .help-steps, .help-glossary { grid-template-columns: 1fr; }
+      .help-steps.help-steps-6 { grid-template-columns: 1fr; }
       .help-card.wide { grid-column: auto; }
       .content { padding: 14px 12px; }
       .page-title, .proj-title { font-size: 18px; }

@@ -185,6 +185,141 @@
                 @update:value="saveSoft"
               />
             </n-form-item>
+            <n-form-item v-if="showContentSurface">
+              <template #label>
+                <span class="soft-label-with-tip">
+                  内容列表构图
+                  <SurfaceStyleTip group="content" :style-id="form.contentSurfaceStyle" />
+                </span>
+              </template>
+              <n-select
+                v-model:value="form.contentSurfaceStyle"
+                :options="contentSurfaceOptions"
+                :loading="softSaving"
+                :disabled="softSaving"
+                @update:value="saveSoft"
+              />
+            </n-form-item>
+            <n-form-item v-if="showTradeSurface">
+              <template #label>
+                <span class="soft-label-with-tip">
+                  商品列表构图
+                  <SurfaceStyleTip group="trade" :style-id="form.tradeSurfaceStyle" />
+                </span>
+              </template>
+              <n-select
+                v-model:value="form.tradeSurfaceStyle"
+                :options="tradeSurfaceOptions"
+                :loading="softSaving"
+                :disabled="softSaving"
+                @update:value="saveSoft"
+              />
+            </n-form-item>
+            <n-form-item v-if="showReserveSurface">
+              <template #label>
+                <span class="soft-label-with-tip">
+                  预约列表构图
+                  <SurfaceStyleTip group="reserve" :style-id="form.reserveSurfaceStyle" />
+                </span>
+              </template>
+              <n-select
+                v-model:value="form.reserveSurfaceStyle"
+                :options="reserveSurfaceOptions"
+                :loading="softSaving"
+                :disabled="softSaving"
+                @update:value="saveSoft"
+              />
+            </n-form-item>
+            <n-form-item v-if="showBorrowSurface">
+              <template #label>
+                <span class="soft-label-with-tip">
+                  借用列表构图
+                  <SurfaceStyleTip group="borrow" :style-id="form.borrowSurfaceStyle" />
+                </span>
+              </template>
+              <n-select
+                v-model:value="form.borrowSurfaceStyle"
+                :options="borrowSurfaceOptions"
+                :loading="softSaving"
+                :disabled="softSaving"
+                @update:value="saveSoft"
+              />
+            </n-form-item>
+            <n-form-item v-if="showApplySurface">
+              <template #label>
+                <span class="soft-label-with-tip">
+                  报名列表构图
+                  <SurfaceStyleTip group="apply" :style-id="form.applySurfaceStyle" />
+                </span>
+              </template>
+              <n-select
+                v-model:value="form.applySurfaceStyle"
+                :options="applySurfaceOptions"
+                :loading="softSaving"
+                :disabled="softSaving"
+                @update:value="saveSoft"
+              />
+            </n-form-item>
+            <n-form-item v-if="showInteractSurface">
+              <template #label>
+                <span class="soft-label-with-tip">
+                  互动列表构图
+                  <SurfaceStyleTip group="interact" :style-id="form.interactSurfaceStyle" />
+                </span>
+              </template>
+              <n-select
+                v-model:value="form.interactSurfaceStyle"
+                :options="interactSurfaceOptions"
+                :loading="softSaving"
+                :disabled="softSaving"
+                @update:value="saveSoft"
+              />
+            </n-form-item>
+            <n-form-item v-if="showFollowSurface">
+              <template #label>
+                <span class="soft-label-with-tip">
+                  跟进列表构图
+                  <SurfaceStyleTip group="follow" :style-id="form.followSurfaceStyle" />
+                </span>
+              </template>
+              <n-select
+                v-model:value="form.followSurfaceStyle"
+                :options="followSurfaceOptions"
+                :loading="softSaving"
+                :disabled="softSaving"
+                @update:value="saveSoft"
+              />
+            </n-form-item>
+            <n-form-item v-if="showRepairSurface">
+              <template #label>
+                <span class="soft-label-with-tip">
+                  报修列表构图
+                  <SurfaceStyleTip group="repair" :style-id="form.repairSurfaceStyle" />
+                </span>
+              </template>
+              <n-select
+                v-model:value="form.repairSurfaceStyle"
+                :options="repairSurfaceOptions"
+                :loading="softSaving"
+                :disabled="softSaving"
+                @update:value="saveSoft"
+              />
+            </n-form-item>
+            <n-form-item v-if="showApproveSurface">
+              <template #label>
+                <span class="soft-label-with-tip">
+                  审批列表构图
+                  <SurfaceStyleTip group="approve" :style-id="form.approveSurfaceStyle" />
+                </span>
+              </template>
+              <n-select
+                v-model:value="form.approveSurfaceStyle"
+                :options="approveSurfaceOptions"
+                :loading="softSaving"
+                :disabled="softSaving"
+                @update:value="saveSoft"
+              />
+            </n-form-item>
             <n-form-item label="智能业务填充">
               <n-select v-model:value="form.llm" :options="llmOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
             </n-form-item>
@@ -249,6 +384,7 @@
 <script setup>
 import { computed } from 'vue'
 import DefensePptLaunchPanel from '../../components/defensePpt/DefensePptLaunchPanel.vue'
+import SurfaceStyleTip from './SurfaceStyleTip.vue'
 import { bindPd } from './bindPd'
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,
@@ -271,6 +407,15 @@ const {
   onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openEr, openFillPlan, openModules,
   openPreview, openTestcases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
+  showContentSurface, contentSurfaceOptions,
+  showTradeSurface, tradeSurfaceOptions,
+  showReserveSurface, reserveSurfaceOptions,
+  showBorrowSurface, borrowSurfaceOptions,
+  showApplySurface, applySurfaceOptions,
+  showInteractSurface, interactSurfaceOptions,
+  showFollowSurface, followSurfaceOptions,
+  showRepairSurface, repairSurfaceOptions,
+  showApproveSurface, approveSurfaceOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
   refreshJob, refreshRuntime, reload, reloadErSvg, reloadModSvg, reloadTestcases, resetMatch, retryCurrent,
   roleSpecText, route, router, rt, rtAction, rtAllBusy, rtAnyBusy, rtAnyLive,

@@ -19,8 +19,17 @@ from app.bake.themes import (  # re-export for callers
     AUTH_ROLE_WIDGETS,
     AUTH_TEMPLATES,
     CHROME_STYLES,
+    APPLY_SURFACE_STYLES,
+    BORROW_SURFACE_STYLES,
+    FOLLOW_SURFACE_STYLES,
+    REPAIR_SURFACE_STYLES,
+    APPROVE_SURFACE_STYLES,
+    INTERACT_SURFACE_STYLES,
+    CONTENT_SURFACE_STYLES,
     LAYOUT_SHELLS,
     PORTAL_HOME_STYLES,
+    RESERVE_SURFACE_STYLES,
+    TRADE_SURFACE_STYLES,
     TYPE_PAIRINGS,
     THEME_ALIASES,
     THEMES,
@@ -32,9 +41,18 @@ from app.bake.themes import (  # re-export for callers
     normalize_auth_role_widget,
     normalize_auth_template,
     normalize_chrome,
+    normalize_apply_surface_style,
+    normalize_borrow_surface_style,
+    normalize_follow_surface_style,
+    normalize_repair_surface_style,
+    normalize_approve_surface_style,
+    normalize_interact_surface_style,
+    normalize_content_surface_style,
     normalize_layout,
     normalize_portal_home_style,
+    normalize_reserve_surface_style,
     normalize_theme,
+    normalize_trade_surface_style,
     normalize_typeface,
     pick_auth_entry_mode,
     pick_auth_role_widget,
@@ -43,9 +61,18 @@ from app.bake.themes import (  # re-export for callers
     pick_layout,
     pick_theme,
     pick_typeface,
+    resolve_apply_surface_style,
+    resolve_borrow_surface_style,
+    resolve_follow_surface_style,
+    resolve_repair_surface_style,
+    resolve_approve_surface_style,
+    resolve_interact_surface_style,
+    resolve_content_surface_style,
     resolve_or_pick,
     resolve_portal_home_style,
+    resolve_reserve_surface_style,
     resolve_style_override,
+    resolve_trade_surface_style,
     themes_for_domain,
 )
 
@@ -1176,6 +1203,15 @@ def build_spec(
     layout: str | None = None,
     typeface: str | None = None,
     portal_home_style: str | None = None,
+    content_surface_style: str | None = None,
+    trade_surface_style: str | None = None,
+    reserve_surface_style: str | None = None,
+    borrow_surface_style: str | None = None,
+    apply_surface_style: str | None = None,
+    interact_surface_style: str | None = None,
+    follow_surface_style: str | None = None,
+    repair_surface_style: str | None = None,
+    approve_surface_style: str | None = None,
     persistence: str | None = None,
     spine: str | None = None,
     spring_security: bool | None = None,
@@ -1207,6 +1243,31 @@ def build_spec(
     layout = resolve_or_pick(LAYOUT_SHELLS, layout, f"{seed}|layout", "topbar")
     typeface = resolve_or_pick(TYPE_PAIRINGS, typeface, f"{seed}|type", "clean")
     portal_home = resolve_portal_home_style(domain, portal_home_style, seed)
+    content_surface = resolve_content_surface_style(
+        domain, content_surface_style, seed
+    )
+    trade_surface = resolve_trade_surface_style(domain, trade_surface_style, seed)
+    reserve_surface = resolve_reserve_surface_style(
+        domain, reserve_surface_style, seed
+    )
+    borrow_surface = resolve_borrow_surface_style(
+        domain, borrow_surface_style, seed
+    )
+    apply_surface = resolve_apply_surface_style(
+        domain, apply_surface_style, seed
+    )
+    interact_surface = resolve_interact_surface_style(
+        domain, interact_surface_style, seed
+    )
+    follow_surface = resolve_follow_surface_style(
+        domain, follow_surface_style, seed
+    )
+    repair_surface = resolve_repair_surface_style(
+        domain, repair_surface_style, seed
+    )
+    approve_surface = resolve_approve_surface_style(
+        domain, approve_surface_style, seed
+    )
     # 资讯侧栏首页与登录/注册同一构图：强制 auth editorial
     if portal_home == "editorial":
         auth_template = "editorial"
@@ -1269,6 +1330,60 @@ def build_spec(
         "typeface_label": label_from_catalog(TYPE_PAIRINGS, typeface),
         "portal_home_style": portal_home,
         "portal_home_style_label": label_from_catalog(PORTAL_HOME_STYLES, portal_home),
+        "content_surface_style": content_surface,
+        "content_surface_style_label": (
+            label_from_catalog(CONTENT_SURFACE_STYLES, content_surface)
+            if content_surface
+            else ""
+        ),
+        "trade_surface_style": trade_surface,
+        "trade_surface_style_label": (
+            label_from_catalog(TRADE_SURFACE_STYLES, trade_surface)
+            if trade_surface
+            else ""
+        ),
+        "reserve_surface_style": reserve_surface,
+        "reserve_surface_style_label": (
+            label_from_catalog(RESERVE_SURFACE_STYLES, reserve_surface)
+            if reserve_surface
+            else ""
+        ),
+        "borrow_surface_style": borrow_surface,
+        "borrow_surface_style_label": (
+            label_from_catalog(BORROW_SURFACE_STYLES, borrow_surface)
+            if borrow_surface
+            else ""
+        ),
+        "apply_surface_style": apply_surface,
+        "apply_surface_style_label": (
+            label_from_catalog(APPLY_SURFACE_STYLES, apply_surface)
+            if apply_surface
+            else ""
+        ),
+        "interact_surface_style": interact_surface,
+        "interact_surface_style_label": (
+            label_from_catalog(INTERACT_SURFACE_STYLES, interact_surface)
+            if interact_surface
+            else ""
+        ),
+        "follow_surface_style": follow_surface,
+        "follow_surface_style_label": (
+            label_from_catalog(FOLLOW_SURFACE_STYLES, follow_surface)
+            if follow_surface
+            else ""
+        ),
+        "repair_surface_style": repair_surface,
+        "repair_surface_style_label": (
+            label_from_catalog(REPAIR_SURFACE_STYLES, repair_surface)
+            if repair_surface
+            else ""
+        ),
+        "approve_surface_style": approve_surface,
+        "approve_surface_style_label": (
+            label_from_catalog(APPROVE_SURFACE_STYLES, approve_surface)
+            if approve_surface
+            else ""
+        ),
         "api_style": api_style,
         "api_style_label": api_style_labels(api_style),
         "auth_template": auth_template,

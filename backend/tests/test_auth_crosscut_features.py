@@ -266,6 +266,18 @@ class AuthCrosscutFeatureTests(unittest.TestCase):
         for key in _AUTH_LABEL_KEYS:
             self.assertIn(key, blob, f"FE must reference labels.{key}")
 
+    def test_activate_page_reachable_before_login(self) -> None:
+        """注册未登录就能停在激活页；返回登录须清掉未激活会话，避免被闸弹回。"""
+        fe = REPO / "skeletons/baseline/frontend/src"
+        router = (fe / "router/index.js").read_text(encoding="utf-8")
+        public = router.split("const publicPaths", 1)[1].split("])", 1)[0]
+        self.assertIn("'/activate'", public)
+        activate = (fe / "views/ActivateAccount.vue").read_text(encoding="utf-8")
+        self.assertIn("backToLogin", activate)
+        self.assertIn("clearAuthStorage", activate)
+        login = (fe / "views/Login.vue").read_text(encoding="utf-8")
+        self.assertIn("!mustActivateEmail()", login)
+
 
 if __name__ == "__main__":
     unittest.main()

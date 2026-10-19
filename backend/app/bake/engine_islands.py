@@ -48,6 +48,15 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
     layout = normalize_layout(spec.get("layout"))
     typeface = normalize_typeface(spec.get("typeface"))
     portal_home = normalize_portal_home_style(spec.get("portal_home_style"))
+    content_surface = str(spec.get("content_surface_style") or "").strip()
+    trade_surface = str(spec.get("trade_surface_style") or "").strip()
+    reserve_surface = str(spec.get("reserve_surface_style") or "").strip()
+    borrow_surface = str(spec.get("borrow_surface_style") or "").strip()
+    apply_surface = str(spec.get("apply_surface_style") or "").strip()
+    interact_surface = str(spec.get("interact_surface_style") or "").strip()
+    follow_surface = str(spec.get("follow_surface_style") or "").strip()
+    repair_surface = str(spec.get("repair_surface_style") or "").strip()
+    approve_surface = str(spec.get("approve_surface_style") or "").strip()
     _write_factory_delivered(
         workspace,
         spec.get("title", "毕设系统"),
@@ -62,6 +71,15 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
         layout=layout,
         typeface=typeface,
         portal_home_style=portal_home,
+        content_surface_style=content_surface,
+        trade_surface_style=trade_surface,
+        reserve_surface_style=reserve_surface,
+        borrow_surface_style=borrow_surface,
+        apply_surface_style=apply_surface,
+        interact_surface_style=interact_surface,
+        follow_surface_style=follow_surface,
+        repair_surface_style=repair_surface,
+        approve_surface_style=approve_surface,
         seed=workspace.name,
     )
     sync_workspace_thesis_yml(workspace, spec)

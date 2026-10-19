@@ -35,15 +35,22 @@ def is_multi_path(archetypes: Iterable[str] | str | None, primary: str | None = 
 def path_demo_lines(need_flow: bool, need_trade: bool, need_reserve: bool) -> list[str]:
     lines: list[str] = []
     if need_flow:
-        lines.append("A. 申请办理：浏览资源 → 提交申请 → 管理端审核完结")
+        lines.append("申请办理：选择事项并提交申请，审核通过后办结。")
     if need_trade:
-        letter = "B" if need_flow else "A"
-        lines.append(f"{letter}. 购物下单：浏览商品 → 加购 → 提交订单 → 履约")
+        lines.append("购物下单：选择商品加入购物车，提交订单后办理。")
     if need_reserve:
-        n = sum([need_flow, need_trade])
-        letter = chr(ord("A") + n)
-        lines.append(f"{letter}. 时段预约：选资源 → 占坑 → 取消或办结")
+        lines.append("时段预约：选择可预约时段，可取消或办结。")
     return lines
+
+
+def _join_businesses(bits: list[str]) -> str:
+    if not bits:
+        return "业务办理"
+    if len(bits) == 1:
+        return bits[0]
+    if len(bits) == 2:
+        return f"{bits[0]}和{bits[1]}"
+    return "、".join(bits[:-1]) + "和" + bits[-1]
 
 
 def portal_cross_lead(
@@ -53,6 +60,7 @@ def portal_cross_lead(
     need_reserve: bool,
     path_label: str = "",
 ) -> str:
+    del path_label
     bits = []
     if need_flow:
         bits.append("申请审核")
@@ -60,12 +68,7 @@ def portal_cross_lead(
         bits.append("购物下单")
     if need_reserve:
         bits.append("时段预约")
-    joined = "与".join(bits) if bits else "业务办理"
-    label = f"「{path_label}」" if path_label else ""
-    return (
-        f"本系统为交叉壳{label}，含{joined}两条（或以上）主路径；"
-        "答辩时按路径分别演示，勿说成单一行业站。"
-    )
+    return f"本系统提供{_join_businesses(bits)}。请从对应菜单进入。"
 
 
 def readme_cross_guide_section(
@@ -76,27 +79,20 @@ def readme_cross_guide_section(
     path_label: str = "",
     path_note: str = "",
 ) -> str:
-    """学生包 README 固定段；非交叉时返回空串。"""
+    """学生包 README 固定段；非交叉时返回空串。
+
+    path_label / path_note 只给工厂内部对照，不写入学生包。
+    """
+    del path_label, path_note
     if sum([need_flow, need_trade, need_reserve]) < 2:
         return ""
-    title = path_label or "双主路径交叉壳"
     lines = path_demo_lines(need_flow, need_trade, need_reserve)
     body = "\n".join(f"- {ln}" for ln in lines)
-    note = f"\n\n白名单说明：{path_note}" if path_note else ""
-    return f"""## 交叉主路径答辩导引
+    return f"""## 业务说明
 
-本包落在通用壳（`DOM-GENERIC`）+ 行为并集，对应交叉组合：**{title}**。
-系统里同时有两套路玩法，答辩时请**分路径演示**，不要说成某单一行业站。
+本系统同时提供以下业务，请从对应菜单进入。各项业务分别办理。
 
 {body}
-
-### 答辩话术要点
-
-1. 先说明「开题写了两套玩法，工厂用通用壳保留路径并集，而不是硬塞进某一个具名行业域」。
-2. 演示顺序建议：先走完一条主路径的用户端→管理端闭环，再走另一条。
-3. 通用壳上的行业词（题名里的业务称呼）只是浅文案替换，**不等于**已换成具名 `DOM-*` 行业皮。
-4. 匹配页上的领域标签以扫描结果为准；不要在出包后静默改成看起来「更行业」的 Dom 标签冒充具名域。
-{note}
 """
 
 
@@ -131,14 +127,14 @@ def apply_cross_guide_to_schema(
             need_reserve=need_reserve,
             path_label=(entry.label if entry else key),
         )
-    labels.setdefault("crossPathGuideTitle", "交叉主路径说明")
+    labels.setdefault("crossPathGuideTitle", "业务说明")
     labels.setdefault(
         "crossPathGuideBody",
-        "；".join(path_demo_lines(need_flow, need_trade, need_reserve)),
+        "".join(path_demo_lines(need_flow, need_trade, need_reserve)),
     )
     labels.setdefault(
         "industrySkinHint",
-        "题名中的业务称呼仅作通用壳浅文案；未改 Dom 标签，勿当作具名行业域。",
+        "不同业务从对应菜单进入，记录分别保存。",
     )
     _tag_menu_nav_sections(
         schema,

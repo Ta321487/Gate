@@ -251,7 +251,7 @@
         />
         <el-button size="large" @click="openByShareCode">{{ shareCodeEntryLabel }}</el-button>
       </div>
-      <p v-if="posterWallOn" class="page-hint">{{ posterWallTitle }}：{{ posterWallLead }}</p>
+      <p v-if="coverWallActive" class="page-hint">{{ posterWallTitle }}：{{ posterWallLead }}</p>
       <div v-if="searchAssist && hotKeywords.length" class="hot">
         <span class="hot-lab">热搜</span>
         <button
@@ -276,12 +276,60 @@
       <h2>{{ plural }}列表</h2>
       <span class="list-hd-hint">检索与筛选结果</span>
     </div>
-    <div class="grid" :class="{ 'poster-wall': posterWallOn }">
+    <div
+      class="browse-surface"
+      :data-content-surface="contentSurface || 'cards'"
+      :data-trade-surface="tradeSurface || 'cards'"
+      :data-reserve-surface="reserveSurface || 'cards'"
+      :data-borrow-surface="borrowSurface || 'cards'"
+      :data-apply-surface="applySurface || 'cards'"
+      :data-interact-surface="interactSurface || 'cards'"
+      :data-follow-surface="followSurface || 'cards'"
+      :class="{
+        'is-splitdesk': contentSurface === 'splitdesk',
+        'surface-shelfgrid': tradeSurface === 'shelfgrid',
+        'surface-menuboard': tradeSurface === 'menuboard',
+        'surface-showtime': tradeSurface === 'showtime',
+        'surface-slotstrip': reserveSurface === 'slotstrip',
+        'surface-roomstate': reserveSurface === 'roomstate',
+        'surface-vehiclecard': reserveSurface === 'vehiclecard',
+        'surface-bookshelf': borrowSurface === 'bookshelf',
+        'surface-stockrow': borrowSurface === 'stockrow',
+        'surface-bedblocks': borrowSurface === 'bedblocks',
+        'surface-parcelshelf': borrowSurface === 'parcelshelf',
+        'surface-eventposter': applySurface === 'eventposter',
+        'surface-coursetable': applySurface === 'coursetable',
+        'surface-noticeboard': applySurface === 'noticeboard',
+        'surface-tourcard': applySurface === 'tourcard',
+        'surface-profilegrid': interactSurface === 'profilegrid',
+        'surface-mutualpick': interactSurface === 'mutualpick',
+        'surface-triprow': interactSurface === 'triprow',
+        'surface-pipeline': followSurface === 'pipeline',
+        'surface-dossier': followSurface === 'dossier',
+        'surface-listing': followSurface === 'listing',
+      }"
+    >
+    <div
+      class="grid"
+      :class="{
+        'poster-wall': coverWallActive,
+        'surface-folio': contentSurface === 'folio',
+        'surface-ledger': contentSurface === 'ledger',
+        'surface-coverwall': coverWallActive,
+        'surface-splitdesk-list': contentSurface === 'splitdesk',
+      }"
+    >
       <article
-        v-for="row in filteredList"
+        v-for="(row, idx) in filteredList"
         :key="row.id"
         class="card imm-lift"
-        :class="{ 'reported-dim': reportedIds.has(row.id), 'poster-card': posterWallOn }"
+        :class="{
+          'reported-dim': reportedIds.has(row.id),
+          'poster-card': coverWallActive,
+          'folio-hero': contentSurface === 'folio' && idx === 0,
+          'split-active': contentSurface === 'splitdesk' && splitSelectedId === row.id,
+        }"
+        @click="onContentSurfaceCardClick(row, $event)"
       >
         <div class="cover">
           <img v-if="row.coverUrl" :src="row.coverUrl" alt="" />
@@ -513,6 +561,52 @@
         </div>
       </article>
     </div>
+    <aside
+      v-if="contentSurface === 'splitdesk' && splitSelected && !splitNarrow"
+      class="splitdesk-pane"
+    >
+      <div class="cover splitdesk-cover">
+        <img v-if="splitSelected.coverUrl" :src="splitSelected.coverUrl" alt="" />
+        <template v-else>{{ (splitSelected.title || '?').slice(0, 1) }}</template>
+      </div>
+      <h3>{{ splitSelected.title }}</h3>
+      <p class="sub">
+        {{ formatAuthor(splitSelected.author) }} ·
+        {{
+          (splitSelected.categoryNames?.length
+            ? splitSelected.categoryNames.join(' · ')
+            : splitSelected.categoryName) || '未分类'
+        }}
+      </p>
+      <p
+        v-if="viewCountOn || Number(splitSelected.viewCount) > 0"
+        class="sched muted"
+      >{{ viewCountLabel }} {{ Number(splitSelected.viewCount) || 0 }}</p>
+      <RichTextView
+        v-if="bodyRich && splitSelected.isbn"
+        class="excerpt"
+        :html="splitSelected.isbn"
+        compact
+      />
+      <div class="row">
+        <el-button size="small" @click="openDetail(splitSelected)">
+          {{ bodyRich ? '阅读' : '详情' }}
+        </el-button>
+        <el-button
+          v-if="favOn && !isGuest"
+          size="small"
+          :type="favIds.includes(splitSelected.id) ? 'warning' : 'default'"
+          @click="toggleFav(splitSelected)"
+        >{{ favIds.includes(splitSelected.id) ? favoritedVerb : favoritesVerb }}</el-button>
+        <el-button
+          v-if="likeOn && !isGuest"
+          size="small"
+          :type="likeIds.includes(splitSelected.id) ? 'warning' : 'default'"
+          @click="toggleLike(splitSelected)"
+        >{{ likeIds.includes(splitSelected.id) ? likedVerb : likeVerb }}{{ likeCountText(splitSelected) }}</el-button>
+      </div>
+    </aside>
+    </div>
 
     <EmptyHint
       v-if="!list.length"
@@ -542,7 +636,7 @@
           </el-button>
         </p>
         <p v-if="datingAlbumAuditOn && detail.albumHidden" class="muted">{{ albumAuditHiddenHint }}</p>
-        <div v-if="galleryUrls.length" class="gallery">
+        <div v-if="galleryUrls.length > 1" class="gallery">
           <el-carousel height="220px" indicator-position="outside">
             <el-carousel-item v-for="(u, i) in galleryUrls" :key="i">
               <el-image
@@ -557,11 +651,11 @@
           </el-carousel>
         </div>
         <el-image
-          v-else-if="detail.coverUrl"
-          :src="detail.coverUrl"
+          v-else-if="galleryUrls.length === 1"
+          :src="galleryUrls[0]"
           class="detail-cover"
           fit="cover"
-          :preview-src-list="[detail.coverUrl]"
+          :preview-src-list="galleryUrls"
           preview-teleported
         />
         <p class="sub">
@@ -1362,6 +1456,7 @@ import {
   isLoggedIn,
   requireLogin,
 } from '../../utils/session.js'
+import { APP_DELIVERED } from '../../appDelivered.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -2075,6 +2170,96 @@ const episodeListEmpty = computed(() => browseLabels.value.episodeListEmpty || '
 const posterWallOn = computed(() => !!contentThicken.value.posterWall)
 const posterWallTitle = computed(() => browseLabels.value.posterWallTitle || '海报墙')
 const posterWallLead = computed(() => browseLabels.value.posterWallLead || '')
+/** 交易组页内构图：shelfgrid / menuboard / showtime；非交易域为空 */
+const tradeSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.tradeSurfaceStyle
+      || import.meta.env.VITE_TRADE_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['shelfgrid', 'menuboard', 'showtime'].includes(s)) return s
+  return ''
+})
+/** 预约组页内构图：slotstrip / roomstate / vehiclecard；非预约域为空 */
+const reserveSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.reserveSurfaceStyle
+      || import.meta.env.VITE_RESERVE_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['slotstrip', 'roomstate', 'vehiclecard'].includes(s)) return s
+  return ''
+})
+/** 借用组页内构图：bookshelf / stockrow / bedblocks / parcelshelf；非借用域为空 */
+const borrowSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.borrowSurfaceStyle
+      || import.meta.env.VITE_BORROW_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['bookshelf', 'stockrow', 'bedblocks', 'parcelshelf'].includes(s)) return s
+  return ''
+})
+/** 报名组页内构图：eventposter / coursetable / noticeboard / tourcard；非报名域为空 */
+const applySurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.applySurfaceStyle
+      || import.meta.env.VITE_APPLY_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['eventposter', 'coursetable', 'noticeboard', 'tourcard'].includes(s)) return s
+  return ''
+})
+/** 互动组页内构图：profilegrid / mutualpick / triprow；考试问卷投票不进本轴 */
+const interactSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.interactSurfaceStyle
+      || import.meta.env.VITE_INTERACT_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['profilegrid', 'mutualpick', 'triprow'].includes(s)) return s
+  return ''
+})
+/** 跟进组页内构图：pipeline / dossier / listing；非跟进域为空 */
+const followSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.followSurfaceStyle
+      || import.meta.env.VITE_FOLLOW_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['pipeline', 'dossier', 'listing'].includes(s)) return s
+  return ''
+})
+/** 内容组页内构图：folio / coverwall / ledger / splitdesk；非内容域为空 */
+const contentSurface = computed(() => {
+  const s = String(
+    APP_DELIVERED?.contentSurfaceStyle
+      || import.meta.env.VITE_CONTENT_SURFACE_STYLE
+      || '',
+  ).trim()
+  if (['folio', 'coverwall', 'ledger', 'splitdesk'].includes(s)) return s
+  return ''
+})
+/** MEDIA posterWall 并入 coverwall；有手选则 coverwall 优先于 thicken 旗标 */
+const coverWallActive = computed(
+  () => contentSurface.value === 'coverwall' || (!contentSurface.value && posterWallOn.value),
+)
+const splitSelected = ref(null)
+const splitSelectedId = computed(() => splitSelected.value?.id ?? null)
+const splitNarrow = ref(false)
+let splitNarrowMq = null
+function syncSplitNarrow() {
+  splitNarrow.value = !!splitNarrowMq?.matches
+}
+function onContentSurfaceCardClick(row, ev) {
+  if (contentSurface.value !== 'splitdesk') return
+  if (ev?.target?.closest?.('button, a, .el-button, .el-tag, input, textarea')) return
+  if (splitNarrow.value) {
+    openDetail(row)
+    return
+  }
+  splitSelected.value = row
+}
 const hotByPlayOn = computed(() => !!contentThicken.value.hotByPlay)
 const playCountOn = computed(() => !!contentThicken.value.hotByPlay || !!contentThicken.value.playProgress)
 const playCountLabel = computed(() => browseLabels.value.playCountLabel || '播放次数')
@@ -3445,6 +3630,10 @@ watch(
 
 onUnmounted(() => {
   clearDraftAutoSaveTimer()
+  if (splitNarrowMq) {
+    splitNarrowMq.removeEventListener('change', syncSplitNarrow)
+    splitNarrowMq = null
+  }
 })
 
 async function submitPublish(asDraft = false) {
@@ -3770,6 +3959,11 @@ async function submitApply() {
 }
 
 onMounted(async () => {
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    splitNarrowMq = window.matchMedia('(max-width: 900px)')
+    syncSplitNarrow()
+    splitNarrowMq.addEventListener('change', syncSplitNarrow)
+  }
   const qWord = route.query?.q
   if (qWord != null && String(qWord).trim() !== '') {
     keyword.value = String(qWord).trim()
@@ -3855,6 +4049,245 @@ async function openHighlightFromRoute() {
 .poster-wall { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; }
 .poster-card { flex-direction: column; }
 .poster-card .cover { width: 100%; height: 180px; border-radius: 8px; }
+.browse-surface.is-splitdesk {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .browse-surface.is-splitdesk { grid-template-columns: 1fr; }
+  .splitdesk-pane { display: none; }
+}
+.surface-folio {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  grid-template-columns: 1fr !important;
+}
+.surface-folio .folio-hero {
+  flex-direction: column;
+}
+.surface-folio .folio-hero .cover {
+  width: 100%;
+  height: 220px;
+  border-radius: 12px;
+}
+.surface-ledger {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-template-columns: 1fr !important;
+}
+.surface-ledger .card {
+  padding: 10px 14px;
+  align-items: center;
+}
+.surface-ledger .cover {
+  width: 36px;
+  height: 36px;
+  font-size: 12px;
+}
+.surface-ledger .meta h3 { font-size: 14px; }
+.browse-surface.surface-shelfgrid .grid {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+}
+.browse-surface.surface-shelfgrid .card { flex-direction: column; }
+.browse-surface.surface-shelfgrid .cover {
+  width: 100%;
+  height: 140px;
+  border-radius: 8px;
+}
+.browse-surface.surface-menuboard .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-template-columns: 1fr !important;
+}
+.browse-surface.surface-menuboard .card { align-items: center; padding: 10px 14px; }
+.browse-surface.surface-menuboard .cover { width: 48px; height: 48px; }
+.browse-surface.surface-showtime .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-template-columns: 1fr !important;
+}
+.browse-surface.surface-showtime .cover { display: none; }
+.browse-surface.surface-slotstrip .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-template-columns: 1fr !important;
+}
+.browse-surface.surface-slotstrip .card { align-items: center; padding: 10px 14px; }
+.browse-surface.surface-slotstrip .cover { width: 56px; height: 56px; }
+.browse-surface.surface-roomstate .grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+}
+.browse-surface.surface-roomstate .card { flex-direction: column; min-height: 120px; }
+.browse-surface.surface-roomstate .cover {
+  width: 100%;
+  height: 72px;
+  border-radius: 6px;
+}
+.browse-surface.surface-vehiclecard .grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+}
+.browse-surface.surface-vehiclecard .card { align-items: stretch; }
+.browse-surface.surface-vehiclecard .cover {
+  width: 120px;
+  height: 88px;
+  flex-shrink: 0;
+}
+.browse-surface.surface-bookshelf .grid {
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)) !important;
+  gap: 10px;
+}
+.browse-surface.surface-bookshelf .card {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 8px;
+  min-height: 160px;
+}
+.browse-surface.surface-bookshelf .cover {
+  width: 100%;
+  height: 120px;
+  border-radius: 4px;
+}
+.browse-surface.surface-stockrow .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-template-columns: 1fr !important;
+}
+.browse-surface.surface-stockrow .card { align-items: center; padding: 10px 14px; }
+.browse-surface.surface-stockrow .cover { width: 48px; height: 48px; }
+.browse-surface.surface-bedblocks .grid {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)) !important;
+}
+.browse-surface.surface-bedblocks .card {
+  flex-direction: column;
+  min-height: 100px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.browse-surface.surface-bedblocks .cover {
+  width: 100%;
+  height: 56px;
+  border-radius: 6px;
+}
+.browse-surface.surface-parcelshelf .grid {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+}
+.browse-surface.surface-parcelshelf .card {
+  flex-direction: column;
+  min-height: 132px;
+}
+.browse-surface.surface-parcelshelf .cover {
+  width: 100%;
+  height: 72px;
+  border-radius: 6px;
+}
+.browse-surface.surface-eventposter .grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+}
+.browse-surface.surface-eventposter .card { flex-direction: column; min-height: 180px; }
+.browse-surface.surface-eventposter .cover { width: 100%; height: 120px; border-radius: 8px; }
+.browse-surface.surface-coursetable .grid {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+}
+.browse-surface.surface-coursetable .card {
+  flex-direction: column;
+  min-height: 88px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.browse-surface.surface-coursetable .cover { display: none; }
+.browse-surface.surface-noticeboard .grid {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+}
+.browse-surface.surface-noticeboard .card { flex-direction: column; min-height: 140px; }
+.browse-surface.surface-noticeboard .cover { width: 100%; height: 64px; border-radius: 6px; }
+.browse-surface.surface-tourcard .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  grid-template-columns: 1fr !important;
+}
+.browse-surface.surface-tourcard .card { align-items: stretch; }
+.browse-surface.surface-tourcard .cover { width: 140px; height: 88px; flex-shrink: 0; }
+.browse-surface.surface-profilegrid .grid {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+}
+.browse-surface.surface-profilegrid .card { flex-direction: column; min-height: 180px; align-items: center; text-align: center; }
+.browse-surface.surface-profilegrid .cover {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  margin: 8px auto 0;
+}
+.browse-surface.surface-mutualpick .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-template-columns: 1fr !important;
+}
+.browse-surface.surface-mutualpick .card { align-items: center; padding: 12px 14px; }
+.browse-surface.surface-mutualpick .cover { width: 56px; height: 56px; border-radius: 8px; }
+.browse-surface.surface-triprow .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-template-columns: 1fr !important;
+}
+.browse-surface.surface-triprow .card { align-items: center; padding: 10px 14px; }
+.browse-surface.surface-triprow .cover { width: 64px; height: 48px; border-radius: 6px; }
+.browse-surface.surface-pipeline .grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px;
+}
+.browse-surface.surface-pipeline .card {
+  flex-direction: column;
+  min-height: 96px;
+  align-items: stretch;
+}
+.browse-surface.surface-pipeline .cover { display: none; }
+.browse-surface.surface-dossier .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-template-columns: 1fr !important;
+}
+.browse-surface.surface-dossier .card { align-items: center; padding: 10px 14px; }
+.browse-surface.surface-dossier .cover { width: 48px; height: 48px; }
+.browse-surface.surface-listing .grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  grid-template-columns: 1fr !important;
+}
+.browse-surface.surface-listing .card { align-items: stretch; }
+.browse-surface.surface-listing .cover { width: 140px; height: 96px; flex-shrink: 0; border-radius: 8px; }
+.surface-splitdesk-list .split-active {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 1px var(--el-color-primary);
+}
+.splitdesk-pane {
+  position: sticky;
+  top: 12px;
+  padding: var(--portal-pad, 16px);
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius, 12px);
+}
+.splitdesk-pane h3 { margin: 10px 0 6px; font-size: 18px; }
+.splitdesk-cover {
+  width: 100% !important;
+  height: 180px !important;
+  border-radius: 10px;
+}
 .episode-box { margin: 12px 0; }
 .episode-box h4 { margin: 0 0 8px; font-size: 14px; }
 .episode-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }

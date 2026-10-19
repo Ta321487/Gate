@@ -11,8 +11,13 @@ def test_apply_cross_guide_tags_menus_and_portal_lead():
         archetypes=["ARCH-FLOW", "ARCH-TRADE"],
     )
     labels = schema.get("labels") or {}
-    assert "交叉壳" in str(labels.get("portalHomeLead") or "")
-    assert labels.get("industrySkinHint")
+    lead = str(labels.get("portalHomeLead") or "")
+    assert "申请审核" in lead and "购物下单" in lead
+    assert "交叉壳" not in lead
+    assert "答辩" not in lead
+    hint = str(labels.get("industrySkinHint") or "")
+    assert hint
+    assert "Dom" not in hint and "通用壳" not in hint
 
     user = {m["key"]: m for m in (schema.get("menus") or {}).get("user") or []}
     assert user.get("my_tickets", {}).get("navSection") == "申请办理"
@@ -44,6 +49,8 @@ def test_readme_bits_only_for_generic_multi():
             "archetypes": ["ARCH-FLOW", "ARCH-RESERVE"],
         }
     )
-    assert "交叉主路径答辩导引" in text
-    assert "DOM-GENERIC" in text
-    assert "浅文案" in text or "浅文案替换" in text
+    assert "业务说明" in text
+    assert "申请办理" in text and "时段预约" in text
+    assert "DOM-GENERIC" not in text
+    assert "答辩" not in text
+    assert "浅文案" not in text

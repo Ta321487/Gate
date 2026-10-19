@@ -129,7 +129,7 @@ import { APP_DELIVERED } from '../appDelivered.js'
 import { roleLabel, schemaLabels, getSchema } from '../utils/domainSchema.js'
 import { portalBrandHomePath } from '../utils/menuRoutes.js'
 import { homePathAfterLogin } from '../utils/staffPosts.js'
-import { isGuestBrowseEnabled, setMustActivateEmail, setMustChangePassword } from '../utils/session.js'
+import { isGuestBrowseEnabled, mustActivateEmail, setMustActivateEmail, setMustChangePassword } from '../utils/session.js'
 
 const props = defineProps({
   /** portal | admin | staff */
@@ -293,6 +293,17 @@ function defaultLoginAs() {
   return 'user'
 }
 
+function activateQuery(username) {
+  const query = { u: username }
+  const redir = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+  if (!redir.startsWith('/activate')) return query
+  try {
+    const code = new URL(redir, 'http://local').searchParams.get('code')
+    if (code) query.code = code
+  } catch { /* 无码则激活页手填 */ }
+  return query
+}
+
 async function loadCaptcha() {
   captchaSpin.value = true
   try {
@@ -360,7 +371,7 @@ async function onLogin() {
     captchaFailHintOn.value = false
     if (res.data?.mustActivateEmail) {
       ElMessage.warning(labels.mustActivateEmailHint || '请先用站内激活码完成账号激活')
-      router.replace({ path: '/activate', query: { u: form.username } })
+      router.replace({ path: '/activate', query: activateQuery(form.username) })
       return
     }
     if (res.data?.mustChangePassword) {
@@ -430,8 +441,9 @@ onMounted(async () => {
     } catch { /* ignore */ }
   }
   // 分端时已登录用户打开对方登录页 → 按角色回跳（须服务端会话仍有效）
+  // 未激活时停在登录页：否则回跳首页会被激活闸弹回，返回登录点了也回不去
   const token = localStorage.getItem('token')
-  if (token) {
+  if (token && !mustActivateEmail()) {
     try {
       const me = await http.get('/api/auth/me')
       const home = homePathAfterLogin(me.data || {})

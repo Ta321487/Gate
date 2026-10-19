@@ -199,6 +199,8 @@ class MsgCrosscutFeatureTests(unittest.TestCase):
             REPO / "skeletons/baseline/frontend/src/views/admin/BannersAdmin.vue"
         ).read_text(encoding="utf-8")
         self.assertIn("/api/banners", banners)
+        self.assertIn("/uploads/", banners)
+        self.assertIn("aria-label=\"图片地址怎么填\"", banners)
         carousel = (
             REPO / "skeletons/baseline/frontend/src/components/PortalCarousel.vue"
         ).read_text(encoding="utf-8")
