@@ -53,13 +53,13 @@
 | reserve | 预约 | 已接线 | 吃 A | **首刀已齐** | SlotBook + slotstrip/roomstate/vehiclecard + 详情选时段 | 软皮短签 **再磨已齐** |
 | content | 内容 | 已接线 | 吃 A | **首刀已齐** | folio/coverwall/ledger/splitdesk + 阅读详情 | 软皮短签 **再磨已齐** |
 | apply | 报名/申请 | 已接线 | 吃 A | **首刀已齐** | eventposter/coursetable/noticeboard/tourcard + 详情报名 | 软皮短签 **再磨已齐** |
-| follow | 跟进 | 已接线 | 吃 A | **首刀已齐** | pipeline/dossier/listing（+LISTING price 价签） | 软皮短签再磨 |
-| interact | 互动 | 已接线 | 吃 A | **首刀已齐** | profilegrid/mutualpick/triprow + 详情意向；EXAM/SURVEY/VOTE 专用页不动 | 软皮短签再磨 |
+| follow | 跟进 | 已接线 | 吃 A | **首刀已齐** | pipeline/dossier/listing（+LISTING price 价签） | 软皮短签 **再磨已齐** |
+| interact | 互动 | 已接线 | 吃 A | **首刀已齐** | profilegrid/mutualpick/triprow + 详情意向；EXAM/SURVEY/VOTE 专用页不动 | 软皮短签 **再磨已齐** |
 | ticket | 报修/工单 | 已接线 | 吃 A | **首刀已齐** | MyTickets ticketfeed/faultboard | 软皮短签再磨 |
 | approve | 审批/填报 | 已接线 | 吃 A | **首刀已齐** | MyTickets/TicketsAdmin typelist/inboxsteps | 软皮短签再磨 |
 | fallback | 兜底 | 无选型键 | 吃 A | **吃公共壳** | 导引 + 中性壳 | 随壳即可 |
 
-建议下一轮：跟进/互动等组 **软皮短签再磨**（一轮一组）。
+建议下一轮：报修/审批组 **短签轻磨或标 N/A**（首刀已有 fault-cat / matter-type）。
 
 ---
 
@@ -123,6 +123,7 @@
 - `mutualpick`：双选志愿行 + 名额主信号（可叠配额条）
 - `triprow`：行程行——时刻·路线·余座；已满降透明度
 - 有 `interactSurfaceStyle` 时列表进 `/archive/item/:id`；详情「提交意向」
+- **再磨（2026-10-22）**：列表短签按档——`profilegrid` 标签·专业、`mutualpick` 院系·栏目、`triprow` 车型；护栏 `test_interact_look_polish.py`
 - 覆盖域：`DOM-DATING` / `MUTUAL-*` / `CARPOOL` / `TIMEBANK`
 
 ### 2.8 跟进组 B（三档异脸；看板/档案/价签）
@@ -133,6 +134,7 @@
 - 数据层：`DOM-LISTING.sql` 加 `price DECIMAL(12,2)`、`price_unit VARCHAR(16)` 列 + 种子（整租/合租按「元/月」、二手出售按「元/套」）；三份 `ArchiveStore` 用 `hasItemColumn("price")`/`hasItemColumn("price_unit")` 守卫映射到 `priceYuan`/`priceUnit`，写入走 `patchOptNum`/`patchOptStr`
 - 口径：单价单位是**行级**语义，主信号按 `priceUnit` 拼后缀（缺失只报金额），禁止前端按数值大小猜「万/月」；管理端下拉含元/月·套·㎡·间·天·辆·个·万元（选题不唯一）
 - 有 `followSurfaceStyle` 时列表进 `/archive/item/:id`；详情主按钮 listing「预约带看」、其它「记录跟进」，附「跟进说明」
+- **再磨（2026-10-22）**：列表短签按档——`pipeline`/`dossier` 责任人·栏目、`listing` 户型·地段；护栏 `test_follow_look_polish.py`（首刀仍见 `test_follow_look_thicken.py`）
 - 覆盖域：`DOM-CRM` / `EVENT` / `ATTEND` / `FUND` / `RECRUIT` / `GRADE` / `INTERN` / `LISTING`
 - 护栏：`backend/tests/test_follow_look_thicken.py`
 

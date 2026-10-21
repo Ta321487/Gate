@@ -1161,6 +1161,10 @@
   font-weight: 600;
   color: var(--portal-muted, #64748b);
 }
+.browse-surface.surface-profilegrid .short-tags {
+  margin-top: 8px;
+  justify-content: center;
+}
 .browse-surface.surface-profilegrid .detail-line,
 .browse-surface.surface-profilegrid .row .el-tag {
   display: none;
@@ -1215,6 +1219,9 @@
   margin-top: 8px;
   max-width: 220px;
 }
+.browse-surface.surface-mutualpick .short-tags {
+  margin-top: 6px;
+}
 .browse-surface.surface-mutualpick .detail-line,
 .browse-surface.surface-mutualpick .story-lead {
   display: none;
@@ -1268,6 +1275,9 @@
 }
 .browse-surface.surface-triprow .card.trip-full .main-signal {
   color: var(--portal-muted, #94a3b8);
+}
+.browse-surface.surface-triprow .short-tags {
+  margin-top: 6px;
 }
 .browse-surface.surface-triprow .detail-line { display: none; }
 .browse-surface.surface-triprow .row .el-tag { display: none; }
@@ -1334,6 +1344,9 @@
 .browse-surface.surface-pipeline .card[data-follow-tone='muted'] .main-signal {
   color: var(--portal-muted, #64748b);
 }
+.browse-surface.surface-pipeline .short-tags {
+  margin-top: 8px;
+}
 .browse-surface.surface-pipeline .detail-line { display: none; }
 .browse-surface.surface-pipeline .row .el-tag { display: none; }
 
@@ -1389,6 +1402,9 @@
   font-weight: 650;
   color: var(--portal-muted, #5b6b76);
 }
+.browse-surface.surface-dossier .short-tags {
+  margin-top: 6px;
+}
 .browse-surface.surface-dossier .detail-line { display: none; }
 .browse-surface.surface-dossier .row .el-tag { display: none; }
 
@@ -1439,6 +1455,9 @@
   letter-spacing: -0.01em;
   color: var(--portal-accent, #2f6a4a);
   font-variant-numeric: tabular-nums;
+}
+.browse-surface.surface-listing .short-tags {
+  margin-top: 8px;
 }
 .browse-surface.surface-listing .detail-line { display: none; }
 .browse-surface.surface-listing .row .el-tag { display: none; }

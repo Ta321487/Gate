@@ -534,6 +534,59 @@ function cardShortTags(row) {
     }
     return out.slice(0, budget)
   }
+  /* 跟进：看板/档案看责任人·栏目；挂牌看户型·地段（主信号已是阶段/价签） */
+  if (followSurface.value === 'pipeline' || followSurface.value === 'dossier') {
+    const owner = String(row.ownerName || row.assignee || row.author || '').trim()
+    if (owner && owner !== '—') push('owner', owner)
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    for (const f of cardPreviewFields.value) {
+      if (out.length >= budget) break
+      push(f.key, formatFieldValue(row, f))
+    }
+    return out.slice(0, budget)
+  }
+  if (followSurface.value === 'listing') {
+    const layout = String(row.layout || row.roomType || row.houseType || row.isbn || '').trim()
+    if (layout) push('layout', layout)
+    const area = String(row.area || row.district || row.region || row.campus || '').trim()
+    if (area) push('area', area)
+    const cat = categoryTextOf(row)
+    if (cat && out.length < budget) push('cat', cat)
+    return out.slice(0, budget)
+  }
+  /* 互动：资料看标签·专业；双选看院系·栏目；行程看车型（主信号已是城市/名额/时刻） */
+  if (interactSurface.value === 'profilegrid') {
+    const tag = Array.isArray(row.tagNames) && row.tagNames.length ? String(row.tagNames[0]).trim() : ''
+    if (tag) push('tag', tag)
+    const major = String(row.major || row.job || row.title || '').trim()
+    if (major) push('major', major)
+    const cat = categoryTextOf(row)
+    if (cat && out.length < budget) push('cat', cat)
+    return out.slice(0, budget)
+  }
+  if (interactSurface.value === 'mutualpick') {
+    const dept = String(row.deptName || row.college || row.major || '').trim()
+    if (dept) push('dept', dept)
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    for (const f of cardPreviewFields.value) {
+      if (out.length >= budget) break
+      push(f.key, formatFieldValue(row, f))
+    }
+    return out.slice(0, budget)
+  }
+  if (interactSurface.value === 'triprow') {
+    const vehicle = String(row.vehicleType || row.carType || row.isbn || '').trim()
+    if (vehicle) push('vehicle', vehicle)
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    const note = String(row.note || row.remark || '').trim()
+    if (note && out.length < budget) {
+      push('note', note.length > 16 ? note.slice(0, 16) : note)
+    }
+    return out.slice(0, budget)
+  }
   if (cardVoice.value !== 'catalog') return []
   if (productSpecOn.value) {
     const spec = productSpecText(row)
