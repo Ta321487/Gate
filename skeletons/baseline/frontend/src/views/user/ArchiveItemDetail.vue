@@ -107,6 +107,7 @@ const slotOn = computed(() => hasCap('slot_reserve') && !orderOn.value)
 const ticketOn = computed(() => hasCap('ticket_flow') && !orderOn.value && !slotOn.value)
 const applySurfaceOn = computed(() => !!String(APP_DELIVERED?.applySurfaceStyle || '').trim())
 const interactSurfaceOn = computed(() => !!String(APP_DELIVERED?.interactSurfaceStyle || '').trim())
+const followSurfaceOn = computed(() => !!String(APP_DELIVERED?.followSurfaceStyle || '').trim())
 const contentOn = computed(() => {
   if (orderOn.value || slotOn.value || ticketOn.value) return false
   const s = String(APP_DELIVERED?.contentSurfaceStyle || '').trim()
@@ -122,6 +123,12 @@ const ticketApplyLabel = computed(() => {
   }
   if (interactSurfaceOn.value) {
     return labels.applyLabel || labels.ticketApplyLabel || '提交意向'
+  }
+  if (followSurfaceOn.value) {
+    if (String(APP_DELIVERED?.followSurfaceStyle || '') === 'listing') {
+      return labels.applyLabel || labels.ticketApplyLabel || '预约带看'
+    }
+    return labels.applyLabel || labels.ticketApplyLabel || '记录跟进'
   }
   return labels.ticketApplyLabel || labels.applyLabel || '申请办理'
 })
@@ -144,6 +151,7 @@ const noticeTab = computed(() => {
   if (contentOn.value) return '阅读说明'
   if (applySurfaceOn.value) return '报名说明'
   if (interactSurfaceOn.value) return '意向说明'
+  if (followSurfaceOn.value) return '跟进说明'
   return '办理说明'
 })
 const noticeText = computed(
@@ -159,9 +167,11 @@ const noticeText = computed(
             ? '提交后可在「我的报名」查看进度；名额满时可能无法再报。'
             : interactSurfaceOn.value
               ? '提交后可在「我的记录」查看意向进度。'
-              : ticketOn.value
-                ? '提交申请后可在「我的单据」查看进度与续办说明。'
-                : '请按页面说明了解办理要求。'),
+              : followSurfaceOn.value
+                ? '提交后可在「我的跟进」查看进度；下次跟进到期会提醒。'
+                : ticketOn.value
+                  ? '提交申请后可在「我的单据」查看进度与续办说明。'
+                  : '请按页面说明了解办理要求。'),
 )
 
 const authorLooksLikePrice = computed(() => {
