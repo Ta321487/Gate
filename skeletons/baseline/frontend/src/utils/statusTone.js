@@ -31,6 +31,15 @@ const ORDER_TONE = {
   cancelled: 'muted',
 }
 
+/** 预约/占坑（slot）状态 → tone；域差异由 states 文案承载，色点口径统一 */
+const RESERVE_TONE = {
+  pending: 'pending',
+  confirmed: 'progress',
+  waitlisted: 'warn',
+  completed: 'ok',
+  cancelled: 'muted',
+}
+
 /** Element Plus tag type 与 tone 对齐的薄映射（已有 el-tag 处可复用） */
 const TONE_TO_TAG = {
   pending: 'warning',
@@ -47,6 +56,10 @@ export function ticketTone(status) {
 
 export function orderTone(status) {
   return ORDER_TONE[status] || 'muted'
+}
+
+export function reserveTone(status) {
+  return RESERVE_TONE[status] || 'muted'
 }
 
 export function toneToTagType(tone) {

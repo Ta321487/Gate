@@ -48,7 +48,8 @@
             />
             <el-button size="small" :loading="row._saving" @click="saveMeta(row)">保存分组</el-button>
           </div>
-          <div class="row">
+          <div class="card-foot">
+          <div class="card-acts">
             <el-button
               v-if="canAddCart"
               size="small"
@@ -59,6 +60,7 @@
               加入{{ cartLabel }}
             </el-button>
             <el-button size="small" @click="toggle(row)">{{ cancelLabel }}</el-button>
+          </div>
           </div>
         </div>
       </article>
@@ -245,7 +247,6 @@ onMounted(load)
 .meta h3 { margin: 0 0 4px; font-size: 15px; }
 .muted { margin: 0; color: var(--portal-muted, #94a3b8); font-size: 12px; }
 .shop { margin: 2px 0 0; color: color-mix(in srgb, var(--portal-accent, #0b6e75) 65%, var(--portal-muted, #94a3b8)); }
-.row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .empty { margin-top: 24px; color: var(--portal-muted, #94a3b8); text-align: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

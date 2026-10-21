@@ -207,3 +207,43 @@ html[data-card-voice='board'] .mall-flash-badge {
   font-size: 12px;
   padding: 3px 10px;
 }
+
+/* —— 列表卡底：状态条（card-meta）与操作条（card-acts）拆开 ——
+ * 标杆见 views/user/ArchiveBrowse；禁止状态标签与按钮挤在同一 flex-wrap 行。
+ */
+.card-foot {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+}
+.card-meta:empty {
+  display: none;
+}
+.card-meta .el-tag {
+  height: 24px;
+  margin: 0;
+  line-height: 22px;
+  border-radius: 6px;
+}
+.card-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+.card-acts .el-button {
+  margin: 0 !important;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+}

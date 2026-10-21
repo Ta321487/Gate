@@ -131,7 +131,8 @@
           <template v-if="marketplace && lineShop(ln)"> · {{ lineShop(ln) }}</template>
         </li>
       </ul>
-      <div class="acts">
+      <div class="card-foot">
+        <div class="card-acts">
         <el-button v-if="canPay(row)" size="small" type="primary" @click="openPay(row)">去付款</el-button>
         <el-button v-if="canShowTrace(row)" size="small" @click="openTrace(row)">{{ logisticsTraceLabel }}</el-button>
         <el-button
@@ -202,6 +203,7 @@
           size="small"
           @click="cancel(row)"
         >取消</el-button>
+        </div>
       </div>
     </article>
     <EmptyHint
@@ -1076,7 +1078,6 @@ onMounted(() => {
 .group-buy { margin: 6px 0 10px; max-width: 280px; }
 .ship { margin: 0 0 8px; color: var(--portal-muted, #475569); font-size: 12px; line-height: 1.5; }
 .lines { margin: 0; padding-left: 18px; color: var(--portal-ink, #334155); font-size: 13px; }
-.acts { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
 .empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .pay-tip { margin: 0 0 12px; color: var(--portal-muted, #64748b); font-size: 13px; }

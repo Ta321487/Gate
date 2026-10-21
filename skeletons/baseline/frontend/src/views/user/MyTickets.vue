@@ -117,7 +117,8 @@
             <RichTextView v-if="richRemark" :html="row.remark" compact />
             <template v-else>{{ row.remark }}</template>
           </div>
-          <div class="row">
+          <div class="card-foot">
+          <div class="card-meta">
             <StatusChip :tone="ticketTone(row.status)" compact />
             <el-tag size="small" :type="tagType(row.status)" effect="plain">{{ statusText(row) }}</el-tag>
             <ImmSteps
@@ -130,6 +131,20 @@
                 候补第 {{ row.waitlistRank || row.waitlistPos || row.queueNo }} 位
               </span>
             </template>
+            <el-tag
+              v-if="teamExitNeedOwnerOn && Number(row.exitRequest) > 0 && row.status === 'approved'"
+              size="small"
+              type="warning"
+              effect="plain"
+            >{{ teamExitPendingLabel }}</el-tag>
+            <el-tag
+              v-if="carpoolSeatLockOn && Number(row.seatLocked) > 0 && row.status === 'approved'"
+              size="small"
+              type="success"
+              effect="plain"
+            >{{ carpoolSeatLockedLabel }}</el-tag>
+          </div>
+          <div class="card-acts">
             <el-button type="info" size="small" plain @click="openProgress(row)">进度</el-button>
         <el-button
           v-if="row.status === 'returned'"
@@ -155,18 +170,6 @@
               :title="teamExitRequestHint"
               @click="requestTeamExit(row)"
             >{{ teamExitRequestLabel }}</el-button>
-            <el-tag
-              v-if="teamExitNeedOwnerOn && Number(row.exitRequest) > 0 && row.status === 'approved'"
-              size="small"
-              type="warning"
-              effect="plain"
-            >{{ teamExitPendingLabel }}</el-tag>
-            <el-tag
-              v-if="carpoolSeatLockOn && Number(row.seatLocked) > 0 && row.status === 'approved'"
-              size="small"
-              type="success"
-              effect="plain"
-            >{{ carpoolSeatLockedLabel }}</el-tag>
             <el-button
               v-if="canWithdraw(row)"
               type="danger"
@@ -314,6 +317,7 @@
               plain
               @click="openActivitySurvey(row)"
             >{{ activitySurveyLinkLabel }}</el-button>
+          </div>
           </div>
           <p v-if="row.creditWritebackAck && creditWritebackHint" class="sub">{{ creditWritebackHint }}</p>
           <p v-if="postGalleryUrls(row).length" class="sub">相册 {{ postGalleryUrls(row).length }} 张</p>
@@ -4552,7 +4556,6 @@ onMounted(async () => {
 .sub.pickup-tip { margin-top: 6px; color: #b45309; }
 .sub a { color: var(--portal-accent, #0b6e75); }
 .tip { margin: 6px 0 0; color: var(--portal-muted, #475569); font-size: 13px; }
-.row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .gallery-edit { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .gallery-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .gallery-item {

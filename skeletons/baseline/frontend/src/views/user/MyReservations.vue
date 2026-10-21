@@ -26,7 +26,10 @@
     <article v-for="row in list" :key="row.id" class="card">
       <div class="hd">
         <strong>{{ row.itemTitle || row.title || (`${resvNoun} #` + row.id) }}</strong>
-        <el-tag size="small" effect="plain">{{ states[row.status] || row.status }}</el-tag>
+        <span class="hd-status">
+          <StatusChip :tone="reserveTone(row.status)" compact />
+          <el-tag size="small" effect="plain">{{ states[row.status] || row.status }}</el-tag>
+        </span>
       </div>
       <p class="sub">{{ row.startAt }} ~ {{ row.endAt }}</p>
       <p v-if="row.plateNo" class="sub">车牌：{{ row.plateNo }}</p>
@@ -113,7 +116,8 @@
         <template v-if="row.lateFlag"> · {{ lateFlagLabel }}</template>
       </p>
       <p v-if="allowRating && row.rating" class="sub">评价：{{ row.rating }} 星<template v-if="row.ratingRemark"> · {{ row.ratingRemark }}</template></p>
-      <div class="acts">
+      <div class="card-foot">
+        <div class="card-acts">
         <el-button
           v-if="canCheckIn(row)"
           size="small"
@@ -148,6 +152,7 @@
           type="warning"
           @click="openRate(row)"
         >评价</el-button>
+        </div>
       </div>
     </article>
     <div v-if="!list.length" class="empty">暂无{{ resvNoun }}</div>
@@ -234,7 +239,9 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
 import CodeQrBlock from '../../components/CodeQrBlock.vue'
+import StatusChip from '../../components/StatusChip.vue'
 import { getSchema, menuLabel, reservationCopy } from '../../utils/domainSchema.js'
+import { reserveTone } from '../../utils/statusTone.js'
 
 const resv = reservationCopy()
 const resvNoun = computed(() => resv.label || '预约')
@@ -573,8 +580,8 @@ onMounted(load)
   margin-bottom: var(--portal-gap, 12px);
 }
 .hd { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.hd-status { display: inline-flex; align-items: center; gap: 6px; }
 .sub { margin: 4px 0 0; color: var(--portal-muted, #64748b); font-size: 12px; }
-.acts { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
 .empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .dlg-tip { margin: 0 0 12px; color: var(--portal-muted, #64748b); font-size: 13px; }

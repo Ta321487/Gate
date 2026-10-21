@@ -29,10 +29,15 @@
           </p>
           <el-tag v-if="row.blindMasked" size="small" type="info" effect="plain">{{ mutualBlindPhaseLabel }}</el-tag>
           <div v-if="row.remark && !row.blindMasked" class="tip">说明：{{ row.remark }}</div>
-          <div class="row">
+          <div class="card-foot">
+          <div class="card-meta">
+            <StatusChip :tone="ticketTone(row.status)" compact />
             <el-tag size="small" type="warning" effect="plain">{{ statusText(row.status) }}</el-tag>
+          </div>
+          <div class="card-acts">
             <el-button type="success" size="small" @click="respond(row, true)">确认</el-button>
             <el-button type="danger" size="small" plain @click="respond(row, false)">婉拒</el-button>
+          </div>
           </div>
         </div>
       </article>
@@ -48,9 +53,11 @@
           <div class="meta">
             <h3>{{ row.title || ('编号 ' + row.id) }}</h3>
             <p class="sub">编号 {{ row.id }} · {{ row.displayUsername || row.username }}</p>
-            <div class="row">
+            <div class="card-foot">
+            <div class="card-acts">
               <el-button type="success" size="small" @click="exitRespond(row, true)">{{ teamExitApproveLabel }}</el-button>
               <el-button type="danger" size="small" plain @click="exitRespond(row, false)">{{ teamExitRejectLabel }}</el-button>
+            </div>
             </div>
           </div>
         </article>
@@ -75,7 +82,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '../../api/http'
+import StatusChip from '../../components/StatusChip.vue'
 import { getSchema, ticketStatusLabel } from '../../utils/domainSchema'
+import { ticketTone } from '../../utils/statusTone.js'
 
 const schema = getSchema()
 const ticket = schema.entities?.ticket || {}
@@ -192,7 +201,6 @@ onMounted(load)
 .meta h3 { margin: 0 0 0.25rem; font-size: 1.05rem; }
 .sub { margin: 0; color: var(--portal-muted, #64748b); font-size: 0.9rem; }
 .tip { margin: 0.4rem 0; color: var(--portal-ink, #0f172a); font-size: 0.92rem; }
-.row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.5rem; }
 .pager { margin-top: 1rem; display: flex; justify-content: center; }
 .tools { display: flex; gap: 0.5rem; }
 .muted { color: var(--portal-muted, #64748b); font-size: 0.9rem; margin: 0.35rem 0 0; }

@@ -412,6 +412,28 @@ class PortalShellNavTests(unittest.TestCase):
             "surface-shelfgrid .card-acts",
             browse.replace("\n", " "),
         )
+        # 卡底口径铺开到五个用户页：状态条（card-meta）与操作条（card-acts）拆开，
+        # 禁止各自再造一套 .row / .acts 混装状态标签与按钮
+        self.assertIn(".card-foot", voice)
+        self.assertIn(".card-meta", voice)
+        self.assertIn(".card-acts", voice)
+        for name in (
+            "MyOrders.vue",
+            "MyReservations.vue",
+            "MyTickets.vue",
+            "PeerTickets.vue",
+            "MyFavorites.vue",
+        ):
+            page = (_FRONT / "views" / "user" / name).read_text(encoding="utf-8")
+            self.assertIn('class="card-foot"', page, name)
+            self.assertIn('class="card-acts"', page, name)
+            self.assertNotIn('class="row"', page, name)
+            self.assertNotIn('class="acts"', page, name)
+        for name in ("MyTickets.vue", "PeerTickets.vue"):
+            page = (_FRONT / "views" / "user" / name).read_text(encoding="utf-8")
+            self.assertIn('class="card-meta"', page, name)
+        tone = (_FRONT / "utils" / "statusTone.js").read_text(encoding="utf-8")
+        self.assertIn("reserveTone", tone)
         chip = (_FRONT / "components" / "StatusChip.vue").read_text(encoding="utf-8")
         self.assertIn("var(--portal-accent", chip)
         self.assertNotIn("#0284c7", chip)

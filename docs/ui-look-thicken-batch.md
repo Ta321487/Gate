@@ -2,7 +2,7 @@
 
 > **本文只负责**：工厂出包「一眼精美 / 不像模板后台」的**观感加厚**进度、全域台账、验收口径与真源落点。
 > **不负责**：能力四件套（各组 `*_thicken` / 地图待补）；选型键目录与 ASCII（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md) §2）；沉浸边角（[`immersion-corners.md`](./immersion-corners.md)）。
-> **状态**：**进行中** · 公共壳 + 交易/借用/预约/内容/报名/互动 **首刀已齐**；其余域组 **未开**。
+> **状态**：**进行中** · 公共壳 + 交易/借用/预约/内容/报名/互动 **首刀已齐**；用户列表卡底口径已跨页统一；其余域组 **未开**。
 > **硬闸**：键接满、测绿了，观感仍像模板站 —— **仍算未完成**（同选型册 §0.0）。
 > **索引**：[README.md](./README.md) · 选型册 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) · 搁置 [`parked-work.md`](./parked-work.md) · 领域 [`domains.md`](./domains.md)。
 
@@ -119,6 +119,15 @@
 - 有 `interactSurfaceStyle` 时列表进 `/archive/item/:id`；详情「提交意向」
 - 覆盖域：`DOM-DATING` / `MUTUAL-*` / `CARPOOL` / `TIMEBANK`
 
+### 2.8 跨页卡底口径（用户列表统一）
+
+- 标杆口径：`ArchiveBrowse` 卡底 `card-foot`（纵向列）> `card-meta`（状态条）+ `card-acts`（操作条）
+- 铺开五页：`MyOrders` / `MyReservations` / `MyTickets` / `PeerTickets` / `MyFavorites`
+- 状态标签与操作按钮禁止挤在同一 `flex-wrap` 行；五页删本地 `.row` / `.acts`
+- 通用规则落全局 `styles/cardVoice.css`（`.card-foot` / `.card-meta` / `.card-acts`），各页不再自造
+- 状态色点单源 `utils/statusTone.js`：`reserveTone` 补入；`MyReservations` / `PeerTickets` 接上 `StatusChip`
+- 护栏：`backend/tests/test_portal_shell_nav.py`（钉 `card-foot/card-acts`、禁 `class="row"/"acts"`）
+
 ---
 
 ## 3. 全域台账（68）
@@ -215,3 +224,4 @@
 | 日期 | 说明 |
 |------|------|
 | 2026-10-21 | 立册：公共壳 / 交易 / 借用首刀入档；68 域全表；接线与观感分列 |
+| 2026-10-21 | 跨页卡底口径：用户列表五页按 ArchiveBrowse `card-foot/card-meta/card-acts` 统一；通用规则入 `cardVoice.css`；护栏入 `test_portal_shell_nav.py` |
