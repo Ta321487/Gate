@@ -85,7 +85,14 @@
         <div class="mark">{{ (row.title || '?').slice(0, 1) }}</div>
         <div class="meta">
           <p v-if="repairSurface === 'faultboard' && row.typeName" class="fault-cat">{{ row.typeName }}</p>
-          <p v-if="approveSurface === 'typelist' && row.typeName" class="matter-type">{{ row.typeName }}</p>
+          <p
+            v-else-if="repairSurface === 'ticketfeed' && (row.location || row.typeName)"
+            class="ticket-chip"
+          >{{ row.location || row.typeName }}</p>
+          <p
+            v-if="(approveSurface === 'typelist' || approveSurface === 'inboxsteps') && row.typeName"
+            class="matter-type"
+          >{{ row.typeName }}</p>
           <h3>{{ row.title || ('编号 ' + row.id) }}</h3>
           <p class="sub">
             编号 {{ row.id }} · {{ appliedAtLabel }} {{ row.applyAt }}
@@ -108,8 +115,10 @@
                 :class="{ 'cd-urgent': isUrgentCountdown(mutualDeadlineSeconds(row), 3600) }"
               >（{{ mutualWishLockOn ? mutualWishLockText(row) : mutualDeadlineText(row) }}）</span>
             </template>
-            <template v-if="row.typeName"> · {{ row.typeName }}</template>
-            <template v-if="row.location"> · {{ row.location }}</template>
+            <template
+              v-if="row.typeName && repairSurface !== 'faultboard' && approveSurface !== 'typelist' && approveSurface !== 'inboxsteps' && !(repairSurface === 'ticketfeed' && !row.location)"
+            > · {{ row.typeName }}</template>
+            <template v-if="row.location && repairSurface !== 'ticketfeed'"> · {{ row.location }}</template>
             <template v-if="showPriorityCols && row.priority"> · {{ row.priority }}</template>
           </p>
           <p v-if="leaveSplitHint && leaveSplitText(row)" class="sub">{{ leaveSplitHint }}：{{ leaveSplitText(row) }}</p>
@@ -4645,6 +4654,13 @@ onMounted(async () => {
 .list.surface-ticketfeed .mark {
   display: none;
 }
+.list.surface-ticketfeed .ticket-chip {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--portal-accent, #0b6e75);
+}
 .list.surface-ticketfeed .meta h3 {
   font-size: 15px;
   font-weight: 650;
@@ -4773,6 +4789,13 @@ onMounted(async () => {
 }
 .list.surface-inboxsteps .mark {
   display: none;
+}
+.list.surface-inboxsteps .matter-type {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--portal-muted, #5b6b76);
+  letter-spacing: 0.02em;
 }
 .list.surface-inboxsteps .meta h3 {
   font-size: 15px;

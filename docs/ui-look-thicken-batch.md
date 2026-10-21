@@ -55,11 +55,11 @@
 | apply | 报名/申请 | 已接线 | 吃 A | **首刀已齐** | eventposter/coursetable/noticeboard/tourcard + 详情报名 | 软皮短签 **再磨已齐** |
 | follow | 跟进 | 已接线 | 吃 A | **首刀已齐** | pipeline/dossier/listing（+LISTING price 价签） | 软皮短签 **再磨已齐** |
 | interact | 互动 | 已接线 | 吃 A | **首刀已齐** | profilegrid/mutualpick/triprow + 详情意向；EXAM/SURVEY/VOTE 专用页不动 | 软皮短签 **再磨已齐** |
-| ticket | 报修/工单 | 已接线 | 吃 A | **首刀已齐** | MyTickets ticketfeed/faultboard | 软皮短签再磨 |
-| approve | 审批/填报 | 已接线 | 吃 A | **首刀已齐** | MyTickets/TicketsAdmin typelist/inboxsteps | 软皮短签再磨 |
+| ticket | 报修/工单 | 已接线 | 吃 A | **首刀已齐** | MyTickets ticketfeed/faultboard | 短签 **轻磨已齐** |
+| approve | 审批/填报 | 已接线 | 吃 A | **首刀已齐** | MyTickets/TicketsAdmin typelist/inboxsteps | 短签 **轻磨已齐** |
 | fallback | 兜底 | 无选型键 | 吃 A | **吃公共壳** | 导引 + 中性壳 | 随壳即可 |
 
-建议下一轮：报修/审批组 **短签轻磨或标 N/A**（首刀已有 fault-cat / matter-type）。
+软皮短签再磨九组已收口（报修/审批为轻磨）。下一刀视抽检回归，勿先改 HANDOFF 除非下令。
 
 ---
 
@@ -142,6 +142,7 @@
 
 - `ticketfeed`：我的工单进度流——左边轨时间轴节点 + 卡左边色条，阶段色走 `ticketTone` → `data-ticket-tone` / `--repair-tone`（禁死色表）
 - `faultboard`：分类故障看板——顶栏「待派 / 处理中 / 超时」计数；三列工单砖；分类短签 `fault-cat`；顶边 tone
+- **轻磨（2026-10-22）**：`ticketfeed` 补地点/类型芯片 `ticket-chip`；副行去重；护栏 `test_repair_look_polish.py`
 - 覆盖域：`DOM-DORM` / `DOM-PROPERTY` / `DOM-IT`（非报修域无 surface）
 - 护栏：`backend/tests/test_repair_look_thicken.py`
 
@@ -149,6 +150,7 @@
 
 - `typelist`：事项类型清单行卡——左色条 + `matter-type` 短签；管理台表头跟 portal 浅底
 - `inboxsteps`：待审步骤脸——`--approve-tone` 左边条（禁死色 ●○○）；管理台顶栏「待我审 / 待初审 / 待复审 / 待终审」
+- **轻磨（2026-10-22）**：`inboxsteps` 同样挂 `matter-type`；副行类型去重；护栏 `test_approve_look_polish.py`
 - 覆盖域：23 个审批域（见 `APPROVE_SURFACE_DOMAINS`）；非审批域无 surface
 - 护栏：`backend/tests/test_approve_look_thicken.py`
 
