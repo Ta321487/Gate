@@ -48,7 +48,7 @@
 | 组 id | 组名 | 选型接线 | 公共壳 A | 组观感 B | 主表面 | 下一刀 |
 |-------|------|----------|----------|----------|--------|--------|
 | （全厂） | 公共壳 | — | **首刀已齐** | — | PortalLayout / AuthShell / AdminLayout / main.js | 抽检回归 |
-| borrow | 借用/占用 | 已接线 | 吃 A | **首刀已齐** | ArchiveBrowse bookshelf/stockrow/bedblocks/parcelshelf | 详情借阅文案再磨 |
+| borrow | 借用/占用 | 已接线 | 吃 A | **首刀已齐** | ArchiveBrowse bookshelf/stockrow/bedblocks/parcelshelf | 详情借阅文案 **再磨已齐** |
 | trade | 交易 | 已接线 | 吃 A | **首刀已齐** | PortalHome mall + shelfgrid + ArchiveItemDetail | menuboard/showtime **再磨已齐**；软皮短签继续 |
 | reserve | 预约 | 已接线 | 吃 A | **首刀已齐** | SlotBook + slotstrip/roomstate/vehiclecard + 详情选时段 | 软皮短签再磨 |
 | content | 内容 | 已接线 | 吃 A | **首刀已齐** | folio/coverwall/ledger/splitdesk + 阅读详情 | 软皮短签再磨 |
@@ -59,7 +59,7 @@
 | approve | 审批/填报 | 已接线 | 吃 A | **首刀已齐** | MyTickets/TicketsAdmin typelist/inboxsteps | 软皮短签再磨 |
 | fallback | 兜底 | 无选型键 | 吃 A | **吃公共壳** | 导引 + 中性壳 | 随壳即可 |
 
-建议下一轮：借用 **详情借阅文案再磨**；其余组软皮短签继续分批。
+建议下一轮：预约/内容/报名等组 **软皮短签再磨**（一轮一组）。
 
 ---
 
@@ -84,7 +84,8 @@
 ### 2.3 借用组 B
 
 - `bookshelf` 脊列 / `stockrow` 台账行 / `bedblocks` 空占色块 / `parcelshelf` 驿站格
-- 有 `borrowSurfaceStyle` 时列表进独立详情；单据域详情「申请办理」→ `?openApply=1`
+- 有 `borrowSurfaceStyle` 时列表进独立详情；单据域详情回列表 `?openApply=1`
+- **再磨（2026-10-22）**：详情主按钮按档换「立即借阅 / 申请借用 / 申请床位 / 申请取件」；须知「借阅说明」等跟人话；护栏 `test_borrow_look_polish.py`
 - 覆盖域：`DOM-LIBRARY` / `EQUIP` / `ASSET` / `PARCEL` / `BED`（`PROCURE` 默认可走 stockrow 隐喻，组属审批）
 
 ### 2.4 预约组 B（三档异脸，禁止套借用/货架模板）

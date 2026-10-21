@@ -108,6 +108,8 @@ const ticketOn = computed(() => hasCap('ticket_flow') && !orderOn.value && !slot
 const applySurfaceOn = computed(() => !!String(APP_DELIVERED?.applySurfaceStyle || '').trim())
 const interactSurfaceOn = computed(() => !!String(APP_DELIVERED?.interactSurfaceStyle || '').trim())
 const followSurfaceOn = computed(() => !!String(APP_DELIVERED?.followSurfaceStyle || '').trim())
+const borrowSurfaceOn = computed(() => !!String(APP_DELIVERED?.borrowSurfaceStyle || '').trim())
+const borrowSurface = computed(() => String(APP_DELIVERED?.borrowSurfaceStyle || '').trim())
 const contentOn = computed(() => {
   if (orderOn.value || slotOn.value || ticketOn.value) return false
   const s = String(APP_DELIVERED?.contentSurfaceStyle || '').trim()
@@ -118,6 +120,18 @@ const reviewOn = computed(() => hasCap('order_review'))
 const priceOn = computed(() => orderOn.value || authorLooksLikePrice.value)
 const introTab = computed(() => (contentOn.value ? '正文' : '详细介绍'))
 const ticketApplyLabel = computed(() => {
+  if (borrowSurfaceOn.value) {
+    if (borrowSurface.value === 'bookshelf') {
+      return labels.applyLabel || labels.ticketApplyLabel || '立即借阅'
+    }
+    if (borrowSurface.value === 'bedblocks') {
+      return labels.applyLabel || labels.ticketApplyLabel || '申请床位'
+    }
+    if (borrowSurface.value === 'parcelshelf') {
+      return labels.applyLabel || labels.ticketApplyLabel || '申请取件'
+    }
+    return labels.applyLabel || labels.ticketApplyLabel || '申请借用'
+  }
   if (followSurfaceOn.value) {
     if (String(APP_DELIVERED?.followSurfaceStyle || '') === 'listing') {
       return labels.applyLabel || '预约带看'
@@ -149,6 +163,12 @@ const noticeTab = computed(() => {
   if (orderOn.value) return '购买须知'
   if (slotOn.value) return '预约说明'
   if (contentOn.value) return '阅读说明'
+  if (borrowSurfaceOn.value) {
+    if (borrowSurface.value === 'bookshelf') return '借阅说明'
+    if (borrowSurface.value === 'parcelshelf') return '取件说明'
+    if (borrowSurface.value === 'bedblocks') return '床位说明'
+    return '借用说明'
+  }
   if (followSurfaceOn.value) return '跟进说明'
   if (applySurfaceOn.value) return '报名说明'
   if (interactSurfaceOn.value) return '意向说明'
@@ -163,15 +183,23 @@ const noticeText = computed(
         ? '选定时段后可在「我的预约」查看进度；约满时段不可再约。'
         : contentOn.value
           ? '可在本页阅读正文；收藏与足迹在个人中心查看。'
-          : followSurfaceOn.value
-            ? '可在本页查看跟进说明并提交下一步。'
-            : applySurfaceOn.value
-              ? '提交后可在「我的报名」查看进度；名额满时可能无法再报。'
-              : interactSurfaceOn.value
-                ? '提交后可在「我的记录」查看意向进度。'
-                : ticketOn.value
-                  ? '提交申请后可在「我的单据」查看进度与续办说明。'
-                  : '请按页面说明了解办理要求。'),
+          : borrowSurfaceOn.value
+            ? (borrowSurface.value === 'bookshelf'
+              ? '提交后可在「我的借阅」查看进度与应还日期。'
+              : borrowSurface.value === 'parcelshelf'
+                ? '提交后可在「我的单据」查看取件进度。'
+                : borrowSurface.value === 'bedblocks'
+                  ? '提交后可在「我的申请」查看床位安排。'
+                  : '提交后可在「我的借用」查看进度与归还说明。')
+            : followSurfaceOn.value
+              ? '可在本页查看跟进说明并提交下一步。'
+              : applySurfaceOn.value
+                ? '提交后可在「我的报名」查看进度；名额满时可能无法再报。'
+                : interactSurfaceOn.value
+                  ? '提交后可在「我的记录」查看意向进度。'
+                  : ticketOn.value
+                    ? '提交申请后可在「我的单据」查看进度与续办说明。'
+                    : '请按页面说明了解办理要求。'),
 )
 
 const authorLooksLikePrice = computed(() => {
