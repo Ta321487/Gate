@@ -1,17 +1,40 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.models import Job, Project
-from app.schemas import ApiOk, JobOut
+from app.schemas import (
+    ApiOk,
+    FailAnalysisClassifyIn,
+    FailAnalysisFixDraftIn,
+    JobOut,
+)
+from app.services.bake_fail_analysis import (
+    build_fail_analysis,
+    classify_assist,
+    create_fix_draft,
+    discard_fix_draft,
+    ensure_error_code,
+    get_fix_draft,
+)
+from app.services.bake_fail_classify import catalog_payload
 from app.services.jobs import cancel_job, resume_step_index, start_job
 
 router = APIRouter(prefix="/api/jobs", tags=["任务"])
+
+
+def _job_out(j: Job, title: str | None = None) -> JobOut:
+    item = JobOut.model_validate(j)
+    if not item.error_code and j.error:
+        item.error_code = ensure_error_code(j)
+    item.project_title = title
+    return item
 
 
 @router.get("", response_model=list[JobOut], summary="任务列表")
@@ -25,11 +48,85 @@ async def list_jobs(db: AsyncSession = Depends(get_db)):
     ][:100]
     out = []
     for j in jobs:
-        item = JobOut.model_validate(j)
         p = await db.get(Project, j.project_id)
-        item.project_title = p.title if p else None
-        out.append(item)
+        out.append(_job_out(j, p.title if p else None))
     return out
+
+
+@router.get("/fail-analysis", summary="失败分析")
+async def fail_analysis(
+    db: AsyncSession = Depends(get_db),
+    date_from: Optional[str] = Query(None, alias="from"),
+    date_to: Optional[str] = Query(None, alias="to"),
+    domain: Optional[str] = None,
+    step: Optional[str] = None,
+    code: Optional[str] = None,
+    sample_page: int = Query(1, ge=1),
+    sample_page_size: int = Query(10, ge=1, le=100),
+) -> dict[str, Any]:
+    """出包失败分布、优先处理项与样本（样本服务端分页）。"""
+    return await build_fail_analysis(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+        domain=domain,
+        step=step,
+        code=code,
+        sample_page=sample_page,
+        sample_page_size=sample_page_size,
+    )
+
+
+@router.get("/fail-analysis/catalog", summary="失败分析·类型对照表")
+async def fail_analysis_catalog() -> list[dict[str, str]]:
+    """失败类型索引（与码表同源），供帮助页对照查询。"""
+    return catalog_payload()
+
+
+@router.post("/fail-analysis/classify-assist", summary="失败分析·类型建议")
+async def fail_analysis_classify_assist(
+    body: FailAnalysisClassifyIn,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """按需给出失败类型建议；只回已有类型，不含修法。"""
+    try:
+        return await classify_assist(db, error=body.error, step=body.step)
+    except RuntimeError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@router.post("/fail-analysis/fix-draft", summary="失败分析·处理建议")
+async def fail_analysis_fix_draft(
+    body: FailAnalysisFixDraftIn,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """按需生成处理建议草稿；不写入类型表。"""
+    try:
+        return await create_fix_draft(
+            db,
+            job_id=body.job_id,
+            error=body.error,
+            code=body.code,
+            force=body.force,
+        )
+    except RuntimeError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@router.get("/fail-analysis/fix-draft/{job_id}", summary="失败分析·读取建议")
+async def fail_analysis_get_draft(job_id: int) -> dict[str, Any]:
+    draft = get_fix_draft(job_id)
+    if not draft:
+        raise HTTPException(404, "暂无处理建议")
+    return draft
+
+
+@router.delete("/fail-analysis/fix-draft/{job_id}", response_model=ApiOk, summary="失败分析·清除建议")
+async def fail_analysis_discard_draft(job_id: int):
+    ok = discard_fix_draft(job_id)
+    if not ok:
+        raise HTTPException(404, "暂无处理建议")
+    return ApiOk(message="已清除处理建议", data={"job_id": job_id})
 
 
 @router.post("/purge-orphans", response_model=ApiOk, summary="清理失效任务")
@@ -75,10 +172,8 @@ async def get_job(job_id: int, db: AsyncSession = Depends(get_db)):
     j = await db.get(Job, job_id)
     if not j:
         raise HTTPException(404, "任务不存在")
-    item = JobOut.model_validate(j)
     p = await db.get(Project, j.project_id)
-    item.project_title = p.title if p else None
-    return item
+    return _job_out(j, p.title if p else None)
 
 
 @router.post("/{job_id}/cancel", response_model=ApiOk, summary="取消任务")

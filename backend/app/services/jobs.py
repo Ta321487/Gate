@@ -27,6 +27,7 @@ from app.llm.runtime import load_llm_runtime
 from app.models import Job, JobKind, JobStatus, Project, ProjectStatus
 from app.services.projects import MSG_DOWNLOAD_GATES
 from app.services.proposal import load_merged_proposal_text
+from app.services.bake_fail_classify import classify_bake_error
 from app.services.delivery_review import (
     apply_qa_to_gates,
     evaluate_workspace_gates,
@@ -35,6 +36,27 @@ from app.services.delivery_review import (
 )
 
 logger = logging.getLogger("gf.job")
+
+
+def _apply_job_error(
+    job: Job,
+    error: str | None,
+    *,
+    gates: dict[str, Any] | None = None,
+) -> None:
+    """同步 job.error 与稳定 error_code；清空 error 时清空 code。"""
+    if not error:
+        job.error = None
+        job.error_code = None
+        return
+    job.error = error
+    result = classify_bake_error(
+        error,
+        step=getattr(job, "step", None),
+        steps=job.steps if isinstance(job.steps, list) else None,
+        gates=gates,
+    )
+    job.error_code = result.code
 
 STEP_DEFS = [
     ("parse_merge", "解析开题 · 合并 Spec"),
@@ -86,6 +108,7 @@ def _gate_fail_summary(gates: dict[str, Any] | None) -> str:
         "p3s",
         "p3lean",
         "p3n",
+        "p3ac",
         "p3a",
         "p3b",
         "p2",
@@ -223,7 +246,7 @@ async def fail_orphaned_jobs() -> int:
         )
         for job in q.scalars().all():
             job.status = JobStatus.failed.value
-            job.error = "服务重启，任务中断 · 请从失败步骤重试"
+            _apply_job_error(job, "服务重启，任务中断 · 请从失败步骤重试")
             job.steps = _fail_running_step(job.steps, "服务重启中断")
             job.finished_at = datetime.now()
             kind = str(getattr(job, "kind", None) or JobKind.bake.value)
@@ -247,7 +270,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
         project = await db.get(Project, job.project_id)
         if not project:
             job.status = JobStatus.failed.value
-            job.error = "项目不存在"
+            _apply_job_error(job, "项目不存在")
             await db.commit()
             return
 
@@ -255,14 +278,17 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
         resolved = forbid_full_rebake(project, from_step)
         if resolved is None:
             job.status = JobStatus.failed.value
-            job.error = "交付复审进行中 · 请先结束复审或仅使用验圈/合卷，不可重跑生成"
+            _apply_job_error(
+                job,
+                "交付复审进行中 · 不可重跑生成：仅同步 ZIP 请验圈后合卷；须改工程重出包请先结束复审",
+            )
             job.finished_at = datetime.now()
             await db.commit()
             return
         from_step = resolved
         job.status = JobStatus.running.value
         job.started_at = datetime.now()
-        job.error = None
+        _apply_job_error(job, None)
         job.steps = _default_steps()
         project.status = ProjectStatus.generating.value
         project.zip_ready = False
@@ -519,7 +545,11 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     detail = _gate_fail_summary(gates)
                     await set_step(4, "fail", detail)
                     job.status = JobStatus.failed.value
-                    job.error = f"{MSG_DOWNLOAD_GATES} · {detail}"
+                    _apply_job_error(
+                        job,
+                        f"{MSG_DOWNLOAD_GATES} · {detail}",
+                        gates=gates if isinstance(gates, dict) else None,
+                    )
                     job.finished_at = datetime.now()
                     project.status = ProjectStatus.failed.value
                     project.zip_ready = False
@@ -569,7 +599,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             await append_log(project.id, "SUCCESS · zip unlocked")
         except asyncio.CancelledError:
             job.status = JobStatus.cancelled.value
-            job.error = "已取消"
+            _apply_job_error(job, "已取消")
             job.steps = _fail_running_step(job.steps, "已取消")
             job.finished_at = datetime.now()
             project.status = ProjectStatus.ready.value
@@ -581,8 +611,8 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             project_id = project.id
             try:
                 job.status = JobStatus.failed.value
-                job.error = err
                 job.steps = _fail_running_step(job.steps, err)
+                _apply_job_error(job, err)
                 job.finished_at = datetime.now()
                 project.status = ProjectStatus.failed.value
                 project.zip_ready = False
@@ -596,8 +626,8 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     project2 = await db2.get(Project, project_id)
                     if job2:
                         job2.status = JobStatus.failed.value
-                        job2.error = err
                         job2.steps = _fail_running_step(job2.steps, err)
+                        _apply_job_error(job2, err)
                         job2.finished_at = datetime.now()
                     if project2:
                         project2.status = ProjectStatus.failed.value
@@ -631,7 +661,9 @@ def resolve_bake_from_step(project: Project, from_step: int = 0) -> int:
     step = max(0, min(int(from_step or 0), len(STEP_DEFS) - 1))
     resolved = forbid_full_rebake(project, step)
     if resolved is None:
-        raise ValueError("交付复审进行中 · 不可重跑生成，请使用验圈/合卷")
+        raise ValueError(
+            "交付复审进行中 · 不可重跑生成：仅同步 ZIP 请验圈后合卷；须改工程重出包请先结束复审"
+        )
     return int(resolved)
 
 
@@ -704,7 +736,7 @@ async def cancel_job(db: AsyncSession, job_id: int) -> bool:
     if t:
         t.cancel()
     job.status = JobStatus.cancelled.value
-    job.error = "已取消"
+    _apply_job_error(job, "已取消")
     job.steps = _fail_running_step(job.steps, "已取消")
     job.finished_at = datetime.now()
     kind = str(getattr(job, "kind", None) or JobKind.bake.value)

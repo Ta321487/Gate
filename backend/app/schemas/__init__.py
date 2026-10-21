@@ -36,6 +36,10 @@ class ProjectSummary(BaseModel):
         default="idle",
         description="交付复审状态：idle | active | closed（列表履约细分）",
     )
+    match_confirmed: bool = Field(
+        default=False,
+        description="匹配是否已确认（开工台/列表急办用）",
+    )
     db_name: str = Field(default="", description="学生库名")
     updated_at: Optional[datetime] = Field(default=None, description="更新时间")
     created_at: Optional[datetime] = Field(default=None, description="创建时间")
@@ -60,7 +64,6 @@ class ProjectDetail(ProjectSummary):
     llm_enabled: bool = Field(description="是否启用 LLM")
     password_hash: str = Field(default="none", description="学生端密码哈希策略")
     match_locked: bool = Field(description="匹配是否锁定")
-    match_confirmed: bool = Field(description="匹配是否已确认")
     match_mode: str = Field(description="匹配模式")
     spec: dict[str, Any] = Field(default_factory=dict, description="Spec 配置")
     gates: dict[str, Any] = Field(default_factory=dict, description="门禁结果")
@@ -282,10 +285,27 @@ class JobOut(BaseModel):
     steps: list[Any] = Field(default_factory=list, description="步骤明细")
     units: list[Any] = Field(default_factory=list, description="页级 Unit（PPT）")
     error: Optional[str] = Field(default=None, description="错误信息")
+    error_code: Optional[str] = Field(default=None, description="bake 失败稳定码")
     started_at: Optional[datetime] = Field(default=None, description="开始时间")
     finished_at: Optional[datetime] = Field(default=None, description="结束时间")
     created_at: Optional[datetime] = Field(default=None, description="创建时间")
     project_title: Optional[str] = Field(default=None, description="项目标题")
+
+
+class FailAnalysisClassifyIn(BaseModel):
+    model_config = ConfigDict(title="失败分析·助归入参")
+
+    error: str = Field(description="失败原文")
+    step: Optional[str] = Field(default=None, description="失败步骤 key")
+
+
+class FailAnalysisFixDraftIn(BaseModel):
+    model_config = ConfigDict(title="失败分析·修法建议入参")
+
+    error: str = Field(description="失败原文")
+    code: Optional[str] = Field(default=None, description="已归码；空则现场分类")
+    job_id: Optional[int] = Field(default=None, description="可选·缓存草稿用")
+    force: bool = Field(default=False, description="true 时忽略缓存、重新生成")
 
 
 class ProjectTokenUsage(BaseModel):

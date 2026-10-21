@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import OpsHome from './views/OpsHome.vue'
 import Projects from './views/Projects.vue'
 import ProjectDetail from './views/ProjectDetail.vue'
 import Jobs from './views/Jobs.vue'
+import FailAnalysis from './views/FailAnalysis.vue'
 import Help from './views/Help.vue'
 import Llm from './views/Llm.vue'
 import Unsplash from './views/Unsplash.vue'
@@ -11,9 +13,16 @@ import ErrorPage from './views/ErrorPage.vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', name: 'projects', component: Projects, meta: { crumb: '项目' } },
+    { path: '/', name: 'ops-home', component: OpsHome, meta: { crumb: '开工台' } },
+    { path: '/projects', name: 'projects', component: Projects, meta: { crumb: '项目' } },
     { path: '/projects/:id', name: 'project', component: ProjectDetail, meta: { crumb: '详情' } },
     { path: '/jobs', name: 'jobs', component: Jobs, meta: { crumb: '任务队列' } },
+    {
+      path: '/fail-analysis',
+      name: 'fail-analysis',
+      component: FailAnalysis,
+      meta: { crumb: '失败分析' },
+    },
     { path: '/help', name: 'help', component: Help, meta: { crumb: '帮助文档' } },
     { path: '/llm', name: 'llm', component: Llm, meta: { crumb: '大模型' } },
     { path: '/deepseek', redirect: '/llm' },

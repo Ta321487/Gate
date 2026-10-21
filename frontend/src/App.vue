@@ -25,7 +25,11 @@
             :class="{ active: isActive(item) }"
             @click="go(item.to)"
           >
-            <span class="dot" /><span>{{ item.label }}</span>
+            <span class="dot" />
+            <span class="nav-item-text">
+              <span class="nav-item-label">{{ item.label }}</span>
+              <span v-if="item.desc" class="nav-item-desc">{{ item.desc }}</span>
+            </span>
           </div>
           <div class="nav-label">系统</div>
           <div
@@ -35,7 +39,11 @@
             :class="{ active: isActive(item) }"
             @click="go(item.to)"
           >
-            <span class="dot" /><span>{{ item.label }}</span>
+            <span class="dot" />
+            <span class="nav-item-text">
+              <span class="nav-item-label">{{ item.label }}</span>
+              <span v-if="item.desc" class="nav-item-desc">{{ item.desc }}</span>
+            </span>
           </div>
         </nav>
         <div class="sidebar-foot">毕设港 · 运营台</div>
@@ -93,14 +101,16 @@ const router = useRouter()
 const navOpen = ref(false)
 
 const workNav = [
-  { to: '/', label: '项目', match: ['projects', 'project'] },
-  { to: '/jobs', label: '任务队列', match: ['jobs'] },
-  { to: '/help', label: '帮助文档', match: ['help'] },
+  { to: '/', label: '开工台', desc: '今日待办总览', match: ['ops-home'] },
+  { to: '/projects', label: '项目', desc: '建项与履约管理', match: ['projects', 'project'] },
+  { to: '/jobs', label: '任务队列', desc: '任务进度与重试', match: ['jobs'] },
+  { to: '/fail-analysis', label: '失败分析', desc: '失败类型与排修', match: ['fail-analysis'] },
+  { to: '/help', label: '帮助文档', desc: '流程说明与索引', match: ['help'] },
 ]
 const sysNav = [
-  { to: '/llm', label: '大模型', match: ['llm'] },
-  { to: '/unsplash', label: 'Unsplash', match: ['unsplash'] },
-  { to: '/system', label: '运行环境', match: ['system'] },
+  { to: '/llm', label: '大模型', desc: '填岛与用量', match: ['llm'] },
+  { to: '/unsplash', label: 'Unsplash', desc: '图床配置', match: ['unsplash'] },
+  { to: '/system', label: '运行环境', desc: '工具链与端口', match: ['system'] },
 ]
 
 function isActive(item) {
@@ -146,7 +156,7 @@ onUnmounted(() => {
 const crumbs = computed(() => {
   const root = { label: '毕设港', to: '/' }
   if (route.name === 'project') {
-    return [root, { label: '项目', to: '/' }, { label: detailCrumb.value || '详情' }]
+    return [root, { label: '项目', to: '/projects' }, { label: detailCrumb.value || '详情' }]
   }
   if (route.name === 'not-found' || route.name === 'error-500') {
     return [root, { label: route.meta.crumb || '异常' }]

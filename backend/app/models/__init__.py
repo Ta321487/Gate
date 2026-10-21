@@ -107,6 +107,8 @@ class Job(Base):
     # PPT 页级 Unit 进度（bake 可空）
     units: Mapped[list[Any]] = mapped_column(JSON, default=list)
     error: Mapped[Optional[str]] = mapped_column(Text)
+    # bake 失败稳定码；与 bake_fail_classify / docs/bake-fail-analysis.md 同源
+    error_code: Mapped[Optional[str]] = mapped_column(String(64))
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
