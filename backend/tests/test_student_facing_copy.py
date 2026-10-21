@@ -177,7 +177,7 @@ class StudentFacingCopyTests(unittest.TestCase):
             '<div v-if="demoPay">支付宝 / 微信在线支付（不对接商户 SDK，仍扣账户余额）</div>\n'
             "const x = '选择支付宝或微信并输入支付密码完成本单（不对接商户 SDK，仍扣账户余额）。'\n"
         )
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             ws = Path(td)
             vue = ws / "frontend" / "src" / "views" / "user" / "Cart.vue"
             vue.parent.mkdir(parents=True)
@@ -202,7 +202,7 @@ class StudentFacingCopyTests(unittest.TestCase):
 
         from app.bake.domain_schema import refresh_polluted_vue_from_baseline
 
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             ws = Path(td)
             dirty = ws / "frontend" / "src" / "views" / "ESignMine.vue"
             dirty.parent.mkdir(parents=True)
@@ -237,7 +237,7 @@ class StudentFacingCopyTests(unittest.TestCase):
 
         from app.bake.domain_schema import refresh_polluted_vue_from_baseline
 
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             ws = Path(td)
             dirty = ws / "frontend" / "src" / "views" / "user" / "MyOrders.vue"
             dirty.parent.mkdir(parents=True)
@@ -305,7 +305,7 @@ class StudentFacingCopyTests(unittest.TestCase):
             "  schema: { labels: { appName: '' } },\n"
             "}\n"
         )
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             ws = Path(td)
             fe = ws / "frontend" / "src"
             fe.mkdir(parents=True)
@@ -349,7 +349,7 @@ class StudentFacingCopyTests(unittest.TestCase):
             "  return table[face]\n"
             "}\n"
         )
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             ws = Path(td)
             js = ws / "frontend" / "src" / "utils" / "portalShellNav.js"
             js.parent.mkdir(parents=True)
@@ -388,7 +388,7 @@ class StudentFacingCopyTests(unittest.TestCase):
             "entities": {},
             "seeds": {},
         }
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             ws = Path(td)
             pub = ws / "frontend" / "public" / "domain.schema.json"
             pub.parent.mkdir(parents=True)
@@ -421,7 +421,7 @@ class StudentFacingCopyTests(unittest.TestCase):
             },
             "menus": {"admin": [], "portal": []},
         }
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             ws = Path(td)
             (ws / "domain.schema.json").write_text(
                 json.dumps(schema, ensure_ascii=False), encoding="utf-8"
@@ -524,7 +524,7 @@ class StudentFacingCopyTests(unittest.TestCase):
             "labels": {"appName": "校医院"},
             "menus": {"admin": [], "portal": []},
         }
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             ws = Path(td)
             (ws / "domain.schema.json").write_text(
                 json.dumps(schema, ensure_ascii=False), encoding="utf-8"
@@ -650,7 +650,7 @@ class StudentFacingCopyTests(unittest.TestCase):
             "labels": {"appName": "测试店"},
             "menus": {"admin": [], "portal": []},
         }
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
             ws = Path(td)
             (ws / "domain.schema.json").write_text(
                 json.dumps(schema, ensure_ascii=False), encoding="utf-8"
