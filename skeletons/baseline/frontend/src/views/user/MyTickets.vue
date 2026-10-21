@@ -4541,8 +4541,8 @@ onMounted(async () => {
 }
 .mark {
   width: 44px; height: 44px; border-radius: var(--portal-radius-sm, 10px); flex-shrink: 0;
-  display: grid; place-items: center; font-weight: 700; color: #0369a1;
-  background: #e0f2fe;
+  display: grid; place-items: center; font-weight: 700; color: var(--portal-accent, #0b6e75);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, var(--portal-surface, #fff));
 }
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
@@ -4550,7 +4550,7 @@ onMounted(async () => {
 .sub.claim-match { margin: -4px 0 10px 88px; color: #0f766e; }
 .sub.sched { margin-top: 2px; color: #0f766e; }
 .sub.pickup-tip { margin-top: 6px; color: #b45309; }
-.sub a { color: #0369a1; }
+.sub a { color: var(--portal-accent, #0b6e75); }
 .tip { margin: 6px 0 0; color: var(--portal-muted, #475569); font-size: 13px; }
 .row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .gallery-edit { display: flex; flex-direction: column; gap: 8px; width: 100%; }
@@ -4561,7 +4561,7 @@ onMounted(async () => {
 .gallery-item img { width: 96px; height: 72px; object-fit: cover; border-radius: 6px; }
 .rated { font-size: 12px; color: #b45309; }
 .attach-row { display: flex; gap: 12px; align-items: center; }
-.attach-row a { font-size: 13px; color: #0369a1; }
+.attach-row a { font-size: 13px; color: var(--portal-accent, #0b6e75); }
 .rate-tip { margin: 0 0 12px; color: var(--portal-ink, #334155); font-size: 14px; }
 .empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }

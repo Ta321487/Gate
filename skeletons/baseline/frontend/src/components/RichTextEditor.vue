@@ -94,7 +94,7 @@ onMounted(async () => {
   overflow: hidden;
 }
 .rte.focused {
-  border-color: var(--portal-accent, var(--el-color-primary, #409eff));
+  border-color: var(--portal-accent, #0b6e75);
 }
 .bar {
   display: flex;

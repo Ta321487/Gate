@@ -16,15 +16,28 @@
             </button>
             <p v-if="!mallCategories.length" class="mall-cat-empty">暂无分类</p>
           </aside>
-          <div
-            class="mall-banner"
-            role="img"
-            :aria-label="mallBannerTitle"
-            :style="mallBannerStyle"
-          >
-            <div v-if="!mallBannerSrc" class="mall-banner-fallback">
-              <p class="mall-banner-kicker">{{ mallBannerTitle }}</p>
-              <p class="mall-banner-lead">{{ mallBannerLead }}</p>
+          <div class="mall-banner" aria-roledescription="carousel" aria-label="首页推荐">
+            <button
+              type="button"
+              class="mall-banner-slide"
+              :aria-label="mallBannerTitle"
+              :style="mallBannerStyle"
+              @click="onMallBanner"
+            >
+              <div v-if="!mallBannerSrc" class="mall-banner-fallback">
+                <p class="mall-banner-kicker">{{ mallBannerTitle }}</p>
+                <p class="mall-banner-lead">{{ mallBannerLead }}</p>
+              </div>
+            </button>
+            <div v-if="mallSlides.length > 1" class="mall-dots">
+              <button
+                v-for="(s, i) in mallSlides"
+                :key="'bd' + i"
+                type="button"
+                :class="{ on: i === mallIndex }"
+                :aria-label="'第' + (i + 1) + '张'"
+                @click="showMallSlide(i)"
+              />
             </div>
           </div>
         </section>
@@ -53,7 +66,7 @@
                 <p>{{ item.lead }}</p>
                 <div class="mall-foot">
                   <span class="mall-price">{{ item.price }}</span>
-                  <span class="mall-meta">{{ item.shop ? item.shop : item.meta }}</span>
+                  <span class="mall-meta">{{ item.salesText || (item.shop ? item.shop : item.meta) }}</span>
                 </div>
               </div>
             </button>
@@ -66,6 +79,37 @@
               cta-label="去逛逛"
               @cta="goArchive"
             />
+          </div>
+        </section>
+
+        <section v-if="mallHot.length" class="mall-new" aria-label="热销商品">
+          <div class="mall-new-hd">
+            <h2 class="mall-new-title">热销商品</h2>
+            <button type="button" class="more" @click="goArchive">查看更多 &gt;&gt;</button>
+          </div>
+          <div class="mall-grid">
+            <button
+              v-for="item in mallHot"
+              :key="'hot-' + item.id"
+              type="button"
+              class="mall-card"
+              @click="goProduct(item)"
+            >
+              <div
+                class="mall-cover"
+                :style="item.cover ? { backgroundImage: `url('${item.cover}')` } : undefined"
+              >
+                <span v-if="!item.cover" class="mall-cover-letter">{{ item.letter }}</span>
+              </div>
+              <div class="mall-copy">
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.lead }}</p>
+                <div class="mall-foot">
+                  <span class="mall-price">{{ item.price }}</span>
+                  <span class="mall-meta">{{ item.salesText || (item.shop ? item.shop : item.meta) }}</span>
+                </div>
+              </div>
+            </button>
           </div>
         </section>
 
@@ -108,26 +152,39 @@
       </div>
     </template>
 
-    <!-- 功能卡片（默认） -->
+    <!-- 默认首页：品牌首屏 + 主行动 + 短链轨（禁止功能方卡墙） -->
     <template v-else-if="homeStyle !== 'editorial'">
-      <section class="hero">
-        <h1>{{ appName }}</h1>
-        <p>{{ lead }}</p>
-        <p v-if="industrySkinHint" class="skin-hint">{{ industrySkinHint }}</p>
+      <section class="cards-hero" aria-label="门户首屏">
+        <div class="cards-hero-panel">
+          <p class="cards-kicker">{{ appName }}</p>
+          <h1>{{ cardsHeroTitle }}</h1>
+          <p class="cards-lead">{{ lead }}</p>
+          <p v-if="industrySkinHint" class="skin-hint">{{ industrySkinHint }}</p>
+          <div class="cards-cta-row">
+            <button
+              v-if="primaryHomeCard"
+              type="button"
+              class="cards-cta"
+              @click="go(primaryHomeCard)"
+            >{{ primaryHomeCard.label }}</button>
+            <button
+              v-if="secondaryHomeCard"
+              type="button"
+              class="cards-cta ghost"
+              @click="go(secondaryHomeCard)"
+            >{{ secondaryHomeCard.label }}</button>
+          </div>
+        </div>
       </section>
-
-      <section class="grid" aria-label="功能入口">
+      <nav v-if="railHomeCards.length" class="cards-rail" aria-label="更多入口">
         <button
-          v-for="card in cards"
+          v-for="card in railHomeCards"
           :key="card.to"
           type="button"
-          class="card"
+          class="cards-rail-btn"
           @click="go(card)"
-        >
-          <span class="card-label">{{ card.label }}</span>
-          <span class="card-lead">{{ card.lead }}</span>
-        </button>
-      </section>
+        >{{ card.label }}</button>
+      </nav>
     </template>
 
     <!-- 资讯 + 侧栏（内容域） -->
@@ -201,7 +258,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '../../api/http'
 import EmptyHint from '../../components/EmptyHint.vue'
@@ -231,7 +288,7 @@ const lead = computed(
   () =>
     labels.portalHomeLead ||
     labels.authLead ||
-    '从下方入口进入检索、申请、公告与个人中心。',
+    '浏览目录、处理申请，或先看公告。',
 )
 const loggedIn = computed(() => isLoggedIn())
 const guestBrowse = computed(() => isGuestBrowseEnabled())
@@ -324,6 +381,9 @@ async function loadNews() {
 
 const mallCategories = ref([])
 const mallProducts = ref([])
+const mallHot = ref([])
+const mallIndex = ref(0)
+let mallTimer = null
 const mallFlashRows = ref([])
 const flashOn = computed(() => hasCap('flash_price'))
 const mallFlashTitle = computed(() => labels.mallFlashTitle || '限时特价')
@@ -363,16 +423,55 @@ const mallFlashProducts = computed(() =>
   }),
 )
 
-const mallHero = computed(() => {
-  const withSrc = banners.value.find((b) => b.src)
-  return withSrc || banners.value[0] || null
+const mallSlides = computed(() => {
+  const fromApi = banners.value.filter((b) => b && (b.src || b.title))
+  if (fromApi.length) return fromApi
+  const hero = APP_DELIVERED?.authHero
+  if (hero) return [{ src: hero, title: appName, lead: lead.value }]
+  return [{ src: '', title: appName, lead: lead.value }]
 })
-const mallBannerSrc = computed(() => mallHero.value?.src || APP_DELIVERED?.authHero || '')
+const mallHero = computed(() => mallSlides.value[mallIndex.value] || mallSlides.value[0] || null)
+const mallBannerSrc = computed(() => mallHero.value?.src || '')
 const mallBannerTitle = computed(() => mallHero.value?.title || appName)
 const mallBannerLead = computed(() => mallHero.value?.lead || lead.value)
 const mallBannerStyle = computed(() =>
   mallBannerSrc.value ? { backgroundImage: `url('${mallBannerSrc.value}')` } : undefined,
 )
+
+function showMallSlide(i) {
+  const n = mallSlides.value.length
+  if (!n) return
+  mallIndex.value = ((i % n) + n) % n
+}
+
+function onMallBanner() {
+  const slide = mallHero.value
+  const link = String(slide?.linkUrl || slide?.href || '').trim()
+  if (link.startsWith('/')) {
+    router.push(link)
+    return
+  }
+  if (slide?.itemId) {
+    goProduct({ id: slide.itemId })
+    return
+  }
+  goArchive()
+}
+
+function startMallRotate() {
+  stopMallRotate()
+  if (mallSlides.value.length < 2) return
+  mallTimer = setInterval(() => {
+    showMallSlide(mallIndex.value + 1)
+  }, 4800)
+}
+
+function stopMallRotate() {
+  if (mallTimer) {
+    clearInterval(mallTimer)
+    mallTimer = null
+  }
+}
 
 function stripHtml(s) {
   return String(s || '')
@@ -408,6 +507,27 @@ function mallMetaText(row) {
   return row?.categoryName || ''
 }
 
+function mallSalesOf(row) {
+  const n = Number(row?.salesCount ?? row?.soldCount ?? row?.sales)
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+function mapMallCard(row) {
+  const sales = mallSalesOf(row)
+  return {
+    id: row.id,
+    title: row.title || '未命名',
+    lead: mallLeadText(row),
+    price: mallPriceText(row),
+    meta: mallMetaText(row),
+    shop: String(row.shopName || row.shop_name || '').trim(),
+    cover: row.coverUrl || '',
+    letter: String(row.title || '?').slice(0, 1),
+    sales,
+    salesText: sales > 0 ? `累计销量: ${sales}` : '',
+  }
+}
+
 /** 门户侧栏只挂品类维；用途/目标等其它维留给目录筛选，避免扁列表长得像子菜单。 */
 function mallRailCategories(raw) {
   const rows = (Array.isArray(raw) ? raw : []).filter((c) => c && c.id != null)
@@ -432,21 +552,17 @@ async function loadMall() {
     mallCategories.value = []
   }
   try {
-    const res = await http.get('/api/archive', { params: { page: 1, size: 4 } })
+    const res = await http.get('/api/archive', { params: { page: 1, size: 12 } })
     const rows = res.data?.list || res.data?.items || res.data || []
-    const list = Array.isArray(rows) ? rows : []
-    mallProducts.value = list.slice(0, 4).map((row) => ({
-      id: row.id,
-      title: row.title || '未命名',
-      lead: mallLeadText(row),
-      price: mallPriceText(row),
-      meta: mallMetaText(row),
-      shop: String(row.shopName || row.shop_name || '').trim(),
-      cover: row.coverUrl || '',
-      letter: String(row.title || '?').slice(0, 1),
-    }))
+    const list = (Array.isArray(rows) ? rows : []).map(mapMallCard)
+    mallProducts.value = list.slice(0, 4)
+    const bySales = [...list].sort((a, b) => b.sales - a.sales || String(a.title).localeCompare(String(b.title)))
+    const newIds = new Set(mallProducts.value.map((x) => x.id))
+    const hotPrefer = bySales.filter((x) => !newIds.has(x.id))
+    mallHot.value = (hotPrefer.length >= 4 ? hotPrefer : bySales).slice(0, 4)
   } catch {
     mallProducts.value = []
+    mallHot.value = []
   }
   mallFlashRows.value = []
   if (!flashOn.value) return
@@ -482,13 +598,16 @@ function goProduct(item) {
     goArchive()
     return
   }
-  router.push({ path: '/archive', query: { highlight: String(item.id) } })
+  router.push({ path: `/archive/item/${item.id}` })
 }
 
 onMounted(() => {
   if (homeStyle.value === 'editorial') loadNews()
-  if (homeStyle.value === 'mall') loadMall()
+  if (homeStyle.value === 'mall') {
+    loadMall().then(() => startMallRotate())
+  }
 })
+onUnmounted(() => stopMallRotate())
 
 const LEADS = {
   archive: '浏览与检索业务目录',
@@ -607,6 +726,37 @@ const quickCards = computed(() => {
   return out.slice(0, 4)
 })
 
+/** cards 首页：主路径优先 archive/slots，其余进短链轨 */
+const PRIMARY_HOME_KEYS = ['archive', 'slots', 'content', 'my_tickets']
+const primaryHomeCard = computed(() => {
+  for (const k of PRIMARY_HOME_KEYS) {
+    const hit = cards.value.find((c) => c.key === k)
+    if (hit) return hit
+  }
+  return cards.value[0] || null
+})
+const secondaryHomeCard = computed(() => {
+  const p = primaryHomeCard.value
+  const prefer = ['content', 'my_tickets', 'slots', 'guestbook']
+  for (const k of prefer) {
+    const hit = cards.value.find((c) => c.key === k && c !== p)
+    if (hit) return hit
+  }
+  return cards.value.find((c) => c !== p) || null
+})
+const railHomeCards = computed(() => {
+  const skip = new Set(
+    [primaryHomeCard.value?.key, secondaryHomeCard.value?.key].filter(Boolean),
+  )
+  return cards.value.filter((c) => !skip.has(c.key))
+})
+const cardsHeroTitle = computed(
+  () =>
+    labels.portalHomeHeadline ||
+    primaryHomeCard.value?.label ||
+    '开始使用',
+)
+
 function go(card) {
   if (card.needLogin && !requireLogin(router, card.to)) return
   router.push(card.to)
@@ -629,59 +779,80 @@ function openNews(item) {
 .home { max-width: 920px; }
 .home[data-home='editorial'] { max-width: 1100px; }
 .home[data-home='mall'] { max-width: 1100px; }
-.hero { margin-bottom: 22px; }
-.hero h1 {
+.home[data-home='cards'] { max-width: 720px; }
+.cards-hero { margin-bottom: 18px; }
+.cards-hero-panel {
+  padding: clamp(22px, 4vw, 36px);
+  border-radius: var(--portal-radius, 14px);
+  color: #fff;
+  background: var(--portal-cover, linear-gradient(160deg, #0b6e75, #08545a));
+  box-shadow: var(--portal-shadow, none);
+}
+.cards-kicker {
   margin: 0 0 8px;
-  font-size: clamp(1.45rem, 2.4vw, 1.85rem);
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-size: clamp(1.35rem, 2.6vw, 1.75rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
   font-family: var(--portal-font-display, var(--portal-font-ui));
   overflow-wrap: anywhere;
+}
+.cards-hero-panel h1 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  opacity: 0.92;
+}
+.cards-lead {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 36em;
+  opacity: 0.88;
 }
 .skin-hint {
   margin-top: 8px;
   font-size: 0.85rem;
-  color: var(--portal-muted, #64748b);
+  opacity: 0.75;
 }
-.hero p {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--portal-muted, #5b6b76);
-  max-width: 40em;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-}
-.card {
-  text-align: left;
-  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
-  background: color-mix(in srgb, var(--portal-surface, #fff) 92%, transparent);
-  border-radius: var(--portal-radius, 12px);
-  box-shadow: var(--portal-shadow, none);
-  padding: var(--portal-pad, 16px) 16px 18px;
-  cursor: pointer;
+.cards-cta-row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
 }
-.card:hover {
-  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, var(--portal-line, #d5dde3));
-  background: var(--portal-surface, #fff);
-  transform: translateY(-1px);
-}
-.card-label {
-  font-size: 15px;
+.cards-cta {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
   font-weight: 650;
-  color: var(--portal-ink, #15202b);
+  cursor: pointer;
+  background: #fff;
+  color: var(--portal-brand, #08545a);
 }
-.card-lead {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--portal-muted, #5b6b76);
+.cards-cta.ghost {
+  background: transparent;
+  color: #fff;
+  border: 1px solid color-mix(in srgb, #fff 55%, transparent);
+}
+.cards-cta:hover { filter: brightness(1.03); }
+.cards-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cards-rail-btn {
+  border: 1px solid var(--portal-line, #d5dde3);
+  background: var(--portal-surface, #fff);
+  color: var(--portal-ink, #15202b);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.cards-rail-btn:hover {
+  border-color: var(--portal-accent, #0b6e75);
+  color: var(--portal-accent, #0b6e75);
 }
 .hint {
   margin: 20px 0 0;
@@ -870,7 +1041,12 @@ function openNews(item) {
 .mall-cats {
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--portal-ink, #1f2937) 88%, #000);
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--portal-brand, #08545a) 90%, #0a0a0a) 0%,
+      color-mix(in srgb, var(--portal-ink, #15202b) 82%, #000) 100%
+    );
   color: #f8fafc;
   min-height: 280px;
 }
@@ -886,9 +1062,11 @@ function openNews(item) {
   font-size: 13px;
   cursor: pointer;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid transparent;
 }
 .mall-cat:hover {
-  background: color-mix(in srgb, var(--portal-accent, #f97316) 28%, transparent);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 28%, transparent);
+  border-left-color: var(--portal-accent, #0b6e75);
 }
 .mall-cat-empty {
   margin: auto;
@@ -898,9 +1076,43 @@ function openNews(item) {
 }
 .mall-banner {
   min-height: 280px;
-  background:
-    var(--portal-cover, linear-gradient(135deg, #fb923c, #ea580c)) center / cover no-repeat;
   position: relative;
+  background: var(--portal-surface, #fff);
+}
+.mall-banner-slide {
+  display: block;
+  width: 100%;
+  min-height: 280px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  background:
+    var(--portal-cover, linear-gradient(135deg, #14b8a6, #0b6e75)) center / cover no-repeat;
+  position: relative;
+}
+.mall-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  z-index: 2;
+}
+.mall-dots button {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.45);
+}
+.mall-dots button.on {
+  background: #fff;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, transparent);
 }
 .mall-banner-fallback {
   position: absolute;
@@ -947,7 +1159,7 @@ function openNews(item) {
   width: 4px;
   height: 1.05em;
   border-radius: 2px;
-  background: var(--portal-accent, #ea580c);
+  background: var(--portal-accent, #0b6e75);
 }
 .mall-grid {
   display: grid;
@@ -960,7 +1172,7 @@ function openNews(item) {
   text-align: left;
   border: 1px solid var(--portal-line, #e5e7eb);
   background: var(--portal-surface, #fff);
-  border-radius: var(--portal-radius, 10px);
+  border-radius: 12px;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
@@ -969,24 +1181,34 @@ function openNews(item) {
   transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 .mall-card:hover {
-  border-color: color-mix(in srgb, var(--portal-accent, #ea580c) 45%, var(--portal-line, #e5e7eb));
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--portal-accent, #ea580c) 12%, transparent);
+  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, var(--portal-line, #e5e7eb));
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, transparent);
 }
 .mall-cover {
-  aspect-ratio: 1.15 / 1;
+  aspect-ratio: 1 / 1;
   background:
-    color-mix(in srgb, var(--portal-accent-soft, #ffedd5) 70%, #fff) center / cover no-repeat;
+    color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, var(--portal-surface, #fff)) center / cover no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
 }
 .mall-cover-letter {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--portal-accent, #ea580c);
-  opacity: 0.55;
+  font-size: 2.2rem;
+  font-weight: 750;
+  font-family: var(--portal-font-display, inherit);
+  color: #fff;
+  opacity: 0.92;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.mall-cover:not([style*='background-image']) {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--portal-accent, #0b6e75) 78%, #0a0a0a),
+      var(--portal-brand, #08545a)
+    );
 }
 .mall-flash-badge {
   position: absolute;
@@ -998,10 +1220,10 @@ function openNews(item) {
   font-size: 11px;
   font-weight: 650;
   color: #fff;
-  background: var(--portal-accent, #ea580c);
+  background: var(--portal-accent, #0b6e75);
 }
 .mall-flash-cd {
-  color: var(--portal-accent, #ea580c) !important;
+  color: var(--portal-accent, #0b6e75) !important;
   font-weight: 600;
 }
 .mall-list-price {
@@ -1021,7 +1243,7 @@ function openNews(item) {
 .mall-copy h3 {
   margin: 0;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 700;
   color: var(--portal-ink, #15202b);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1047,9 +1269,10 @@ function openNews(item) {
   min-width: 0;
 }
 .mall-price {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 750;
-  color: var(--portal-accent, #ea580c);
+  color: var(--portal-accent, #0b6e75);
+  font-variant-numeric: tabular-nums;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

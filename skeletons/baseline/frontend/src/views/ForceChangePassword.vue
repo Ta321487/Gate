@@ -12,14 +12,14 @@
     <form class="form" @submit.prevent="onSubmit">
       <label class="field">
         <span class="lab">新密码<i class="req" aria-hidden="true">*</i></span>
-        <el-input v-model="form.newPassword" type="password" show-password size="large" autocomplete="new-password" />
+        <el-input v-model="form.newPassword" type="password" show-password autocomplete="new-password" />
         <span class="hint">{{ strengthHint }}</span>
       </label>
       <label class="field">
         <span class="lab">确认密码<i class="req" aria-hidden="true">*</i></span>
-        <el-input v-model="form.confirmPassword" type="password" show-password size="large" autocomplete="new-password" />
+        <el-input v-model="form.confirmPassword" type="password" show-password autocomplete="new-password" />
       </label>
-      <el-button class="submit" type="primary" size="large" native-type="submit" :loading="loading">
+      <el-button class="submit" type="primary" native-type="submit" :loading="loading">
         确认修改
       </el-button>
     </form>

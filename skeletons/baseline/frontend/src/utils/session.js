@@ -168,7 +168,7 @@ export function guestLoginCta() {
 /** 游客可进的门户路径（不含管理端） */
 export function isPortalPublicPath(path) {
   if (!path) return false
-  if (path === '/home' || path === '/' || path === '/archive' || path === '/notices' || path === '/guestbook' || path === '/slots' || path === '/cert-verify') {
+  if (path === '/home' || path === '/' || path === '/archive' || path === '/notices' || path === '/guestbook' || path === '/slots' || path === '/account' || path === '/cert-verify') {
     return true
   }
   if (path.startsWith('/notices/')) return true
@@ -231,6 +231,20 @@ export function markSessionOk() {
 }
 
 const PROFILE_DISPLAY_EVENT = 'gf-profile-display'
+
+/**
+ * 顶栏 / 账户短页 / 资料页身份卡同一套显示名：昵称优先，不用 realName 顶掉（真名只在表单里改）。
+ * @param {string|null|undefined} nickname
+ * @param {string|null|undefined} username
+ * @param {string} [fallback='我']
+ */
+export function chromeDisplayName(nickname, username, fallback = '我') {
+  const nick = String(nickname || '').trim()
+  if (nick) return nick
+  const user = String(username || '').trim()
+  if (user) return user
+  return fallback
+}
 
 /**
  * 写入昵称/头像并通知各布局顶栏立即刷新（同页保存后无需跳转）。

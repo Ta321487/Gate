@@ -1,4 +1,4 @@
-"""门户顶栏超额进「更多」、管理侧栏项多略密：逻辑与骨架接线。"""
+"""管理侧栏项多略密 + navItemActive；门户顶栏改由 portalShellNav（见 test_portal_shell_nav）。"""
 
 from __future__ import annotations
 
@@ -40,12 +40,11 @@ def _eval_nav(payload: dict) -> dict:
 
 
 class NavOverflowTests(unittest.TestCase):
-    def test_split_and_dense_thresholds(self) -> None:
-        # ≤12 全直出（商城用户菜单常见长度）
-        eleven = [{"to": f"/m{i}", "label": f"项{i}"} for i in range(11)]
+    def test_aside_dense_and_active(self) -> None:
+        six = [{"to": f"/m{i}", "label": f"项{i}"} for i in range(6)]
         fit = _eval_nav(
             {
-                "items": eleven,
+                "items": six,
                 "counts": [0, 8, 9, 12],
                 "paths": [
                     ["/orders/1", "/orders"],
@@ -54,49 +53,35 @@ class NavOverflowTests(unittest.TestCase):
                 ],
             }
         )
-        self.assertEqual(fit["primary"], [f"/m{i}" for i in range(11)])
-        self.assertEqual(fit["more"], [])
         self.assertEqual(fit["dense"], [False, False, True, True])
         self.assertEqual(fit["active"], [True, False, True])
 
-        # >12 才收纳：前 10 直出
-        long = [{"to": f"/m{i}", "label": f"项{i}"} for i in range(14)]
+    def test_split_helper_still_caps(self) -> None:
+        """legacy helper 仍可供非门户调用；阈值保持 ≤6 / 前 5。"""
+        ten = [{"to": f"/m{i}", "label": f"项{i}"} for i in range(10)]
         got = _eval_nav(
             {
-                "items": long,
+                "items": ten,
                 "counts": [9],
                 "paths": [["/a", "/a"]],
             }
         )
-        self.assertEqual(got["primary"], [f"/m{i}" for i in range(10)])
-        self.assertEqual(got["more"], [f"/m{i}" for i in range(10, 14)])
+        self.assertEqual(got["primary"], [f"/m{i}" for i in range(5)])
+        self.assertEqual(got["more"], [f"/m{i}" for i in range(5, 10)])
 
-        short = _eval_nav(
-            {
-                "items": eleven[:6],
-                "counts": [6],
-                "paths": [["/a", "/a"]],
-            }
-        )
-        self.assertEqual(short["primary"], [f"/m{i}" for i in range(6)])
-        self.assertEqual(short["more"], [])
-
-    def test_skeleton_wires_overflow(self) -> None:
-        portal = (_FRONT / "layouts" / "PortalLayout.vue").read_text(encoding="utf-8")
+    def test_admin_wires_dense(self) -> None:
         admin = (_FRONT / "layouts" / "AdminLayout.vue").read_text(encoding="utf-8")
         chrome = (_FRONT / "styles" / "chrome.css").read_text(encoding="utf-8")
         thesis = (_FRONT / "styles" / "thesis-display.css").read_text(encoding="utf-8")
         layout = (_FRONT / "styles" / "layout.css").read_text(encoding="utf-8")
-        self.assertIn("splitPortalNav", portal)
-        self.assertIn("更多", portal)
-        self.assertIn("nav--split", portal)
         self.assertIn("wb-aside--dense", admin)
         self.assertIn("wb-menu-scroll", admin)
         self.assertIn("adminAsideDense", admin)
         self.assertIn(".wb-menu-scroll", chrome)
         self.assertIn(".wb-aside--dense", chrome)
         self.assertIn(".wb-menu-scroll", thesis)
-        self.assertIn("nav.nav--split", layout)
+        self.assertIn("flex-wrap: nowrap", layout)
+        self.assertIn("PORTAL_NAV_INLINE_MAX = 6", _UTIL.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

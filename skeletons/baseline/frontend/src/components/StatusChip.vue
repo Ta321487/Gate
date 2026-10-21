@@ -32,10 +32,11 @@ defineProps({
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--imm-tone, #94a3b8) 22%, transparent);
 }
 .lab { line-height: 1.2; }
+/* progress/ok 跟门户 accent；warn/danger/pending 保留语义色 */
 .tone-pending { --imm-tone: #d97706; }
-.tone-progress { --imm-tone: #0284c7; }
+.tone-progress { --imm-tone: var(--portal-accent, #0b6e75); }
 .tone-warn { --imm-tone: #ea580c; }
-.tone-ok { --imm-tone: #059669; }
+.tone-ok { --imm-tone: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, #059669); }
 .tone-danger { --imm-tone: #dc2626; }
-.tone-muted { --imm-tone: #94a3b8; }
+.tone-muted { --imm-tone: var(--portal-muted, #94a3b8); }
 </style>

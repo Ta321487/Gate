@@ -13,8 +13,8 @@
 }
 
 .slot.tone-ok {
-  border-color: color-mix(in srgb, #059669 35%, var(--portal-line, #e2e8f0));
-  background: color-mix(in srgb, #059669 6%, var(--portal-surface, #fff));
+  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 35%, var(--portal-line, #e2e8f0));
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 8%, var(--portal-surface, #fff));
 }
 .slot.tone-warn {
   border-color: color-mix(in srgb, #ea580c 40%, var(--portal-line, #e2e8f0));
@@ -112,10 +112,10 @@
   background: var(--imm-tone, #94a3b8);
   transition: width 0.35s ease;
 }
-.tier-bar.tone-ok { --imm-tone: #059669; }
-.tier-bar.tone-progress { --imm-tone: #0284c7; }
+.tier-bar.tone-ok { --imm-tone: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, #059669); }
+.tier-bar.tone-progress { --imm-tone: var(--portal-accent, #0b6e75); }
 .tier-bar.tone-warn { --imm-tone: #d97706; }
-.tier-bar.tone-muted { --imm-tone: #94a3b8; }
+.tier-bar.tone-muted { --imm-tone: var(--portal-muted, #94a3b8); }
 
 .vote-bar {
   height: 8px;
@@ -162,7 +162,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #059669;
+  color: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, #059669);
   font-weight: 600;
 }
 .sign-ok .tick {
@@ -171,7 +171,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, #059669 18%, transparent);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 18%, transparent);
   animation: imm-heart 0.4s ease;
 }
 
@@ -180,11 +180,11 @@
   padding-left: 6px;
 }
 .week-ev.tone-pending { --imm-tone: #d97706; }
-.week-ev.tone-progress { --imm-tone: #0284c7; }
-.week-ev.tone-ok { --imm-tone: #059669; }
+.week-ev.tone-progress { --imm-tone: var(--portal-accent, #0b6e75); }
+.week-ev.tone-ok { --imm-tone: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, #059669); }
 .week-ev.tone-danger { --imm-tone: #dc2626; }
 .week-ev.tone-warn { --imm-tone: #ea580c; }
-.week-ev.tone-muted { --imm-tone: #94a3b8; }
+.week-ev.tone-muted { --imm-tone: var(--portal-muted, #94a3b8); }
 
 .reported-dim {
   opacity: 0.55;

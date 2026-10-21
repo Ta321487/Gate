@@ -70,11 +70,14 @@ defineProps({
 .block,
 .line,
 .chips span {
-  background: linear-gradient(
-    90deg,
-    var(--portal-accent-soft, #d7eef0) 0%,
-    var(--portal-line, #d5dde3) 50%,
-    var(--portal-accent-soft, #d7eef0) 100%
+  background: var(
+    --portal-skel-gradient,
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--portal-ink, #15202b) 7%, var(--portal-surface, #fff)) 0%,
+      color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, var(--portal-surface, #fff)) 45%,
+      color-mix(in srgb, var(--portal-ink, #15202b) 7%, var(--portal-surface, #fff)) 100%
+    )
   );
   background-size: 200% 100%;
   animation: shimmer 1.35s ease-in-out infinite;

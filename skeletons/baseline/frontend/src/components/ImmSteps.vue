@@ -56,7 +56,7 @@ defineProps({
   flex-shrink: 0;
 }
 .step.done { color: var(--portal-ink, #475569); }
-.step.done .node { background: #059669; }
+.step.done .node { background: color-mix(in srgb, var(--portal-accent, #0b6e75) 70%, #059669); }
 .step.current { color: var(--portal-accent, #0b6e75); font-weight: 600; }
 .step.current .node {
   background: var(--portal-accent, #0b6e75);

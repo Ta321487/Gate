@@ -12,36 +12,36 @@
     <form class="form" @submit.prevent="onSubmit">
       <label class="field">
         <span class="lab">用户名<i class="req" aria-hidden="true">*</i></span>
-        <el-input v-model="form.username" size="large" autocomplete="username" @blur="loadQuestion" />
+        <el-input v-model="form.username" autocomplete="username" @blur="loadQuestion" />
       </label>
       <label class="field">
         <span class="lab">{{ labels.securityQuestionLabel || '密保问题' }}</span>
-        <el-input :model-value="question || '请先填写用户名'" size="large" disabled />
+        <el-input :model-value="question || '请先填写用户名'" disabled />
       </label>
       <label class="field">
         <span class="lab">{{ labels.securityAnswerLabel || '密保答案' }}<i class="req" aria-hidden="true">*</i></span>
-        <el-input v-model="form.securityAnswer" size="large" autocomplete="off" />
+        <el-input v-model="form.securityAnswer" autocomplete="off" />
       </label>
       <label class="field">
         <span class="lab">新密码<i class="req" aria-hidden="true">*</i></span>
-        <el-input v-model="form.newPassword" type="password" show-password size="large" autocomplete="new-password" />
+        <el-input v-model="form.newPassword" type="password" show-password autocomplete="new-password" />
         <span class="hint">{{ strengthHint }}</span>
       </label>
       <label class="field">
         <span class="lab">确认密码<i class="req" aria-hidden="true">*</i></span>
-        <el-input v-model="form.confirmPassword" type="password" show-password size="large" autocomplete="new-password" />
+        <el-input v-model="form.confirmPassword" type="password" show-password autocomplete="new-password" />
       </label>
       <label class="field">
         <span class="lab">验证码<i class="req" aria-hidden="true">*</i></span>
         <div class="captcha-row">
-          <el-input v-model="form.captcha" size="large" maxlength="4" />
+          <el-input v-model="form.captcha" maxlength="4" />
           <button type="button" class="captcha-btn" @click="loadCaptcha">
             <img v-if="captchaImg" :src="captchaImg" alt="验证码" />
             <span v-else>加载中</span>
           </button>
         </div>
       </label>
-      <el-button class="submit" type="primary" size="large" native-type="submit" :loading="loading">
+      <el-button class="submit" type="primary" native-type="submit" :loading="loading">
         重设密码
       </el-button>
     </form>

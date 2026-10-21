@@ -96,33 +96,24 @@ watch(heroSrc, (src) => probeHero(src))
   place-items: center;
   padding: 28px 20px;
   color: var(--portal-ink, #15202b);
-  background:
-    radial-gradient(900px 420px at 8% -10%, var(--portal-bg-glow, rgba(11, 110, 117, 0.16)), transparent 60%),
-    radial-gradient(700px 360px at 100% 100%, color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, transparent), transparent 55%),
-    linear-gradient(
-      165deg,
-      var(--portal-bg, #eef3f5) 0%,
-      color-mix(in srgb, var(--portal-bg, #eef3f5) 72%, var(--portal-surface, #fff)) 100%
-    );
+  /* 与门户同底：干净浅底，不用双光晕模板脸 */
+  background: var(--portal-bg, #f4f6f5);
 }
 .auth[data-hero='0'] {
   background:
-    radial-gradient(1000px 480px at 12% -12%, color-mix(in srgb, var(--portal-accent, #0b6e75) 22%, transparent), transparent 58%),
-    radial-gradient(720px 400px at 92% 108%, color-mix(in srgb, var(--portal-brand, #08545a) 16%, transparent), transparent 52%),
     linear-gradient(
-      155deg,
-      color-mix(in srgb, var(--portal-accent, #0b6e75) 8%, var(--portal-bg, #eef3f5)) 0%,
-      var(--portal-bg, #eef3f5) 42%,
-      color-mix(in srgb, var(--portal-surface, #fff) 70%, var(--portal-bg, #eef3f5)) 100%
+      160deg,
+      color-mix(in srgb, var(--portal-accent, #0b6e75) 7%, var(--portal-bg, #f4f6f5)) 0%,
+      var(--portal-bg, #f4f6f5) 48%,
+      color-mix(in srgb, var(--portal-surface, #fff) 55%, var(--portal-bg, #f4f6f5)) 100%
     );
 }
 .auth[data-hero='0'] .brand {
   background:
     linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--portal-accent, #0b6e75) 88%, #000) 0%,
-      var(--portal-brand, #08545a) 55%,
-      color-mix(in srgb, var(--portal-accent, #0b6e75) 55%, var(--portal-brand, #08545a)) 100%
+      155deg,
+      var(--portal-accent, #0b6e75) 0%,
+      var(--portal-brand, #08545a) 100%
     );
 }
 
@@ -131,22 +122,24 @@ watch(heroSrc, (src) => probeHero(src))
   position: relative;
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
-  border-radius: var(--auth-radius, 18px);
+  border-radius: calc(var(--auth-radius, 18px) + 2px);
   overflow: hidden;
-  border: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+  border: 1px solid var(--portal-line, #e2e8e6);
   background: var(--portal-surface, #fff);
-  box-shadow: var(--portal-shadow, 0 16px 40px rgba(15, 40, 50, 0.1));
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--portal-ink, #15202b) 4%, transparent),
+    0 18px 40px color-mix(in srgb, var(--portal-brand, #08545a) 10%, transparent);
 }
 
 .brand {
   position: relative;
-  padding: 40px 36px 36px;
+  padding: 44px 36px 40px;
   background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--portal-accent, #0b6e75) 92%, #000) 0%,
+    155deg,
+    var(--portal-accent, #0b6e75) 0%,
     var(--portal-brand, #08545a) 100%
   );
-  color: #f4fbfb;
+  color: #f8faf9;
   overflow: hidden;
 }
 .glow {
@@ -158,20 +151,20 @@ watch(heroSrc, (src) => probeHero(src))
 }
 .eyebrow {
   position: relative;
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.78;
+  letter-spacing: 0.08em;
+  opacity: 0.82;
 }
 .title {
   position: relative;
   margin: 0 0 14px;
-  font-size: clamp(26px, 3.2vw, 34px);
-  line-height: 1.25;
+  font-family: var(--portal-font-display, inherit);
+  font-size: clamp(28px, 3.4vw, 36px);
+  line-height: 1.22;
   letter-spacing: -0.03em;
-  font-weight: 700;
+  font-weight: 750;
   overflow-wrap: anywhere;
 }
 .lead {

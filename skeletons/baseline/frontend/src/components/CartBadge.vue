@@ -6,15 +6,16 @@
     title="购物车"
   >
     <el-badge :value="count || undefined" :hidden="!count" :max="99">
-      <span class="cart-ico" aria-hidden="true">🛒</span>
+      <el-icon :size="18" class="cart-ico"><ShoppingCart /></el-icon>
     </el-badge>
   </router-link>
 </template>
 
 <script setup>
-/** 门户顶栏购物车角标：有 order_lines 且用户菜单含 cart 时显示 */
+/** 门户顶栏购物车角标：矢量图标 + 数量；与文字主路径不同时出，避免叠两份 */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { ShoppingCart } from '@element-plus/icons-vue'
 import http from '../api/http'
 import { hasCap, schemaMenus } from '../utils/domainSchema.js'
 import { isLoggedIn } from '../utils/session.js'
@@ -59,7 +60,13 @@ watch(() => route.fullPath, refresh)
   align-items: center;
   text-decoration: none;
   margin-right: 2px;
-  color: inherit;
+  padding: 4px 6px;
+  border-radius: 8px;
+  color: var(--portal-muted, #5b6b76);
 }
-.cart-ico { font-size: 15px; line-height: 1; }
+.cart-badge-link:hover {
+  color: var(--portal-ink, #15202b);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent);
+}
+.cart-ico { display: block; line-height: 1; }
 </style>

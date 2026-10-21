@@ -12,13 +12,13 @@
     <form class="form" @submit.prevent="onSubmit">
       <label class="field">
         <span class="lab">用户名<i class="req" aria-hidden="true">*</i></span>
-        <el-input v-model="form.username" size="large" autocomplete="username" />
+        <el-input v-model="form.username" autocomplete="username" />
       </label>
       <label class="field">
         <span class="lab">{{ labels.activationCodeLabel || '激活码' }}<i class="req" aria-hidden="true">*</i></span>
-        <el-input v-model="form.code" size="large" maxlength="16" autocomplete="one-time-code" />
+        <el-input v-model="form.code" maxlength="16" autocomplete="one-time-code" />
       </label>
-      <el-button class="submit" type="primary" size="large" native-type="submit" :loading="loading">
+      <el-button class="submit" type="primary" native-type="submit" :loading="loading">
         激活并去登录
       </el-button>
     </form>

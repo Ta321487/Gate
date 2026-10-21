@@ -3,17 +3,17 @@
 
 :root,
 [data-chrome="soft"] {
-  --portal-radius-sm: 12px;
-  --portal-radius: 18px;
-  --portal-radius-lg: 28px;
-  --portal-btn-radius: 14px;
+  --portal-radius-sm: 10px;
+  --portal-radius: 14px;
+  --portal-radius-lg: 20px;
+  --portal-btn-radius: 10px;
   --portal-border-width: 1px;
   --portal-border-style: solid;
-  --portal-control-h: 40px;
-  --portal-gap: 14px;
-  --portal-pad: 16px;
-  --auth-radius: 28px;
-  --portal-shadow: 0 18px 44px var(--portal-shadow-color, rgba(15, 40, 50, 0.12));
+  --portal-control-h: 36px;
+  --portal-gap: 12px;
+  --portal-pad: 14px;
+  --auth-radius: 20px;
+  --portal-shadow: 0 10px 28px var(--portal-shadow-color, rgba(15, 40, 50, 0.08));
 }
 
 [data-chrome="sharp"] {
@@ -113,11 +113,55 @@ html {
   --el-border-color-light: var(--portal-line, #d5dde3);
   --el-border-color-lighter: color-mix(in srgb, var(--portal-line, #d5dde3) 70%, var(--portal-mix, #fff));
   --el-border-color-extra-light: color-mix(in srgb, var(--portal-line, #d5dde3) 45%, var(--portal-mix, #fff));
+  /* 加载骨架：中性底 + 淡 accent 高光，禁止 accent-soft↔灰线脏闪 */
+  --portal-skel-base: color-mix(in srgb, var(--portal-ink, #15202b) 7%, var(--portal-surface, #fff));
+  --portal-skel-shine: color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, var(--portal-surface, #fff));
+  --portal-skel-gradient: linear-gradient(
+    90deg,
+    var(--portal-skel-base) 0%,
+    var(--portal-skel-shine) 45%,
+    var(--portal-skel-base) 100%
+  );
+}
+
+/* EP 转圈 / 遮罩 / 内置 skeleton 跟门户皮，禁默认蓝 */
+.el-loading-spinner .circular .path,
+.el-loading-spinner .path {
+  stroke: var(--portal-accent, #0b6e75) !important;
+}
+.el-loading-spinner .el-loading-text {
+  color: var(--portal-muted, #6b7c8a) !important;
+}
+.el-loading-mask {
+  background-color: color-mix(in srgb, var(--portal-surface, #fff) 78%, transparent) !important;
+}
+html.dark .el-loading-mask,
+html[data-scheme="dark"] .el-loading-mask {
+  background-color: color-mix(in srgb, var(--portal-bg, #0f1720) 72%, transparent) !important;
+}
+.el-button .is-loading,
+.el-button.is-loading {
+  --el-button-text-color: inherit;
+}
+.el-skeleton__item {
+  background: var(--portal-skel-gradient) !important;
+  background-size: 200% 100% !important;
+}
+.el-progress-bar__inner {
+  background-color: var(--portal-accent, #0b6e75) !important;
 }
 
 /* 深色行业配色：把 EP 默认浅色面板接到 portal token，避免浅字落在白底卡片上 */
 html.dark,
 html[data-scheme="dark"] {
+  --portal-skel-base: color-mix(in srgb, var(--portal-ink, #e8eef2) 10%, var(--portal-surface, #18232e));
+  --portal-skel-shine: color-mix(in srgb, var(--portal-accent, #2dd4bf) 18%, var(--portal-surface, #18232e));
+  --portal-skel-gradient: linear-gradient(
+    90deg,
+    var(--portal-skel-base) 0%,
+    var(--portal-skel-shine) 45%,
+    var(--portal-skel-base) 100%
+  );
   --el-bg-color-page: var(--portal-bg, #0f1720);
   --el-bg-color: var(--portal-surface, #18232e);
   --el-bg-color-overlay: var(--portal-surface, #18232e);
@@ -200,7 +244,8 @@ html[data-scheme="dark"] .el-menu {
   border-style: var(--portal-border-style, solid);
 }
 
-.el-button:not(.is-link):not(.is-text):not(.el-button--small) {
+/* 只抬默认档；large 跟 EP 自身，避免筛选条/登录再叠高 */
+.el-button:not(.is-link):not(.is-text):not(.el-button--small):not(.el-button--large) {
   min-height: var(--portal-control-h, 40px);
 }
 
@@ -225,6 +270,44 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
 .el-select__wrapper,
 .el-date-editor.el-input__wrapper {
   border-radius: var(--portal-radius-sm) !important;
+}
+
+/*
+ * 浏览器自动填充：默认给 inner input 刷黄/灰蓝底，外框还有白边，像「框中框/阴影」。
+ * 用大 inset 盖成壳面色，并让 wrapper 跟 autofill 同色，密码眼睛旁不再留白岛。
+ */
+.el-input__wrapper:has(input:-webkit-autofill),
+.el-input__wrapper:has(input:-webkit-autofill:hover),
+.el-input__wrapper:has(input:-webkit-autofill:focus) {
+  background-color: var(--portal-surface, #ffffff) !important;
+  box-shadow: 0 0 0 var(--portal-border-width, 1px) var(--portal-line, #d5dde3) inset;
+}
+.el-input__inner:-webkit-autofill,
+.el-input__inner:-webkit-autofill:hover,
+.el-input__inner:-webkit-autofill:focus,
+.el-input__inner:-webkit-autofill:active,
+.el-textarea__inner:-webkit-autofill,
+.el-textarea__inner:-webkit-autofill:hover,
+.el-textarea__inner:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--portal-ink, #15202b) !important;
+  caret-color: var(--portal-ink, #15202b);
+  transition: background-color 99999s ease-in-out 0s;
+  box-shadow: 0 0 0 1000px var(--portal-surface, #ffffff) inset !important;
+  border-radius: inherit;
+}
+html.dark .el-input__wrapper:has(input:-webkit-autofill),
+html[data-scheme="dark"] .el-input__wrapper:has(input:-webkit-autofill) {
+  background-color: var(--el-fill-color-blank, #1d1e1f) !important;
+}
+html.dark .el-input__inner:-webkit-autofill,
+html.dark .el-input__inner:-webkit-autofill:hover,
+html.dark .el-input__inner:-webkit-autofill:focus,
+html[data-scheme="dark"] .el-input__inner:-webkit-autofill,
+html[data-scheme="dark"] .el-input__inner:-webkit-autofill:hover,
+html[data-scheme="dark"] .el-input__inner:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--portal-ink, #e8eef2) !important;
+  caret-color: var(--portal-ink, #e8eef2);
+  box-shadow: 0 0 0 1000px var(--el-fill-color-blank, #1d1e1f) inset !important;
 }
 
 .el-card {
@@ -320,18 +403,12 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
   height: 48px !important;
 }
 
-/* 管理端 / 作业台：与门户同一套色与质感，避免「另一套系统」感 */
+/* 管理端 / 作业台：与门户同系；品牌条用主色浅字，禁止「另一套后台」腔 */
 .workbench {
   min-height: 100vh;
   font-family: var(--portal-font-ui);
   color: var(--portal-ink, #15202b);
-  background:
-    radial-gradient(900px 320px at 0% -10%, var(--portal-bg-glow, rgba(11, 110, 117, 0.12)), transparent 55%),
-    linear-gradient(
-      180deg,
-      var(--portal-bg, #eef3f5) 0%,
-      color-mix(in srgb, var(--portal-bg, #eef3f5) 90%, var(--portal-surface, #fff)) 100%
-    );
+  background: var(--portal-bg, #f4f6f5);
 }
 
 .workbench .wb-aside {
@@ -340,8 +417,8 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
   height: 100vh;
   overflow: hidden;
   background: var(--portal-surface, #fff);
-  border-right: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
-  box-shadow: var(--portal-shadow, none);
+  border-right: 1px solid var(--portal-line, #e2e8e6);
+  box-shadow: none;
 }
 
 .workbench .wb-brand {
@@ -349,24 +426,44 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  padding: 18px 16px;
+  min-height: 56px;
+  padding: 12px 16px;
   font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.02em;
-  color: var(--portal-ink, #15202b);
-  border-bottom: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: #f8faf9;
+  background: linear-gradient(
+    135deg,
+    var(--portal-brand, #08545a),
+    var(--portal-accent, #0b6e75)
+  );
+  border-bottom: none;
+}
+
+.workbench .wb-brand-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--portal-font-display, inherit);
+}
+
+.workbench .wb-brand-logo {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .workbench .wb-brand-mark {
   width: 22px;
   height: 22px;
   flex-shrink: 0;
-  border-radius: var(--portal-radius-sm, 6px);
-  background: linear-gradient(
-    135deg,
-    var(--portal-accent, #0b6e75),
-    color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-brand, #08545a))
-  );
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .workbench .wb-menu-scroll {
@@ -390,8 +487,8 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
 
 .workbench .wb-aside .el-menu-item {
   margin: 2px 10px;
-  height: 42px;
-  line-height: 42px;
+  height: 36px;
+  line-height: 36px;
   border-radius: var(--portal-radius-sm, 8px) !important;
   color: var(--portal-muted, #5b6b76) !important;
   background: transparent !important;
@@ -404,7 +501,7 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
 
 .workbench .wb-aside .el-menu-item.is-active {
   color: var(--portal-accent, #0b6e75) !important;
-  background: var(--portal-accent-soft, #d7eef0) !important;
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent) !important;
   font-weight: 600;
 }
 
@@ -415,17 +512,18 @@ html[data-scheme="dark"] .el-button--primary:not(.is-link):not(.is-text):not(.is
   gap: 12px;
   height: 56px !important;
   padding: 0 20px;
-  background: color-mix(in srgb, var(--portal-surface, #fff) 92%, transparent);
-  backdrop-filter: blur(10px) saturate(1.05);
-  border-bottom: var(--portal-border-width, 1px) solid var(--portal-line, #d5dde3);
+  background: var(--portal-surface, #fff);
+  border-bottom: 1px solid var(--portal-line, #e2e8e6);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, transparent);
 }
 
 .workbench .wb-header-title {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--portal-muted, #6b7c8a);
+  font-size: 14px;
+  font-weight: 650;
+  font-family: var(--portal-font-display, inherit);
+  color: var(--portal-ink, #15202b);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -30,28 +30,26 @@ defineEmits(['cta'])
 
 <style scoped>
 .empty-hint {
-  padding: 48px 16px;
+  padding: 28px 16px;
   text-align: center;
   color: var(--portal-muted, #94a3b8);
 }
 .illu {
-  margin: 0 auto 14px;
-  width: 64px;
-  height: 64px;
+  margin: 0 auto 12px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background:
-    radial-gradient(circle at 30% 28%, color-mix(in srgb, var(--portal-accent, #0b6e75) 18%, transparent), transparent 55%),
-    color-mix(in srgb, var(--portal-bg, #f1f5f9) 80%, var(--portal-surface, #fff));
-  border: 1px solid var(--portal-line, #e2e8f0);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 8%, var(--portal-surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--portal-accent, #0b6e75) 18%, var(--portal-line, #e2e8f0));
 }
 .illu-mark {
   font-family: var(--portal-font-display, inherit);
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--portal-accent, #0b6e75);
-  opacity: 0.85;
+  opacity: 0.75;
 }
 .title {
   margin: 0;

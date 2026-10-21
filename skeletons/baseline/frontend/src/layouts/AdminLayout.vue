@@ -1,9 +1,10 @@
 <template>
   <el-container class="layout workbench">
     <el-aside width="208px" class="wb-aside" :class="{ 'wb-aside--dense': asideDense }">
-      <div class="wb-brand">
-        <span class="wb-brand-mark" aria-hidden="true" />
-        <span>管理后台</span>
+      <div class="wb-brand" :title="headerTitle">
+        <img v-if="logoUrl" class="wb-brand-logo" :src="logoUrl" alt="" />
+        <span v-else class="wb-brand-mark" aria-hidden="true" />
+        <span class="wb-brand-text">{{ headerTitle }}</span>
       </div>
       <div class="wb-menu-scroll">
         <el-menu :default-active="active" router class="wb-menu">

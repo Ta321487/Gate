@@ -198,7 +198,13 @@ function renderChart() {
           barMaxWidth: 48,
           data: bands.map((b) => ({
             value: b.count,
-            itemStyle: { color: b.pass ? '#409eff' : '#f56c6c' },
+            itemStyle: {
+              color: b.pass
+                ? (getComputedStyle(document.documentElement)
+                    .getPropertyValue('--portal-accent')
+                    .trim() || '#0b6e75')
+                : '#f56c6c',
+            },
           })),
         },
       ],

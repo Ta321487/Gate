@@ -103,7 +103,7 @@ onMounted(load)
   min-height: 88px;
 }
 .cell.vacant { background: #67c23a; }
-.cell.booked { background: #409eff; }
+.cell.booked { background: var(--portal-accent, #0b6e75); }
 .cell.staying { background: #e6a23c; }
 .cell.dirty { background: #909399; }
 .cell.repair { background: #f56c6c; }

@@ -1,12 +1,13 @@
 /** 门户顶栏 / 管理侧栏：项多时的呈现切分（不改菜单集合）。 */
 
-/** 顶栏能铺开就不进「更多」；超长才收纳（商城用户菜单常 8～11 项） */
-export const PORTAL_NAV_INLINE_MAX = 12
-export const PORTAL_NAV_INLINE_KEEP = 10
+/** 中文长标签（如「健身用品浏览」）顶栏放不下 8～11 项；过宽会换行成一团。
+ *  ≤6 全直出；>6 前 5 直出，其余进「更多」（单行 + 收纳）。 */
+export const PORTAL_NAV_INLINE_MAX = 6
+export const PORTAL_NAV_INLINE_KEEP = 5
 export const ADMIN_ASIDE_DENSE_AT = 9
 
 /**
- * 登录后顶栏：≤12 全直出；>12 前 10 直出，其余进「更多」。顺序不变。
+ * 登录后顶栏：≤6 全直出；>6 前 5 直出，其余进「更多」。顺序不变。
  * @param {Array<{to?: string, label?: string}>} items
  */
 export function splitPortalNav(items) {

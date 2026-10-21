@@ -3,7 +3,7 @@
     <template #reference>
       <el-badge :value="unread || undefined" :hidden="!unread" :max="99" class="bell-badge">
         <el-button link class="bell-btn" title="消息" aria-label="消息">
-          <span class="bell-ico" aria-hidden="true">✉</span>
+          <el-icon :size="18" class="bell-ico"><Bell /></el-icon>
         </el-button>
       </el-badge>
     </template>
@@ -39,6 +39,7 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Bell } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 import { formatRelative } from '../utils/dates.js'
@@ -124,7 +125,7 @@ onUnmounted(() => {
   min-height: 0 !important;
   padding: 0 4px !important;
 }
-.bell-ico { font-size: 15px; line-height: 1; }
+.bell-ico { display: block; line-height: 1; vertical-align: middle; }
 .panel { margin: -4px 0; }
 .hd {
   display: flex; justify-content: space-between; align-items: center;

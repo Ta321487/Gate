@@ -176,18 +176,24 @@ function reload() {
   margin: 18px 0 4px;
   text-align: left;
 }
-.sp-skel .bar {
-  height: 10px;
+.sp-skel .bar,
+.sp-skel .card {
   border-radius: var(--portal-radius-sm, 6px);
-  margin-bottom: 10px;
-  background: linear-gradient(
-    90deg,
-    var(--portal-accent-soft, #d7eef0) 0%,
-    var(--portal-line, #d5dde3) 45%,
-    var(--portal-accent-soft, #d7eef0) 100%
+  background: var(
+    --portal-skel-gradient,
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--portal-ink, #15202b) 7%, var(--portal-surface, #fff)) 0%,
+      color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, var(--portal-surface, #fff)) 45%,
+      color-mix(in srgb, var(--portal-ink, #15202b) 7%, var(--portal-surface, #fff)) 100%
+    )
   );
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
+}
+.sp-skel .bar {
+  height: 10px;
+  margin-bottom: 10px;
 }
 .sp-skel .w80 { width: 80%; }
 .sp-skel .w60 { width: 60%; }
@@ -201,15 +207,6 @@ function reload() {
 .sp-skel .card {
   height: 56px;
   border-radius: var(--portal-radius, 10px);
-  background: var(--portal-accent-soft, #d7eef0);
-  animation: shimmer 1.4s ease-in-out infinite;
-  background-image: linear-gradient(
-    90deg,
-    var(--portal-accent-soft, #d7eef0) 0%,
-    var(--portal-line, #d5dde3) 45%,
-    var(--portal-accent-soft, #d7eef0) 100%
-  );
-  background-size: 200% 100%;
 }
 @keyframes shimmer {
   0% { background-position: 100% 0; }

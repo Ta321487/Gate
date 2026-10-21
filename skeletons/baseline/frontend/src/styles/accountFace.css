@@ -1,0 +1,368 @@
+/**
+ * 个人中心 /「我的」域组脸：构图差，不是只换色。
+ * 挂在 [data-account-face]；功能块仍由页面按开题渲染。
+ */
+
+[data-account-face] {
+  --af-radius: var(--portal-radius, 12px);
+  --af-line: var(--portal-line, #dfe7ec);
+  --af-ink: var(--portal-ink, #15202b);
+  --af-muted: var(--portal-muted, #6b7c8a);
+  --af-accent: var(--portal-accent, #0b6e75);
+  --af-surface: var(--portal-surface, #fff);
+}
+
+/* —— 市集摊位：密、方、工具感；深色皮也要能看清卡 —— */
+[data-account-face='stall'] {
+  --af-radius: 6px;
+  max-width: 920px;
+}
+[data-account-face='stall'] .af-hero {
+  border-radius: 8px;
+}
+[data-account-face='stall'] .af-hero h1 {
+  font-size: 20px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+[data-account-face='stall'] .af-identity {
+  border-radius: 6px;
+  border-style: dashed;
+  padding: 14px 16px;
+  gap: 12px;
+}
+/* 页签在身份卡下，保证可点、不被侧栏/遮罩错层盖住 */
+[data-account-face='stall'] .settings-tabs {
+  position: relative;
+  z-index: 2;
+}
+[data-account-face='stall'] .settings-tabs :deep(.el-tabs__item) {
+  min-height: 40px;
+}
+[data-account-face='stall'] .af-hub-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+[data-account-face='stall'] .af-hub-tile {
+  min-height: 52px;
+  padding: 12px 14px 12px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 650;
+  background: var(--af-surface);
+  border-color: color-mix(in srgb, var(--af-line) 45%, var(--af-accent) 55%);
+  border-left: 3px solid var(--af-accent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--af-ink) 8%, transparent);
+}
+[data-account-face='stall'] .af-hub-tile:hover {
+  background: color-mix(in srgb, var(--af-accent) 14%, var(--af-surface));
+}
+@media (max-width: 420px) {
+  [data-account-face='stall'] .af-hub-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* —— 店会员：宽会员卡横幅 ——
+ * 选择器带 .card，压过 Profile/AccountCenter scoped `.card` 白底，
+ * 否则深底被盖掉、完善度近白字落在白卡上洗成看不见。 */
+[data-account-face='member'] .card.af-identity {
+  flex-direction: row;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  background:
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--af-accent) 88%, #111) 0%,
+      color-mix(in srgb, var(--af-accent) 55%, #222) 55%,
+      color-mix(in srgb, var(--af-accent) 35%, #333) 100%
+    );
+  color: #f8fafc;
+}
+[data-account-face='member'] .card.af-identity .avatar-slot {
+  padding: 20px 0 20px 22px;
+}
+[data-account-face='member'] .card.af-identity .who {
+  padding: 20px 22px 20px 8px;
+  flex: 1;
+}
+[data-account-face='member'] .card.af-identity .who .nick,
+[data-account-face='member'] .card.af-identity .who .uid,
+[data-account-face='member'] .card.af-identity .complete-row,
+[data-account-face='member'] .card.af-identity .complete-row strong,
+[data-account-face='member'] .card.af-identity .complete-hint {
+  color: #f1f5f9;
+}
+[data-account-face='member'] .card.af-identity .complete-hint {
+  color: #fde68a;
+}
+[data-account-face='member'] .af-hero h1 {
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+[data-account-face='member'] .af-hub-tile {
+  border-radius: 14px;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--af-accent) 18%, transparent);
+}
+
+/* —— 影院票夹：墨底金线 —— */
+[data-account-face='showcard'] {
+  --af-radius: 4px;
+}
+[data-account-face='showcard'] .card.af-identity {
+  background: #1c1a22;
+  color: #f5efe3;
+  border: 1px solid #c4a574;
+  border-radius: 4px;
+}
+[data-account-face='showcard'] .card.af-identity .who .nick {
+  color: #f5efe3;
+  font-family: var(--portal-font-display);
+  letter-spacing: 0.06em;
+}
+[data-account-face='showcard'] .card.af-identity .who .uid,
+[data-account-face='showcard'] .card.af-identity .complete-row,
+[data-account-face='showcard'] .card.af-identity .complete-row strong {
+  color: #c4a574;
+}
+[data-account-face='showcard'] .af-hero h1 {
+  font-family: var(--portal-font-display);
+  letter-spacing: 0.08em;
+}
+
+/* —— 借阅证：左侧竖证件 —— */
+[data-account-face='reader'] .af-shell {
+  display: grid;
+  grid-template-columns: minmax(168px, 220px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+[data-account-face='reader'] .af-side {
+  position: sticky;
+  top: 72px;
+}
+[data-account-face='reader'] .af-identity {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-height: 0;
+  border-radius: 4px 12px 12px 4px;
+  border-left: 6px solid var(--af-accent);
+  background:
+    repeating-linear-gradient(
+      -12deg,
+      transparent,
+      transparent 10px,
+      color-mix(in srgb, var(--af-accent) 5%, transparent) 10px,
+      color-mix(in srgb, var(--af-accent) 5%, transparent) 11px
+    ),
+    var(--af-surface);
+}
+[data-account-face='reader'] .af-identity .who {
+  width: 100%;
+}
+[data-account-face='reader'] .af-identity .complete {
+  max-width: none;
+  margin-left: auto;
+  margin-right: auto;
+}
+[data-account-face='reader'] .af-hero h1 {
+  font-size: 22px;
+}
+@media (max-width: 780px) {
+  [data-account-face='reader'] .af-shell {
+    grid-template-columns: 1fr;
+  }
+  [data-account-face='reader'] .af-side {
+    position: static;
+  }
+  [data-account-face='reader'] .af-identity {
+    min-height: 0;
+    flex-direction: row;
+    text-align: left;
+  }
+}
+
+/* —— 内容书桌：纸感窄栏 —— */
+[data-account-face='desk'] {
+  max-width: 640px;
+}
+[data-account-face='desk'] .af-page-bg {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--af-accent) 6%, #f7f4ee) 0%, #f7f4ee 40%, #f3efe6 100%);
+  border-radius: 2px;
+  padding: 20px 22px 28px;
+  border: 1px solid #e5e0d4;
+}
+[data-account-face='desk'] .af-hero h1 {
+  font-family: var(--portal-font-display);
+  font-weight: 600;
+  font-size: 28px;
+}
+[data-account-face='desk'] .af-identity,
+[data-account-face='desk'] .card,
+[data-account-face='desk'] .af-hub-tile {
+  border-radius: 2px;
+  border-color: #e5e0d4;
+  box-shadow: none;
+  background: #fffcf7;
+}
+[data-account-face='desk'] .af-hub-grid {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+[data-account-face='desk'] .af-hub-tile {
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  min-height: 44px;
+  border-bottom: 1px solid #e5e0d4;
+}
+[data-account-face='desk'] .af-hub-tile:first-child {
+  border-top: 1px solid #e5e0d4;
+}
+
+/* —— 报修服务台：状态条 + 分段页签感 —— */
+[data-account-face='service'] .af-identity {
+  border-top: 4px solid color-mix(in srgb, var(--af-accent) 70%, #f59e0b);
+  border-radius: 8px;
+}
+[data-account-face='service'] .af-hero h1::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--af-accent) 70%, #f59e0b);
+  vertical-align: middle;
+}
+[data-account-face='service'] .settings-tabs :deep(.el-tabs__nav-wrap)::after {
+  height: 3px;
+}
+[data-account-face='service'] .af-hub-tile {
+  border-left: 3px solid var(--af-accent);
+}
+
+/* —— 审批收件：左侧栏页签（页面设 tab-position=left） —— */
+[data-account-face='inbox'] {
+  max-width: 960px;
+}
+[data-account-face='inbox'] .af-identity {
+  border-radius: 0;
+  border-left: 3px solid var(--af-accent);
+  padding: 12px 16px;
+}
+[data-account-face='inbox'] .settings-tabs :deep(.el-tabs__header.is-left) {
+  margin-right: 16px;
+  min-width: 112px;
+}
+[data-account-face='inbox'] .settings-tabs :deep(.el-tabs__item) {
+  justify-content: flex-start;
+  height: 40px;
+}
+[data-account-face='inbox'] .af-hub-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* —— 预约：胶囊页签 / 柔圆 —— */
+[data-account-face='booking'] .card.af-identity {
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--af-accent) 8%, var(--af-surface));
+}
+[data-account-face='booking'] .settings-tabs :deep(.el-tabs__nav) {
+  display: flex;
+  gap: 6px;
+}
+[data-account-face='booking'] .settings-tabs :deep(.el-tabs__item) {
+  border-radius: 999px;
+  padding: 0 16px;
+  height: 34px;
+  line-height: 34px;
+  border: 1px solid transparent;
+}
+[data-account-face='booking'] .settings-tabs :deep(.el-tabs__item.is-active) {
+  background: color-mix(in srgb, var(--af-accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--af-accent) 35%, transparent);
+}
+[data-account-face='booking'] .settings-tabs :deep(.el-tabs__active-bar) {
+  display: none;
+}
+[data-account-face='booking'] .af-hub-tile {
+  border-radius: 999px;
+  justify-content: center;
+}
+
+/* —— 报名活动：海报条 —— */
+[data-account-face='event'] .af-hero {
+  position: relative;
+  padding: 18px 18px 18px 22px;
+  border-radius: 12px;
+  background:
+    linear-gradient(
+      105deg,
+      color-mix(in srgb, var(--af-accent) 16%, var(--af-surface)) 0%,
+      var(--af-surface) 55%
+    );
+  border: 1px solid var(--af-line);
+  margin-bottom: 16px;
+}
+[data-account-face='event'] .af-hero::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 5px;
+  border-radius: 4px;
+  background: var(--af-accent);
+}
+[data-account-face='event'] .af-hub-tile {
+  min-height: 56px;
+  border-radius: 12px;
+}
+
+/* —— 跟进 CRM：资料卡左边色条 —— */
+[data-account-face='crm'] .card.af-identity {
+  border-left: 5px solid var(--af-accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--af-accent) 6%, var(--af-surface));
+}
+[data-account-face='crm'] .af-hub-grid {
+  grid-template-columns: 1fr;
+}
+[data-account-face='crm'] .af-hub-tile {
+  border-radius: 8px;
+  min-height: 46px;
+}
+
+/* —— 互动答卷：稿纸感 —— */
+[data-account-face='record'] .af-page-bg {
+  background:
+    repeating-linear-gradient(
+      transparent,
+      transparent 27px,
+      color-mix(in srgb, var(--af-line) 80%, transparent) 28px
+    ),
+    var(--af-surface);
+  padding: 8px 12px 24px;
+  border: 1px solid var(--af-line);
+  border-radius: 4px;
+}
+[data-account-face='record'] .af-hero h1 {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+[data-account-face='record'] .af-identity {
+  border-style: dashed;
+}
+[data-account-face='record'] .af-hub-tile {
+  font-variant-numeric: tabular-nums;
+}
+
+/* —— 回落：沿用页内默认，仅统一半径 —— */
+[data-account-face='plain'] .af-identity {
+  border-radius: var(--af-radius);
+}

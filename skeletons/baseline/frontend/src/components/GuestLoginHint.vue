@@ -41,7 +41,7 @@ function onClick() {
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  color: var(--el-color-primary, #409eff);
+  color: var(--portal-accent, #0b6e75);
   text-decoration: underline;
   text-underline-offset: 3px;
 }

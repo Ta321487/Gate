@@ -22,7 +22,6 @@
         <el-select
           v-else
           v-model="form.loginAs"
-          size="large"
           placeholder="请选择登录身份"
           style="width: 100%"
         >
@@ -31,14 +30,13 @@
       </label>
       <label class="field">
         <span class="lab">用户名<i class="req" aria-hidden="true">*</i></span>
-        <el-input v-model="form.username" size="large" autocomplete="username" placeholder="请输入用户名" />
+        <el-input v-model="form.username" autocomplete="username" placeholder="请输入用户名" />
       </label>
       <label class="field">
         <span class="lab">密码<i class="req" aria-hidden="true">*</i></span>
         <el-input
           v-model="form.password"
           type="password"
-          size="large"
           show-password
           autocomplete="current-password"
           placeholder="请输入密码"
@@ -47,7 +45,7 @@
       <label class="field">
         <span class="lab">验证码<i class="req" aria-hidden="true">*</i></span>
         <div class="captcha-row">
-          <el-input v-model="form.captcha" size="large" placeholder="验证码" maxlength="4" />
+          <el-input v-model="form.captcha" placeholder="验证码" maxlength="4" />
           <button
             type="button"
             class="captcha-btn"
@@ -68,7 +66,7 @@
           {{ labels.trialLoginFillLabel || '填入试用账号' }}
         </button>
       </div>
-      <el-button class="submit" type="primary" size="large" native-type="submit" :loading="loading">
+      <el-button class="submit" type="primary" native-type="submit" :loading="loading">
         登录
       </el-button>
     </form>
@@ -505,6 +503,16 @@ onMounted(async () => {
 .form :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 var(--portal-border-width, 1px) var(--portal-accent, #0b6e75) inset;
 }
+/* 登录页底略灰：autofill 跟 wrapper 同色，避免灰蓝块浮在白框里 */
+.form :deep(.el-input__wrapper:has(input:-webkit-autofill)) {
+  background: color-mix(in srgb, var(--portal-surface, #fff) 88%, var(--portal-bg, #eef3f5)) !important;
+}
+.form :deep(.el-input__inner:-webkit-autofill),
+.form :deep(.el-input__inner:-webkit-autofill:hover),
+.form :deep(.el-input__inner:-webkit-autofill:focus) {
+  box-shadow: 0 0 0 1000px color-mix(in srgb, var(--portal-surface, #fff) 88%, var(--portal-bg, #eef3f5)) inset !important;
+  -webkit-text-fill-color: var(--portal-ink, #15202b) !important;
+}
 .role-radio {
   display: flex;
   flex-wrap: wrap;
@@ -544,7 +552,8 @@ onMounted(async () => {
 }
 .submit {
   margin-top: 8px;
-  height: var(--portal-control-h, 44px) !important;
+  width: 100%;
+  height: var(--portal-control-h, 40px) !important;
   border-radius: var(--portal-btn-radius, 10px) !important;
   font-weight: 600;
   background: var(--portal-accent, #0b6e75) !important;
