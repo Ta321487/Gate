@@ -52,14 +52,14 @@
 | trade | 交易 | 已接线 | 吃 A | **首刀已齐** | PortalHome mall + shelfgrid + ArchiveItemDetail | menuboard/showtime **再磨已齐**；软皮短签继续 |
 | reserve | 预约 | 已接线 | 吃 A | **首刀已齐** | SlotBook + slotstrip/roomstate/vehiclecard + 详情选时段 | 软皮短签 **再磨已齐** |
 | content | 内容 | 已接线 | 吃 A | **首刀已齐** | folio/coverwall/ledger/splitdesk + 阅读详情 | 软皮短签 **再磨已齐** |
-| apply | 报名/申请 | 已接线 | 吃 A | **首刀已齐** | eventposter/coursetable/noticeboard/tourcard + 详情报名 | 软皮短签再磨 |
+| apply | 报名/申请 | 已接线 | 吃 A | **首刀已齐** | eventposter/coursetable/noticeboard/tourcard + 详情报名 | 软皮短签 **再磨已齐** |
 | follow | 跟进 | 已接线 | 吃 A | **首刀已齐** | pipeline/dossier/listing（+LISTING price 价签） | 软皮短签再磨 |
 | interact | 互动 | 已接线 | 吃 A | **首刀已齐** | profilegrid/mutualpick/triprow + 详情意向；EXAM/SURVEY/VOTE 专用页不动 | 软皮短签再磨 |
 | ticket | 报修/工单 | 已接线 | 吃 A | **首刀已齐** | MyTickets ticketfeed/faultboard | 软皮短签再磨 |
 | approve | 审批/填报 | 已接线 | 吃 A | **首刀已齐** | MyTickets/TicketsAdmin typelist/inboxsteps | 软皮短签再磨 |
 | fallback | 兜底 | 无选型键 | 吃 A | **吃公共壳** | 导引 + 中性壳 | 随壳即可 |
 
-建议下一轮：报名/跟进/互动等组 **软皮短签再磨**（一轮一组）。
+建议下一轮：跟进/互动等组 **软皮短签再磨**（一轮一组）。
 
 ---
 
@@ -114,6 +114,7 @@
 - `noticeboard`：启事便签——寻物琥珀 / 招领绿 / 线索靛
 - `tourcard`：左边强调条行程横卡 + 亮点摘要 + 余位/价
 - 有 `applySurfaceStyle` 时列表进 `/archive/item/:id`（`openApply=1` 仍走报名弹层）；详情「立即报名」
+- **再磨（2026-10-22）**：列表短签按档——`eventposter` 栏目·地点、`coursetable` 教室·教师、`noticeboard` 地点·时间、`tourcard` 目的地·栏目；护栏 `test_apply_look_polish.py`
 - 覆盖域：`DOM-ACTIVITY` / `COURSE` / `LOST` / `TOUR`
 
 ### 2.7 互动组 B（三档异脸；EXAM/SURVEY/VOTE 不进本轴）

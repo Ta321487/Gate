@@ -901,6 +901,9 @@
 .browse-surface.surface-eventposter .card.seat-full .main-signal {
   background: var(--portal-muted, #94a3b8);
 }
+.browse-surface.surface-eventposter .short-tags {
+  margin-top: 8px;
+}
 .browse-surface.surface-eventposter .detail-line,
 .browse-surface.surface-eventposter .story-lead {
   display: none;
@@ -955,6 +958,14 @@
   font-variant-numeric: tabular-nums;
   color: var(--portal-muted, #5b6b76);
 }
+.browse-surface.surface-coursetable .short-tags {
+  margin-top: 6px;
+  justify-content: center;
+}
+.browse-surface.surface-coursetable .short-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+}
 .browse-surface.surface-coursetable .detail-line,
 .browse-surface.surface-coursetable .story-lead,
 .browse-surface.surface-coursetable .board-status {
@@ -998,6 +1009,9 @@
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+.browse-surface.surface-noticeboard .short-tags {
+  margin-top: 6px;
 }
 .browse-surface.surface-noticeboard .detail-line { display: none; }
 .browse-surface.surface-noticeboard .row .el-tag { display: none; }
@@ -1085,6 +1099,9 @@
   font-weight: 750;
   color: var(--portal-accent, #4a7a9a);
   font-variant-numeric: tabular-nums;
+}
+.browse-surface.surface-tourcard .short-tags {
+  margin-top: 8px;
 }
 .browse-surface.surface-tourcard .detail-line { display: none; }
 .browse-surface.surface-tourcard .row { margin-top: 8px; }

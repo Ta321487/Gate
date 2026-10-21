@@ -491,6 +491,49 @@ function cardShortTags(row) {
     if (author && author !== '—') push('author', author)
     return out.slice(0, budget)
   }
+  /* 报名：海报看栏目·地点；课表看教室·教师；启事看地点·时间；线路看目的地·亮点（主信号已是余位/时段） */
+  if (applySurface.value === 'eventposter') {
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    const place = String(row.place || row.venue || row.location || row.campus || '').trim()
+    if (place) push('place', place)
+    const when = String(row.startAt || row.eventAt || row.schedule || '').trim()
+    if (when && out.length < budget) {
+      push('when', when.length > 16 ? when.slice(0, 16) : when)
+    }
+    return out.slice(0, budget)
+  }
+  if (applySurface.value === 'coursetable') {
+    const room = String(row.roomName || row.classroom || row.place || '').trim()
+    if (room) push('room', room)
+    const teacher = String(row.teacher || row.author || '').trim()
+    if (teacher && teacher !== '—') push('teacher', teacher)
+    const cat = categoryTextOf(row)
+    if (cat && out.length < budget) push('cat', cat)
+    return out.slice(0, budget)
+  }
+  if (applySurface.value === 'noticeboard') {
+    const place = String(row.lostPlace || row.place || row.location || row.campus || '').trim()
+    if (place) push('place', place)
+    const when = String(row.lostAt || row.startAt || row.foundAt || '').trim()
+    if (when) push('when', when.length > 16 ? when.slice(0, 16) : when)
+    for (const f of cardPreviewFields.value) {
+      if (out.length >= budget) break
+      push(f.key, formatFieldValue(row, f))
+    }
+    return out.slice(0, budget)
+  }
+  if (applySurface.value === 'tourcard') {
+    const dest = String(row.destination || row.toPlace || row.route || row.author || '').trim()
+    if (dest && dest !== '—') push('dest', dest)
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    const highlight = String(row.highlight || row.lead || '').trim()
+    if (highlight && out.length < budget) {
+      push('hl', highlight.length > 16 ? highlight.slice(0, 16) : highlight)
+    }
+    return out.slice(0, budget)
+  }
   if (cardVoice.value !== 'catalog') return []
   if (productSpecOn.value) {
     const spec = productSpecText(row)
