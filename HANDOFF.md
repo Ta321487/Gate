@@ -10,7 +10,12 @@
 
 ## 当前主线
 
-> **最新批次（2026-10-21）：UI 观感加厚 + 运营台改造已收口并推送（9 条主题提交）。**
+> **最新批次（2026-10-21）：跟进 follow 观感首刀已收口（pipeline/dossier/listing，按主题拆分提交）。**
+> - 跟进三档：`pipeline` 阶段看板（CRM，左 4px 阶段色条）、`dossier` 档案行（EVENT/ATTEND/FUND/RECRUIT/GRADE/INTERN）、`listing` 价签（LISTING，补 `price` 字段）；列表进独立详情，主按钮「预约带看/记录跟进」。
+> - 数据层：`DOM-LISTING.sql` 加 `price DECIMAL(12,2)`+种子；三份 `ArchiveStore` 用 `hasItemColumn("price")` 守卫映射 `priceYuan`。护栏 `tests/test_follow_look_thicken.py`（8 passed）。
+> - 全量核对（HEAD vs 工作区，各跑一遍）：失败数均 222、失败集合完全一致 → **本批零新增红**；222 红为接手前存量（删除被拦截/依赖 mvn/golden 基线漂移），待分批治理。
+>
+> **上一批（2026-10-21）：UI 观感加厚 + 运营台改造已收口并推送（9 条主题提交）。**
 > - 运营台：开工台 `OpsHome`（首页总览）+ 失败分析看板（失败码归桶、修法落点、样本分页）；见 [`docs/bake-fail-analysis.md`](./docs/bake-fail-analysis.md)。
 > - 列表卡片：主信号 + 短签 + 卡底结构，价格走区间筛，禁「作者 · 未分类」灰墙同构；域脸壳色（`backend/app/bake/shell_face.py`）注入，三套 Store 对齐。
 > - 门户壳：按组收次要入口，账户中心独立落地（`views/user/AccountCenter.vue`）。

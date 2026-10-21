@@ -53,13 +53,13 @@
 | reserve | 预约 | 已接线 | 吃 A | **首刀已齐** | SlotBook + slotstrip/roomstate/vehiclecard + 详情选时段 | 软皮短签再磨 |
 | content | 内容 | 已接线 | 吃 A | **首刀已齐** | folio/coverwall/ledger/splitdesk + 阅读详情 | 软皮短签再磨 |
 | apply | 报名/申请 | 已接线 | 吃 A | **首刀已齐** | eventposter/coursetable/noticeboard/tourcard + 详情报名 | 软皮短签再磨 |
-| follow | 跟进 | 已接线 | 吃 A | 未开 | pipeline/dossier/listing | 下一优先候选 |
+| follow | 跟进 | 已接线 | 吃 A | **首刀已齐** | pipeline/dossier/listing（+LISTING price 价签） | 软皮短签再磨 |
 | interact | 互动 | 已接线 | 吃 A | **首刀已齐** | profilegrid/mutualpick/triprow + 详情意向；EXAM/SURVEY/VOTE 专用页不动 | 软皮短签再磨 |
 | ticket | 报修/工单 | 已接线 | 吃 A | 未开 | MyTickets repair surface | 待排 |
 | approve | 审批/填报 | 已接线 | 吃 A | 未开 | MyTickets/TicketsAdmin approve surface | 待排 |
 | fallback | 兜底 | 无选型键 | 吃 A | 未开 | 导引 + 中性壳 | 随壳即可 |
 
-建议下一轮：**跟进**（阶段看板/档案行）或 **报修**。
+建议下一轮：**报修**（MyTickets 进度流/故障看板）；follow 跟进首刀已齐（阶段看板/档案行/价签）。
 
 ---
 
@@ -119,7 +119,17 @@
 - 有 `interactSurfaceStyle` 时列表进 `/archive/item/:id`；详情「提交意向」
 - 覆盖域：`DOM-DATING` / `MUTUAL-*` / `CARPOOL` / `TIMEBANK`
 
-### 2.8 跨页卡底口径（用户列表统一）
+### 2.8 跟进组 B（三档异脸；看板/档案/价签）
+
+- `pipeline`：阶段看板卡——4 列网格，左侧 4px 阶段色条（线索/意向/谈判/成交/搁置五色），无封面
+- `dossier`：档案行——纵向清单，小封面、虚线分隔、hover 左色条；主信号为当前阶段
+- `listing`：挂牌价签——左大图右宽卡，价签大数字（租金 ¥/月、出售 ¥X.X万）；补 `price` 字段（LISTING 专用，其它跟进域不挂）
+- 数据层：`DOM-LISTING.sql` 加 `price DECIMAL(12,2)` 列 + 种子价格；三份 `ArchiveStore` 用 `hasItemColumn("price")` 守卫映射到 `priceYuan`
+- 有 `followSurfaceStyle` 时列表进 `/archive/item/:id`；详情主按钮 listing「预约带看」、其它「记录跟进」，附「跟进说明」
+- 覆盖域：`DOM-CRM` / `EVENT` / `ATTEND` / `FUND` / `RECRUIT` / `GRADE` / `INTERN` / `LISTING`
+- 护栏：`backend/tests/test_follow_look_thicken.py`
+
+### 2.9 跨页卡底口径（用户列表统一）
 
 - 标杆口径：`ArchiveBrowse` 卡底 `card-foot`（纵向列）> `card-meta`（状态条）+ `card-acts`（操作条）
 - 铺开五页：`MyOrders` / `MyReservations` / `MyTickets` / `PeerTickets` / `MyFavorites`
@@ -141,14 +151,14 @@
 | `DOM-EQUIP` | borrow | 借用/占用 | `stockrow` | catalog | `#2A3F55` | 器材名称 | 全厂已齐 | 首刀已齐 |
 | `DOM-LIBRARY` | borrow | 借用/占用 | `bookshelf` | catalog | `#2C4A6E` | 书名 / 作者 | 全厂已齐 | 首刀已齐 |
 | `DOM-PARCEL` | borrow | 借用/占用 | `parcelshelf` | board | `#3A4A58` | 取件码 / 姓名 | 全厂已齐 | 首刀已齐 |
-| `DOM-ATTEND` | follow | 跟进 | `dossier` | board | `#2A3848` | 假条 / 事由 | 全厂已齐 | 未开 |
-| `DOM-CRM` | follow | 跟进 | `pipeline` | board | `#1E4A45` | 客户名称 | 全厂已齐 | 未开 |
-| `DOM-EVENT` | follow | 跟进 | `dossier` | board | `#3A4550` | 事件关键词 | 全厂已齐 | 未开 |
-| `DOM-FUND` | follow | 跟进 | `dossier` | catalog | `#2A3040` | 资助项目 | 全厂已齐 | 未开 |
-| `DOM-GRADE` | follow | 跟进 | `dossier` | catalog | `#2A3440` | 课程名称 | 全厂已齐 | 未开 |
-| `DOM-INTERN` | follow | 跟进 | `dossier` | catalog | `#2A4850` | 岗位 / 周报 | 全厂已齐 | 未开 |
-| `DOM-LISTING` | follow | 跟进 | `listing` | catalog | `#3A4A3E` | 房源关键词 | 全厂已齐 | 未开 |
-| `DOM-RECRUIT` | follow | 跟进 | `dossier` | catalog | `#2A4858` | 岗位 / 公司 | 全厂已齐 | 未开 |
+| `DOM-ATTEND` | follow | 跟进 | `dossier` | board | `#2A3848` | 假条 / 事由 | 全厂已齐 | 首刀已齐 |
+| `DOM-CRM` | follow | 跟进 | `pipeline` | board | `#1E4A45` | 客户名称 | 全厂已齐 | 首刀已齐 |
+| `DOM-EVENT` | follow | 跟进 | `dossier` | board | `#3A4550` | 事件关键词 | 全厂已齐 | 首刀已齐 |
+| `DOM-FUND` | follow | 跟进 | `dossier` | catalog | `#2A3040` | 资助项目 | 全厂已齐 | 首刀已齐 |
+| `DOM-GRADE` | follow | 跟进 | `dossier` | catalog | `#2A3440` | 课程名称 | 全厂已齐 | 首刀已齐 |
+| `DOM-INTERN` | follow | 跟进 | `dossier` | catalog | `#2A4850` | 岗位 / 周报 | 全厂已齐 | 首刀已齐 |
+| `DOM-LISTING` | follow | 跟进 | `listing` | catalog | `#3A4A3E` | 房源关键词 | 全厂已齐 | 首刀已齐（含 price） |
+| `DOM-RECRUIT` | follow | 跟进 | `dossier` | catalog | `#2A4858` | 岗位 / 公司 | 全厂已齐 | 首刀已齐 |
 | `DOM-DORM` | ticket | 报修/工单 | `ticketfeed` | board | `#1A5C62` | 工单 / 地点 | 全厂已齐 | 未开 |
 | `DOM-IT` | ticket | 报修/工单 | `ticketfeed` | board | `#1A4A62` | 工单 / 故障 | 全厂已齐 | 未开 |
 | `DOM-PROPERTY` | ticket | 报修/工单 | `ticketfeed` | board | `#1A5C62` | 工单 / 房屋 | 全厂已齐 | 未开 |
