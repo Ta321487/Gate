@@ -2,7 +2,7 @@
 
 > **本文只负责**：工厂出包「一眼精美 / 不像模板后台」的**观感加厚**进度、全域台账、验收口径与真源落点。
 > **不负责**：能力四件套（各组 `*_thicken` / 地图待补）；选型键目录与 ASCII（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md) §2）；沉浸边角（[`immersion-corners.md`](./immersion-corners.md)）。
-> **状态**：**进行中** · 公共壳 + 交易/借用/预约/内容/报名/互动/跟进 **首刀已齐**；用户列表卡底口径已跨页统一；报修·审批 **未开**。
+> **状态**：**进行中** · 公共壳 + 交易/借用/预约/内容/报名/互动/跟进/报修 **首刀已齐**；用户列表卡底口径已跨页统一；审批 **未开**。
 > **硬闸**：键接满、测绿了，观感仍像模板站 —— **仍算未完成**（同选型册 §0.0）。
 > **索引**：[README.md](./README.md) · 选型册 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) · 搁置 [`parked-work.md`](./parked-work.md) · 领域 [`domains.md`](./domains.md)。
 
@@ -55,11 +55,11 @@
 | apply | 报名/申请 | 已接线 | 吃 A | **首刀已齐** | eventposter/coursetable/noticeboard/tourcard + 详情报名 | 软皮短签再磨 |
 | follow | 跟进 | 已接线 | 吃 A | **首刀已齐** | pipeline/dossier/listing（+LISTING price 价签） | 软皮短签再磨 |
 | interact | 互动 | 已接线 | 吃 A | **首刀已齐** | profilegrid/mutualpick/triprow + 详情意向；EXAM/SURVEY/VOTE 专用页不动 | 软皮短签再磨 |
-| ticket | 报修/工单 | 已接线 | 吃 A | 未开 | MyTickets repair surface | 待排 |
+| ticket | 报修/工单 | 已接线 | 吃 A | **首刀已齐** | MyTickets ticketfeed/faultboard | 软皮短签再磨 |
 | approve | 审批/填报 | 已接线 | 吃 A | 未开 | MyTickets/TicketsAdmin approve surface | 待排 |
 | fallback | 兜底 | 无选型键 | 吃 A | 未开 | 导引 + 中性壳 | 随壳即可 |
 
-建议下一轮：**报修**（MyTickets 进度流/故障看板）；follow 跟进首刀已齐（阶段看板/档案行/价签）。
+建议下一轮：**审批**（事项清单 / 待审步骤条）；报修首刀已齐（进度流/故障看板）。
 
 ---
 
@@ -130,7 +130,14 @@
 - 覆盖域：`DOM-CRM` / `EVENT` / `ATTEND` / `FUND` / `RECRUIT` / `GRADE` / `INTERN` / `LISTING`
 - 护栏：`backend/tests/test_follow_look_thicken.py`
 
-### 2.9 跨页卡底口径（用户列表统一）
+### 2.9 报修组 B（两档异脸；进度流 / 故障看板）
+
+- `ticketfeed`：我的工单进度流——左边轨时间轴节点 + 卡左边色条，阶段色走 `ticketTone` → `data-ticket-tone` / `--repair-tone`（禁死色表）
+- `faultboard`：分类故障看板——顶栏「待派 / 处理中 / 超时」计数；三列工单砖；分类短签 `fault-cat`；顶边 tone
+- 覆盖域：`DOM-DORM` / `DOM-PROPERTY` / `DOM-IT`（非报修域无 surface）
+- 护栏：`backend/tests/test_repair_look_thicken.py`
+
+### 2.10 跨页卡底口径（用户列表统一）
 
 - 标杆口径：`ArchiveBrowse` 卡底 `card-foot`（纵向列）> `card-meta`（状态条）+ `card-acts`（操作条）
 - 铺开五页：`MyOrders` / `MyReservations` / `MyTickets` / `PeerTickets` / `MyFavorites`
@@ -160,9 +167,9 @@
 | `DOM-INTERN` | follow | 跟进 | `dossier` | catalog | `#2A4850` | 岗位 / 周报 | 全厂已齐 | 首刀已齐 |
 | `DOM-LISTING` | follow | 跟进 | `listing` | catalog | `#3A4A3E` | 房源关键词 | 全厂已齐 | 首刀已齐（含 price） |
 | `DOM-RECRUIT` | follow | 跟进 | `dossier` | catalog | `#2A4858` | 岗位 / 公司 | 全厂已齐 | 首刀已齐 |
-| `DOM-DORM` | ticket | 报修/工单 | `ticketfeed` | board | `#1A5C62` | 工单 / 地点 | 全厂已齐 | 未开 |
-| `DOM-IT` | ticket | 报修/工单 | `ticketfeed` | board | `#1A4A62` | 工单 / 故障 | 全厂已齐 | 未开 |
-| `DOM-PROPERTY` | ticket | 报修/工单 | `ticketfeed` | board | `#1A5C62` | 工单 / 房屋 | 全厂已齐 | 未开 |
+| `DOM-DORM` | ticket | 报修/工单 | `ticketfeed` | board | `#1A5C62` | 工单 / 地点 | 全厂已齐 | 首刀已齐 |
+| `DOM-IT` | ticket | 报修/工单 | `ticketfeed` | board | `#1A4A62` | 工单 / 故障 | 全厂已齐 | 首刀已齐 |
+| `DOM-PROPERTY` | ticket | 报修/工单 | `ticketfeed` | board | `#1A5C62` | 工单 / 房屋 | 全厂已齐 | 首刀已齐 |
 | `DOM-ACTIVITY` | apply | 报名/申请 | `eventposter` | story | `#2A4A55` | 活动名称 | 全厂已齐 | 首刀已齐 |
 | `DOM-COURSE` | apply | 报名/申请 | `coursetable` | catalog | `#2A4558` | 课程名称 | 全厂已齐 | 首刀已齐 |
 | `DOM-LOST` | apply | 报名/申请 | `noticeboard` | story | `#4A4A3A` | 启事关键词 | 全厂已齐 | 首刀已齐 |

@@ -55,6 +55,16 @@
     </section>
 
     <div
+      v-if="repairSurface === 'faultboard' && repairBoardStats"
+      class="repair-board-bar"
+      data-repair-board="stats"
+    >
+      <span class="board-stat" data-stat="pending">待派 {{ repairBoardStats.pending }}</span>
+      <span class="board-stat" data-stat="progress">处理中 {{ repairBoardStats.progress }}</span>
+      <span class="board-stat" data-stat="overdue">超时 {{ repairBoardStats.overdue }}</span>
+    </div>
+
+    <div
       class="list"
       :class="{
         'surface-ticketfeed': repairSurface === 'ticketfeed',
@@ -70,9 +80,11 @@
         :key="row.id"
         class="card"
         :class="{ 'imm-overdue': row.status === 'overdue' }"
+        :data-ticket-tone="repairSurface ? ticketTone(row.status) : undefined"
       >
         <div class="mark">{{ (row.title || '?').slice(0, 1) }}</div>
         <div class="meta">
+          <p v-if="repairSurface === 'faultboard' && row.typeName" class="fault-cat">{{ row.typeName }}</p>
           <h3>{{ row.title || ('编号 ' + row.id) }}</h3>
           <p class="sub">
             编号 {{ row.id }} · {{ appliedAtLabel }} {{ row.applyAt }}
@@ -1621,6 +1633,29 @@ const repairSurface = computed(() => {
   ).trim()
   if (['ticketfeed', 'faultboard'].includes(s)) return s
   return ''
+})
+
+/** 故障看板顶栏：待派 / 处理中 / 超时（对标 G-1.3 ASCII） */
+const repairBoardStats = computed(() => {
+  if (repairSurface.value !== 'faultboard') return null
+  let pending = 0
+  let progress = 0
+  let overdue = 0
+  for (const row of list.value || []) {
+    const st = String(row?.status || '')
+    if (st === 'overdue') overdue += 1
+    else if (st === 'pending') pending += 1
+    else if (
+      st === 'pending_mid'
+      || st === 'pending_final'
+      || st === 'approved'
+      || st === 'held'
+      || st === 'hold_ready'
+    ) {
+      progress += 1
+    }
+  }
+  return { pending, progress, overdue }
 })
 
 /** 审批组页内构图：typelist / inboxsteps；非审批域为空 */
@@ -4522,12 +4557,162 @@ onMounted(async () => {
 .hint-inline { margin: -4px 0 12px; color: var(--portal-muted, #64748b); font-size: 12px; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .list { display: flex; flex-direction: column; gap: 12px; }
+
+/* —— 报修：故障看板顶栏（待派/处理中/超时） —— */
+.repair-board-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--portal-line, #e2e8f0);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 6%, var(--portal-surface, #fff));
+}
+.repair-board-bar .board-stat {
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--portal-ink, #15202b);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--portal-surface, #fff);
+  border: 1px solid var(--portal-line, #e2e8f0);
+}
+.repair-board-bar .board-stat[data-stat='pending'] {
+  border-color: color-mix(in srgb, var(--portal-brand, #2a4558) 35%, #94a3b8);
+  color: color-mix(in srgb, var(--portal-brand, #2a4558) 70%, #475569);
+}
+.repair-board-bar .board-stat[data-stat='progress'] {
+  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, transparent);
+  color: var(--portal-accent, #0b6e75);
+}
+.repair-board-bar .board-stat[data-stat='overdue'] {
+  border-color: color-mix(in srgb, #dc2626 40%, transparent);
+  color: #b91c1c;
+}
+
+/* —— 报修：进度流（时间轴左边轨 + 状态 tone，禁死色表） —— */
+.list.surface-ticketfeed {
+  gap: 0;
+  padding-left: 4px;
+  border-left: 2px solid var(--portal-line, #e2e8f0);
+  margin-left: 10px;
+}
+.list.surface-ticketfeed .card {
+  position: relative;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 10px 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border-left: 3px solid var(--repair-tone, var(--portal-line, #d8e0dc));
+  --repair-tone: var(--portal-accent, #0b6e75);
+  box-shadow: none;
+}
+.list.surface-ticketfeed .card::before {
+  content: '';
+  position: absolute;
+  left: -23px;
+  top: 18px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--repair-tone);
+  border: 2px solid var(--portal-surface, #fff);
+  box-shadow: 0 0 0 2px var(--repair-tone);
+}
+.list.surface-ticketfeed .card[data-ticket-tone='pending'] {
+  --repair-tone: color-mix(in srgb, var(--portal-brand, #2a4558) 55%, #64748b);
+}
+.list.surface-ticketfeed .card[data-ticket-tone='progress'] {
+  --repair-tone: var(--portal-accent, #0b6e75);
+}
+.list.surface-ticketfeed .card[data-ticket-tone='warn'] {
+  --repair-tone: color-mix(in srgb, #c2410c 75%, var(--portal-accent, #0b6e75));
+}
+.list.surface-ticketfeed .card[data-ticket-tone='ok'] {
+  --repair-tone: color-mix(in srgb, #16a34a 70%, var(--portal-accent, #0b6e75));
+}
+.list.surface-ticketfeed .card[data-ticket-tone='danger'] {
+  --repair-tone: color-mix(in srgb, #dc2626 75%, var(--portal-accent, #0b6e75));
+}
+.list.surface-ticketfeed .card[data-ticket-tone='muted'] {
+  --repair-tone: var(--portal-muted, #94a3b8);
+  opacity: 0.88;
+}
+.list.surface-ticketfeed .mark {
+  display: none;
+}
+.list.surface-ticketfeed .meta h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+/* —— 报修：分类故障看板（三列工单砖 + 分类短签） —— */
 .list.surface-faultboard {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
   align-items: start;
 }
-.list.surface-faultboard .card { flex-direction: column; }
+.list.surface-faultboard .card {
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+  padding: 12px;
+  border-radius: 12px;
+  border-top: 3px solid var(--repair-tone, var(--portal-accent, #0b6e75));
+  --repair-tone: var(--portal-accent, #0b6e75);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--portal-ink, #15202b) 6%, transparent);
+}
+.list.surface-faultboard .card[data-ticket-tone='pending'] {
+  --repair-tone: color-mix(in srgb, var(--portal-brand, #2a4558) 55%, #64748b);
+}
+.list.surface-faultboard .card[data-ticket-tone='progress'] {
+  --repair-tone: var(--portal-accent, #0b6e75);
+}
+.list.surface-faultboard .card[data-ticket-tone='warn'] {
+  --repair-tone: color-mix(in srgb, #c2410c 75%, var(--portal-accent, #0b6e75));
+}
+.list.surface-faultboard .card[data-ticket-tone='ok'] {
+  --repair-tone: color-mix(in srgb, #16a34a 70%, var(--portal-accent, #0b6e75));
+}
+.list.surface-faultboard .card[data-ticket-tone='danger'] {
+  --repair-tone: color-mix(in srgb, #dc2626 75%, var(--portal-accent, #0b6e75));
+}
+.list.surface-faultboard .card[data-ticket-tone='muted'] {
+  --repair-tone: var(--portal-muted, #94a3b8);
+  opacity: 0.88;
+}
+.list.surface-faultboard .mark {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+.list.surface-faultboard .fault-cat {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--portal-accent, #0b6e75);
+  text-transform: none;
+}
+.list.surface-faultboard .meta h3 {
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (max-width: 900px) {
+  .list.surface-faultboard {
+    grid-template-columns: 1fr;
+  }
+}
 .list.surface-inboxsteps .card { border-left: 4px solid #0f766e; }
 .list.surface-inboxsteps .meta h3::after {
   content: '● ○ ○';
