@@ -454,6 +454,43 @@ function cardShortTags(row) {
     if (cat && out.length < budget) push('cat', cat)
     return out.slice(0, budget)
   }
+  /* 内容：刊头看栏目·标签；封面墙看艺人（主信号已是题材）；清单看类型；双栏目录看栏目·作者（禁价签腔） */
+  if (contentSurface.value === 'folio') {
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    const tag = Array.isArray(row.tagNames) && row.tagNames.length ? String(row.tagNames[0]).trim() : ''
+    if (tag) push('tag', tag)
+    for (const f of cardPreviewFields.value) {
+      if (out.length >= budget) break
+      push(f.key, formatFieldValue(row, f))
+    }
+    return out.slice(0, budget)
+  }
+  if (contentSurface.value === 'coverwall' || coverWallActive.value) {
+    const artist = formatAuthor(row.author)
+    if (artist && artist !== '—') push('artist', artist)
+    const tag = Array.isArray(row.tagNames) && row.tagNames.length ? String(row.tagNames[0]).trim() : ''
+    if (tag && out.length < budget) push('tag', tag)
+    return out.slice(0, budget)
+  }
+  if (contentSurface.value === 'ledger') {
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    const kind = String(row.docType || row.fileType || row.isbn || '').trim()
+    if (kind) push('kind', kind)
+    for (const f of cardPreviewFields.value) {
+      if (out.length >= budget) break
+      push(f.key, formatFieldValue(row, f))
+    }
+    return out.slice(0, budget)
+  }
+  if (contentSurface.value === 'splitdesk') {
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    const author = formatAuthor(row.author)
+    if (author && author !== '—') push('author', author)
+    return out.slice(0, budget)
+  }
   if (cardVoice.value !== 'catalog') return []
   if (productSpecOn.value) {
     const spec = productSpecText(row)

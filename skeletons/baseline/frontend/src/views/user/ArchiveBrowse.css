@@ -86,6 +86,15 @@
 .surface-coverwall .row .el-tag {
   display: none;
 }
+.poster-card .short-tags,
+.surface-coverwall .short-tags {
+  margin-top: 4px;
+}
+.poster-card .short-tag,
+.surface-coverwall .short-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+}
 
 /* —— 内容：双栏阅读台（左目录右预览，异于清单/刊头） —— */
 .browse-surface.is-splitdesk {
@@ -194,6 +203,9 @@
   font-weight: 550;
   color: var(--portal-muted, #64748b);
 }
+.surface-folio .short-tags {
+  margin-top: 8px;
+}
 .surface-folio .detail-line,
 .surface-folio .row .el-tag {
   display: none;
@@ -264,6 +276,10 @@
 .surface-ledger .detail-line,
 .surface-ledger .board-status {
   display: none;
+}
+.surface-ledger .short-tags {
+  margin-top: 4px;
+  grid-column: 1 / -1;
 }
 .surface-ledger .row {
   margin-top: 0;
@@ -1462,6 +1478,13 @@
 .surface-splitdesk-list .detail-line,
 .surface-splitdesk-list .main-signal {
   display: none;
+}
+.surface-splitdesk-list .short-tags {
+  margin-top: 4px;
+}
+.surface-splitdesk-list .short-tag {
+  font-size: 10px;
+  padding: 1px 6px;
 }
 .surface-splitdesk-list .row .el-tag { display: none; }
 .splitdesk-pane {

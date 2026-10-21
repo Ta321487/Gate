@@ -51,7 +51,7 @@
 | borrow | 借用/占用 | 已接线 | 吃 A | **首刀已齐** | ArchiveBrowse bookshelf/stockrow/bedblocks/parcelshelf | 详情借阅文案 **再磨已齐** |
 | trade | 交易 | 已接线 | 吃 A | **首刀已齐** | PortalHome mall + shelfgrid + ArchiveItemDetail | menuboard/showtime **再磨已齐**；软皮短签继续 |
 | reserve | 预约 | 已接线 | 吃 A | **首刀已齐** | SlotBook + slotstrip/roomstate/vehiclecard + 详情选时段 | 软皮短签 **再磨已齐** |
-| content | 内容 | 已接线 | 吃 A | **首刀已齐** | folio/coverwall/ledger/splitdesk + 阅读详情 | 软皮短签再磨 |
+| content | 内容 | 已接线 | 吃 A | **首刀已齐** | folio/coverwall/ledger/splitdesk + 阅读详情 | 软皮短签 **再磨已齐** |
 | apply | 报名/申请 | 已接线 | 吃 A | **首刀已齐** | eventposter/coursetable/noticeboard/tourcard + 详情报名 | 软皮短签再磨 |
 | follow | 跟进 | 已接线 | 吃 A | **首刀已齐** | pipeline/dossier/listing（+LISTING price 价签） | 软皮短签再磨 |
 | interact | 互动 | 已接线 | 吃 A | **首刀已齐** | profilegrid/mutualpick/triprow + 详情意向；EXAM/SURVEY/VOTE 专用页不动 | 软皮短签再磨 |
@@ -59,7 +59,7 @@
 | approve | 审批/填报 | 已接线 | 吃 A | **首刀已齐** | MyTickets/TicketsAdmin typelist/inboxsteps | 软皮短签再磨 |
 | fallback | 兜底 | 无选型键 | 吃 A | **吃公共壳** | 导引 + 中性壳 | 随壳即可 |
 
-建议下一轮：预约/内容/报名等组 **软皮短签再磨**（一轮一组）。
+建议下一轮：报名/跟进/互动等组 **软皮短签再磨**（一轮一组）。
 
 ---
 
@@ -104,6 +104,7 @@
 - `ledger`：资料清单——虚线台账行、右栏作者·阅读数
 - `splitdesk`：双栏台——左目录高亮条、右 sticky 预览；宽屏不整卡跳详情
 - 有 `contentSurfaceStyle`（非 splitdesk）时进 `/archive/item/:id`；详情「正文」阅读脸
+- **再磨（2026-10-22）**：列表短签按档——`folio` 栏目·标签、`coverwall` 艺人·标签、`ledger` 类型、`splitdesk` 栏目·作者；禁价签腔；护栏 `test_content_look_polish.py`
 - 覆盖域：`DOM-BLOG` / `FORUM` / `MEDIA` / `MUSIC` / `DOCLIB`
 
 ### 2.6 报名组 B（四档异脸，禁止套内容海报/房态/资料清单）
