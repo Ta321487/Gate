@@ -1,5 +1,5 @@
 ---
-description: 列契约：能力开则 SQL 有列，三套 Store 同源，缺列先补 bake
+description: 
 globs: backend/app/bake/**, skeletons/**
 alwaysApply: false
 ---
@@ -19,4 +19,3 @@ alwaysApply: false
 - 无列仍 200；解析失败当 0；extras 失败写 `"{}"`。
 - 另起平行补列系统；只改一套 Store。
 - 硬失败文案当给学生的产品说明（保险丝响了 = 修工厂生成）。
-

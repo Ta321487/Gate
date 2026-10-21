@@ -1,4 +1,4 @@
-﻿---
+---
 description: 工厂主链路：材料→匹配 DOM-*+能力岛→bake 可答辩 ZIP；一切改动对照此链
 alwaysApply: true
 ---
@@ -43,4 +43,3 @@ alwaysApply: true
 - 出包是否仍能答辩演示？有没有只把错抛给学生包？
 
 长表：`HANDOFF.md` · `docs/delivery-audit-rules.md` · `docs/capabilities.md` · `docs/domains.md`
-

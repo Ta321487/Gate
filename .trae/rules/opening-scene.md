@@ -1,7 +1,8 @@
 ---
-description: 开题场景：壳文案/身份跟开题，只走 scene_scan，不替代 DOM 匹配
+description: 
 alwaysApply: true
 ---
+
 # 开题场景（主链路·材料侧）
 
 场景轴服务「材料 → 匹配」：壳文案、注册/资料身份跟开题，**不**替代领域匹配。
@@ -19,4 +20,3 @@ alwaysApply: true
 - 改开题迁就工厂模板。
 - 在 shells / profile 另写一套场景 hint。
 - 用场景轴代替 `DOM-*` 匹配或技术栈选择。
-

@@ -1,4 +1,4 @@
-﻿---
+---
 description: 工厂进程重构重点：backend/ 与 frontend/；一条逻辑一个家；不改现有执行，不动学生包
 alwaysApply: true
 ---
@@ -31,4 +31,3 @@ alwaysApply: true
 - 借搬家改匹配、出包内容、接口字段、文案。
 - 为行数拆文件。`usecases.py`、`scene_scan.py` 这种互调用管道不拆。
 - 未钉行为就搬。本规则生效不等于动手搬。
-

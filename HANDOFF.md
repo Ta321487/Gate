@@ -10,6 +10,14 @@
 
 ## 当前主线
 
+> **最新批次（2026-10-21）：UI 观感加厚 + 运营台改造已收口并推送（9 条主题提交）。**
+> - 运营台：开工台 `OpsHome`（首页总览）+ 失败分析看板（失败码归桶、修法落点、样本分页）；见 [`docs/bake-fail-analysis.md`](./docs/bake-fail-analysis.md)。
+> - 列表卡片：主信号 + 短签 + 卡底结构，价格走区间筛，禁「作者 · 未分类」灰墙同构；域脸壳色（`backend/app/bake/shell_face.py`）注入，三套 Store 对齐。
+> - 门户壳：按组收次要入口，账户中心独立落地（`views/user/AccountCenter.vue`）。
+> - 瘦包：抹工厂注记、裁未挂壳件（`bake/pack_prune.py`），学生包洗文案统一扫 JS/CSS。
+> - **AI 接力协议已固化**：规则 `ai-handoff`（接手 / 交活标准动作）；改规则后跑 `scripts/sync-ide-rules.ps1` 同步 `.cursor/rules` ↔ `.trae/rules`（单一来源 `.cursor/rules`）。
+> - 测试：相关 51 passed、回归 88 passed。**注意**：`test_student_facing_copy` 在「非交互执行环境」因 Python 删除被拦截会留 1 个环境噪声红（产品代码无问题）；用户在自己终端跑应全绿，待确认。
+
 1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～G / GENERIC 已可 bake。**薄壳 ≠ 功能稀薄**：§1.1～§1.7 密功能加厚已收口（或待补已清）；当前能力债主要在 **§1.8 内容加厚（进行中）**、**§1.9 互动待补**，以及加厚后的 **域组 UI 表面**（见下）。  
 2. **Path B** 三条真交叉可 `full`（借用+下单 / 借用+预约 / 下单+预约）；三合一与智慧校园仍 `reject`。  
 3. LLM **只填 schema JSON**（不生成业务 Java/Vue）；接 LLM 后「代码无误」靠运行时固定。  
@@ -85,7 +93,8 @@
 
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md；能力/领域长表见 docs/。
-主线：Path B 三条交叉已可 full；§1.8 内容加厚进行中；加厚后 UI 表面见 docs/domain-group-ui-styles.md。
+按规则 ai-handoff 接手：读 HANDOFF → 跑测试（红=中断点）→ git log 顺脉络。
+主线：UI 观感加厚 + 运营台改造已收口（开工台 OpsHome + 失败分析看板）；卡片主信号/短签/价区间、域脸壳色、账户中心、瘦包已落地。
 超壳 / 三合一 / 智慧校园必须 reject；硕博与真实业务全流程不接。
 薄壳架构保留（不要新开厚 DOM 包）；薄壳≠功能稀薄。领域清单以 docs/domains.md 为准。
 ```

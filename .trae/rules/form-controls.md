@@ -1,5 +1,5 @@
 ---
-description: 表单控件：档案字段按语义选控件，禁止一律文本框，手写页对齐映射
+description: 
 alwaysApply: true
 ---
 
@@ -19,4 +19,3 @@ alwaysApply: true
 - 日期、时刻、数字、枚举用 `el-input` 手填。
 - 刻字、备注、原因这类自由文本改成选择器。
 - 手写页面绕开已有控件映射。
-

@@ -1,4 +1,4 @@
-﻿---
+---
 description: Git 提交说明必须用中文，技术标识保留原文
 alwaysApply: true
 ---
@@ -17,4 +17,3 @@ alwaysApply: true
 
 - 英文祈使句当提交标题（`Add …` / `Wire …` / `Fix …`）。
 - 为改语言去改写已推送的历史提交。
-

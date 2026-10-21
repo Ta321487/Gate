@@ -1,4 +1,4 @@
-﻿---
+---
 description: 主链路·出包栈：默认 Boot+Vue+jdbc；能 bake 跟开题；拟选≠出包双显
 alwaysApply: true
 ---
@@ -17,4 +17,3 @@ alwaysApply: true
 
 - `ARCH-*` 当 spine；技术栈驱动 `scene_scan` 或替代 `DOM-*`。
 - 未立项为 SSR 等未落地轴改 bake/门禁挖坑。
-

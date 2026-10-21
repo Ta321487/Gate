@@ -1,4 +1,4 @@
-﻿---
+---
 description: 主链路·匹配挂件：业务+AI 挂件吃A拒B；同一 ai_assistant；跟开题开开关
 alwaysApply: true
 ---
@@ -19,4 +19,3 @@ AI 是匹配确认上的**按需能力岛**，不是新域、不是主产品替�
 ## DON'T
 
 工厂 Key/`app/llm` 进 ZIP；`DOM-AI`/按行业复制多套；冒充协同过滤/真视觉；关开关仍写已集成 DeepSeek。
-
