@@ -1,0 +1,209 @@
+/**
+ * 列表卡面叙事（§2.5 card_voice）：catalog / story / board
+ * 挂在 html[data-card-voice] 与列表卡片 [data-card-voice]
+ * 禁止只拧 gap/padding；字阶、主信号、图文关系要可感知。
+ */
+
+/* 无真图：壳色渐变字标，禁止灰字母砖墙 */
+.browse-surface .card .cover.cover-fallback {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--portal-accent, #0b6e75) 72%, #0a0a0a) 0%,
+      var(--portal-brand, #08545a) 100%
+    );
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: none;
+}
+
+/* —— catalog：价主信号 + 至多 2 短签；禁止「键：值」灰墙 —— */
+html[data-card-voice='catalog'] .browse-surface .card .cover {
+  width: 52px;
+  height: 52px;
+}
+html[data-card-voice='catalog'] .browse-surface .card .meta h3 {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--portal-ink, #15202b);
+}
+html[data-card-voice='catalog'] .browse-surface .card .main-signal {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--portal-accent, #0b6e75);
+  line-height: 1.2;
+}
+html[data-card-voice='catalog'] .browse-surface .card .main-signal.price {
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+}
+html[data-card-voice='catalog'] .browse-surface .card .shop-line {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--portal-muted, #8a97a3);
+  letter-spacing: 0.01em;
+}
+html[data-card-voice='catalog'] .browse-surface .card .promo-bar {
+  margin: 6px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+html[data-card-voice='catalog'] .browse-surface .card .promo-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: color-mix(in srgb, var(--portal-accent, #e85d04) 88%, #111);
+}
+html[data-card-voice='catalog'] .browse-surface .card .promo-price {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--portal-accent, #e85d04);
+}
+html[data-card-voice='catalog'] .browse-surface .card .promo-list {
+  font-size: 12px;
+  color: var(--portal-muted, #94a3b8);
+  text-decoration: line-through;
+}
+html[data-card-voice='catalog'] .browse-surface .card .flash-cd {
+  font-size: 11px;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--portal-accent, #e85d04) 70%, #92400e);
+}
+html[data-card-voice='catalog'] .browse-surface .card .flash-cd.cd-urgent {
+  color: #b91c1c;
+}
+html[data-card-voice='catalog'] .browse-surface .card .short-tags {
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+html[data-card-voice='catalog'] .browse-surface .card .short-tag {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--portal-ink, #334155);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, var(--portal-surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--portal-accent, #0b6e75) 22%, var(--portal-line, #e2e8e6));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-card-voice='catalog'] .browse-surface .card .more-hint {
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--portal-accent, #0b6e75);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+html[data-card-voice='catalog'] .browse-surface .card .detail-line {
+  display: none;
+}
+
+/* —— story：封面叙事 + 场景一句 —— */
+html[data-card-voice='story'] .browse-surface .card {
+  align-items: stretch;
+}
+html[data-card-voice='story'] .browse-surface .card .cover {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--portal-radius, 12px);
+  font-size: 28px;
+}
+html[data-card-voice='story'] .browse-surface .card .meta h3 {
+  font-family: var(--portal-font-display, inherit);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+html[data-card-voice='story'] .browse-surface .card .story-lead {
+  margin: 4px 0 0 !important;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--portal-ink, #334155);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+html[data-card-voice='story'] .browse-surface .card .main-signal {
+  margin-top: 6px !important;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--portal-accent, #0b6e75);
+}
+html[data-card-voice='story'] .browse-surface .card .detail-line {
+  display: none;
+}
+
+/* —— board：状态一眼扫 —— */
+html[data-card-voice='board'] .browse-surface .card .cover {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+html[data-card-voice='board'] .browse-surface .card .meta h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+html[data-card-voice='board'] .browse-surface .card .main-signal {
+  font-size: 12px;
+  color: var(--portal-muted, #64748b);
+}
+html[data-card-voice='board'] .browse-surface .card .board-status {
+  margin-top: 6px !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+html[data-card-voice='board'] .browse-surface .card .detail-line {
+  display: none;
+}
+html[data-card-voice='board'] .browse-surface .card .stage-chip {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* 商城首页跟叙事脸 */
+html[data-card-voice='story'] .mall-cats {
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--portal-brand, #08545a) 92%, #000) 0%,
+      color-mix(in srgb, var(--portal-accent, #0b6e75) 75%, #111) 100%
+    );
+}
+html[data-card-voice='story'] .mall-banner-kicker {
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+}
+html[data-card-voice='catalog'] .mall-copy h3 {
+  font-size: 13px;
+  font-weight: 600;
+}
+html[data-card-voice='catalog'] .mall-price {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+html[data-card-voice='board'] .mall-flash-badge {
+  font-size: 12px;
+  padding: 3px 10px;
+}

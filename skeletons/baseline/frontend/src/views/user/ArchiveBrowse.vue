@@ -1,4 +1,11 @@
 <template>
+  <!--
+    卡片信号约定（实现见 ./ArchiveBrowse.setup.js，样式见 ./ArchiveBrowse.css）：
+    · 主信号 helper：function primarySignalOf(row) —— 价/余位/状态择一突出，禁止「作者 · 未分类」灰墙同构
+    · 金额列：if (!authorFieldIsMoney.value) 才进关键词搜框；否则走 price-range 区间，禁止关键词 LIKE 糊弄单价
+    · 搜索区宽度：search > :deep(.el-input) 只拉宽主搜框，勿命中 input-number 内框
+    · catalog 卡底：surface-shelfgrid .card-acts 里主按钮 act-primary 抬升，状态条与操作条拆开
+  -->
   <div>
     <section class="hero">
       <h1>{{ plural }}检索</h1>
@@ -29,7 +36,6 @@
         <el-input
           v-model="skillTagFilter"
           clearable
-          size="large"
           :placeholder="skillTagsFilterPlaceholder"
           style="max-width:240px"
           @change="load"
@@ -40,10 +46,10 @@
       <p v-if="carpoolFullStageHint && interactThicken.carpoolFullClose" class="page-hint">{{ carpoolFullStageHint }}</p>
       <p v-if="carpoolDupTripDeny && interactThicken.carpoolDupTripCheck" class="page-hint">{{ carpoolDupTripDeny }}</p>
       <div class="search">
+        <!-- 顶栏已有 globalSearch 时不再摆第二格关键词，只留分类/价筛等 -->
         <el-autocomplete
-          v-if="titleSuggestOn"
+          v-if="titleSuggestOn && !topBarSearchOn"
           v-model="keyword"
-          size="large"
           clearable
           :fetch-suggestions="fetchSuggest"
           :placeholder="searchPlaceholder"
@@ -52,9 +58,8 @@
           @select="onSuggestSelect"
         />
         <el-input
-          v-else
+          v-else-if="!topBarSearchOn"
           v-model="keyword"
-          size="large"
           clearable
           :placeholder="searchPlaceholder"
           @keyup.enter="load"
@@ -64,7 +69,6 @@
           v-model="categoryId"
           clearable
           :placeholder="fieldLabel('category', '分类')"
-          size="large"
           class="search-cat"
           @change="onCategoryChange"
         >
@@ -78,7 +82,6 @@
           collapse-tags-tooltip
           clearable
           :placeholder="fieldLabel('categoryIds', fieldLabel('category', '分类'))"
-          size="large"
           class="search-cat"
           style="min-width:220px"
           @change="onMultiCategoryChange"
@@ -99,7 +102,6 @@
           collapse-tags-tooltip
           clearable
           placeholder="标签（同时满足）"
-          size="large"
           style="min-width:200px"
           @change="onTagFilterChange"
         >
@@ -113,7 +115,6 @@
           allow-create
           default-first-option
           :placeholder="fieldLabel('college', '开课学院')"
-          size="large"
           class="search-cat"
           @change="load"
         >
@@ -122,7 +123,6 @@
         <el-input
           v-if="artistAlbumFilterOn"
           v-model="artistFilter"
-          size="large"
           clearable
           :placeholder="artistFilterPlaceholder"
           style="max-width:140px"
@@ -131,7 +131,6 @@
         <el-input
           v-if="artistAlbumFilterOn"
           v-model="albumFilter"
-          size="large"
           clearable
           :placeholder="albumFilterPlaceholder"
           style="max-width:140px"
@@ -140,7 +139,6 @@
         <el-input
           v-if="datingIdealFilterOn"
           v-model="datingCityFilter"
-          size="large"
           clearable
           :placeholder="datingFilterCityPlaceholder"
           style="max-width:140px"
@@ -149,33 +147,58 @@
         <el-input-number
           v-if="datingIdealFilterOn"
           v-model="datingAgeMinFilter"
-          size="large"
+          class="search-num"
           :min="1"
           :max="99"
-          controls-position="right"
+          :controls="false"
           :placeholder="datingFilterAgeMinPlaceholder"
-          style="max-width:120px"
         />
         <el-input-number
           v-if="datingIdealFilterOn"
           v-model="datingAgeMaxFilter"
-          size="large"
+          class="search-num"
           :min="1"
           :max="99"
-          controls-position="right"
+          :controls="false"
           :placeholder="datingFilterAgeMaxPlaceholder"
-          style="max-width:120px"
         />
-        <el-button type="primary" size="large" @click="load">搜索</el-button>
+        <div v-if="priceRangeFilterOn" class="price-range" role="group" :aria-label="`${priceMinPlaceholder}-${priceMaxPlaceholder}`">
+          <span class="price-range-label">最低价</span>
+          <el-input-number
+            v-model="priceMinFilter"
+            class="price-range-num"
+            :min="0"
+            :precision="2"
+            :step="1"
+            :controls="false"
+            :placeholder="priceMinPlaceholder"
+            @change="load"
+            @keyup.enter="load"
+          />
+          <span class="price-range-sep" aria-hidden="true">–</span>
+          <span class="price-range-label">最高价</span>
+          <el-input-number
+            v-model="priceMaxFilter"
+            class="price-range-num"
+            :min="0"
+            :precision="2"
+            :step="1"
+            :controls="false"
+            :placeholder="priceMaxPlaceholder"
+            @change="load"
+            @keyup.enter="load"
+          />
+        </div>
+        <el-button type="primary" size="small" class="search-submit" @click="load">搜索</el-button>
         <el-button
           v-if="hotRankOn"
-          size="large"
+          size="small"
           :type="hotMode ? 'warning' : 'default'"
           @click="toggleHotMode"
         >{{ hotMode ? hotRankBackLabel : hotRankToggleLabel }}</el-button>
         <el-button
           v-if="userPublish && !isGuest"
-          size="large"
+          size="small"
           @click="openPublish"
         >{{ publishCtaLabel }}</el-button>
       </div>
@@ -184,7 +207,6 @@
           v-model="archiveYear"
           clearable
           :placeholder="archiveYearMonthLabel"
-          size="large"
           class="search-cat"
           @change="onYearMonthChange"
         >
@@ -199,7 +221,6 @@
           v-model="archiveMonth"
           clearable
           :placeholder="archiveYearMonthAllLabel"
-          size="large"
           class="search-cat"
           :disabled="!archiveYear"
           @change="load"
@@ -243,13 +264,12 @@
       <div v-if="shareCodeOn" class="share-bar">
         <el-input
           v-model="shareCodeInput"
-          size="large"
           clearable
           :placeholder="shareCodePrompt"
           style="max-width:220px"
           @keyup.enter="openByShareCode"
         />
-        <el-button size="large" @click="openByShareCode">{{ shareCodeEntryLabel }}</el-button>
+        <el-button @click="openByShareCode">{{ shareCodeEntryLabel }}</el-button>
       </div>
       <p v-if="coverWallActive" class="page-hint">{{ posterWallTitle }}：{{ posterWallLead }}</p>
       <div v-if="searchAssist && hotKeywords.length" class="hot">
@@ -323,15 +343,32 @@
         v-for="(row, idx) in filteredList"
         :key="row.id"
         class="card imm-lift"
+        :data-card-voice="cardVoice"
+        :data-bed-tone="borrowBedTone(row)"
         :class="{
           'reported-dim': reportedIds.has(row.id),
           'poster-card': coverWallActive,
           'folio-hero': contentSurface === 'folio' && idx === 0,
           'split-active': contentSurface === 'splitdesk' && splitSelectedId === row.id,
+          'bed-tone-free': borrowSurface === 'bedblocks' && borrowBedTone(row) === 'free',
+          'bed-tone-busy': borrowSurface === 'bedblocks' && borrowBedTone(row) === 'busy',
+          'bed-tone-hold': borrowSurface === 'bedblocks' && borrowBedTone(row) === 'hold',
+          'stock-row-ok': borrowSurface === 'stockrow' && stockOk(row),
+          'stock-row-out': borrowSurface === 'stockrow' && !stockOk(row),
+          'room-tone-free': reserveSurface === 'roomstate' && reserveRoomTone(row) === 'free',
+          'room-tone-busy': reserveSurface === 'roomstate' && reserveRoomTone(row) === 'busy',
+          'room-tone-hold': reserveSurface === 'roomstate' && reserveRoomTone(row) === 'hold',
+          'lost-tone-find': applySurface === 'noticeboard' && lostBoardTone(row) === 'find',
+          'lost-tone-claim': applySurface === 'noticeboard' && lostBoardTone(row) === 'claim',
+          'lost-tone-clue': applySurface === 'noticeboard' && lostBoardTone(row) === 'clue',
+          'course-conflict': applySurface === 'coursetable' && conflictHighlightOn && wouldConflict(row),
+          'seat-tight': applySurface === 'eventposter' && stockOk(row) && stockTight(row),
+          'seat-full': applySurface === 'eventposter' && !stockOk(row),
+          'trip-full': interactSurface === 'triprow' && !stockOk(row),
         }"
         @click="onContentSurfaceCardClick(row, $event)"
       >
-        <div class="cover">
+        <div class="cover" :class="{ 'cover-fallback': !row.coverUrl }">
           <img v-if="row.coverUrl" :src="row.coverUrl" alt="" />
           <template v-else>{{ (row.title || '?').slice(0, 1) }}</template>
         </div>
@@ -340,21 +377,38 @@
             {{ row.title }}
             <el-tag v-if="coverMarkOn && Number(row.isCover) === 1" size="small" type="warning" class="cover-tag">{{ coverMarkLabel }}</el-tag>
           </h3>
+          <p
+            v-if="(cardVoice === 'story' || contentSurface === 'folio' || applySurface === 'tourcard' || interactSurface === 'profilegrid') && storyLeadOf(row)"
+            class="story-lead"
+          >{{ storyLeadOf(row) }}</p>
           <p v-if="artistAlbumFilterOn && (row.artist || row.album)" class="sub">
             {{ [row.artist, row.album].filter(Boolean).join(' · ') }}
           </p>
           <p v-if="isBlindBox(row)" class="sub">盲盒 · {{ blindBoxLine(row) }}</p>
           <p v-if="purchaseGateOn && Number(row.needPermit) === 1" class="sub">需审核后才能购买</p>
           <p v-if="purchaseGateOn && Number(row.monthLimit) > 0" class="sub">每人每月限购 {{ row.monthLimit }} 件</p>
-          <p>
-            {{ formatAuthor(row.author) }} ·
-            {{
-              (row.categoryNames?.length ? row.categoryNames.join(' · ') : row.categoryName)
-                || '未分类'
-            }}
-          </p>
+          <div v-if="cardVoice === 'board'" class="board-status">
+            <StatusChip
+              v-if="boardToneOf(row)"
+              :tone="boardToneOf(row)"
+              :label="boardLabelOf(row)"
+            />
+            <span v-else-if="quotaRemainOn && quotaRemainOf(row) != null" class="sched muted">
+              {{ quotaRemainHint || '名额余量' }}：{{ quotaRemainOf(row) }}
+            </span>
+            <span v-else class="sched muted">{{ boardLabelOf(row) }}</span>
+          </div>
+          <p
+            v-else-if="primarySignalOf(row)"
+            class="main-signal"
+            :class="{ price: authorFieldIsMoney }"
+          >{{ primarySignalOf(row) }}</p>
+          <p
+            v-if="cardVoice === 'catalog' && !authorFieldIsMoney && categoryTextOf(row)"
+            class="sub signal-cat"
+          >{{ categoryTextOf(row) }}</p>
           <p v-if="marketplace && shopLabel(row)" class="sub shop">店铺：{{ shopLabel(row) }}</p>
-          <p v-if="flashOn && row.promoActive" class="promo">
+          <p v-if="flashOn && row.promoActive" class="promo-bar">
             {{ flashBadge }} ¥{{ Number(row.promoPrice).toFixed(2) }}
             <span class="promo-list">原价 ¥{{ Number(row.listPriceYuan ?? row.author).toFixed(2) }}</span>
             <span
@@ -363,14 +417,16 @@
               :class="{ 'cd-urgent': isUrgentCountdown(flashSecondsLeft(row), 300) }"
             > · {{ flashCountdownText(row) }}</span>
           </p>
-          <p v-if="productSpecOn && productSpecText(row)" class="sub">{{ productSpecLabel }}：{{ productSpecText(row) }}</p>
+          <div v-if="cardShortTags(row).length" class="short-tags">
+            <span v-for="t in cardShortTags(row)" :key="t.key" class="short-tag">{{ t.text }}</span>
+          </div>
           <p
-            v-for="f in cardPreviewFields"
+            v-for="f in (cardVoice === 'story' ? cardPreviewFields : [])"
             :key="f.key"
             class="detail-line muted"
-          >{{ f.label }}：{{ formatFieldValue(row, f) }}</p>
-          <p v-if="cardDetailFields.length > cardPreviewFields.length" class="detail-line muted">
-            另有 {{ cardDetailFields.length - cardPreviewFields.length }} 项，见详情
+          ><span class="k">{{ f.label }}</span>：{{ formatFieldValue(row, f) }}</p>
+          <p v-if="cardVoice === 'catalog' && cardMoreFieldCount > 0" class="more-hint">
+            另有 {{ cardMoreFieldCount }} 项，见详情
           </p>
           <p v-if="row.tagNames?.length" class="sched muted">
             <template v-if="tagColorOn">
@@ -387,7 +443,7 @@
           <p v-if="intentCountOn && intentCountOf(row) != null" class="sched muted">
             {{ intentCountHint || '意向' }}：{{ intentCountOf(row) }}
           </p>
-          <p v-if="quotaRemainOn && quotaRemainOf(row) != null" class="sched muted">
+          <p v-if="cardVoice !== 'board' && quotaRemainOn && quotaRemainOf(row) != null" class="sched muted">
             {{ quotaRemainHint || '名额余量' }}：{{ quotaRemainOf(row) }}
           </p>
           <div v-if="tutorQuotaBarOn && tutorQuotaPercent(row) != null" class="quota-bar">
@@ -433,7 +489,8 @@
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
           <p v-if="conflictHighlightOn && wouldConflict(row)" class="sched conflict-row">{{ conflictHighlightLabel }}：{{ conflictHighlightHint }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
-          <div class="row">
+          <div class="card-foot">
+          <div class="card-meta">
             <span
               v-if="showStageChip"
               class="stage-chip"
@@ -506,6 +563,8 @@
               rel="noopener noreferrer"
               @click.stop
             >培养方案</a>
+          </div>
+          <div class="card-acts">
             <el-button
               v-if="playUrlOf(row)"
               size="small"
@@ -526,6 +585,7 @@
               v-if="showPrimaryApply"
               size="small"
               type="primary"
+              class="act-primary"
               :disabled="!isSlotMode && !canApplyOrWait(row)"
               @click="onPrimary(row)"
             >{{ applyActionLabel(row) }}</el-button>
@@ -558,6 +618,7 @@
               @click="openReport(row)"
             >{{ reportedIds.has(row.id) ? '已举报' : reportVerb }}</el-button>
           </div>
+          </div>
         </div>
       </article>
     </div>
@@ -565,7 +626,7 @@
       v-if="contentSurface === 'splitdesk' && splitSelected && !splitNarrow"
       class="splitdesk-pane"
     >
-      <div class="cover splitdesk-cover">
+      <div class="cover splitdesk-cover" :class="{ 'cover-fallback': !splitSelected.coverUrl }">
         <img v-if="splitSelected.coverUrl" :src="splitSelected.coverUrl" alt="" />
         <template v-else>{{ (splitSelected.title || '?').slice(0, 1) }}</template>
       </div>
@@ -582,6 +643,7 @@
         v-if="viewCountOn || Number(splitSelected.viewCount) > 0"
         class="sched muted"
       >{{ viewCountLabel }} {{ Number(splitSelected.viewCount) || 0 }}</p>
+      <p v-if="storyLeadOf(splitSelected)" class="splitdesk-lead">{{ storyLeadOf(splitSelected) }}</p>
       <RichTextView
         v-if="bodyRich && splitSelected.isbn"
         class="excerpt"
@@ -589,8 +651,12 @@
         compact
       />
       <div class="row">
-        <el-button size="small" @click="openDetail(splitSelected)">
-          {{ bodyRich ? '阅读' : '详情' }}
+        <el-button
+          size="small"
+          type="primary"
+          @click="router.push({ path: `/archive/item/${splitSelected.id}` })"
+        >
+          {{ bodyRich ? '阅读全文' : '打开详情' }}
         </el-button>
         <el-button
           v-if="favOn && !isGuest"
@@ -1248,8 +1314,7 @@
           </div>
         </el-form-item>
         <p v-if="requireMaterial && materialApplyHint" class="field-hint">{{ materialApplyHint }}</p>
-        <MaterialChecklistFields v-if="requireMaterial" ref="matRef" />
-      </el-form>
+        </el-form>
       <p v-if="!needApplyDialog" class="apply-tip muted">
         {{ autoApprove ? '确认后立即生效。' : '确认后提交，等待审核。' }}
       </p>
@@ -1403,3077 +1468,6 @@
   </div>
 </template>
 
-<script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import http from '../../api/http'
-import GuestLoginHint from '../../components/GuestLoginHint.vue'
-import EmptyHint from '../../components/EmptyHint.vue'
-import RecommendStrip from '../../components/RecommendStrip.vue'
-import StatusChip from '../../components/StatusChip.vue'
-import RichTextEditor from '../../components/RichTextEditor.vue'
-import RichTextView from '../../components/RichTextView.vue'
-import MaterialChecklistFields from '../../components/MaterialChecklistFields.vue'
-import SchemaLabelHints from '../../components/SchemaLabelHints.vue'
-import CodeQrBlock from '../../components/CodeQrBlock.vue'
-import { ARCHIVE_BROWSE_HINT_KEYS } from '../../utils/labelHintMount.js'
-import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls.js'
-import {
-  archiveCopy,
-  archiveLogCopy,
-  formatArchiveScalar,
-  followChannelLabel,
-  followChannelOptions,
-  followChannelPlaceholder,
-  hasTrait,
-  hasCap,
-  getSchema,
-  isArchiveLogEnabled,
-  isBrowseHistoryEnabled,
-  isGalleryEnabled,
-  isSearchAssistEnabled,
-  menuLabel,
-  nextFollowLabel,
-  searchHotKeywords,
-  ticketCopy,
-  ticketCheckinLabel,
-  ticketDueLabel,
-  ticketFineLabel,
-} from '../../utils/domainSchema.js'
-import { plainFromHtml, sanitizeHtml } from '../../utils/richHtml.js'
-import { profileRoomMatches, filterArchiveByOwnerToken, ownerTokenFromProfile } from '../../utils/profileRoomMatch.js'
-import {
-  formatCountdownClock,
-  isUrgentCountdown,
-  secondsUntil,
-  useNowTick,
-} from '../../utils/useCountdown.js'
-import { equipmentMark } from '../../utils/equipmentMark.js'
-import {
-  guestTeaserLimit,
-  isGuestBrowseEnabled,
-  isLoggedIn,
-  requireLogin,
-} from '../../utils/session.js'
-import { APP_DELIVERED } from '../../appDelivered.js'
+<script setup src="./ArchiveBrowse.setup.js"></script>
 
-const router = useRouter()
-const route = useRoute()
-const isGuest = computed(() => isGuestBrowseEnabled() && !isLoggedIn())
-const archive = archiveCopy()
-const ticket = ticketCopy()
-const isCrm = computed(() => hasTrait('followUp') || hasTrait('crm'))
-const channelLabel = computed(() => followChannelLabel())
-const nextAtLabel = computed(() => nextFollowLabel())
-const channelPlaceholder = computed(() => followChannelPlaceholder())
-const channelOptions = computed(() => followChannelOptions())
-const caps = computed(() => getSchema().capabilities || [])
-const browseHintKeys = ARCHIVE_BROWSE_HINT_KEYS
-const browseLabels = computed(() => getSchema()?.labels || {})
-const shelfAnnounceHint = computed(() => browseLabels.value.shelfAnnounceHint || '')
-const tagColorOn = computed(() => !!browseLabels.value.tagColorHint)
-const intentCountHint = computed(() => browseLabels.value.intentCountHint || '')
-const intentCountOn = computed(() => !!intentCountHint.value)
-const quotaRemainHint = computed(() => browseLabels.value.quotaRemainHint || '')
-const quotaRemainOn = computed(() => !!quotaRemainHint.value)
-
-function tagColor(name) {
-  const s = String(name || '')
-  let h = 0
-  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0
-  const hue = h % 360
-  return `hsl(${hue} 55% 48%)`
-}
-function intentCountOf(row) {
-  const v = row?.intentCount ?? row?.intent_count ?? row?.favCount
-  return v == null || v === '' ? null : v
-}
-function skillTagsOf(row) {
-  const raw = row?.skillTags || row?.skill_tags || ''
-  return String(raw)
-    .split(/[,，;；、\s]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
-
-function tutorQuotaPercent(row) {
-  if (!row) return null
-  const cap = Number(row.quotaCap ?? row.quota_cap ?? 0)
-  const stock = Number(row.stock ?? 0)
-  if (!(cap > 0)) return null
-  const used = Math.max(0, Math.min(cap, cap - stock))
-  return Math.round((used / cap) * 100)
-}
-
-function tutorQuotaText(row) {
-  const cap = Number(row?.quotaCap ?? row?.quota_cap ?? 0)
-  const stock = Number(row?.stock ?? 0)
-  if (!(cap > 0)) return ''
-  const used = Math.max(0, cap - stock)
-  return `${used}/${cap}`
-}
-
-/** 总费用 ÷ 座位数（余座+已占近似 = 初始 stock 不可得时用余座+1） */
-function aaPerPerson(row) {
-  if (!carpoolAaCalcOn.value || !row) return null
-  const total = Number(row.fareTotalYuan ?? row.fare_total_yuan ?? 0)
-  if (!(total > 0)) return null
-  const remain = Number(row.stock ?? 0)
-  const seats = Math.max(1, remain > 0 ? remain : 1)
-  return (total / seats).toFixed(2)
-}
-
-function skillMatchCount(row) {
-  if (!teamSkillMatchOn.value) return null
-  const mine = String(mySkillTagsInput.value || '')
-    .split(/[,，;；、\s]+/)
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
-  if (!mine.length) return null
-  const theirs = skillTagsOf(row).map((s) => s.toLowerCase())
-  if (!theirs.length) return 0
-  return mine.filter((t) => theirs.includes(t)).length
-}
-
-function rowMatchesSkillFilter(row) {
-  const q = String(skillTagFilter.value || '').trim().toLowerCase()
-  if (!q) return true
-  const tags = skillTagsOf(row).map((s) => s.toLowerCase())
-  if (!tags.length) return false
-  return q.split(/[,，;；、\s]+/).filter(Boolean).every((t) => tags.some((x) => x.includes(t)))
-}
-
-async function sendTeamInvite(row) {
-  const { value } = await ElMessageBox.prompt(
-    teamInviteHint.value || '请输入对方账号',
-    teamInviteLabel.value,
-    {
-      confirmButtonText: '发送',
-      cancelButtonText: '取消',
-      inputPattern: /\S+/,
-      inputErrorMessage: '请填写账号',
-      inputValue: inviteToUsername.value,
-    },
-  )
-  inviteToUsername.value = value
-  await http.post('/api/tickets/team-invite', {
-    toUsername: value,
-    itemId: row.id,
-    note: teamInviteBody.value || '',
-  })
-  ElMessage.success(
-    (teamInviteTitle.value ? `${teamInviteTitle.value}：` : '')
-      + (browseLabels.value.teamInviteDone || '邀请已发送'),
-  )
-}
-
-function quotaRemainOf(row) {
-  const v = row?.quotaRemain ?? row?.quota_remain ?? row?.remainQuota
-  if (v != null && v !== '') return v
-  if (row?.stock != null && row?.stock !== '') return row.stock
-  return null
-}
-const purchaseGateOn = computed(() => caps.value.includes('purchase_gate'))
-const blindBoxOn = computed(() => caps.value.includes('blind_box'))
-const boxIds = ref(new Set())
-const boxInfo = ref(new Map())
-const prizeIds = ref(new Set())
-function isBlindBox(row) {
-  return boxIds.value.has(Number(row?.id))
-}
-function blindBoxLine(row) {
-  const info = boxInfo.value.get(Number(row?.id))
-  return info?.text || '付款后开盒，奖品以开出结果为准'
-}
-async function loadBlindBoxes() {
-  if (!blindBoxOn.value) return
-  try {
-    const [boxes, prizes] = await Promise.all([
-      http.get('/api/blind-boxes/boxes'),
-      http.get('/api/blind-boxes/prizes'),
-    ])
-    const map = new Map()
-    for (const x of boxes.data || []) map.set(Number(x.id), x)
-    boxInfo.value = map
-    boxIds.value = new Set(map.keys())
-    prizeIds.value = new Set((prizes.data || []).map((x) => Number(x.id)))
-  } catch {
-    boxInfo.value = new Map()
-    boxIds.value = new Set()
-    prizeIds.value = new Set()
-  }
-}
-const verbs = computed(() => ticket.verbs || {})
-const plural = computed(() => archive.labelPlural || archive.label || '对象')
-const fields = computed(() =>
-  (archive.fields || []).filter(
-    (f) => f && f.key !== 'adminNote' && !f.adminOnly,
-  ),
-)
-const stockDisplay = computed(() => archive.stockDisplay || 'count')
-const showStageChip = computed(() => {
-  const fields = archive.fields || []
-  return fields.some((f) => f && f.key === 'stage')
-})
-
-function stageTone(stage) {
-  const s = String(stage || '').trim()
-  if (!s) return 'muted'
-  if (/空闲|在库|待取|开放报名|^开放$|可/.test(s)) return 'free'
-  if (/已分配|借出|已取出|已预约|满员|已满|已认领/.test(s)) return 'taken'
-  if (/维修|损坏|误领|拒收|下架|逾期|停开/.test(s)) return 'warn'
-  return 'muted'
-}
-const playUrlField = computed(() => archive.playUrlField || '')
-const bodyRich = computed(() => {
-  const f = fields.value.find((x) => x.key === 'isbn')
-  return f?.type === 'richtext' || archive.bodyField === 'isbn'
-})
-const richRemark = computed(() => !!ticket.richRemark)
-const autoApprove = computed(() => !!ticket.autoApprove)
-const requireAttach = computed(() => !!ticket.requireAttach)
-const requireMaterial = computed(
-  () => !!ticket.requireMaterialChecklist || hasCap('material_check'),
-)
-const matRef = ref(null)
-const requireRemark = computed(() => !!ticket.requireRemark)
-const remarkLabel = computed(() => ticket.remarkLabel || '说明')
-const dueLabel = computed(() => ticketDueLabel('到期日'))
-const fineLabel = computed(() => ticketFineLabel('金额'))
-const pickLoanPeriod = computed(() => !!ticket.pickLoanPeriod)
-/** 报销等：有 fineLabel 且非借阅到期/SLA 时，提交表单收金额 */
-const collectAmount = computed(
-  () => !!ticket.fineLabel && !pickLoanPeriod.value && !ticket.slaDeadline,
-)
-const pickDateRange = computed(() => !!ticket.pickDateRange)
-const allowQty = computed(() => !!ticket.allowQty)
-const qtyLabel = computed(() => ticket.qtyLabel || '数量')
-const ratingDims = computed(() => {
-  const list = ticket.ratingDims
-  return Array.isArray(list) ? list.filter((d) => d && d.key && d.label) : []
-})
-const allowAnonymousRating = computed(() => !!ticket.allowAnonymousRating)
-const rateOnApply = computed(
-  () => !!autoApprove.value && !!ticket.allowRating && ratingDims.value.length > 0,
-)
-const checkinOnApply = computed(() => !!autoApprove.value && !!ticket.allowCheckin)
-const checkinLabel = computed(() => ticketCheckinLabel('签到'))
-const matchProfileRoom = computed(() => !!ticket.matchProfileRoom)
-const matchProfileOpts = computed(() => ({
-  buildingKey: ticket.matchProfileBuildingKey || 'dormBuilding',
-  roomKey: ticket.matchProfileRoomKey || 'dormRoom',
-  buildingField: ticket.matchProfileBuildingField || 'author',
-  roomField: ticket.matchProfileRoomField || 'title',
-  looseBuilding: !!ticket.matchProfileLooseBuilding,
-}))
-const matchProfileNeedMessage = computed(
-  () => ticket.matchProfileNeedMessage || '请先在个人资料填写楼栋与房间',
-)
-const matchProfileDenyMessage = computed(
-  () => ticket.matchProfileDenyMessage || '只能对本寝室的查寝场次登记归寝',
-)
-const filterByOwnerToken = computed(() => !!ticket.filterByOwnerToken)
-const ownerTokenSource = computed(() => ticket.ownerTokenSource || 'phone')
-const ownerTokenStrict = computed(() => !!ticket.ownerTokenStrict)
-const needApplyDialog = computed(
-  () =>
-    richRemark.value
-    || requireAttach.value
-    || requireMaterial.value
-    || requireRemark.value
-    || pickLoanPeriod.value
-    || pickDateRange.value
-    || collectAmount.value
-    || allowQty.value
-    || isCrm.value
-    || rateOnApply.value
-    || checkinOnApply.value,
-)
-const checkMutex = computed(() => !!ticket.checkMutex)
-const categoryLimit = computed(() => Number(ticket.categoryLimit) || 0)
-const tagFilter = computed(() => !!archive.tagFilter)
-const multiCategory = computed(() => !!archive.multiCategory || hasCap('multi_category'))
-const userPublish = computed(() => !!archive.userPublish)
-/** 论坛类：isbn 富文本；CRM/拼车等：纯文本业务表单 */
-const publishUsesRichBody = computed(() => bodyRich.value)
-/** 联系人等可填；「发布人/作者」由登录账号自动写入 */
-const publishShowAuthor = computed(() => {
-  if (!userPublish.value || publishUsesRichBody.value) return false
-  const lab = fieldLabel('author', '')
-  if (/发布人|作者|发帖/.test(lab)) return false
-  return true
-})
-const publishShowStock = computed(
-  () => userPublish.value && !publishUsesRichBody.value && stockDisplay.value === 'number',
-)
-const publishShowStartAt = computed(
-  () => userPublish.value && !publishUsesRichBody.value && hasSchedule.value,
-)
-const publishDialogTitle = computed(() => {
-  const custom = getSchema()?.labels?.publishDialogTitle
-  if (custom) return custom
-  if (publishUsesRichBody.value) return '发帖'
-  if (publishShowStock.value) return `发布${archive.label || '行程'}`
-  return `登记${archive.label || '内容'}`
-})
-const publishCtaLabel = computed(() => {
-  const custom = getSchema()?.labels?.publishCtaLabel
-  if (custom) return custom
-  if (publishUsesRichBody.value) return '发帖'
-  if (publishShowStock.value) return `发布${archive.label || '行程'}`
-  return `登记${archive.label || '内容'}`
-})
-const publishSubmitLabel = computed(() => {
-  const custom = getSchema()?.labels?.publishSubmitLabel
-  if (custom) return custom
-  if (publishUsesRichBody.value) return '发布'
-  if (publishShowStock.value) return '发布'
-  return '保存'
-})
-const publishTitlePlaceholder = computed(() => `请填写${fieldLabel('title', '名称')}`)
-const publishIsbnPlaceholder = computed(() => {
-  const lab = fieldLabel('isbn', '备注')
-  if (lab.includes('时间') || lab.includes('地点')) return '例如：周五 18:30 学校东门出发，可带行李'
-  if (lab.includes('电话') || lab.includes('备注')) return '电话、微信或跟进备注'
-  return `请填写${lab}`
-})
-const publishTip = computed(() => {
-  const custom = getSchema()?.labels?.publishTip
-  if (custom) return custom
-  if (publishUsesRichBody.value) return '发布后即时可见，无需审核；违规可由管理员下架。'
-  if (publishShowStock.value) return '行程发布后即时可见；他人提交意向后由你确认或婉拒。'
-  return `登记后即时入档，可在「我的${archive.label || '内容'}」中查看；随后可提交跟进。`
-})
-const stockCountLabel = computed(() => {
-  if (archive.stockCountLabel) return archive.stockCountLabel
-  const stockField = fields.value.find((x) => x.key === 'stock')
-  if (stockField?.label) return stockField.label
-  return '余量'
-})
-
-/** 卡片/详情副文案：schema 里除标题作者分类外的短字段（地点、阶段、编号等） */
-const cardDetailFields = computed(() => {
-  const skip = new Set([
-    'title', 'author', 'category', 'stock', 'coverUrl',
-    'mutexCode', 'checkinCode', 'startAt', 'endAt', 'applyDeadlineAt',
-  ])
-  // 挂 product_spec 时规格由独立行展示，避免与 schema 字段重复
-  if (productSpecOn.value) {
-    const src = getSchema()?.entities?.archive?.productSpecSource || 'specNote'
-    skip.add(src === 'isbn' ? 'isbn' : 'specNote')
-  }
-  return fields.value.filter((f) => {
-    if (!f?.key || skip.has(f.key)) return false
-    if (f.type === 'hidden' || f.type === 'richtext') return false
-    // 正文/播放链路由摘要或播放按钮承担，避免卡片再堆一长串 URL
-    if (f.key === 'isbn' && (bodyRich.value || playUrlField.value === 'isbn')) return false
-    const t = f.type || 'string'
-    return ['string', 'number', 'datetime', 'date', 'url', 'textarea', 'select'].includes(t)
-  })
-})
-/** 列表卡片只露前几项，避免深皮字段把卡片撑破；抽屉仍用全量 */
-const cardPreviewFields = computed(() => cardDetailFields.value.slice(0, 4))
-
-const searchPlaceholder = computed(() => {
-  if (titleSearchOn.value && titleSearchPlaceholder.value) {
-    return titleSearchPlaceholder.value
-  }
-  const parts = [fieldLabel('title', '名称'), fieldLabel('author', '型号')]
-  const isbnF = fields.value.find((x) => x.key === 'isbn')
-  if (isbnF && isbnF.type !== 'richtext' && isbnF.type !== 'hidden' && playUrlField.value !== 'isbn') {
-    parts.push(isbnF.label || '编号')
-  }
-  const regionF = fields.value.find((x) => x.key === 'region')
-  if (regionF && regionF.type !== 'hidden') {
-    parts.push(regionF.label || '产地')
-  }
-  const harvestF = fields.value.find((x) => x.key === 'harvest_on')
-  if (harvestF && harvestF.type !== 'hidden') {
-    parts.push(harvestF.label || '采摘时间')
-  }
-  const base = `搜索${parts.join(' / ')}`
-  if (titleSuggestOn.value && searchSuggestHint.value) {
-    return `${base}（${searchSuggestHint.value}）`
-  }
-  return base
-})
-
-function toggleHotMode() {
-  hotMode.value = !hotMode.value
-  page.value = 1
-  load()
-}
-
-const ruleHint = computed(() => {
-  const parts = []
-  const catLab = fieldLabel('category', '分类')
-  const unit = archive.label || '项'
-  if (checkMutex.value) parts.push('同互斥码不可同选')
-  if (categoryLimit.value > 0) parts.push(`每${catLab}最多 ${categoryLimit.value} ${unit}`)
-  if (tagFilter.value) parts.push('可多标签组合筛选')
-  if (pickLoanPeriod.value) parts.push(`须选择${dueLabel.value}`)
-  if (pickDateRange.value) parts.push('须选择起止日期')
-  if (allowQty.value) parts.push('可填申请数量')
-  if (requireRemark.value) parts.push(`须填写${remarkLabel.value}`)
-  return parts.length ? parts.join('；') + '。' : ''
-})
-const qtyMax = computed(() => {
-  const stock = Number(applyRow.value?.stock)
-  if (Number.isFinite(stock) && stock > 0) return Math.min(99, stock)
-  return 99
-})
-const hasSchedule = computed(() => fields.value.some((x) => x.key === 'startAt'))
-const hasRecommend = computed(() => caps.value.includes('recommend'))
-/** 影院选座：有 seat_select / seatSelect 时主路径进座位图，禁止当商城加购 */
-const isSeatSelectMode = computed(
-  () => caps.value.includes('seat_select') || hasTrait('seatSelect'),
-)
-const isOrderMode = computed(
-  () =>
-    caps.value.includes('order_lines')
-    && !caps.value.includes('ticket_flow')
-    && !caps.value.includes('slot_reserve')
-    && !isSeatSelectMode.value,
-)
-const isSlotMode = computed(() => {
-  if (!caps.value.includes('slot_reserve')) return false
-  //  仪器机时等：借+约并存时主按钮走约时段（traits.slotPrimary）
-  if (hasTrait('slotPrimary')) return true
-  return !caps.value.includes('ticket_flow')
-})
-/** 即时收藏：交易/内容流；婚恋心动可与单据并存（收藏/心动） */
-const favOn = computed(() => {
-  if (!caps.value.includes('favorites')) return false
-  if (isOrderMode.value || isSeatSelectMode.value) return true
-  if (getSchema()?.interactThicken?.datingFavorites) return true
-  return !caps.value.includes('ticket_flow') && !caps.value.includes('slot_reserve')
-})
-const likeOn = computed(() => hasCap('post_like'))
-const flashOn = computed(() => hasCap('flash_price'))
-const productSpecOn = computed(() => hasCap('product_spec'))
-const productSpecLabel = computed(() => getSchema()?.labels?.productSpecLabel || '规格')
-const flashBadge = computed(() => getSchema()?.labels?.flashPriceBadge || '活动价')
-const flashCountdownLabel = computed(
-  () => getSchema()?.labels?.flashCountdownLabel || '距结束',
-)
-const flashCountdownEnded = computed(
-  () => getSchema()?.labels?.flashCountdownEnded || '已结束',
-)
-const favoritesVerb = computed(() => getSchema()?.labels?.favoritesVerb || '收藏')
-const favoritedVerb = computed(() => getSchema()?.labels?.favoritedVerb || '已收藏')
-const applyDeadlineLabel = computed(
-  () => getSchema()?.labels?.applyDeadlineLabel || '截止',
-)
-const mutualDeadlineCountdownOn = computed(
-  () => !!getSchema()?.interactThicken?.mutualDeadlineCountdown,
-)
-const mutualDeadlineCountdownLabel = computed(
-  () => getSchema()?.labels?.mutualDeadlineCountdownLabel || '距志愿截止',
-)
-const mutualDeadlinePassedLabel = computed(
-  () => getSchema()?.labels?.mutualDeadlinePassedLabel || '志愿已截止',
-)
-const mutualDeadlineHint = computed(() => {
-  if (!mutualDeadlineCountdownOn.value) return ''
-  return getSchema()?.labels?.mutualDeadlineHint || ''
-})
-const { nowMs } = useNowTick()
-
-function flashSecondsLeft(row) {
-  if (!row?.promoActive || !row.promoEnd) return null
-  return secondsUntil(row.promoEnd, nowMs.value)
-}
-
-function flashCountdownText(row) {
-  const sec = flashSecondsLeft(row)
-  if (sec == null) return ''
-  if (sec <= 0) return flashCountdownEnded.value
-  return `${flashCountdownLabel.value} ${formatCountdownClock(sec)}`
-}
-
-function mutualDeadlineText(row) {
-  if (!mutualDeadlineCountdownOn.value || !row?.applyDeadlineAt) return ''
-  const sec = secondsUntil(row.applyDeadlineAt, nowMs.value)
-  if (sec == null) return ''
-  if (sec <= 0) return mutualDeadlinePassedLabel.value
-  return `${mutualDeadlineCountdownLabel.value} ${formatCountdownClock(sec)}`
-}
-const reportOn = computed(() => hasCap('content_report'))
-const likeVerb = computed(() => getSchema()?.labels?.likeVerb || '点赞')
-const likedVerb = computed(() => getSchema()?.labels?.likedVerb || '已赞')
-const reportVerb = computed(() => getSchema()?.labels?.reportVerb || '举报')
-const applyFromList = computed(() => !!ticket.applyFromList)
-/** 有单据/下单/预约/选座时才显示主操作；applyFromList（请假/归寝）主路径在「我的*」，档案页仅查阅 */
-const showPrimaryApply = computed(
-  () =>
-    !applyFromList.value
-    && (
-      isOrderMode.value
-      || isSeatSelectMode.value
-      || isSlotMode.value
-      || caps.value.includes('ticket_flow')
-    ),
-)
-const favIds = ref([])
-const likeIds = ref([])
-const reportedIds = ref(new Set())
-const favPulseId = ref(null)
-const likePulseId = ref(null)
-const reportVisible = ref(false)
-const reportRow = ref(null)
-const reportTargetType = ref('archive')
-const reportReason = ref('')
-const reportReasonCode = ref('')
-const reportSubmitting = ref(false)
-const reportTargetLabel = computed(() => {
-  const row = reportRow.value
-  if (!row) return ''
-  if (reportTargetType.value === 'ticket') {
-    return `回复 #${row.id}${row.username ? ' · ' + row.username : ''}`
-  }
-  if (reportTargetType.value === 'comment') {
-    const who = row.nickname || row.username || ''
-    return `评论 #${row.id}${who ? ' · ' + who : ''}`
-  }
-  return row.title || `#${row.id}`
-})
-const contentThicken = computed(() => getSchema()?.contentThicken || {})
-const reportReasonDictOn = computed(() => !!contentThicken.value.reportReasonDict)
-const commentReportOn = computed(() => !!contentThicken.value.commentReport)
-const followersOnlyCommentOn = computed(() => !!contentThicken.value.followersOnlyComment)
-const interactThicken = computed(() => getSchema()?.interactThicken || {})
-const datingUserFollowOn = computed(() => !!interactThicken.value.datingUserFollow)
-const datingMeetIntentOn = computed(() => !!interactThicken.value.datingMeetIntent)
-const datingIdealFilterOn = computed(() => !!interactThicken.value.datingIdealFilter)
-const datingActivityEntryOn = computed(() => !!interactThicken.value.datingActivityEntry)
-const mutualInterviewEntryOn = computed(() => !!interactThicken.value.mutualInterviewEntry)
-const mutualIntroPackOn = computed(() => !!interactThicken.value.mutualIntroPack)
-const tutorQuotaBarOn = computed(() => !!interactThicken.value.mutualTutorQuotaBar)
-const teamSkillTagsOn = computed(() => !!interactThicken.value.mutualTeamSkillTags)
-const teamSkillMatchOn = computed(() => !!interactThicken.value.mutualTeamSkillMatch)
-const teamInviteOn = computed(() => !!interactThicken.value.mutualTeamInvite)
-const carpoolFullCloseOn = computed(() => !!interactThicken.value.carpoolFullClose)
-const carpoolSeatRemainOn = computed(() => !!interactThicken.value.carpoolSeatRemain)
-const carpoolCampusDictOn = computed(() => !!interactThicken.value.carpoolCampusDict)
-const carpoolViaPointsOn = computed(() => !!interactThicken.value.carpoolViaPoints)
-const carpoolShareNoteOn = computed(() => !!interactThicken.value.carpoolShareNote)
-const carpoolPrefNoteOn = computed(() => !!interactThicken.value.carpoolPrefNote)
-const carpoolLuggageOn = computed(() => !!interactThicken.value.carpoolLuggage)
-const carpoolAaCalcOn = computed(() => !!interactThicken.value.carpoolAaCalc)
-const carpoolDepartRemindOn = computed(() => !!interactThicken.value.carpoolDepartRemind)
-const carpoolFullStageHint = computed(() => browseLabels.value.carpoolFullStageHint || '')
-const carpoolSeatRemainLabel = computed(
-  () => browseLabels.value.carpoolSeatRemainLabel || '剩余座位',
-)
-const carpoolSeatRemainHint = computed(() => browseLabels.value.carpoolSeatRemainHint || '')
-const carpoolCampusStartLabel = computed(
-  () => browseLabels.value.carpoolCampusStartLabel || '出发校区',
-)
-const carpoolCampusEndLabel = computed(
-  () => browseLabels.value.carpoolCampusEndLabel || '到达校区',
-)
-const carpoolCampusPlaceholder = computed(
-  () => browseLabels.value.carpoolCampusPlaceholder || '选择校区',
-)
-const carpoolCampusOptions = computed(() => {
-  const raw = String(browseLabels.value.carpoolCampusOptions || '')
-  return raw.split(/[,，]/).map((s) => s.trim()).filter(Boolean)
-})
-const carpoolViaPointsLabel = computed(() => browseLabels.value.viaPointsLabel || '途经点')
-const carpoolViaPointsPlaceholder = computed(
-  () => browseLabels.value.viaPointsPlaceholder || '多个途经点用逗号或换行分隔',
-)
-const carpoolShareNoteLabel = computed(() => browseLabels.value.shareNoteLabel || '费用分摊说明')
-const carpoolShareNotePlaceholder = computed(
-  () => browseLabels.value.shareNotePlaceholder || '',
-)
-const carpoolPrefNoteLabel = computed(() => browseLabels.value.prefNoteLabel || '同行偏好')
-const carpoolPrefNotePlaceholder = computed(
-  () => browseLabels.value.prefNotePlaceholder || '',
-)
-const carpoolLuggageCountLabel = computed(
-  () => browseLabels.value.luggageCountLabel || '行李件数',
-)
-const fareTotalLabel = computed(() => browseLabels.value.fareTotalLabel || '预计总费用')
-const fareTotalHint = computed(() => browseLabels.value.fareTotalHint || '')
-const carpoolAaLabel = computed(() => browseLabels.value.carpoolAaLabel || '人均分摊')
-const carpoolAaHint = computed(() => browseLabels.value.carpoolAaHint || '')
-const carpoolDepartRemindLeadLabel = computed(
-  () => browseLabels.value.carpoolDepartRemindLeadLabel || '出发前提醒',
-)
-const carpoolDepartRemindHint = computed(
-  () => browseLabels.value.carpoolDepartRemindHint || '',
-)
-const carpoolDupTripDeny = computed(
-  () => browseLabels.value.carpoolDupTripDeny || '你已发布相近出发时间的同行行程，请勿重复发布。',
-)
-const tutorQuotaBarLabel = computed(
-  () => browseLabels.value.tutorQuotaBarLabel || '名额占用',
-)
-const tutorQuotaBarHint = computed(() => browseLabels.value.tutorQuotaBarHint || '')
-const skillTagsLabel = computed(() => browseLabels.value.skillTagsLabel || '技能标签')
-const skillTagsFilterPlaceholder = computed(
-  () => browseLabels.value.skillTagsFilterPlaceholder || '按技能标签筛选',
-)
-const teamSkillMatchLabel = computed(
-  () => browseLabels.value.teamSkillMatchLabel || '技能匹配',
-)
-const teamSkillMatchHint = computed(
-  () => browseLabels.value.teamSkillMatchHint || '按标签重合数量提示匹配度，仅供参考。',
-)
-const skillTagsPlaceholder = computed(
-  () => browseLabels.value.skillTagsPlaceholder || '多个标签用逗号分隔',
-)
-const teamInviteLabel = computed(() => browseLabels.value.teamInviteLabel || '邀请组队')
-const teamInviteHint = computed(() => browseLabels.value.teamInviteHint || '')
-const teamInviteTitle = computed(() => browseLabels.value.teamInviteTitle || '组队邀请')
-const teamInviteBody = computed(() => browseLabels.value.teamInviteBody || '')
-const teamFullStageHint = computed(() => browseLabels.value.teamFullStageHint || '')
-const teamRemarkRequired = computed(
-  () => browseLabels.value.teamRemarkRequired || '请填写申请附言后再提交',
-)
-const teamSkillMatchEmpty = computed(
-  () => browseLabels.value.teamSkillMatchEmpty || '填写技能标签后可看重合数',
-)
-const skillTagFilter = ref('')
-const mySkillTagsInput = ref('')
-const inviteToUsername = ref('')
-const filteredList = computed(() => {
-  const rows = list.value || []
-  if (!teamSkillTagsOn.value || !String(skillTagFilter.value || '').trim()) return rows
-  return rows.filter((r) => rowMatchesSkillFilter(r))
-})
-const mutualInterviewEntryTitle = computed(
-  () => browseLabels.value.mutualInterviewEntryTitle || '',
-)
-const mutualInterviewEntryHint = computed(
-  () =>
-    browseLabels.value.mutualInterviewEntryHint
-    || '面试时段安排见互选公告；如需预约会议室请按当期公告指引办理。',
-)
-const mutualInterviewEntryCta = computed(
-  () => browseLabels.value.mutualInterviewEntryCta || '查看互选公告',
-)
-const introPackLabel = computed(() => browseLabels.value.introPackLabel || '附件简介包')
-const introPackOpenLabel = computed(
-  () => browseLabels.value.introPackOpenLabel || '查看简介包',
-)
-const introPackHint = computed(() => browseLabels.value.introPackHint || '')
-const datingAlbumAuditOn = computed(() => !!interactThicken.value.datingAlbumAudit)
-const userFollowUiOn = computed(() => followersOnlyCommentOn.value || datingUserFollowOn.value)
-const datingFilterCityPlaceholder = computed(
-  () => browseLabels.value.datingFilterCityPlaceholder || '按城市筛选',
-)
-const datingFilterAgeMinPlaceholder = computed(
-  () => browseLabels.value.datingFilterAgeMinPlaceholder || '最小',
-)
-const datingFilterAgeMaxPlaceholder = computed(
-  () => browseLabels.value.datingFilterAgeMaxPlaceholder || '最大',
-)
-const datingActivityEntryTitle = computed(
-  () => browseLabels.value.datingActivityEntryTitle || '',
-)
-const datingActivityEntryHint = computed(
-  () => browseLabels.value.datingActivityEntryHint || '线下联谊安排见交友公告。',
-)
-const datingActivityEntryCta = computed(
-  () => browseLabels.value.datingActivityEntryCta || '查看交友公告',
-)
-const albumAuditHiddenHint = computed(
-  () => browseLabels.value.albumAuditHiddenHint || '相册审核通过后才会公开展示。',
-)
-const meetIntentLabel = computed(() => browseLabels.value.meetIntentLabel || '见面意向')
-const meetIntentPlaceholder = computed(
-  () => browseLabels.value.meetIntentPlaceholder || '请选择见面意向',
-)
-const meetIntentOptions = computed(() => {
-  const raw = ticket.meetIntentOptions || getSchema()?.entities?.ticket?.meetIntentOptions
-  return Array.isArray(raw) && raw.length ? raw : ['线上沟通', '线下见面', '参加联谊', '暂不确定']
-})
-const datingCityFilter = ref('')
-const datingAgeMinFilter = ref(null)
-const datingAgeMaxFilter = ref(null)
-const applyMeetIntent = ref('')
-const reportReasonOptions = computed(() => {
-  const raw = getSchema()?.reportReasons
-  return Array.isArray(raw) ? raw : []
-})
-const itemCommentFollowersOnly = ref(false)
-const followingUsers = ref(new Set())
-const viewCountOn = computed(() => !!contentThicken.value.viewCount)
-const viewCountLabel = computed(() => browseLabels.value.viewCountLabel || '阅读数')
-const downloadCountOn = computed(() => !!contentThicken.value.hotByDownload)
-const downloadCountLabel = computed(() => browseLabels.value.downloadCountLabel || '下载次数')
-const hotRankOn = computed(() => !!contentThicken.value.hotRank)
-const hotRankPageTitle = computed(() => browseLabels.value.hotRankPageTitle || '热门排行')
-const hotRankPageLead = computed(() => browseLabels.value.hotRankPageLead || '按阅读次数从高到低排列。')
-const hotRankToggleLabel = computed(() => browseLabels.value.hotRankToggleLabel || '看热门')
-const hotRankBackLabel = computed(() => browseLabels.value.hotRankBackLabel || '全部')
-const titleSearchOn = computed(() => !!contentThicken.value.titleSearch)
-const titleSearchPlaceholder = computed(() => browseLabels.value.titleSearchPlaceholder || '')
-const searchSuggestHint = computed(() => browseLabels.value.searchSuggestHint || '')
-const draftBoxOn = computed(() => !!contentThicken.value.draftBox)
-const draftAutoSaveOn = computed(() => !!contentThicken.value.draftAutoSave && draftBoxOn.value)
-const draftAutoSaveHint = computed(
-  () => browseLabels.value.draftAutoSaveHint || '编辑时会自动保存草稿，可稍后在「我的」里继续。',
-)
-const draftAutoSavedLabel = computed(() => browseLabels.value.draftAutoSavedLabel || '草稿已自动保存')
-const essenceOn = computed(() => !!contentThicken.value.essence)
-const lockedOn = computed(() => !!contentThicken.value.locked)
-const sectionNoticeOn = computed(() => !!contentThicken.value.sectionNotice)
-const nestedReplyOn = computed(() => !!contentThicken.value.nestedReply)
-const commentFoldOn = computed(() => !!contentThicken.value.commentFold)
-const commentFoldAfter = computed(() => Math.max(1, Number(getSchema()?.commentFoldAfter) || 3))
-const nestedReplyLabel = computed(() => browseLabels.value.nestedReplyLabel || '回复楼中楼')
-const mentionNotifyHint = computed(() => browseLabels.value.mentionNotifyHint || '')
-const commentFoldMoreLabel = computed(() => browseLabels.value.commentFoldMoreLabel || '展开更多回复')
-const commentFoldLessLabel = computed(() => browseLabels.value.commentFoldLessLabel || '收起')
-const sensitiveWordHint = computed(() => browseLabels.value.sensitiveWordHint || '')
-const categoryFollowOn = computed(() => !!contentThicken.value.categoryFollow)
-const categoryFollowerCountOn = computed(() => !!contentThicken.value.categoryFollowerCount)
-const categoryFollowLabel = computed(() => browseLabels.value.categoryFollowLabel || '订阅专栏')
-const categoryUnfollowLabel = computed(() => browseLabels.value.categoryUnfollowLabel || '取消订阅')
-const categoryFollowHint = computed(() => browseLabels.value.categoryFollowHint || '')
-const categoryFollowerCountLabel = computed(() => browseLabels.value.categoryFollowerCountLabel || '订阅数')
-const archiveYearMonthOn = computed(() => !!contentThicken.value.archiveYearMonth)
-const archiveYearMonthLabel = computed(() => browseLabels.value.archiveYearMonthLabel || '按年月归档')
-const archiveYearMonthAllLabel = computed(() => browseLabels.value.archiveYearMonthAllLabel || '全部月份')
-const seriesNavOn = computed(() => !!contentThicken.value.seriesNav)
-const seriesPrevLabel = computed(() => browseLabels.value.seriesPrevLabel || '上一篇')
-const seriesNextLabel = computed(() => browseLabels.value.seriesNextLabel || '下一篇')
-const seriesHint = computed(() => browseLabels.value.seriesHint || '')
-const originKindOn = computed(() => !!contentThicken.value.originKind)
-const originKindLabel = computed(() => browseLabels.value.originKindLabel || '原创声明')
-const originOriginalLabel = computed(() => browseLabels.value.originOriginalLabel || '原创')
-const originReprintLabel = computed(() => browseLabels.value.originReprintLabel || '转载')
-const authorPageOn = computed(() => !!contentThicken.value.authorPage)
-const authorPageTitle = computed(() => browseLabels.value.authorPageTitle || '作者主页')
-const accessPasswordOn = computed(() => !!contentThicken.value.accessPassword)
-const accessPasswordLabel = computed(() => browseLabels.value.accessPasswordLabel || '访问口令')
-const accessPasswordHint = computed(() => browseLabels.value.accessPasswordHint || '')
-const accessPasswordPrompt = computed(() => browseLabels.value.accessPasswordPrompt || '请输入访问口令')
-const accessPasswordUnlockLabel = computed(() => browseLabels.value.accessPasswordUnlockLabel || '解锁')
-const friendLinksOn = computed(() => !!contentThicken.value.friendLinks)
-const friendLinkPageTitle = computed(() => browseLabels.value.friendLinkPageTitle || '友情链接')
-const commentAuthorNotifyOn = computed(() => !!contentThicken.value.commentAuthorNotify)
-const commentAuthorNotifyHint = computed(() => browseLabels.value.commentAuthorNotifyHint || '')
-const authorPageEntryLabel = computed(() => browseLabels.value.authorPageEntryLabel || '看作者')
-const playProgressOn = computed(() => !!contentThicken.value.playProgress)
-const playProgressHint = computed(() => browseLabels.value.playProgressHint || '')
-const playProgressSaveLabel = computed(() => browseLabels.value.playProgressSaveLabel || '记下进度')
-const episodeCompletedLabel = computed(() => browseLabels.value.episodeCompletedLabel || '已看完')
-const episodeContinueLabel = computed(() => browseLabels.value.episodeContinueLabel || '继续看')
-const episodeListOn = computed(() => !!contentThicken.value.episodeList)
-const episodeListTitle = computed(() => browseLabels.value.episodeListTitle || '选集')
-const episodeListEmpty = computed(() => browseLabels.value.episodeListEmpty || '暂无分集')
-const posterWallOn = computed(() => !!contentThicken.value.posterWall)
-const posterWallTitle = computed(() => browseLabels.value.posterWallTitle || '海报墙')
-const posterWallLead = computed(() => browseLabels.value.posterWallLead || '')
-/** 交易组页内构图：shelfgrid / menuboard / showtime；非交易域为空 */
-const tradeSurface = computed(() => {
-  const s = String(
-    APP_DELIVERED?.tradeSurfaceStyle
-      || import.meta.env.VITE_TRADE_SURFACE_STYLE
-      || '',
-  ).trim()
-  if (['shelfgrid', 'menuboard', 'showtime'].includes(s)) return s
-  return ''
-})
-/** 预约组页内构图：slotstrip / roomstate / vehiclecard；非预约域为空 */
-const reserveSurface = computed(() => {
-  const s = String(
-    APP_DELIVERED?.reserveSurfaceStyle
-      || import.meta.env.VITE_RESERVE_SURFACE_STYLE
-      || '',
-  ).trim()
-  if (['slotstrip', 'roomstate', 'vehiclecard'].includes(s)) return s
-  return ''
-})
-/** 借用组页内构图：bookshelf / stockrow / bedblocks / parcelshelf；非借用域为空 */
-const borrowSurface = computed(() => {
-  const s = String(
-    APP_DELIVERED?.borrowSurfaceStyle
-      || import.meta.env.VITE_BORROW_SURFACE_STYLE
-      || '',
-  ).trim()
-  if (['bookshelf', 'stockrow', 'bedblocks', 'parcelshelf'].includes(s)) return s
-  return ''
-})
-/** 报名组页内构图：eventposter / coursetable / noticeboard / tourcard；非报名域为空 */
-const applySurface = computed(() => {
-  const s = String(
-    APP_DELIVERED?.applySurfaceStyle
-      || import.meta.env.VITE_APPLY_SURFACE_STYLE
-      || '',
-  ).trim()
-  if (['eventposter', 'coursetable', 'noticeboard', 'tourcard'].includes(s)) return s
-  return ''
-})
-/** 互动组页内构图：profilegrid / mutualpick / triprow；考试问卷投票不进本轴 */
-const interactSurface = computed(() => {
-  const s = String(
-    APP_DELIVERED?.interactSurfaceStyle
-      || import.meta.env.VITE_INTERACT_SURFACE_STYLE
-      || '',
-  ).trim()
-  if (['profilegrid', 'mutualpick', 'triprow'].includes(s)) return s
-  return ''
-})
-/** 跟进组页内构图：pipeline / dossier / listing；非跟进域为空 */
-const followSurface = computed(() => {
-  const s = String(
-    APP_DELIVERED?.followSurfaceStyle
-      || import.meta.env.VITE_FOLLOW_SURFACE_STYLE
-      || '',
-  ).trim()
-  if (['pipeline', 'dossier', 'listing'].includes(s)) return s
-  return ''
-})
-/** 内容组页内构图：folio / coverwall / ledger / splitdesk；非内容域为空 */
-const contentSurface = computed(() => {
-  const s = String(
-    APP_DELIVERED?.contentSurfaceStyle
-      || import.meta.env.VITE_CONTENT_SURFACE_STYLE
-      || '',
-  ).trim()
-  if (['folio', 'coverwall', 'ledger', 'splitdesk'].includes(s)) return s
-  return ''
-})
-/** MEDIA posterWall 并入 coverwall；有手选则 coverwall 优先于 thicken 旗标 */
-const coverWallActive = computed(
-  () => contentSurface.value === 'coverwall' || (!contentSurface.value && posterWallOn.value),
-)
-const splitSelected = ref(null)
-const splitSelectedId = computed(() => splitSelected.value?.id ?? null)
-const splitNarrow = ref(false)
-let splitNarrowMq = null
-function syncSplitNarrow() {
-  splitNarrow.value = !!splitNarrowMq?.matches
-}
-function onContentSurfaceCardClick(row, ev) {
-  if (contentSurface.value !== 'splitdesk') return
-  if (ev?.target?.closest?.('button, a, .el-button, .el-tag, input, textarea')) return
-  if (splitNarrow.value) {
-    openDetail(row)
-    return
-  }
-  splitSelected.value = row
-}
-const hotByPlayOn = computed(() => !!contentThicken.value.hotByPlay)
-const playCountOn = computed(() => !!contentThicken.value.hotByPlay || !!contentThicken.value.playProgress)
-const playCountLabel = computed(() => browseLabels.value.playCountLabel || '播放次数')
-const shareCodeOn = computed(() => !!contentThicken.value.shareCode)
-const shareCodeLabel = computed(() => browseLabels.value.shareCodeLabel || '分享码')
-const shareCodeEntryLabel = computed(() => browseLabels.value.shareCodeEntryLabel || '凭码打开')
-const shareCodePrompt = computed(() => browseLabels.value.shareCodePrompt || '请输入分享码')
-const shareCodeInput = ref('')
-const artistAlbumFilterOn = computed(() => !!contentThicken.value.artistAlbumFilter)
-const artistFilterPlaceholder = computed(() => browseLabels.value.artistFilterPlaceholder || '按歌手筛选')
-const albumFilterPlaceholder = computed(() => browseLabels.value.albumFilterPlaceholder || '按专辑筛选')
-const lyricsOn = computed(() => !!contentThicken.value.lyrics)
-const lyricsLabel = computed(() => browseLabels.value.lyricsLabel || '歌词')
-const lyricsEmpty = computed(() => browseLabels.value.lyricsEmpty || '暂无歌词')
-const coverMarkOn = computed(() => !!contentThicken.value.coverMark)
-const coverMarkLabel = computed(() => browseLabels.value.coverMarkLabel || '翻唱')
-const audioQualityOn = computed(() => !!contentThicken.value.audioQualitySwitch)
-const audioQualityLabel = computed(() => browseLabels.value.audioQualityLabel || '音质')
-const audioQualityHint = computed(() => browseLabels.value.audioQualityHint || '')
-const audioQualityOptions = computed(() => {
-  const raw = browseLabels.value.audioQualityOptions || '标准,较高,无损'
-  return String(raw).split(/[,，]/).map((s) => s.trim()).filter(Boolean)
-})
-const audioQualityPick = ref('')
-const artistFilter = ref('')
-const albumFilter = ref('')
-const episodes = ref([])
-const episodeProgressMap = ref({})
-const activeEpisodeId = ref(0)
-const progressSec = ref(0)
-const progressSaving = ref(false)
-const currentProgress = computed(() => epProgress({ id: activeEpisodeId.value }))
-function epProgress(ep) {
-  const id = Number(ep?.id) || 0
-  return episodeProgressMap.value[id] || null
-}
-async function loadTrackProgress(itemId) {
-  if (!playProgressOn.value || isGuest.value || !itemId) return
-  try {
-    const pr = await http.get('/api/media-progress', { params: { itemId, episodeId: 0 } })
-    episodeProgressMap.value = { ...episodeProgressMap.value, 0: pr.data || pr }
-    progressSec.value = Number(pr.data?.positionSec || pr?.positionSec) || 0
-  } catch { /* ignore */ }
-}
-async function loadEpisodes(itemId) {
-  episodes.value = []
-  episodeProgressMap.value = {}
-  activeEpisodeId.value = 0
-  if (!itemId) return
-  if (!episodeListOn.value) {
-    await loadTrackProgress(itemId)
-    return
-  }
-  try {
-    const res = await http.get(`/api/media-episodes/by-item/${itemId}`)
-    episodes.value = res.data || res || []
-    if (episodes.value.length) {
-      activeEpisodeId.value = episodes.value[0].id
-      if (playProgressOn.value && !isGuest.value) {
-        for (const ep of episodes.value) {
-          try {
-            const pr = await http.get('/api/media-progress', { params: { itemId, episodeId: ep.id } })
-            episodeProgressMap.value = { ...episodeProgressMap.value, [ep.id]: pr.data || pr }
-          } catch { /* ignore */ }
-        }
-        const cur = epProgress({ id: activeEpisodeId.value })
-        progressSec.value = Number(cur?.positionSec) || 0
-      }
-    } else if (playProgressOn.value && !isGuest.value) {
-      await loadTrackProgress(itemId)
-    }
-  } catch {
-    episodes.value = []
-  }
-}
-function selectEpisode(ep) {
-  activeEpisodeId.value = ep.id
-  const cur = epProgress(ep)
-  progressSec.value = Number(cur?.positionSec) || 0
-}
-async function saveProgress(completed) {
-  if (!requireLogin(router) || !detail.value?.id) return
-  progressSaving.value = true
-  try {
-    const res = await http.post('/api/media-progress', {
-      itemId: detail.value.id,
-      episodeId: activeEpisodeId.value || 0,
-      positionSec: Number(progressSec.value) || 0,
-      completed: !!completed,
-    })
-    const data = res.data || res
-    episodeProgressMap.value = { ...episodeProgressMap.value, [activeEpisodeId.value || 0]: data }
-    if (detail.value.playCount != null) detail.value.playCount = Number(detail.value.playCount || 0) + 1
-    ElMessage.success(completed ? episodeCompletedLabel.value : '已记下进度')
-  } finally {
-    progressSaving.value = false
-  }
-}
-async function openByShareCode() {
-  const code = (shareCodeInput.value || '').trim()
-  if (!code) {
-    ElMessage.warning(shareCodePrompt.value)
-    return
-  }
-  try {
-    const res = await http.get('/api/archive/by-share-code', { params: { code } })
-    if (res.data) await openDetail(res.data)
-    else ElMessage.warning(browseLabels.value.shareCodeBlocked || '分享码无效')
-  } catch {
-    ElMessage.warning(browseLabels.value.shareCodeBlocked || '分享码无效')
-  }
-}
-const archiveYear = ref(null)
-const archiveMonth = ref(null)
-const archiveYearOptions = computed(() => {
-  const y = new Date().getFullYear()
-  return [y, y - 1, y - 2, y - 3, y - 4]
-})
-const categoryFollowing = ref(false)
-const categoryFollowerCount = ref(0)
-const followLoading = ref(false)
-const friendLinks = ref([])
-const authorFilter = ref('')
-const seriesPrev = ref(null)
-const seriesNext = ref(null)
-const unlockPassword = ref('')
-const unlockLoading = ref(false)
-const publishOriginKind = ref('original')
-const publishAccessPassword = ref('')
-const activeFollowCategoryId = computed(() => {
-  if (!categoryFollowOn.value) return null
-  if (multiCategory.value) {
-    return categoryIds.value?.length === 1 ? categoryIds.value[0] : null
-  }
-  return categoryId.value || null
-})
-function originKindText(v) {
-  if (v === 'reprint') return originReprintLabel.value
-  if (v === 'original') return originOriginalLabel.value
-  return String(v || '')
-}
-function authorKey(row) {
-  return String(row?.ownerUsername || row?.author || '').trim()
-}
-function onYearMonthChange() {
-  if (!archiveYear.value) archiveMonth.value = null
-  page.value = 1
-  load()
-}
-async function refreshFollowStatus() {
-  const cid = activeFollowCategoryId.value
-  if (!categoryFollowOn.value || !cid) {
-    categoryFollowing.value = false
-    categoryFollowerCount.value = 0
-    return
-  }
-  try {
-    const res = await http.get(`/api/category-follow/status/${cid}`)
-    categoryFollowing.value = !!res.data?.following
-    categoryFollowerCount.value = Number(res.data?.count) || 0
-  } catch {
-    categoryFollowing.value = false
-    categoryFollowerCount.value = 0
-  }
-}
-async function toggleCategoryFollow() {
-  if (!requireLogin(router)) return
-  const cid = activeFollowCategoryId.value
-  if (!cid) return
-  followLoading.value = true
-  try {
-    const res = await http.post(`/api/category-follow/${cid}/toggle`)
-    categoryFollowing.value = !!res.data?.following
-    categoryFollowerCount.value = Number(res.data?.count) || 0
-    ElMessage.success(categoryFollowing.value ? '已订阅' : '已取消订阅')
-  } finally {
-    followLoading.value = false
-  }
-}
-async function loadFriendLinks() {
-  if (!friendLinksOn.value) {
-    friendLinks.value = []
-    return
-  }
-  try {
-    const res = await http.get('/api/blog-friend-links')
-    friendLinks.value = res.data || res || []
-  } catch {
-    friendLinks.value = []
-  }
-}
-function openAuthorPage(row) {
-  const u = authorKey(row)
-  if (!u) return
-  authorFilter.value = u
-  detailVisible.value = false
-  page.value = 1
-  load()
-}
-function clearAuthorFilter() {
-  authorFilter.value = ''
-  page.value = 1
-  load()
-}
-async function loadSeriesNeighbors(id) {
-  seriesPrev.value = null
-  seriesNext.value = null
-  if (!seriesNavOn.value || !id) return
-  try {
-    const res = await http.get(`/api/archive/${id}/series-neighbors`)
-    seriesPrev.value = res.data?.prev || null
-    seriesNext.value = res.data?.next || null
-  } catch {
-    seriesPrev.value = null
-    seriesNext.value = null
-  }
-}
-async function unlockDetail() {
-  if (!detail.value?.id) return
-  const pw = (unlockPassword.value || '').trim()
-  if (!pw) {
-    ElMessage.warning(accessPasswordPrompt.value)
-    return
-  }
-  unlockLoading.value = true
-  try {
-    const res = await http.post(`/api/archive/${detail.value.id}/unlock`, { password: pw })
-    if (res.data) detail.value = { ...detail.value, ...res.data, contentLocked: false }
-    unlockPassword.value = ''
-    ElMessage.success('已解锁')
-  } catch (e) {
-    const msg = String(e?.message || e?.response?.data?.message || browseLabels.value.accessPasswordBlocked || '口令不正确')
-    ElMessage.warning(msg)
-  } finally {
-    unlockLoading.value = false
-  }
-}
-const applyParentTicketId = ref(null)
-const threadExpanded = ref(false)
-const threadRoots = computed(() =>
-  (threadList.value || []).filter((r) => !Number(r.parentTicketId)),
-)
-const visibleThreadRoots = computed(() => {
-  if (!commentFoldOn.value || threadExpanded.value) return threadRoots.value
-  return threadRoots.value.slice(0, commentFoldAfter.value)
-})
-function childrenOf(parentId) {
-  return (threadList.value || []).filter((r) => Number(r.parentTicketId) === Number(parentId))
-}
-function openNestedReply(parent) {
-  if (!detail.value) return
-  if (Number(parent?.parentTicketId) > 0) {
-    ElMessage.warning(browseLabels.value.nestedReplyBlocked || '该回复下不能再盖楼')
-    return
-  }
-  applyParentTicketId.value = parent.id
-  apply(detail.value)
-}
-function clearNestedParent() {
-  applyParentTicketId.value = null
-}
-const pinTopLabel = computed(() => browseLabels.value.pinTopLabel || '置顶')
-const essenceLabel = computed(() => browseLabels.value.essenceLabel || '精华')
-const lockedLabel = computed(() => browseLabels.value.lockedLabel || '锁定')
-const essenceHint = computed(() => browseLabels.value.essenceHint || '')
-const lockedHint = computed(() => browseLabels.value.lockedHint || '')
-const saveDraftLabel = computed(() => browseLabels.value.saveDraftLabel || '存草稿')
-const dailyPostLimitHint = computed(() => browseLabels.value.dailyPostLimitHint || '')
-const activeSectionNotice = computed(() => {
-  if (!sectionNoticeOn.value) return ''
-  const id = multiCategory.value
-    ? (categoryIds.value?.length === 1 ? categoryIds.value[0] : null)
-    : categoryId.value
-  if (!id) return ''
-  const cat = (categories.value || []).find((c) => Number(c.id) === Number(id))
-  return String(cat?.sectionNotice || '').trim()
-})
-const searchAssist = computed(() => isSearchAssistEnabled())
-const titleSuggestOn = computed(() => searchAssist.value || titleSearchOn.value)
-const hotKeywords = computed(() => searchHotKeywords())
-const hotMode = ref(false)
-const galleryOn = computed(() => isGalleryEnabled())
-const roomEquipOn = computed(() => hasCap('room_equipment'))
-const equipSectionTitle = computed(
-  () => getSchema()?.labels?.roomEquipmentSectionTitle || '配套设备',
-)
-const detailEquipNames = computed(() => {
-  if (!roomEquipOn.value || !detail.value) return []
-  const n = detail.value.equipmentNames
-  return Array.isArray(n) ? n.filter(Boolean) : []
-})
-const browseOn = computed(() => isBrowseHistoryEnabled())
-const logOn = computed(() => isArchiveLogEnabled())
-const logEnt = computed(() => archiveLogCopy())
-const logFields = computed(() => logEnt.value.fields || [])
-const logSectionTitle = computed(
-  () => getSchema()?.labels?.archiveLogSectionTitle || logEnt.value.labelPlural || '打卡与随访',
-)
-const logSubmitLabel = computed(
-  () => getSchema()?.labels?.archiveLogSubmitLabel || '提交登记',
-)
-const logList = ref([])
-const logLoading = ref(false)
-const logSubmitting = ref(false)
-const logForm = ref({ payload: {}, abnormal: false })
-
-function resetLogForm() {
-  const payload = {}
-  for (const f of logFields.value) {
-    if (f?.key) payload[f.key] = ''
-  }
-  logForm.value = { payload, abnormal: false }
-}
-
-function logPayloadText(row) {
-  const p = row.payload || {}
-  const parts = []
-  for (const f of logFields.value) {
-    const val = p[f.key]
-    if (val != null && String(val).trim() !== '') parts.push(`${f.label || f.key}:${val}`)
-  }
-  return parts.join(' · ') || '—'
-}
-
-async function loadLogs(itemId) {
-  if (!logOn.value || !itemId) return
-  logLoading.value = true
-  try {
-    const res = await http.get('/api/archive-logs', { params: { itemId, page: 1, size: 20 } })
-    logList.value = res.data?.list || []
-  } finally {
-    logLoading.value = false
-  }
-}
-
-async function submitLog() {
-  if (!detail.value?.id) return
-  if (!requireLogin(router)) return
-  logSubmitting.value = true
-  try {
-    await http.post('/api/archive-logs', {
-      itemId: detail.value.id,
-      logType: logEnt.value.defaultType || 'checkin',
-      payload: { ...logForm.value.payload },
-      abnormal: !!logForm.value.abnormal,
-    })
-    ElMessage.success('已提交')
-    resetLogForm()
-    await loadLogs(detail.value.id)
-  } finally {
-    logSubmitting.value = false
-  }
-}
-const cartLabel = computed(() => menuLabel('user', 'cart', '购物车'))
-const galleryUrls = computed(() => {
-  if (!detail.value) return []
-  const g = detail.value.galleryImages
-  if (galleryOn.value && Array.isArray(g) && g.length) return g
-  if (detail.value.coverUrl) return [detail.value.coverUrl]
-  return []
-})
-const resvVerb = computed(() => getSchema()?.entities?.reservation?.verbs?.apply || '预约')
-const primaryActionLabel = computed(() => {
-  if (isSeatSelectMode.value) {
-    return getSchema()?.labels?.seatSelectCta || '选座'
-  }
-  if (isOrderMode.value) return `加入${cartLabel.value}`
-  if (isSlotMode.value) return '选时段'
-  if (!showPrimaryApply.value) return '收藏'
-  return verbs.value.apply || '申请'
-})
-const actionHint = computed(() => {
-  if (isSeatSelectMode.value) return '进入座位图选座下单'
-  if (isOrderMode.value) return `加入${cartLabel.value}并下单`
-  if (isSlotMode.value) return `选择时段${resvVerb.value}`
-  if (favOn.value && !showPrimaryApply.value) return '一键收藏感兴趣的内容'
-  if (userPublish.value) {
-    return publishUsesRichBody.value
-      ? `发帖后可${verbs.value.apply || '回复'}`
-      : `登记后可${verbs.value.apply || '提交'}`
-  }
-  return `提交${verbs.value.apply || '申请'}`
-})
-
-function fieldLabel(key, fallback) {
-  const f = fields.value.find((x) => x.key === key)
-  return (f && f.label) || fallback
-}
-
-function formatAuthor(v) {
-  const f = fields.value.find((x) => x.key === 'author') || { key: 'author', type: 'string' }
-  return formatArchiveScalar(f, v)
-}
-
-function formatFieldValue(row, field) {
-  if (!row || !field) return '—'
-  return formatArchiveScalar(field, row[field.key], '—')
-}
-
-function scheduleText(row) {
-  if (!row || !hasSchedule.value) return ''
-  if (!row.startAt && !row.endAt) return ''
-  if (row.startAt && row.endAt) return `${row.startAt} ~ ${row.endAt}`
-  return row.startAt || row.endAt || ''
-}
-
-const conflictHighlightOn = computed(() => !!ticket.conflictHighlight)
-const conflictHighlightLabel = computed(
-  () => browseLabels.value.conflictHighlightLabel || '课表冲突',
-)
-const conflictHighlightHint = computed(() => browseLabels.value.conflictHighlightHint || '')
-const mySchedule = ref([])
-
-function toMs(s) {
-  if (!s) return null
-  const t = Date.parse(String(s).replace(' ', 'T'))
-  return Number.isNaN(t) ? null : t
-}
-
-function rangeOverlap(aStart, aEnd, bStart, bEnd) {
-  const a0 = toMs(aStart)
-  const a1 = toMs(aEnd)
-  const b0 = toMs(bStart)
-  const b1 = toMs(bEnd)
-  if (a0 == null || a1 == null || b0 == null || b1 == null) return false
-  return a0 < b1 && b0 < a1
-}
-
-function wouldConflict(row) {
-  if (!conflictHighlightOn.value || !row?.startAt || !row?.endAt) return false
-  return mySchedule.value.some((t) => rangeOverlap(row.startAt, row.endAt, t.startAt, t.endAt))
-}
-
-async function loadMySchedule() {
-  if (!conflictHighlightOn.value) {
-    mySchedule.value = []
-    return
-  }
-  try {
-    const res = await http.get('/api/tickets', { params: { page: 1, size: 200 } })
-    mySchedule.value = (res.data?.list || []).filter(
-      (x) => x.startAt && x.endAt && ['pending', 'approved', 'returned'].includes(String(x.status || '')),
-    )
-  } catch {
-    mySchedule.value = []
-  }
-}
-
-function stockOk(row) {
-  if (Number(row.stock) <= 0) return false
-  if (row.status === 'unavailable') return false
-  return true
-}
-
-const stockTightBelow = computed(() => {
-  const sch = getSchema() || {}
-  const n = Number(sch.stockTightBelow)
-  return Number.isFinite(n) && n > 0 ? n : 3
-})
-const stockTightHint = computed(() => {
-  const sch = getSchema() || {}
-  return (sch.labels && sch.labels.stockTightHint) || ''
-})
-const minGroupHint = computed(() => {
-  const sch = getSchema() || {}
-  return (sch.labels && sch.labels.minGroupHint) || ''
-})
-const collegeFilterOn = computed(() => fields.value.some((f) => f?.key === 'college'))
-const collegeFilter = ref('')
-const collegeOptions = computed(() => {
-  const set = new Set()
-  for (const r of list.value || []) {
-    const c = String(r?.college || '').trim()
-    if (c) set.add(c)
-  }
-  if (collegeFilter.value && !set.has(collegeFilter.value)) set.add(collegeFilter.value)
-  return [...set].sort()
-})
-function minGroupHintOf(row) {
-  const n = Number(row?.minGroupSize)
-  if (!Number.isFinite(n) || n <= 0) return ''
-  const base = minGroupHint.value || '成团最低人数提示'
-  return `${base}（最低 ${n} 人）`
-}
-
-function stockTight(row) {
-  const n = Number(row?.stock)
-  const below = stockTightBelow.value
-  return Number.isFinite(n) && n > 0 && n <= below
-}
-
-const allowWaitlist = computed(() => !!(ticket.allowWaitlist || hasCap('waitlist')))
-const allowBookHold = computed(() => !!(ticket.allowBookHold || hasCap('book_hold')))
-
-function canApplyOrWait(row) {
-  if (!row) return false
-  if (row.status === 'unavailable') return false
-  if (stockOk(row)) return true
-  return allowWaitlist.value || allowBookHold.value
-}
-
-function applyActionLabel(row) {
-  if (row && !stockOk(row) && row.status !== 'unavailable') {
-    if (allowBookHold.value) {
-      return verbs.value.bookHold || labelsBookHoldVerb.value || '预约'
-    }
-    if (allowWaitlist.value) {
-      return verbs.value.waitlist || labelsWaitlistVerb.value || '候补报名'
-    }
-  }
-  return primaryActionLabel.value
-}
-
-const labelsWaitlistVerb = computed(() => {
-  const sch = getSchema() || {}
-  return (sch.labels && sch.labels.waitlistVerb) || ''
-})
-
-const labelsBookHoldVerb = computed(() => {
-  const sch = getSchema() || {}
-  return (sch.labels && sch.labels.bookHoldVerb) || ''
-})
-
-function stockText(row) {
-  if (stockDisplay.value === 'toggle' || stockDisplay.value === 'available') {
-    const ok = fieldLabel('stock', stockCountLabel.value)
-    if (!stockOk(row)) {
-      return archive.stockUnavailableLabel || stockUnavailableFrom(ok)
-    }
-    if (stockDisplay.value === 'toggle') return stockTight(row) ? `${ok}·紧张` : ok
-    const n = Number(row.stock)
-    if (Number.isFinite(n) && n > 1) {
-      return stockTight(row) ? `${ok} · 仅余 ${n}` : `${ok} · 余 ${n}`
-    }
-    return ok
-  }
-  if (stockTight(row)) return `${stockCountLabel.value}仅余 ${row.stock}`
-  return stockOk(row) ? `${stockCountLabel.value} ${row.stock}` : `暂无${stockCountLabel.value}`
-}
-
-/** 库存不足文案：与 schema 库存标签同规则，无字段时兜底 */
-function stockUnavailableFrom(stockLabel) {
-  const s = String(stockLabel || '可用').trim() || '可用'
-  if (s.startsWith('可')) return `已${s.slice(1)}`
-  return `暂无${s}`
-}
-
-function playUrlOf(row) {
-  const key = playUrlField.value
-  if (!key || !row) return ''
-  const raw = key === 'isbn' ? row.isbn : row[key]
-  const s = raw == null ? '' : String(raw).trim()
-  if (!s) return ''
-  if (/^https?:\/\//i.test(s) || s.startsWith('/') || s.startsWith('blob:')) return s
-  return ''
-}
-
-function play(row) {
-  const url = playUrlOf(row)
-  if (!url) {
-    ElMessage.warning('暂无播放链接')
-    return
-  }
-  window.open(url, '_blank', 'noopener,noreferrer')
-}
-
-const list = ref([])
-const total = ref(0)
-const page = ref(1)
-const size = ref(10)
-const keyword = ref('')
-const categoryId = ref(null)
-const categoryIds = ref([])
-const categories = ref([])
-const tagIds = ref([])
-const tags = ref([])
-const categoriesByDimension = computed(() => {
-  const groups = new Map()
-  for (const c of categories.value || []) {
-    const dim = (c.dimension || '').trim() || '未分组'
-    if (!groups.has(dim)) groups.set(dim, [])
-    groups.get(dim).push(c)
-  }
-  return [...groups.entries()].map(([dimension, items]) => ({ dimension, items }))
-})
-const recRef = ref(null)
-const detailVisible = ref(false)
-const detail = ref(null)
-const itemReviews = ref([])
-const itemGoodRate = ref(null)
-const itemQaList = ref([])
-const itemQaDraft = ref('')
-const itemQaSubmitting = ref(false)
-const stockNotifySubscribed = ref(false)
-const stockNotifyLoading = ref(false)
-const thicken = computed(() => getSchema()?.tradeThicken || {})
-const stockNotifyOn = computed(() => !!thicken.value.stockNotify)
-const goodRateOn = computed(() => !!thicken.value.goodRate)
-const itemQaOn = computed(() => !!thicken.value.itemQa)
-const specStockOn = computed(() => !!thicken.value.specStock)
-const presaleNoteOn = computed(() => !!thicken.value.presaleNote)
-const siblingSpecs = computed(() => {
-  const list = detail.value?.siblingSpecStock
-  return Array.isArray(list) ? list : []
-})
-const reviewOn = computed(() => hasCap('order_review'))
-const itemCommentOn = computed(() => hasCap('item_comment'))
-const codeQrOn = computed(() => hasCap('code_qr'))
-const checkinCodeLabel = computed(() => browseLabels.value.codeQrShowVerb || ticketCheckinLabel() || '签到码')
-const pinTopHint = computed(() => browseLabels.value.pinTopHint || '')
-const visaMaterialHint = computed(() => browseLabels.value.visaMaterialHint || '')
-const materialApplyHint = computed(
-  () =>
-    browseLabels.value.moralMaterialHint
-    || browseLabels.value.partyMaterialHint
-    || browseLabels.value.partyThoughtHint
-    || browseLabels.value.fleetDriverCertHint
-    || visaMaterialHint.value
-    || '',
-)
-const lotteryResultOn = computed(() => !!ticket.allowLottery)
-const lotteryResultTitle = computed(() => browseLabels.value.lotteryResultTitle || '抽签结果公示')
-const lotteryResultHint = computed(() => browseLabels.value.lotteryResultHint || '')
-const lotteryRows = ref([])
-async function loadLotteryResult(itemId) {
-  lotteryRows.value = []
-  if (!lotteryResultOn.value || !itemId) return
-  try {
-    const res = await http.get('/api/tickets/lottery-result', { params: { itemId } })
-    lotteryRows.value = res.data || []
-  } catch (e) {
-    lotteryRows.value = []
-  }
-}
-const lostClueOn = computed(() => hasCap('lost_clue'))
-const clueList = ref([])
-const clueLoading = ref(false)
-const clueSubmitting = ref(false)
-const clueForm = reactive({ guestName: '', guestContact: '', type: 'clue', content: '' })
-const itemComments = ref([])
-const itemCommentLoading = ref(false)
-const itemCommentDraft = ref('')
-const itemCommentSubmitting = ref(false)
-const itemCommentTitle = computed(
-  () => getSchema()?.labels?.itemCommentSectionTitle || '用户评论',
-)
-const itemCommentSubmitLabel = computed(
-  () => getSchema()?.labels?.itemCommentSubmitLabel || '发表评论',
-)
-const itemCommentEmpty = computed(
-  () => getSchema()?.labels?.itemCommentEmpty || '暂无评论',
-)
-const marketplace = computed(() => !!getSchema()?.shopMarketplace)
-/** 评价/多店商品字段/正文图集等任一需要详情时给出入口 */
-const showDetailBtn = computed(
-  () =>
-    bodyRich.value
-    || galleryOn.value
-    || browseOn.value
-    || logOn.value
-    || roomEquipOn.value
-    || reviewOn.value
-    || itemCommentOn.value
-    || marketplace.value,
-)
-function shopLabel(row) {
-  if (!row) return ''
-  return String(row.shopName || row.shop_name || '').trim()
-}
-function onCategoryChange() {
-  if (isGuest.value) {
-    categoryId.value = null
-    requireLogin(router)
-    return
-  }
-  page.value = 1
-  load()
-  refreshFollowStatus()
-}
-function onMultiCategoryChange() {
-  if (isGuest.value) {
-    categoryIds.value = []
-    requireLogin(router)
-    return
-  }
-  page.value = 1
-  load()
-  refreshFollowStatus()
-}
-function onTagFilterChange() {
-  if (isGuest.value) {
-    tagIds.value = []
-    requireLogin(router)
-    return
-  }
-  page.value = 1
-  load()
-}
-const applyVisible = ref(false)
-const applyRow = ref(null)
-const applyRemark = ref('')
-const applyAttachUrl = ref('')
-const applyQty = ref(1)
-const applyDueAt = ref('')
-const applyAmount = ref(null)
-const applyPeriod = ref(null)
-const applyChannel = ref('')
-const applyNextFollow = ref('')
-const applyCheckinCode = ref('')
-const applyAnonymous = ref(false)
-const applyDimScores = reactive({})
-const applyLoading = ref(false)
-const conflictTip = ref('')
-const publishVisible = ref(false)
-const publishTitle = ref('')
-const publishAuthor = ref('')
-const publishBody = ref('')
-const publishStock = ref(2)
-const publishStartAt = ref('')
-const publishStartCampus = ref('')
-const publishEndCampus = ref('')
-const publishViaPoints = ref('')
-const publishShareNote = ref('')
-const publishPrefNote = ref('')
-const publishLuggageCount = ref(0)
-const publishFareTotalYuan = ref(null)
-const publishRemindBeforeMinutes = ref(0)
-const publishCategoryId = ref(null)
-const publishLoading = ref(false)
-const publishDraftId = ref(null)
-const draftAutoSavedAt = ref('')
-let draftAutoSaveTimer = null
-let draftAutoSaving = false
-const threadList = ref([])
-const threadLoading = ref(false)
-const showThread = computed(() => richRemark.value && !!detail.value?.id)
-const threadTitle = computed(() => {
-  const plural = ticket.labelPlural || ticket.label || '回复'
-  return `${plural}（${threadList.value.length}）`
-})
-
-async function loadThread(itemId) {
-  if (!richRemark.value || !itemId) {
-    threadList.value = []
-    return
-  }
-  threadLoading.value = true
-  try {
-    const res = await http.get(`/api/tickets/thread/${itemId}`, { params: { page: 1, size: 50 } })
-    threadList.value = res.data?.list || []
-  } catch {
-    threadList.value = []
-  } finally {
-    threadLoading.value = false
-  }
-}
-
-async function openDetail(row) {
-  detail.value = row
-  detailVisible.value = true
-  threadList.value = []
-  logList.value = []
-  itemReviews.value = []
-  itemGoodRate.value = null
-  itemQaList.value = []
-  itemQaDraft.value = ''
-  stockNotifySubscribed.value = false
-  itemComments.value = []
-  itemCommentDraft.value = ''
-  clueList.value = []
-  clueForm.guestName = ''
-  clueForm.guestContact = ''
-  clueForm.type = 'clue'
-  clueForm.content = ''
-  unlockPassword.value = ''
-  seriesPrev.value = null
-  seriesNext.value = null
-  resetLogForm()
-  if (!row?.id) return
-  try {
-    const res = await http.get(`/api/archive/${row.id}`)
-    if (res.data) detail.value = { ...row, ...res.data }
-  } catch { /* keep list row */ }
-  await loadSeriesNeighbors(row.id)
-  await loadEpisodes(row.id)
-  await loadLotteryResult(row.id)
-  await loadThread(row.id)
-  if (logOn.value && isLoggedIn()) await loadLogs(row.id)
-  if (browseOn.value && isLoggedIn()) {
-    try {
-      await touchBrowseHistory(row.id)
-    } catch { /* ignore */ }
-  }
-  if (reviewOn.value) {
-    try {
-      const rr = await http.get(`/api/order-reviews/by-item/${row.id}`, { params: { page: 1, size: 20 } })
-      itemReviews.value = rr.data?.list || []
-      itemGoodRate.value = rr.data?.goodRate ?? null
-    } catch {
-      itemReviews.value = []
-      itemGoodRate.value = null
-    }
-  }
-  if (itemQaOn.value) {
-    await loadItemQa(row.id)
-  }
-  if (stockNotifyOn.value && isLoggedIn() && !stockOk(detail.value || row)) {
-    try {
-      const sr = await http.get('/api/stock-notify/status', { params: { itemId: row.id } })
-      stockNotifySubscribed.value = !!sr.data?.subscribed
-    } catch { /* ignore */ }
-  }
-  if (itemCommentOn.value) {
-    await loadItemComments(row.id)
-  }
-  if (lostClueOn.value) {
-    await loadClues(row.id)
-  }
-}
-
-async function loadItemQa(itemId) {
-  if (!itemQaOn.value || !itemId) {
-    itemQaList.value = []
-    return
-  }
-  try {
-    const res = await http.get('/api/guestbook', { params: { itemId, page: 1, size: 20 } })
-    itemQaList.value = res.data?.list || []
-  } catch {
-    itemQaList.value = []
-  }
-}
-
-async function submitItemQa() {
-  if (!detail.value?.id) return
-  if (!requireLogin(router)) return
-  const body = (itemQaDraft.value || '').trim()
-  if (!body) {
-    ElMessage.warning('请填写问题')
-    return
-  }
-  itemQaSubmitting.value = true
-  try {
-    await http.post('/api/guestbook', { body, itemId: detail.value.id })
-    ElMessage.success('已提交')
-    itemQaDraft.value = ''
-    await loadItemQa(detail.value.id)
-  } finally {
-    itemQaSubmitting.value = false
-  }
-}
-
-async function subscribeStockNotify(row) {
-  if (!row?.id) return
-  if (!requireLogin(router)) return
-  stockNotifyLoading.value = true
-  try {
-    await http.post('/api/stock-notify', { itemId: row.id })
-    stockNotifySubscribed.value = true
-    ElMessage.success(browseLabels.value.stockNotifyDoneLabel || '已登记到货提醒')
-  } finally {
-    stockNotifyLoading.value = false
-  }
-}
-
-async function loadClues(itemId) {
-  if (!lostClueOn.value || !itemId) {
-    clueList.value = []
-    return
-  }
-  clueLoading.value = true
-  try {
-    const res = await http.get('/api/lost/message', { params: { lostItemId: itemId } })
-    clueList.value = res.data || []
-  } catch {
-    clueList.value = []
-  } finally {
-    clueLoading.value = false
-  }
-}
-
-async function submitClue() {
-  if (!detail.value?.id) return
-  const content = (clueForm.content || '').trim()
-  if (!content) {
-    ElMessage.warning('请填写留言内容')
-    return
-  }
-  if (isGuest.value && !(clueForm.guestName || '').trim()) {
-    ElMessage.warning('游客请填写称呼')
-    return
-  }
-  clueSubmitting.value = true
-  try {
-    await http.post('/api/lost/message', {
-      lostItemId: detail.value.id,
-      guestName: clueForm.guestName,
-      guestContact: clueForm.guestContact,
-      content,
-      type: clueForm.type || 'clue',
-    })
-    ElMessage.success('已发表')
-    clueForm.content = ''
-    await loadClues(detail.value.id)
-  } finally {
-    clueSubmitting.value = false
-  }
-}
-
-async function loadItemComments(itemId) {
-  if (!itemCommentOn.value || !itemId) {
-    itemComments.value = []
-    return
-  }
-  itemCommentLoading.value = true
-  try {
-    const res = await http.get(`/api/item-comments/by-item/${itemId}`, { params: { page: 1, size: 50 } })
-    itemComments.value = res.data?.list || []
-  } catch {
-    itemComments.value = []
-  } finally {
-    itemCommentLoading.value = false
-  }
-}
-
-async function submitItemComment() {
-  if (!itemCommentOn.value || isGuest.value || !detail.value?.id) {
-    requireLogin(router)
-    return
-  }
-  const text = String(itemCommentDraft.value || '').trim()
-  if (!text) {
-    ElMessage.warning('请填写评论内容')
-    return
-  }
-  itemCommentSubmitting.value = true
-  try {
-    await http.post('/api/item-comments', {
-      itemId: detail.value.id,
-      body: text,
-      followersOnly: followersOnlyCommentOn.value ? !!itemCommentFollowersOnly.value : false,
-    })
-    itemCommentDraft.value = ''
-    itemCommentFollowersOnly.value = false
-    ElMessage.success('已发表')
-    await loadItemComments(detail.value.id)
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '发表失败')
-  } finally {
-    itemCommentSubmitting.value = false
-  }
-}
-
-function followBtnLabel(username) {
-  if (followingUsers.value.has(username)) {
-    return browseLabels.value.unfollowUserLabel || '取消关注'
-  }
-  return browseLabels.value.followUserLabel || '关注作者'
-}
-
-async function toggleFollowUser(followee) {
-  if (!requireLogin(router) || !followee) return
-  const on = followingUsers.value.has(followee)
-  try {
-    if (on) {
-      await http.delete('/api/user-follow', { params: { followee } })
-      const next = new Set(followingUsers.value)
-      next.delete(followee)
-      followingUsers.value = next
-      ElMessage.success(
-        browseLabels.value.datingUnfollowDone
-          || browseLabels.value.unfollowUserLabel
-          || '已取消关注',
-      )
-    } else {
-      await http.post('/api/user-follow', { followee })
-      const next = new Set(followingUsers.value)
-      next.add(followee)
-      followingUsers.value = next
-      ElMessage.success(
-        browseLabels.value.datingFollowDone
-          || browseLabels.value.followUserLabel
-          || '已关注',
-      )
-    }
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
-  }
-}
-
-async function fetchSuggest(query, cb) {
-  const q = String(query || '').trim()
-  if (!q) {
-    cb([])
-    return
-  }
-  try {
-    const res = await http.get('/api/archive/suggest', { params: { q, limit: 8 } })
-    const list = Array.isArray(res.data) ? res.data : []
-    cb(list.map((x) => ({ value: x.title || x.value, id: x.id })))
-  } catch {
-    cb([])
-  }
-}
-
-function onSuggestSelect(item) {
-  keyword.value = item?.value || ''
-  load()
-}
-
-function applyHot(w) {
-  keyword.value = String(w || '')
-  load()
-}
-
-async function onAttach(opt) {
-  const fd = new FormData()
-  fd.append('file', opt.file)
-  const res = await http.post('/api/upload', fd)
-  applyAttachUrl.value = res.data.url
-  ElMessage.success('附件已上传')
-}
-
-async function loadCats() {
-  const res = await http.get('/api/categories')
-  categories.value = res.data || res || []
-}
-
-async function loadTags() {
-  if (!tagFilter.value) return
-  try {
-    const res = await http.get('/api/tags')
-    tags.value = res.data || res || []
-  } catch {
-    tags.value = []
-  }
-}
-
-async function load() {
-  const pageSize = isGuest.value ? guestTeaserLimit() : size.value
-  let url = '/api/archive'
-  let params = {
-    page: isGuest.value ? 1 : page.value,
-    size: pageSize,
-    keyword: keyword.value || undefined,
-    categoryId: multiCategory.value ? undefined : (categoryId.value || undefined),
-    categoryIds:
-      multiCategory.value && categoryIds.value?.length
-        ? categoryIds.value.join(',')
-        : undefined,
-    tagIds: tagIds.value?.length ? tagIds.value.join(',') : undefined,
-    artist: artistAlbumFilterOn.value ? (artistFilter.value || undefined) : undefined,
-    album: artistAlbumFilterOn.value ? (albumFilter.value || undefined) : undefined,
-    city: datingIdealFilterOn.value ? (datingCityFilter.value || undefined) : undefined,
-    ageMin: datingIdealFilterOn.value && datingAgeMinFilter.value
-      ? Number(datingAgeMinFilter.value)
-      : undefined,
-    ageMax: datingIdealFilterOn.value && datingAgeMaxFilter.value
-      ? Number(datingAgeMaxFilter.value)
-      : undefined,
-  }
-  if (hotMode.value && hotRankOn.value) {
-    url = '/api/archive/hot'
-    params = {
-      page: isGuest.value ? 1 : page.value,
-      size: pageSize,
-      sortBy: downloadCountOn.value
-        ? 'downloadCount'
-        : (hotByPlayOn.value ? 'playCount' : undefined),
-    }
-  } else if (authorPageOn.value && (authorFilter.value || '').trim()) {
-    url = '/api/archive/by-author'
-    params = {
-      page: isGuest.value ? 1 : page.value,
-      size: pageSize,
-      username: authorFilter.value.trim(),
-    }
-  } else if (archiveYearMonthOn.value && archiveYear.value) {
-    params.year = archiveYear.value
-    if (archiveMonth.value) params.month = archiveMonth.value
-  }
-  const res = await http.get(url, { params })
-  let rows = res.data.list || []
-  // 本人件/本人课：登录后按手机/学号软筛（访客仍看 teaser 全量）
-  if (filterByOwnerToken.value && !isGuest.value) {
-    try {
-      const me = await http.get('/api/profile')
-      const token = ownerTokenFromProfile(me.data || {}, ownerTokenSource.value)
-      rows = filterArchiveByOwnerToken(rows, token, { strict: ownerTokenStrict.value })
-    } catch {
-      if (ownerTokenStrict.value) rows = []
-    }
-  }
-  if (blindBoxOn.value && prizeIds.value.size) {
-    rows = rows.filter((r) => !prizeIds.value.has(Number(r.id)))
-  }
-  if (collegeFilterOn.value && (collegeFilter.value || '').trim()) {
-    const want = collegeFilter.value.trim()
-    rows = rows.filter((r) => String(r?.college || '').trim() === want)
-  }
-  list.value = rows
-  total.value = (
-    (filterByOwnerToken.value && !isGuest.value) || (collegeFilterOn.value && (collegeFilter.value || '').trim())
-  )
-    ? rows.length
-    : res.data.total
-}
-
-async function loadFavIds() {
-  if (!favOn.value || isGuest.value) {
-    favIds.value = []
-    return
-  }
-  try {
-    const res = await http.get('/api/favorites/ids')
-    favIds.value = (res.data?.ids || []).map(Number)
-  } catch {
-    favIds.value = []
-  }
-}
-
-async function loadLikeIds() {
-  if (!likeOn.value || isGuest.value) {
-    likeIds.value = []
-    return
-  }
-  try {
-    const res = await http.get('/api/likes/ids')
-    likeIds.value = (res.data?.ids || []).map(Number)
-  } catch {
-    likeIds.value = []
-  }
-}
-
-
-function productSpecText(row) {
-  if (!row) return ''
-  const src = getSchema()?.entities?.archive?.productSpecSource || 'specNote'
-  if (src === 'isbn') return String(row.isbn || '').trim()
-  return String(row.specNote || row.isbn || '').trim()
-}
-
-function likeCountText(row) {
-  const n = Number(row?.likeCount)
-  if (!Number.isFinite(n) || n <= 0) return ''
-  return ` ${n}`
-}
-
-async function toggleLike(row) {
-  if (!requireLogin(router)) return
-  const res = await http.post(`/api/likes/${row.id}/toggle`)
-  const on = !!res.data?.liked
-  likePulseId.value = row.id
-  setTimeout(() => { if (likePulseId.value === row.id) likePulseId.value = null }, 360)
-  if (on) {
-    if (!likeIds.value.includes(row.id)) likeIds.value = [...likeIds.value, row.id]
-    row.likeCount = Number(row.likeCount || 0) + 1
-    if (detail.value?.id === row.id) detail.value.likeCount = row.likeCount
-    ElMessage.success(likedVerb.value)
-  } else {
-    likeIds.value = likeIds.value.filter((x) => x !== row.id)
-    row.likeCount = Math.max(0, Number(row.likeCount || 0) - 1)
-    if (detail.value?.id === row.id) detail.value.likeCount = row.likeCount
-    ElMessage.success('已取消')
-  }
-}
-
-function openReport(row, targetType = 'archive') {
-  if (!requireLogin(router)) return
-  reportRow.value = row
-  if (targetType === 'ticket') reportTargetType.value = 'ticket'
-  else if (targetType === 'comment') reportTargetType.value = 'comment'
-  else reportTargetType.value = 'archive'
-  reportReason.value = ''
-  reportReasonCode.value = ''
-  reportVisible.value = true
-}
-
-async function submitReport() {
-  const detailNote = reportReason.value.trim()
-  const code = String(reportReasonCode.value || '').trim()
-  let reason = detailNote
-  if (reportReasonDictOn.value) {
-    if (!code) {
-      ElMessage.warning(browseLabels.value.reportReasonRequired || '请选择举报原因')
-      return
-    }
-    reason = detailNote ? `${code}：${detailNote}` : code
-  } else if (!reason) {
-    ElMessage.warning('请填写举报理由')
-    return
-  }
-  reportSubmitting.value = true
-  try {
-    await http.post('/api/content-reports', {
-      targetType: reportTargetType.value,
-      targetId: reportRow.value?.id,
-      reason,
-    })
-    ElMessage.success(
-      reportTargetType.value === 'comment'
-        ? (browseLabels.value.commentReportDone || '已提交评论举报')
-        : '已提交举报，等待处理',
-    )
-    if (reportTargetType.value === 'archive' && reportRow.value?.id != null) {
-      const next = new Set(reportedIds.value)
-      next.add(Number(reportRow.value.id))
-      reportedIds.value = next
-    }
-    reportVisible.value = false
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.message || e?.message || '提交失败')
-  } finally {
-    reportSubmitting.value = false
-  }
-}
-
-async function toggleFav(row) {
-  if (!requireLogin(router)) return
-  const res = await toggleFavorite(row.id)
-  const on = !!res.data?.favorited
-  favPulseId.value = row.id
-  setTimeout(() => { if (favPulseId.value === row.id) favPulseId.value = null }, 360)
-  if (on) {
-    if (!favIds.value.includes(row.id)) favIds.value = [...favIds.value, row.id]
-    ElMessage.success(favoritedVerb.value)
-  } else {
-    favIds.value = favIds.value.filter((x) => x !== row.id)
-    ElMessage.success(getSchema()?.labels?.favoritesCancelLabel || '已取消收藏')
-  }
-}
-
-async function onPrimary(row) {
-  applyParentTicketId.value = null
-  if (!requireLogin(router)) return
-  if (isSeatSelectMode.value) {
-    router.push(`/seats/map/${row.id}`)
-    return
-  }
-  if (isOrderMode.value) {
-    if (hasCap('purchase_gate') && Number(row.needPermit) === 1) {
-      const chk = await http.get('/api/purchase-permits/check', { params: { itemId: row.id, qty: 1 } })
-      if (!chk.data?.approved) {
-        ElMessage.warning(chk.data?.message || '需审核通过后才能购买')
-        router.push({ path: '/permits', query: { itemId: String(row.id) } })
-        return
-      }
-    }
-    await upsertCart(row.id, 1)
-    ElMessage.success(`已加入${cartLabel.value}`)
-    return
-  }
-  if (isSlotMode.value) {
-    router.push({
-      path: '/slots',
-      query: {
-        itemId: row.id,
-        title: row.title || '',
-        price: row.author != null && row.author !== '' ? String(row.author) : '',
-      },
-    })
-    return
-  }
-  // 请假/归寝：主路径在「我的*」填单，档案页不发起申请
-  if (applyFromList.value) {
-    const menus = getSchema()?.menus?.user || []
-    const myLab = menus.find((m) => m?.key === 'my_tickets')?.label
-      || ticket.labelPlural
-      || ticket.label
-      || '我的申请'
-    ElMessage.info(`请到「${myLab}」提交`)
-    router.push('/tickets')
-    return
-  }
-  await apply(row)
-}
-
-async function onRecommendApply(row) {
-  if (favOn.value && !showPrimaryApply.value) {
-    if (!requireLogin(router)) return
-    await toggleFav(row)
-    return
-  }
-  await onPrimary(row)
-}
-
-function clearDraftAutoSaveTimer() {
-  if (draftAutoSaveTimer) {
-    clearTimeout(draftAutoSaveTimer)
-    draftAutoSaveTimer = null
-  }
-}
-
-function openPublish() {
-  if (!requireLogin(router)) return
-  clearDraftAutoSaveTimer()
-  publishTitle.value = ''
-  publishAuthor.value = ''
-  publishBody.value = ''
-  publishStock.value = publishShowStock.value ? 2 : 1
-  publishStartAt.value = ''
-  publishStartCampus.value = ''
-  publishEndCampus.value = ''
-  publishViaPoints.value = ''
-  publishShareNote.value = ''
-  publishPrefNote.value = ''
-  publishLuggageCount.value = 0
-  publishFareTotalYuan.value = null
-  publishRemindBeforeMinutes.value = 0
-  publishCategoryId.value = categories.value[0]?.id || null
-  publishOriginKind.value = 'original'
-  publishAccessPassword.value = ''
-  publishDraftId.value = null
-  draftAutoSavedAt.value = ''
-  publishVisible.value = true
-}
-
-function scheduleDraftAutoSave() {
-  if (!draftAutoSaveOn.value || !publishVisible.value) return
-  clearDraftAutoSaveTimer()
-  draftAutoSaveTimer = setTimeout(() => {
-    silentAutoSaveDraft()
-  }, 2000)
-}
-
-async function silentAutoSaveDraft() {
-  if (!draftAutoSaveOn.value || !publishVisible.value || draftAutoSaving || publishLoading.value) return
-  const title = publishTitle.value.trim()
-  if (!title || !publishCategoryId.value) return
-  let isbn = ''
-  if (publishUsesRichBody.value) {
-    isbn = sanitizeHtml(publishBody.value || '')
-  } else {
-    isbn = (publishBody.value || '').trim()
-  }
-  draftAutoSaving = true
-  try {
-    const body = {
-      title,
-      categoryId: publishCategoryId.value,
-      isbn,
-      draft: true,
-    }
-    if (publishDraftId.value) body.id = publishDraftId.value
-    if (originKindOn.value) body.originKind = publishOriginKind.value
-    if (accessPasswordOn.value && (publishAccessPassword.value || '').trim()) {
-      body.accessPassword = publishAccessPassword.value.trim()
-    }
-    const res = await http.post('/api/archive/publish', body)
-    const data = res.data?.data || res.data || {}
-    if (data.id) publishDraftId.value = data.id
-    const now = new Date()
-    draftAutoSavedAt.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-  } catch {
-    /* 自动保存失败不打扰；用户仍可手点存草稿 */
-  } finally {
-    draftAutoSaving = false
-  }
-}
-
-watch(
-  [publishTitle, publishBody, publishCategoryId, publishVisible],
-  () => {
-    if (publishVisible.value) scheduleDraftAutoSave()
-    else clearDraftAutoSaveTimer()
-  },
-)
-
-onUnmounted(() => {
-  clearDraftAutoSaveTimer()
-  if (splitNarrowMq) {
-    splitNarrowMq.removeEventListener('change', syncSplitNarrow)
-    splitNarrowMq = null
-  }
-})
-
-async function submitPublish(asDraft = false) {
-  const title = publishTitle.value.trim()
-  if (!title) {
-    ElMessage.warning(`请填写${fieldLabel('title', '名称')}`)
-    return
-  }
-  if (!asDraft && publishShowAuthor.value && !publishAuthor.value.trim()) {
-    ElMessage.warning(`请填写${fieldLabel('author', '联系人')}`)
-    return
-  }
-  if (!publishCategoryId.value) {
-    ElMessage.warning(`请选择${fieldLabel('category', '分类')}`)
-    return
-  }
-  if (!asDraft && publishShowStock.value) {
-    const n = Number(publishStock.value) || 0
-    if (n < 1) {
-      ElMessage.warning(`${fieldLabel('stock', '余座')}至少为 1`)
-      return
-    }
-  }
-  if (!asDraft && publishShowStartAt.value && !String(publishStartAt.value || '').trim()) {
-    ElMessage.warning(`请填写${fieldLabel('startAt', '出发时间')}`)
-    return
-  }
-  if (!asDraft && carpoolCampusDictOn.value) {
-    if (!String(publishStartCampus.value || '').trim() || !String(publishEndCampus.value || '').trim()) {
-      ElMessage.warning('请选择出发校区与到达校区')
-      return
-    }
-  }
-  let isbn = ''
-  if (publishUsesRichBody.value) {
-    isbn = sanitizeHtml(publishBody.value || '')
-    if (!asDraft && !plainFromHtml(isbn).trim()) {
-      ElMessage.warning(`请填写${fieldLabel('isbn', '正文')}`)
-      return
-    }
-  } else {
-    isbn = (publishBody.value || '').trim()
-    if (!asDraft && !isbn) {
-      ElMessage.warning(`请填写${fieldLabel('isbn', '备注')}`)
-      return
-    }
-  }
-  clearDraftAutoSaveTimer()
-  publishLoading.value = true
-  try {
-    const body = {
-      title,
-      categoryId: publishCategoryId.value,
-      isbn,
-    }
-    if (asDraft) {
-      body.draft = true
-      if (publishDraftId.value) body.id = publishDraftId.value
-    }
-    if (publishShowAuthor.value) body.author = publishAuthor.value.trim()
-    if (!asDraft && publishShowStock.value) body.stock = Number(publishStock.value) || 1
-    if (!asDraft && publishShowStartAt.value) body.startAt = String(publishStartAt.value).trim()
-    if (carpoolCampusDictOn.value) {
-      body.startCampus = String(publishStartCampus.value || '').trim()
-      body.endCampus = String(publishEndCampus.value || '').trim()
-    }
-    if (carpoolViaPointsOn.value && String(publishViaPoints.value || '').trim()) {
-      body.viaPoints = String(publishViaPoints.value).trim()
-    }
-    if (carpoolShareNoteOn.value && String(publishShareNote.value || '').trim()) {
-      body.shareNote = String(publishShareNote.value).trim()
-    }
-    if (carpoolPrefNoteOn.value && String(publishPrefNote.value || '').trim()) {
-      body.prefNote = String(publishPrefNote.value).trim()
-    }
-    if (carpoolLuggageOn.value) body.luggageCount = Number(publishLuggageCount.value) || 0
-    if (carpoolAaCalcOn.value && publishFareTotalYuan.value != null) {
-      body.fareTotalYuan = Number(publishFareTotalYuan.value)
-    }
-    if (carpoolDepartRemindOn.value) {
-      body.remindBeforeMinutes = Number(publishRemindBeforeMinutes.value) || 0
-    }
-    if (originKindOn.value) body.originKind = publishOriginKind.value
-    if (accessPasswordOn.value && (publishAccessPassword.value || '').trim()) {
-      body.accessPassword = publishAccessPassword.value.trim()
-    }
-    const res = await http.post('/api/archive/publish', body)
-    const data = res.data?.data || res.data || {}
-    if (asDraft) {
-      if (data.id) publishDraftId.value = data.id
-      ElMessage.success('已存草稿，可在「我的」里发布')
-    } else {
-      const review = !!archive.publishReview
-      ElMessage.success(
-        review
-          ? '已提交审核，通过后公开展示'
-          : publishUsesRichBody.value || publishShowStock.value
-            ? '已发布'
-            : '已登记',
-      )
-    }
-    publishVisible.value = false
-    publishDraftId.value = null
-    draftAutoSavedAt.value = ''
-    await load()
-    recRef.value?.reload?.()
-  } catch (e) {
-    const msg = String(e?.message || e?.response?.data?.message || '')
-    if (/禁言|发帖已达上限/.test(msg)) {
-      /* http 已提示或下方兜底 */
-      if (/发帖已达上限/.test(msg)) ElMessage.warning(msg)
-    } else if (msg && !e?.code) {
-      ElMessage.error(msg)
-    }
-  } finally {
-    publishLoading.value = false
-  }
-}
-
-async function apply(row) {
-  if (lockedOn.value && Number(row?.locked) === 1) {
-    ElMessage.warning(browseLabels.value.lockedReplyBlocked || '该帖已锁定，暂时不能回复')
-    return
-  }
-  if (matchProfileRoom.value) {
-    try {
-      const me = await http.get('/api/profile')
-      const extras = me.data?.extras || {}
-      const opts = matchProfileOpts.value
-      const building = (extras[opts.buildingKey] || '').trim()
-      const room = (extras[opts.roomKey] || '').trim()
-      if (!building || !room) {
-        ElMessage.warning(matchProfileNeedMessage.value)
-        return
-      }
-      const itemBuilding = row?.[opts.buildingField]
-      const itemRoom = row?.[opts.roomField]
-      if (!profileRoomMatches(building, room, itemBuilding, itemRoom, opts.looseBuilding)) {
-        ElMessage.warning(matchProfileDenyMessage.value)
-        return
-      }
-    } catch {
-      ElMessage.warning('无法读取个人资料，请重新登录后再试')
-      return
-    }
-  }
-  applyRow.value = row
-  conflictTip.value = ''
-  applyRemark.value = ''
-  applyAttachUrl.value = ''
-  applyQty.value = 1
-  applyDueAt.value = ''
-  applyAmount.value = null
-  applyPeriod.value = null
-  applyChannel.value = ''
-  applyMeetIntent.value = ''
-  applyNextFollow.value = ''
-  applyCheckinCode.value = ''
-  applyAnonymous.value = false
-  Object.keys(applyDimScores).forEach((k) => delete applyDimScores[k])
-  for (const d of ratingDims.value) {
-    applyDimScores[d.key] = 5
-  }
-  if (needApplyDialog.value) {
-    applyVisible.value = true
-    return
-  }
-  await ElMessageBox.confirm(
-    `确认${verbs.value.apply || '申请'}「${row.title}」？`,
-    verbs.value.apply || '申请',
-  )
-  await submitApply()
-}
-
-function dueDisabledDate(date) {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  const max = new Date(start)
-  max.setDate(max.getDate() + 90)
-  return date.getTime() < start.getTime() || date.getTime() > max.getTime()
-}
-
-async function submitApply() {
-  if (!applyRow.value) return
-  let remark = ''
-  if (richRemark.value) {
-    remark = sanitizeHtml(applyRemark.value || '')
-    if (!plainFromHtml(remark)) {
-      ElMessage.warning('请填写内容')
-      return
-    }
-  } else if (requireRemark.value) {
-    remark = (applyRemark.value || '').trim()
-    if (!remark) {
-      ElMessage.warning(
-        interactThicken.value.mutualTeamRemarkRequired
-          ? teamRemarkRequired.value
-          : `请填写${remarkLabel.value}`,
-      )
-      return
-    }
-  }
-  if (requireAttach.value && !applyAttachUrl.value) {
-    ElMessage.warning('请上传证明附件')
-    return
-  }
-  if (requireMaterial.value) {
-    const miss = matRef.value?.missingTitle?.() || ''
-    if (miss) {
-      ElMessage.warning(`请上传必传材料：${miss}`)
-      return
-    }
-  }
-  if (pickLoanPeriod.value && !applyDueAt.value) {
-    ElMessage.warning(`请选择${dueLabel.value}`)
-    return
-  }
-  if (collectAmount.value) {
-    const amt = Number(applyAmount.value)
-    if (!(amt > 0)) {
-      ElMessage.warning(`请填写${fineLabel.value}`)
-      return
-    }
-  }
-  if (pickDateRange.value) {
-    const range = applyPeriod.value
-    if (!Array.isArray(range) || range.length < 2 || !range[0] || !range[1]) {
-      ElMessage.warning('请选择起止日期')
-      return
-    }
-  }
-  if (allowQty.value) {
-    const n = Number(applyQty.value) || 0
-    if (n < 1) {
-      ElMessage.warning('数量至少为 1')
-      return
-    }
-    if (n > qtyMax.value) {
-      ElMessage.warning(`数量不能超过 ${qtyMax.value}`)
-      return
-    }
-  }
-  if (checkinOnApply.value) {
-    if (!applyCheckinCode.value.trim()) {
-      ElMessage.warning(`请输入${checkinLabel.value}码`)
-      return
-    }
-  }
-  let dimsPayload = null
-  if (rateOnApply.value) {
-    dimsPayload = {}
-    for (const d of ratingDims.value) {
-      const v = applyDimScores[d.key]
-      if (!v || v < 1) {
-        ElMessage.warning(`请完成「${d.label}」评分`)
-        return
-      }
-      dimsPayload[d.key] = v
-    }
-  }
-  if (datingMeetIntentOn.value && !applyMeetIntent.value) {
-    ElMessage.warning(browseLabels.value.meetIntentRequired || '请选择见面意向')
-    return
-  }
-  applyLoading.value = true
-  try {
-    const body = {
-      itemId: applyRow.value.id,
-      remark,
-      attachUrl: applyAttachUrl.value || undefined,
-    }
-    if (applyParentTicketId.value) body.parentTicketId = applyParentTicketId.value
-    if (requireMaterial.value && matRef.value) body.materials = matRef.value.payload()
-    if (allowQty.value) body.qty = Number(applyQty.value) || 1
-    if (pickLoanPeriod.value) body.dueAt = applyDueAt.value
-    if (collectAmount.value) body.fineYuan = Number(applyAmount.value)
-    if (pickDateRange.value && Array.isArray(applyPeriod.value)) {
-      body.periodStart = applyPeriod.value[0]
-      body.periodEnd = applyPeriod.value[1]
-    }
-    if (isCrm.value) {
-      if (applyChannel.value) body.contactChannel = applyChannel.value
-      if (applyNextFollow.value) body.nextFollowAt = applyNextFollow.value
-    }
-    if (datingMeetIntentOn.value) body.meetIntent = applyMeetIntent.value
-    if (checkinOnApply.value) body.checkinCode = applyCheckinCode.value.trim()
-    if (dimsPayload) {
-      body.dims = dimsPayload
-      if (allowAnonymousRating.value) body.anonymous = !!applyAnonymous.value
-    }
-    const { data } = await http.post('/api/tickets/apply', body)
-    const st = data?.status || data?.data?.status
-    let okMsg
-    if (st === 'held') {
-      okMsg = (getSchema()?.labels?.bookHoldOkMessage) || '暂无库存，已加入预约队列'
-    } else if (st === 'waitlisted') {
-      const rank = data?.waitlistRank || data?.waitlistPos || data?.queueNo
-      okMsg = rank
-        ? `名额已满，已加入候补（约第 ${rank} 位）`
-        : ((getSchema()?.labels?.waitlistOkMessage) || '名额已满，已加入候补队列')
-    } else if (checkinOnApply.value) {
-      okMsg = '已签到'
-    } else {
-      okMsg = autoApprove.value ? `已${verbs.value.apply || '提交'}` : '已提交，等待审核'
-    }
-    ElMessage.success(okMsg)
-    applyVisible.value = false
-    applyParentTicketId.value = null
-    if (detailVisible.value && applyRow.value?.id) {
-      await loadThread(applyRow.value.id)
-    }
-    if (!richRemark.value) detailVisible.value = false
-    recRef.value?.reload?.()
-  } catch (e) {
-    const msg = String(e?.message || e?.response?.data?.message || '')
-    if (/冲突|时段重叠|时间冲突/.test(msg)) {
-      conflictTip.value = msg.includes('冲突') ? msg : `时段冲突：${msg}`
-      ElMessage.warning(conflictTip.value)
-    }
-  } finally {
-    applyLoading.value = false
-  }
-}
-
-onMounted(async () => {
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    splitNarrowMq = window.matchMedia('(max-width: 900px)')
-    syncSplitNarrow()
-    splitNarrowMq.addEventListener('change', syncSplitNarrow)
-  }
-  const qWord = route.query?.q
-  if (qWord != null && String(qWord).trim() !== '') {
-    keyword.value = String(qWord).trim()
-  }
-  const qCat = route.query?.categoryId
-  if (qCat != null && String(qCat).trim() !== '') {
-    const n = Number(qCat)
-    categoryId.value = Number.isFinite(n) ? n : qCat
-  }
-  const qAuthor = route.query?.author
-  if (qAuthor != null && String(qAuthor).trim() !== '') {
-    authorFilter.value = String(qAuthor).trim()
-  }
-  await loadBlindBoxes()
-  await loadCats()
-  await loadTags()
-  await loadFriendLinks()
-  await load()
-  await refreshFollowStatus()
-  await loadMySchedule()
-  await loadFavIds()
-  await loadLikeIds()
-  await openHighlightFromRoute()
-})
-
-watch(
-  () => route.query?.q,
-  async (q, prev) => {
-    if (q === prev) return
-    keyword.value = q == null ? '' : String(q).trim()
-    page.value = 1
-    await load()
-  },
-)
-
-watch(
-  () => [route.query?.highlight, route.query?.categoryId],
-  async ([hl, cat], [prevHl, prevCat]) => {
-    if (cat !== prevCat && cat != null && String(cat).trim() !== '') {
-      const n = Number(cat)
-      categoryId.value = Number.isFinite(n) ? n : cat
-      await load()
-    }
-    if (hl !== prevHl) await openHighlightFromRoute()
-  },
-)
-
-/** 门户新品 / 足迹等带 ?highlight=id 进入时打开详情，避免只落到「全部列表」 */
-async function openHighlightFromRoute() {
-  const raw = route.query?.highlight
-  if (raw == null || String(raw).trim() === '') return
-  const id = Number(raw)
-  if (!Number.isFinite(id) || id <= 0) return
-  let row = list.value.find((x) => Number(x.id) === id)
-  if (!row) row = { id }
-  await openDetail(row)
-}
-</script>
-
-<style scoped>
-.hero { margin-bottom: 18px; }
-.hero h1 { margin: 0 0 6px; font-size: 22px; }
-.hero p { margin: 0 0 14px; color: var(--portal-muted, #64748b); font-size: 13px; }
-.page-hint { margin: 0 0 10px; color: var(--portal-muted, #64748b); font-size: 13px; line-height: 1.45; }
-.ym-row { margin-top: 10px; }
-.follow-bar { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; }
-.follow-hint { font-size: 12px; }
-.friend-links { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.friend-lab { font-size: 12px; color: var(--portal-muted, #94a3b8); }
-.friend-chip {
-  border: 1px solid var(--portal-line, #e2e8f0);
-  background: var(--portal-surface, #fff);
-  border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 12px;
-  color: var(--el-color-primary);
-  text-decoration: none;
-}
-.pw-box { margin: 10px 0; padding: 10px; border: 1px dashed var(--portal-line, #e2e8f0); border-radius: 8px; }
-.pw-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
-.series-nav { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin: 8px 0 4px; }
-.share-bar { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.poster-wall { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; }
-.poster-card { flex-direction: column; }
-.poster-card .cover { width: 100%; height: 180px; border-radius: 8px; }
-.browse-surface.is-splitdesk {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
-  gap: 16px;
-  align-items: start;
-}
-@media (max-width: 900px) {
-  .browse-surface.is-splitdesk { grid-template-columns: 1fr; }
-  .splitdesk-pane { display: none; }
-}
-.surface-folio {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  grid-template-columns: 1fr !important;
-}
-.surface-folio .folio-hero {
-  flex-direction: column;
-}
-.surface-folio .folio-hero .cover {
-  width: 100%;
-  height: 220px;
-  border-radius: 12px;
-}
-.surface-ledger {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  grid-template-columns: 1fr !important;
-}
-.surface-ledger .card {
-  padding: 10px 14px;
-  align-items: center;
-}
-.surface-ledger .cover {
-  width: 36px;
-  height: 36px;
-  font-size: 12px;
-}
-.surface-ledger .meta h3 { font-size: 14px; }
-.browse-surface.surface-shelfgrid .grid {
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
-}
-.browse-surface.surface-shelfgrid .card { flex-direction: column; }
-.browse-surface.surface-shelfgrid .cover {
-  width: 100%;
-  height: 140px;
-  border-radius: 8px;
-}
-.browse-surface.surface-menuboard .grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  grid-template-columns: 1fr !important;
-}
-.browse-surface.surface-menuboard .card { align-items: center; padding: 10px 14px; }
-.browse-surface.surface-menuboard .cover { width: 48px; height: 48px; }
-.browse-surface.surface-showtime .grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  grid-template-columns: 1fr !important;
-}
-.browse-surface.surface-showtime .cover { display: none; }
-.browse-surface.surface-slotstrip .grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  grid-template-columns: 1fr !important;
-}
-.browse-surface.surface-slotstrip .card { align-items: center; padding: 10px 14px; }
-.browse-surface.surface-slotstrip .cover { width: 56px; height: 56px; }
-.browse-surface.surface-roomstate .grid {
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
-}
-.browse-surface.surface-roomstate .card { flex-direction: column; min-height: 120px; }
-.browse-surface.surface-roomstate .cover {
-  width: 100%;
-  height: 72px;
-  border-radius: 6px;
-}
-.browse-surface.surface-vehiclecard .grid {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
-}
-.browse-surface.surface-vehiclecard .card { align-items: stretch; }
-.browse-surface.surface-vehiclecard .cover {
-  width: 120px;
-  height: 88px;
-  flex-shrink: 0;
-}
-.browse-surface.surface-bookshelf .grid {
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)) !important;
-  gap: 10px;
-}
-.browse-surface.surface-bookshelf .card {
-  flex-direction: column;
-  align-items: stretch;
-  padding: 8px;
-  min-height: 160px;
-}
-.browse-surface.surface-bookshelf .cover {
-  width: 100%;
-  height: 120px;
-  border-radius: 4px;
-}
-.browse-surface.surface-stockrow .grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  grid-template-columns: 1fr !important;
-}
-.browse-surface.surface-stockrow .card { align-items: center; padding: 10px 14px; }
-.browse-surface.surface-stockrow .cover { width: 48px; height: 48px; }
-.browse-surface.surface-bedblocks .grid {
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)) !important;
-}
-.browse-surface.surface-bedblocks .card {
-  flex-direction: column;
-  min-height: 100px;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-.browse-surface.surface-bedblocks .cover {
-  width: 100%;
-  height: 56px;
-  border-radius: 6px;
-}
-.browse-surface.surface-parcelshelf .grid {
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
-}
-.browse-surface.surface-parcelshelf .card {
-  flex-direction: column;
-  min-height: 132px;
-}
-.browse-surface.surface-parcelshelf .cover {
-  width: 100%;
-  height: 72px;
-  border-radius: 6px;
-}
-.browse-surface.surface-eventposter .grid {
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
-}
-.browse-surface.surface-eventposter .card { flex-direction: column; min-height: 180px; }
-.browse-surface.surface-eventposter .cover { width: 100%; height: 120px; border-radius: 8px; }
-.browse-surface.surface-coursetable .grid {
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
-}
-.browse-surface.surface-coursetable .card {
-  flex-direction: column;
-  min-height: 88px;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-.browse-surface.surface-coursetable .cover { display: none; }
-.browse-surface.surface-noticeboard .grid {
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
-}
-.browse-surface.surface-noticeboard .card { flex-direction: column; min-height: 140px; }
-.browse-surface.surface-noticeboard .cover { width: 100%; height: 64px; border-radius: 6px; }
-.browse-surface.surface-tourcard .grid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  grid-template-columns: 1fr !important;
-}
-.browse-surface.surface-tourcard .card { align-items: stretch; }
-.browse-surface.surface-tourcard .cover { width: 140px; height: 88px; flex-shrink: 0; }
-.browse-surface.surface-profilegrid .grid {
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
-}
-.browse-surface.surface-profilegrid .card { flex-direction: column; min-height: 180px; align-items: center; text-align: center; }
-.browse-surface.surface-profilegrid .cover {
-  width: 72px;
-  height: 72px;
-  border-radius: 999px;
-  margin: 8px auto 0;
-}
-.browse-surface.surface-mutualpick .grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  grid-template-columns: 1fr !important;
-}
-.browse-surface.surface-mutualpick .card { align-items: center; padding: 12px 14px; }
-.browse-surface.surface-mutualpick .cover { width: 56px; height: 56px; border-radius: 8px; }
-.browse-surface.surface-triprow .grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  grid-template-columns: 1fr !important;
-}
-.browse-surface.surface-triprow .card { align-items: center; padding: 10px 14px; }
-.browse-surface.surface-triprow .cover { width: 64px; height: 48px; border-radius: 6px; }
-.browse-surface.surface-pipeline .grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 8px;
-}
-.browse-surface.surface-pipeline .card {
-  flex-direction: column;
-  min-height: 96px;
-  align-items: stretch;
-}
-.browse-surface.surface-pipeline .cover { display: none; }
-.browse-surface.surface-dossier .grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  grid-template-columns: 1fr !important;
-}
-.browse-surface.surface-dossier .card { align-items: center; padding: 10px 14px; }
-.browse-surface.surface-dossier .cover { width: 48px; height: 48px; }
-.browse-surface.surface-listing .grid {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  grid-template-columns: 1fr !important;
-}
-.browse-surface.surface-listing .card { align-items: stretch; }
-.browse-surface.surface-listing .cover { width: 140px; height: 96px; flex-shrink: 0; border-radius: 8px; }
-.surface-splitdesk-list .split-active {
-  border-color: var(--el-color-primary);
-  box-shadow: 0 0 0 1px var(--el-color-primary);
-}
-.splitdesk-pane {
-  position: sticky;
-  top: 12px;
-  padding: var(--portal-pad, 16px);
-  background: var(--portal-surface, #fff);
-  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
-  border-radius: var(--portal-radius, 12px);
-}
-.splitdesk-pane h3 { margin: 10px 0 6px; font-size: 18px; }
-.splitdesk-cover {
-  width: 100% !important;
-  height: 180px !important;
-  border-radius: 10px;
-}
-.episode-box { margin: 12px 0; }
-.episode-box h4 { margin: 0 0 8px; font-size: 14px; }
-.episode-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.ep-btn {
-  border: 1px solid var(--portal-line, #e2e8f0);
-  background: var(--portal-surface, #fff);
-  border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-.episode-list li.active .ep-btn { border-color: var(--el-color-primary); color: var(--el-color-primary); }
-.ep-done { margin-left: 6px; color: #059669; }
-.progress-row { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.search { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.search-cat { width: min(180px, 100%); min-width: 120px; flex: 0 1 160px; }
-.search :deep(.el-input),
-.search :deep(.el-autocomplete) { flex: 1 1 180px; min-width: 160px; }
-.hot { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.hot-lab { font-size: 12px; color: var(--portal-muted, #94a3b8); }
-.hot-chip {
-  border: 1px solid var(--portal-line, #e2e8f0);
-  background: var(--portal-surface, #fff);
-  border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 12px;
-  color: var(--portal-muted, #475569);
-  cursor: pointer;
-}
-.hot-chip:hover { border-color: var(--el-color-primary); color: var(--el-color-primary); }
-.list-hd {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 4px 0 12px;
-}
-.list-hd h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
-.list-hd-hint {
-  font-size: 12px;
-  color: var(--portal-muted, #94a3b8);
-}
-.gallery { margin-bottom: 12px; }
-.gallery .detail-cover { width: 100%; height: 220px; object-fit: cover; border-radius: 8px; }
-.grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
-}
-.card {
-  display: flex; gap: 14px; padding: var(--portal-pad, 16px);
-  background: var(--portal-surface, #fff);
-  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
-  border-radius: var(--portal-radius, 12px);
-  box-shadow: var(--portal-shadow, none);
-}
-.cover {
-  width: 48px; height: 48px; border-radius: var(--portal-radius-sm, 10px); flex-shrink: 0;
-  display: grid; place-items: center; font-weight: 700; color: #0369a1;
-  background: #e0f2fe; overflow: hidden;
-}
-.cover img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
-}
-.meta { flex: 1; min-width: 0; }
-.meta h3 { margin: 0 0 4px; font-size: 16px; }
-.meta p { margin: 0; color: var(--portal-muted, #64748b); font-size: 12px; }
-.detail-line { margin-top: 4px !important; line-height: 1.4; }
-.detail-line.muted { color: var(--portal-muted, #64748b) !important; }
-.sched { margin-top: 4px !important; color: #0f766e !important; }
-.sched.conflict-row { color: #b45309 !important; }
-.sched.muted { color: var(--portal-muted, #94a3b8) !important; }
-.tag-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
-.tag-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-.equip { margin: 10px 0 4px; }
-.equip-title { margin: 0 0 6px; font-size: 13px; color: var(--portal-muted, #64748b); }
-.equip-tag { margin: 0 6px 6px 0; }
-.equip-ico {
-  display: inline-grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  margin-right: 4px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--portal-accent, #0b6e75);
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, transparent);
-  vertical-align: middle;
-}
-.excerpt { margin-top: 8px; color: var(--portal-muted, #64748b); }
-.row { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.stage-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid transparent;
-}
-.stage-chip[data-stage='free'] {
-  color: #166534;
-  background: #dcfce7;
-  border-color: #86efac;
-}
-.stage-chip[data-stage='taken'] {
-  color: #1e40af;
-  background: #dbeafe;
-  border-color: #93c5fd;
-}
-.stage-chip[data-stage='warn'] {
-  color: #9a3412;
-  background: #ffedd5;
-  border-color: #fdba74;
-}
-.stage-chip[data-stage='muted'] {
-  color: #475569;
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-}
-.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
-.pager { margin-top: 16px; display: flex; justify-content: flex-end; }
-.sub { margin: 0 0 16px; color: var(--portal-muted, #64748b); font-size: 13px; }
-.detail-cover {
-  width: 100%; max-height: 220px; object-fit: cover;
-  border-radius: var(--portal-radius, 10px);
-  margin-bottom: 12px; background: #e0f2fe;
-}
-.drawer-acts { margin-top: 24px; }
-.item-reviews { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--portal-line, #e2e8f0); }
-.item-reviews h4 { margin: 0 0 10px; font-size: 15px; }
-.item-reviews .good-rate { margin: 0 0 10px; font-size: 13px; color: var(--portal-accent, #0b6e75); }
-.item-reviews .rv { margin-bottom: 12px; }
-.item-reviews .rv-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
-.item-reviews .rv p { margin: 0; line-height: 1.5; }
-.item-reviews .rv-reply,
-.item-reviews .rv-follow { margin-top: 6px !important; color: var(--portal-muted, #64748b); font-size: 13px; }
-.item-qa,
-.item-spec-stock { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--portal-line, #e2e8f0); }
-.item-qa h4,
-.item-spec-stock h4 { margin: 0 0 10px; font-size: 15px; }
-.item-spec-stock ul { margin: 0; padding-left: 18px; }
-.item-qa .ic { margin-bottom: 12px; }
-.item-qa .ic-meta { margin: 0 0 4px; font-size: 12px; color: var(--portal-muted, #64748b); }
-.item-qa .rv-reply { margin-top: 6px; color: var(--portal-muted, #64748b); font-size: 13px; }
-.item-comments { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--portal-line, #e2e8f0); }
-.item-comments h4 { margin: 0 0 10px; font-size: 15px; }
-.item-comments .ic-compose { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-.item-comments .ic { margin-bottom: 12px; }
-.item-comments .ic-meta { margin: 0 0 4px; font-size: 13px; color: var(--portal-muted, #64748b); }
-.item-comments .ic p { margin: 0; line-height: 1.5; }
-.thread { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--portal-line, #e2e8f0); }
-.alog { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--portal-line, #e2e8f0); }
-.alog-form { margin-bottom: 12px; }
-.thread-title { margin: 0 0 12px; font-size: 15px; }
-.thread-empty { font-size: 13px; }
-.thread-item {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--portal-line, #e2e8f0);
-}
-.thread-item:last-child { border-bottom: 0; }
-.thread-meta {
-  margin: 0 0 6px;
-  display: flex; gap: 10px; justify-content: space-between;
-  font-size: 12px; color: var(--portal-ink, #334155);
-}
-.apply-tip { margin: 0 0 12px; color: var(--portal-ink, #334155); font-size: 14px; }
-.apply-tip.muted { color: var(--portal-muted, #64748b); }
-.apply-tip.conflict-tip {
-  color: #b91c1c;
-  background: color-mix(in srgb, #ef4444 10%, transparent);
-  border-left: 3px solid #dc2626;
-  padding: 8px 10px;
-  border-radius: 0 8px 8px 0;
-}
-.attach-row { display: flex; gap: 12px; align-items: center; }
-.attach-row a { font-size: 13px; color: #0369a1; }
-.rate-dims { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-.rate-dim-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.rate-dim-lab { font-size: 13px; color: var(--portal-ink, #334155); min-width: 72px; }
-.promo { margin: 4px 0 0; color: var(--el-color-danger); font-size: 13px; }
-.promo-list { color: var(--portal-muted, #94a3b8); text-decoration: line-through; margin-left: 6px; font-size: 12px; }
-.flash-cd { font-weight: 600; text-decoration: none; color: inherit; }
-.gallery .detail-cover :deep(img),
-.detail-cover :deep(img) { width: 100%; height: 100%; object-fit: cover; }
-</style>
+<style scoped src="./ArchiveBrowse.css"></style>

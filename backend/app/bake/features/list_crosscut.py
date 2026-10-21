@@ -30,6 +30,13 @@ _SEARCH_TERMS = (
     "全局搜索",
     "全站搜索",
     "顶栏搜索",
+    "站内搜索",
+    "顶部搜索",
+    "检索功能",
+    "书目检索",
+    "商品搜索",
+    "搜索商品",
+    "搜索图书",
 )
 # 开题不写「回收站」；写软删除 / 逻辑删除 / 删除后恢复。回收站只是按钮文案。
 _RECYCLE_TERMS = (
@@ -101,9 +108,19 @@ def resolve_list_crosscut_flags(text: str, title: str = "") -> dict[str, bool]:
 
 
 def apply_list_crosscut_to_spec(spec: dict[str, Any], proposal_text: str = "") -> dict[str, Any]:
-    """三块均扫词：未写则无 labels、schema 开关为假。无新菜单。"""
+    """扫词横切；顶栏检索：扫词命中或优先域+archive 时开启，占位跟域/软皮。无新菜单。"""
+    from app.bake.shell_face import should_enable_global_search, top_search_placeholder
+
     title = str(spec.get("title") or "")
+    domain = str(spec.get("domain") or "")
     flags = resolve_list_crosscut_flags(proposal_text or "", title)
+    caps = list(spec.get("capabilities") or [])
+    if not caps:
+        sch0 = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+        caps = list(sch0.get("capabilities") or [])
+    flags["globalSearch"] = should_enable_global_search(
+        domain, caps, bool(flags.get("globalSearch"))
+    )
     schema = dict(spec.get("schema") or {})
     labels = dict(schema.get("labels") or {})
 
@@ -117,7 +134,12 @@ def apply_list_crosscut_to_spec(spec: dict[str, Any], proposal_text: str = "") -
 
     apply_block(flags["advancedFilter"], _LABELS_FILTER)
     apply_block(flags["exportColumns"], _LABELS_EXPORT)
-    apply_block(flags["globalSearch"], _LABELS_SEARCH)
+    if flags["globalSearch"]:
+        labels["topSearchPlaceholder"] = top_search_placeholder(
+            domain, title, proposal_text or ""
+        )
+    else:
+        labels.pop("topSearchPlaceholder", None)
     entities = schema.get("entities") if isinstance(schema.get("entities"), dict) else {}
     entities = dict(entities)
     archive = entities.get("archive") if isinstance(entities.get("archive"), dict) else {}

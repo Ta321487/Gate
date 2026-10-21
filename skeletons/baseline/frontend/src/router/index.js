@@ -152,6 +152,14 @@ function withPortalHub(baseRoutes) {
         component: () => import('../views/user/Messages.vue'),
       })
     }
+    // §3 独立详情：挂在列表旁；须写在 archive 同级，路径用 archive/item/:id
+    if (has('archive') && !has('archive/item/:id')) {
+      const archIdx = kids.findIndex((c) => c.path === 'archive')
+      kids.splice(archIdx >= 0 ? archIdx + 1 : kids.length, 0, {
+        path: 'archive/item/:id',
+        component: () => import('../views/user/ArchiveItemDetail.vue'),
+      })
+    }
     const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
     const red = kids.find((c) => c.path === '' && c.redirect != null)
     if (red) {
@@ -1360,6 +1368,7 @@ function pickRoutes() {
     withGroupBuyRoutes,
     withBlindBoxRoutes,
     withPointsLedgerRoutes,
+    withAccountCenterRoutes,
     withLineSpecRoutes,
     withConsignRoutes,
     withWeighRoutes,
@@ -1539,6 +1548,21 @@ function withPointsLedgerRoutes(baseRoutes) {
     kids.splice(at, 0, {
       path: 'points-rules',
       component: () => import('../views/user/PointsRules.vue'),
+    })
+  }
+  return routes
+}
+
+/** 账户向入口短页：头像「我的」落地，避免下拉平铺一长串 */
+function withAccountCenterRoutes(baseRoutes) {
+  const routes = cloneRoutes(baseRoutes)
+  const kids = routes.find((r) => r.path === '/')?.children
+  if (kids && !kids.some((c) => c.path === 'account')) {
+    const profileIdx = kids.findIndex((c) => c.path === 'profile')
+    const at = profileIdx >= 0 ? profileIdx : kids.length
+    kids.splice(at, 0, {
+      path: 'account',
+      component: () => import('../views/user/AccountCenter.vue'),
     })
   }
   return routes

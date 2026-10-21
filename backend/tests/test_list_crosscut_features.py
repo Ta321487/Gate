@@ -30,7 +30,7 @@ class ListCrosscutFeatureTests(unittest.TestCase):
     def test_hub_bypass_lists_list_crosscut(self) -> None:
         self.assertIn("list_crosscut", HUB_BYPASS_MODULES)
 
-    def test_empty_opening_skips_flags(self) -> None:
+    def test_empty_opening_skips_scan_flags(self) -> None:
         flags = resolve_list_crosscut_flags("实现图书借阅与归还。", "图书借阅管理系统")
         self.assertFalse(flags["advancedFilter"])
         self.assertFalse(flags["exportColumns"])
@@ -38,6 +38,26 @@ class ListCrosscutFeatureTests(unittest.TestCase):
         self.assertFalse(flags["recycle"])
         self.assertFalse(flags["batchDelete"])
         self.assertFalse(flags["batchReview"])
+
+    def test_library_archive_auto_enables_top_search(self) -> None:
+        """优先域 + archive：顶栏检索默认开，占位跟域。"""
+        out = apply_list_crosscut_to_spec(_spec(), "实现图书借阅与归还。")
+        flags = (out.get("schema") or {}).get("listCrosscut") or {}
+        self.assertTrue(flags.get("globalSearch"))
+        labels = (out.get("schema") or {}).get("labels") or {}
+        self.assertIn("书名", str(labels.get("topSearchPlaceholder") or ""))
+
+    def test_archive_hides_page_keyword_when_top_search_on(self) -> None:
+        """顶栏开检索时列表页不得再摆关键词框（§3.0.4 禁双搜）。"""
+        browse = (
+            REPO / "skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("topBarSearchOn", browse)
+        self.assertIn("!topBarSearchOn", browse)
+        layout = (
+            REPO / "skeletons/baseline/frontend/src/layouts/PortalLayout.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("route.path === '/archive'", layout)
 
     def test_scan_terms_open_flags(self) -> None:
         flags = resolve_list_crosscut_flags(
@@ -51,13 +71,16 @@ class ListCrosscutFeatureTests(unittest.TestCase):
         self.assertTrue(flags["batchDelete"])
         self.assertTrue(flags["batchReview"])
 
-    def test_apply_spec_empty_has_no_labels(self) -> None:
+    def test_apply_spec_empty_skips_filter_export_labels(self) -> None:
         out = apply_list_crosscut_to_spec(_spec(), "")
         labels = (out.get("schema") or {}).get("labels") or {}
         self.assertNotIn("listFilterStatus", labels)
-        self.assertNotIn("topSearchPlaceholder", labels)
+        self.assertNotIn("exportColumnsTitle", labels)
+        # 图书+archive：顶栏检索默认开
+        self.assertTrue(str(labels.get("topSearchPlaceholder") or "").strip())
         flags = (out.get("schema") or {}).get("listCrosscut") or {}
         self.assertFalse(flags.get("advancedFilter"))
+        self.assertTrue(flags.get("globalSearch"))
 
     def test_apply_spec_with_terms_sets_labels(self) -> None:
         body = "需要组合筛选、导出列勾选和顶栏搜索。"

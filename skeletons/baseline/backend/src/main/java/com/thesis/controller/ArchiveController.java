@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,6 +39,8 @@ public class ArchiveController {
             @RequestParam(required = false) String city,
             @RequestParam(required = false) Integer ageMin,
             @RequestParam(required = false) Integer ageMax,
+            @RequestParam(required = false) BigDecimal priceMin,
+            @RequestParam(required = false) BigDecimal priceMax,
             @RequestParam(required = false) String listStatus,
             @RequestParam(required = false) String createdFrom,
             @RequestParam(required = false) String createdTo,
@@ -79,7 +82,9 @@ public class ArchiveController {
                     listStatus,
                     createdFrom,
                     createdTo,
-                    deletedOnly);
+                    deletedOnly,
+                    priceMin,
+                    priceMax);
         }
         if (!admin) ArchiveStore.redactSensitiveListForPublic(data);
         return R.ok(data);

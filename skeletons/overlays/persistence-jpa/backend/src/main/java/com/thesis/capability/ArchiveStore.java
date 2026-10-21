@@ -9,6 +9,7 @@ import com.thesis.service.UserStore;
 import com.thesis.config.GeneratedKeyHolder;
 import com.thesis.config.KeyHolder;
 
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -1570,10 +1571,10 @@ public final class ArchiveStore {
         return pageItems(
                 keyword, categoryId, categoryIds, tagIds, includeDeleted, page, size,
                 openCatalogOnly, ownerUsernameFilter, artist, album, city, ageMin, ageMax,
-                null, null, null, false);
+                null, null, null, false, null, null);
     }
 
-    /** 列表组合筛选：状态与创建日起止；空串忽略。 */
+    /** 列表组合筛选：状态与创建日起止；空串忽略。价区间仅金额列（price_yuan 等）生效。 */
     public static Map<String, Object> pageItems(
             String keyword,
             Long categoryId,
@@ -1593,6 +1594,33 @@ public final class ArchiveStore {
             String createdFrom,
             String createdTo,
             boolean deletedOnly) {
+        return pageItems(
+                keyword, categoryId, categoryIds, tagIds, includeDeleted, page, size,
+                openCatalogOnly, ownerUsernameFilter, artist, album, city, ageMin, ageMax,
+                listStatus, createdFrom, createdTo, deletedOnly, null, null);
+    }
+
+    public static Map<String, Object> pageItems(
+            String keyword,
+            Long categoryId,
+            List<Long> categoryIds,
+            List<Long> tagIds,
+            boolean includeDeleted,
+            int page,
+            int size,
+            boolean openCatalogOnly,
+            String ownerUsernameFilter,
+            String artist,
+            String album,
+            String city,
+            Integer ageMin,
+            Integer ageMax,
+            String listStatus,
+            String createdFrom,
+            String createdTo,
+            boolean deletedOnly,
+            BigDecimal priceMin,
+            BigDecimal priceMax) {
         expirePastStarts();
         if (page < 1) page = 1;
         if (size < 1) size = 10;
@@ -1662,6 +1690,7 @@ public final class ArchiveStore {
             where.append(" AND age_years <= ?");
             args.add(ageMax);
         }
+        appendPriceRangeFilter(where, args, priceMin, priceMax);
         if (listStatus != null && !listStatus.isBlank() && hasItemColumn("status")) {
             where.append(" AND status=?");
             args.add(listStatus.trim());
@@ -3192,13 +3221,37 @@ public final class ArchiveStore {
         }
     }
 
-    /** 关键词：名称/作者列/编号列；有产地、采摘日列时一并纳入（可按产地、采摘日检索）。 */
+    /** 标价物理列：走区间筛，禁止塞进关键词 LIKE（商城单价糊弄成搜框）。 */
+    private static boolean authorColumnIsMoney() {
+        String c = authorColumn();
+        if (c == null || c.isBlank()) return false;
+        String n = c.trim().toLowerCase(Locale.ROOT);
+        return "price_yuan".equals(n) || "fee_yuan".equals(n);
+    }
+
+    private static void appendPriceRangeFilter(
+            StringBuilder where, List<Object> args, BigDecimal priceMin, BigDecimal priceMax) {
+        if (!authorColumnIsMoney()) return;
+        String col = authorColumn();
+        if (priceMin != null && priceMin.compareTo(BigDecimal.ZERO) >= 0) {
+            where.append(" AND ").append(col).append(" >= ?");
+            args.add(priceMin);
+        }
+        if (priceMax != null && priceMax.compareTo(BigDecimal.ZERO) >= 0) {
+            where.append(" AND ").append(col).append(" <= ?");
+            args.add(priceMax);
+        }
+    }
+
+    /** 关键词：名称/作者列/编号列；金额列不进 LIKE，改走价区间。 */
     private static void appendKeywordSearch(StringBuilder where, List<Object> args, String keyword) {
         if (keyword == null || keyword.isBlank()) return;
         String like = "%" + keyword.trim() + "%";
         List<String> cols = new ArrayList<>();
         cols.add("title");
-        cols.add(authorColumn());
+        if (!authorColumnIsMoney()) {
+            cols.add(authorColumn());
+        }
         cols.add(isbnColumn());
         if (hasItemColumn("region")) cols.add("region");
         if (hasItemColumn("harvest_on")) cols.add("CAST(harvest_on AS CHAR)");
