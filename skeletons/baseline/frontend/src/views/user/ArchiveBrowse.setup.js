@@ -537,6 +537,28 @@ function primarySignalOf(row) {
     if (bits.length) return bits.join(' · ')
     return categoryTextOf(row) || ''
   }
+  /* 跟进三档：看板看销售阶段、档案行看状态、挂牌看价签 */
+  if (followSurface.value === 'pipeline') {
+    const st = String(row.stage || '').trim()
+    if (st) return st
+    return categoryTextOf(row) || ''
+  }
+  if (followSurface.value === 'dossier') {
+    const st = String(row.stage || '').trim()
+    if (st) return st
+    const n = Number(row.stock)
+    if (Number.isFinite(n)) return n <= 0 ? '已停/满' : `可办理 · ${n}`
+    return categoryTextOf(row) || ''
+  }
+  if (followSurface.value === 'listing') {
+    const p = Number(row.priceYuan)
+    if (Number.isFinite(p) && p > 0) {
+      if (p >= 10000) return `¥${(p / 10000).toFixed(1)}万`
+      return `¥${p.toFixed(0)}/月`
+    }
+    const st = String(row.stage || '').trim()
+    return st || categoryTextOf(row) || ''
+  }
   if (authorFieldIsMoney.value) {
     if (flashOn.value && row.promoActive) {
       const promo = Number(row.promoPrice)
@@ -553,6 +575,18 @@ function primarySignalOf(row) {
   const author = formatAuthor(row.author)
   if (author && author !== '—') return author
   return categoryTextOf(row) || ''
+}
+
+/** 跟进看板阶段色键：线索/意向/谈判/成交/搁置 */
+function followStageKey(row) {
+  if (followSurface.value !== 'pipeline') return ''
+  const st = String(row?.stage || '').trim()
+  if (/线索/.test(st)) return 'lead'
+  if (/意向/.test(st)) return 'intent'
+  if (/谈判/.test(st)) return 'talk'
+  if (/成交/.test(st)) return 'won'
+  if (/搁置/.test(st)) return 'shelve'
+  return ''
 }
 
 function boardToneOf(row) {
@@ -1876,7 +1910,9 @@ function preferArchiveItemPage() {
   const apply = String(APP_DELIVERED?.applySurfaceStyle || '').trim()
   if (apply) return true
   const interact = String(APP_DELIVERED?.interactSurfaceStyle || '').trim()
-  return !!interact
+  if (interact) return true
+  const follow = String(APP_DELIVERED?.followSurfaceStyle || '').trim()
+  return !!follow
 }
 
 /** 启事板：寻物 / 招领 / 线索分色 */

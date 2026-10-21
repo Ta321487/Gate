@@ -345,6 +345,7 @@
         class="card imm-lift"
         :data-card-voice="cardVoice"
         :data-bed-tone="borrowBedTone(row)"
+        :data-follow-stage="followStageKey(row)"
         :class="{
           'reported-dim': reportedIds.has(row.id),
           'poster-card': coverWallActive,
