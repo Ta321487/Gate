@@ -1,7 +1,7 @@
 # 领域清单（组 A–H）
 
 > **本文只负责**：具名 `DOM-*` 分组（bake 目录 A–H）、各域**默认**能力组合、GENERIC/ARCH 绑壳、Path B 真交叉白名单与答辩口径。  
-> **不负责**：开题密功能全表 / 待补清单（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；cap 挂载细则（[`capabilities.md`](./capabilities.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；组 UI 表面选型（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)）。  
+> **不负责**：开题密功能全表 / 待补清单（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；cap 挂载细则（[`capabilities.md`](./capabilities.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；组 UI 表面选型（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)）；UI 观感加厚进度（[`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)）。  
 > **交接**：[HANDOFF.md](../HANDOFF.md) · **总览**：[README.md](../README.md) · **索引**：[README.md](./README.md)
 
 ---
@@ -32,7 +32,8 @@
 | §1.1～§1.5 加厚复盘 | [`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) |
 | 换皮 ID 册 / 组审进度 | [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md) |
 | 怎么审交付 | [`delivery-audit-rules.md`](./delivery-audit-rules.md) |
-| 域组 UI 表面（加厚后做） | [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) |
+| 域组 UI 表面选型 | [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) |
+| UI 观感加厚（68 域台账） | [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md) |
 
 ### 换皮纪律（A / B / C）
 

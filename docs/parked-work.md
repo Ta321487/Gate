@@ -11,7 +11,7 @@
 
 | # | 项 | 一句话 | 真源 / 下次从哪开 | 现状 |
 |---|----|--------|-------------------|------|
-| 1 | **UI 包** | 域组页内构图选型 → bake/骨架接线；一组一 plan | [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) | `content`/`trade`/`reserve`/`borrow`/`apply`/`interact`/`follow`/`repair`/`approve` **已接线**；下一 §1.10 导引文案 |
+| 1 | **UI 包** | 选型接线已齐 → **观感加厚**（过一眼精美闸）；一轮一组 | 选型 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md)；进度 [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md) | 九组 **已接线**；公共壳/交易/借用/预约/内容/报名/互动 **观感首刀已齐**；跟进·报修·审批 **观感未开** |
 | 2 | **X 系列** | §0 通识横切剩余簇（一轮一簇） | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) | X-AUTH～X-UX 已齐；打印/灯箱/Toast/页脚版本/离开提示/复制单号为**基线体验**；档案 Excel 导入导出已是 xlsx |
 | 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **交易族 + 借用组已收口**；跟进/报修/报名/审批/预约/内容/互动 **未推** |
 | 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；`TRADE_*` / `BORROW_*_ALIGN_RULES` + `test_opening_align_gate.py` | **交易族 + 借用组 A 白名单 + B + C 门禁已齐**；其余域组登记表/测 **未开** |
@@ -39,7 +39,8 @@
 | e | **Surface Lexicon 尾债** | C2 种子公告迁移 · C3 前端空状态映射 · 库内旧 `gate_e2e` 重 bake | [`surface-lexicon-design.md`](./surface-lexicon-design.md)；[`../HANDOFF.md`](../HANDOFF.md) 话术专项 | 批 A/B/C 已落地；运维/迁移步未清 |
 | f | **工厂 API MySQL 池抖** | 控制台刷 `projects` 时 `slow_sql` 飙到数秒～数十秒，偶发 500：`Packet sequence number wrong - got 1 expected 2`（aiomysql） | `GET /api/projects/{id}` → `crud.get_project`；池 / `projects` 宽列 SELECT；可对照 [`preview-capacity-and-batch-ops.md`](./preview-capacity-and-batch-ops.md) | **未修**。先像连接池耗尽/坏连回收或同连并发乱序，不是业务 SQL 写错 |
 | g | **资料页角色分栏** | 买家/商家/超管资料像同一模板；`profileFields` 缺 `forRoles` | bake 钉 shop*=staff、收货=user；农产包重写 profileFields | **已修**（2026-10-14） |
-| h | **门户「更多」过早收纳** | 用户菜单 >6 就进「更多」 | `PORTAL_NAV_INLINE_MAX=12`（≤12 全直出） | **已修**（2026-10-14） |
+| h | **门户顶栏换行一团** | 曾抬到 12 全直出，商城 8～11 项长标签换行挤成两排 | §3：软皮分岔 marketplace 右侧栏 / storefront 头像菜单；禁表情与叠两份 | **已修**（2026-10-20） |
+| k | **学生包工厂注记** | 骨架可写开题/§3 注释；bake 须抹掉且裁未挂壳件 | `pack_prune.scrub_factory_notes` + 非 marketplace 裁 SideRail | **已接**（2026-10-20） |
 | i | **工作台空图空表** | 超管/商家仪表盘空（种子少；商家缺 `owner_username`） | `_SHOP_FARM` 补成交单+商品归属店员 | **已修种子**（2026-10-14）；**已有库要重导/补种子**才看得见图 |
 | j | **今年题名库** | 只代表今年的选题，不预测明年。工厂按册一点点长，不等全文开题 | [`cohort-opening-title-map.md`](./cohort-opening-title-map.md) | **方向已写** · 工厂未改（2026-10-17） |
 

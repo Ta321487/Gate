@@ -32,7 +32,8 @@
 | [content-thicken-batch.md](./content-thicken-batch.md) | **§1.8 内容组加厚** | 已收口档案 |
 | [interact-thicken-batch.md](./interact-thicken-batch.md) | **§1.9 互动/匹配组加厚** | 已收口档案 |
 | [crosscut-delivery-batch.md](./crosscut-delivery-batch.md) | **§0 通识横切**清待补（一轮一簇；非域组 thicken） | 批次册 · X-AUTH/MSG/DASH 已齐 · 下波 **X-ORG** |
-| [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（加厚后一组一 plan；含 ASCII） | 选型册 · 未实现；下一 plan 优先 content |
+| [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（ASCII / 对标 / §0.0 闸） | 选型册 · 九组已接线 |
+| [ui-look-thicken-batch.md](./ui-look-thicken-batch.md) | **UI 观感加厚**（公共壳 + 各组主表面；**68 域台账**） | 活表 · 壳/交易/借用/预约/内容/报名/互动首刀已齐 · 其余未开 |
 | [parked-work.md](./parked-work.md) | **搁置工作**台账（大线 + 碎另案） | 活表 · 大线 4 · 碎项另表 |
 | [cohort-opening-title-map.md](./cohort-opening-title-map.md) | 今年选题 → 成品域/皮；只代表今年，按册一点点长 | 方向册 · 工厂未改（见搁置 j） |
 | [opening-align-gate.md](./opening-align-gate.md) | **开题对齐门禁**：A 白名单 + B 扫词 + C cap（登记表双向） | 交易族已齐 · 待扩全族 |
@@ -54,6 +55,7 @@
 
 | 文档 | 何时读 | 状态 |
 |------|--------|------|
+| [bake-fail-analysis.md](./bake-fail-analysis.md) | bake **失败分析**码表、A 档权威落点、B 档建议工作流 | 活表 |
 | [preview-capacity-and-batch-ops.md](./preview-capacity-and-batch-ops.md) | 预览吃多少内存/进程、为什么多开卡死、批量启停的分期与闸门 | 活表 |
 | [background-reconcile-cost.md](./background-reconcile-cost.md) | 后台对账一轮花在哪、签名跳过与每轮额度怎么调、怎么复测 | 活表 |
 
