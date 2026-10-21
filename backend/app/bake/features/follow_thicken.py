@@ -938,6 +938,12 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
 
     # —— LISTING ——
     if domain == "DOM-LISTING":
+        _ensure_archive_field(
+            archive,
+            {"key": "price", "label": "挂牌价（元/月 或 元/套）", "type": "number"},
+        )
+        thicken["price"] = True
+        _add_feature(spec, "挂牌价字段")
         ticket.setdefault("followRemindDays", 1)
         thicken["followRemind"] = True
         _add_feature(spec, "房源意向跟进下次提醒")

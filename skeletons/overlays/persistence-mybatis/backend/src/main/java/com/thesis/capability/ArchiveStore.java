@@ -1866,6 +1866,13 @@ public final class ArchiveStore {
                 m.put("specNote", "");
             }
         }
+        if (hasItemColumn("price")) {
+            try {
+                double p = rs.getDouble("price");
+                if (!rs.wasNull()) m.put("priceYuan", p);
+            } catch (Exception ignored) {
+            }
+        }
         if (hasItemColumn("free_ship_yuan")) {
             try {
                 double v = rs.getDouble("free_ship_yuan");
