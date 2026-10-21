@@ -400,7 +400,7 @@
             class="sub signal-cat"
           >{{ categoryTextOf(row) }}</p>
           <p v-if="marketplace && shopLabel(row)" class="sub shop">店铺：{{ shopLabel(row) }}</p>
-          <p v-if="flashOn && row.promoActive" class="promo">
+          <p v-if="flashOn && row.promoActive" class="promo promo-bar">
             {{ flashBadge }} ¥{{ Number(row.promoPrice).toFixed(2) }}
             <span class="promo-list">原价 ¥{{ Number(row.listPriceYuan ?? row.author).toFixed(2) }}</span>
             <span
@@ -409,15 +409,24 @@
               :class="{ 'cd-urgent': isUrgentCountdown(flashSecondsLeft(row), 300) }"
             > · {{ flashCountdownText(row) }}</span>
           </p>
-          <p v-if="productSpecOn && productSpecText(row) && cardVoice === 'catalog'" class="sub">{{ productSpecLabel }}：{{ productSpecText(row) }}</p>
+          <div v-if="cardShortTags(row).length" class="short-tags">
+            <span
+              v-for="tag in cardShortTags(row)"
+              :key="tag.key"
+              class="short-tag"
+            >{{ tag.text }}</span>
+          </div>
+          <button
+            v-if="cardMoreFieldCount > 0"
+            type="button"
+            class="more-hint"
+            @click.stop="openDetail(row)"
+          >另有 {{ cardMoreFieldCount }} 项，见详情</button>
           <p
-            v-for="f in cardPreviewFields"
+            v-for="f in (cardVoice === 'story' ? cardPreviewFields : [])"
             :key="f.key"
             class="detail-line muted"
           ><span class="k">{{ f.label }}</span>：{{ formatFieldValue(row, f) }}</p>
-          <p v-if="cardVoice === 'catalog' && cardDetailFields.length > cardPreviewFields.length" class="detail-line muted">
-            另有 {{ cardDetailFields.length - cardPreviewFields.length }} 项，见详情
-          </p>
           <p v-if="row.tagNames?.length" class="sched muted">
             <template v-if="tagColorOn">
               <span

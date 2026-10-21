@@ -348,21 +348,110 @@
 .browse-surface.surface-shelfgrid .card-acts .act-secondary:only-of-type {
   grid-column: 1 / -1;
 }
+/* —— 交易再磨：档口菜单板（菜名+价大字，异于货架封面墙） —— */
 .browse-surface.surface-menuboard .grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   grid-template-columns: 1fr !important;
+  border: 1px solid var(--portal-line, #e2e8e6);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--portal-surface, #fff);
 }
-.browse-surface.surface-menuboard .card { align-items: center; padding: 10px 14px; }
-.browse-surface.surface-menuboard .cover { width: 48px; height: 48px; }
+.browse-surface.surface-menuboard .card {
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--portal-line, #e2e8e6) 90%, transparent);
+  box-shadow: none;
+}
+.browse-surface.surface-menuboard .card:last-child { border-bottom: none; }
+.browse-surface.surface-menuboard .card:hover {
+  background: color-mix(in srgb, var(--portal-accent, #8C4A32) 6%, #fff);
+  transform: none;
+}
+.browse-surface.surface-menuboard .cover {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+.browse-surface.surface-menuboard .meta {
+  flex: 1;
+  min-width: 0;
+}
+.browse-surface.surface-menuboard .meta h3 {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.browse-surface.surface-menuboard .main-signal.price,
+.browse-surface.surface-menuboard .main-signal {
+  margin-top: 4px !important;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--portal-accent, #8C4A32);
+  font-variant-numeric: tabular-nums;
+}
+.browse-surface.surface-menuboard .short-tags { margin-top: 6px; }
+.browse-surface.surface-menuboard .detail-line { display: none; }
+.browse-surface.surface-menuboard .story-lead {
+  margin-top: 2px !important;
+  font-size: 12px;
+  color: var(--portal-muted, #5b6b76);
+  -webkit-line-clamp: 1;
+}
+
+/* —— 交易再磨：排片选座行（时刻主信号，无封面墙） —— */
 .browse-surface.surface-showtime .grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   grid-template-columns: 1fr !important;
 }
+.browse-surface.surface-showtime .card {
+  align-items: stretch;
+  flex-direction: row;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--portal-line, #e2e8e6);
+  border-left: 4px solid var(--portal-accent, #C4A574);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--portal-ink, #1A1820) 6%, transparent);
+}
+.browse-surface.surface-showtime .card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px -14px color-mix(in srgb, var(--portal-ink, #1A1820) 45%, transparent);
+}
 .browse-surface.surface-showtime .cover { display: none; }
+.browse-surface.surface-showtime .meta {
+  flex: 1;
+  min-width: 0;
+}
+.browse-surface.surface-showtime .meta h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.browse-surface.surface-showtime .main-signal {
+  margin-top: 6px !important;
+  font-size: 16px;
+  font-weight: 750;
+  color: var(--portal-accent, #C4A574);
+}
+.browse-surface.surface-showtime .short-tags { margin-top: 8px; }
+.browse-surface.surface-showtime .short-tag {
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--portal-brand, #2C2A33) 8%, #fff);
+  border-color: color-mix(in srgb, var(--portal-accent, #C4A574) 35%, transparent);
+}
+.browse-surface.surface-showtime .detail-line { display: none; }
+.browse-surface.surface-showtime .board-status { margin-top: 6px !important; }
 /* —— 预约：号源行（科室/场地 → 有号主信号，横条非货架） —— */
 .browse-surface.surface-slotstrip .grid {
   display: flex;

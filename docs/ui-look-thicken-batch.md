@@ -49,7 +49,7 @@
 |-------|------|----------|----------|----------|--------|--------|
 | （全厂） | 公共壳 | — | **首刀已齐** | — | PortalLayout / AuthShell / AdminLayout / main.js | 抽检回归 |
 | borrow | 借用/占用 | 已接线 | 吃 A | **首刀已齐** | ArchiveBrowse bookshelf/stockrow/bedblocks/parcelshelf | 详情借阅文案再磨 |
-| trade | 交易 | 已接线 | 吃 A | **首刀已齐** | PortalHome mall + shelfgrid + ArchiveItemDetail | menuboard/showtime 再磨 |
+| trade | 交易 | 已接线 | 吃 A | **首刀已齐** | PortalHome mall + shelfgrid + ArchiveItemDetail | menuboard/showtime **再磨已齐**；软皮短签继续 |
 | reserve | 预约 | 已接线 | 吃 A | **首刀已齐** | SlotBook + slotstrip/roomstate/vehiclecard + 详情选时段 | 软皮短签再磨 |
 | content | 内容 | 已接线 | 吃 A | **首刀已齐** | folio/coverwall/ledger/splitdesk + 阅读详情 | 软皮短签再磨 |
 | apply | 报名/申请 | 已接线 | 吃 A | **首刀已齐** | eventposter/coursetable/noticeboard/tourcard + 详情报名 | 软皮短签再磨 |
@@ -59,7 +59,7 @@
 | approve | 审批/填报 | 已接线 | 吃 A | **首刀已齐** | MyTickets/TicketsAdmin typelist/inboxsteps | 软皮短签再磨 |
 | fallback | 兜底 | 无选型键 | 吃 A | **吃公共壳** | 导引 + 中性壳 | 随壳即可 |
 
-建议下一轮：各组 **软皮短签再磨**；观感首刀九组已齐。
+建议下一轮：借用 **详情借阅文案再磨**；其余组软皮短签继续分批。
 
 ---
 
@@ -77,7 +77,9 @@
 - `PortalHome` mall：轮播点、新品 + **热销**、累计销量、卡片观感；点进 `/archive/item/:id`
 - `ArchiveBrowse` `shelfgrid`：货架卡加厚
 - `ArchiveItemDetail`：独立详情（加购/收藏/评价）；不写死 `/goods`
-- 覆盖域：`DOM-SHOP` / `DOM-FOOD` / `DOM-CINEMA`（FOOD/CINEMA 档口与排片 CSS 仍可再磨）
+- 覆盖域：`DOM-SHOP` / `DOM-FOOD` / `DOM-CINEMA`
+- **再磨（2026-10-22）**：`menuboard` 菜单板行价 + 短签；`showtime` 排片左边条 + 余座主信号；列表 `short-tags` 芯片接线（catalog / 档口 / 排片）
+- 护栏：`backend/tests/test_trade_look_polish.py`
 
 ### 2.3 借用组 B
 

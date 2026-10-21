@@ -382,20 +382,51 @@ const cardMoreFieldCount = computed(() => {
   return Math.max(0, cardDetailFields.value.length - cardPreviewFields.value.length)
 })
 
-/** catalog 短签：值优先芯片，禁止十行「标签：值」同灰（§2.5 至多 2） */
+/** 短签：值优先芯片，禁止十行「标签：值」同灰（§2.5 至多 2）；交易档口/排片也可出短签 */
 function cardShortTags(row) {
-  if (!row || cardVoice.value !== 'catalog') return []
+  if (!row) return []
   const out = []
   const budget = 2
+  const push = (key, text) => {
+    const t = String(text || '').trim()
+    if (!t || t === '—') return
+    if (out.some((x) => x.key === key)) return
+    out.push({
+      key,
+      text: t.length > 18 ? `${t.slice(0, 18)}…` : t,
+    })
+  }
+  /* 档口菜单：分类 + 规格/份量 */
+  if (tradeSurface.value === 'menuboard') {
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    if (productSpecOn.value) {
+      const spec = productSpecText(row)
+      if (spec) push('productSpec', spec)
+    }
+    for (const f of cardPreviewFields.value) {
+      if (out.length >= budget) break
+      push(f.key, formatFieldValue(row, f))
+    }
+    return out.slice(0, budget)
+  }
+  /* 排片：场次时刻 + 厅名 */
+  if (tradeSurface.value === 'showtime') {
+    const when = String(row.startAt || row.showAt || row.schedule || '').trim()
+    if (when) push('when', when.length > 16 ? when.slice(0, 16) : when)
+    const hall = String(row.hallName || row.roomName || row.author || '').trim()
+    if (hall && hall !== '—') push('hall', hall)
+    const cat = categoryTextOf(row)
+    if (cat && out.length < budget) push('cat', cat)
+    return out.slice(0, budget)
+  }
+  if (cardVoice.value !== 'catalog') return []
   if (productSpecOn.value) {
     const spec = productSpecText(row)
     if (spec) {
       const lab = String(productSpecLabel.value || '').trim()
       const text = lab && lab.length <= 4 ? `${lab} ${spec}` : spec
-      out.push({
-        key: 'productSpec',
-        text: text.length > 18 ? `${text.slice(0, 18)}…` : text,
-      })
+      push('productSpec', text)
     }
   }
   for (const f of cardPreviewFields.value) {
@@ -404,10 +435,7 @@ function cardShortTags(row) {
     if (!v || v === '—') continue
     const lab = String(f.label || '').trim()
     const raw = lab && lab.length <= 4 ? `${lab} ${v}` : v
-    out.push({
-      key: f.key,
-      text: raw.length > 18 ? `${raw.slice(0, 18)}…` : raw,
-    })
+    push(f.key, raw)
   }
   return out.slice(0, budget)
 }
@@ -537,6 +565,24 @@ function primarySignalOf(row) {
     if (Number.isFinite(n)) bits.push(n <= 0 ? '已满' : `余座 ${n}`)
     if (bits.length) return bits.join(' · ')
     return categoryTextOf(row) || ''
+  }
+  /* 交易：档口看价；排片看余座/场次 */
+  if (tradeSurface.value === 'menuboard' && authorFieldIsMoney.value) {
+    if (flashOn.value && row.promoActive) {
+      const promo = Number(row.promoPrice)
+      if (Number.isFinite(promo)) return `¥${promo.toFixed(2)}`
+    }
+    const n = Number(row.author)
+    if (Number.isFinite(n)) return `¥${n.toFixed(2)}`
+    const raw = formatAuthor(row.author)
+    return raw && raw !== '—' ? raw : ''
+  }
+  if (tradeSurface.value === 'showtime') {
+    const n = Number(row.stock)
+    if (Number.isFinite(n)) return n <= 0 ? '已满座' : `余座 ${n}`
+    const when = String(row.startAt || row.showAt || row.schedule || '').trim()
+    if (when) return when.length > 16 ? when.slice(0, 16) : when
+    return categoryTextOf(row) || '选座购票'
   }
   /* 跟进三档：看板看阶段、档案看状态、挂牌看价签（单位取行级 priceUnit） */
   if (followSurface.value === 'pipeline') {

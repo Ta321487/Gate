@@ -95,3 +95,4 @@
 | 2026-10-22 | 大线 #1：跟进观感收口——priceYuan/priceUnit 多档、followStageTone、三档 CSS；下一报修 |
 | 2026-10-22 | 大线 #1：报修观感首刀已齐（ticketfeed/faultboard）；下一审批 |
 | 2026-10-22 | 大线 #1：审批观感首刀已齐（typelist/inboxsteps）；九组观感首刀齐，下一软皮短签再磨 |
+| 2026-10-22 | 大线 #1：交易再磨——menuboard/showtime + 列表短签芯片接线；下一借用详情文案 |
