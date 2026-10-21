@@ -213,7 +213,8 @@ class StudentFacingCopyTests(unittest.TestCase):
             base = Path(td) / "sk_root" / "baseline" / "frontend" / "src" / "views"
             base.mkdir(parents=True)
             (base / "ESignMine.vue").write_text(
-                '<p class="lead">{{ eSignLead }}</p>\n',
+                '<p class="lead">{{ eSignLead }}</p>\n'
+                "/** §3：开题挂了才出；软皮注记 */\n",
                 encoding="utf-8",
             )
             with patch(
@@ -222,7 +223,12 @@ class StudentFacingCopyTests(unittest.TestCase):
             ):
                 written = refresh_polluted_vue_from_baseline(ws)
             self.assertEqual(written, ["frontend/src/views/ESignMine.vue"])
-            self.assertNotIn("非 CA", dirty.read_text(encoding="utf-8"))
+            out = dirty.read_text(encoding="utf-8")
+            self.assertNotIn("非 CA", out)
+            # 回拷基线不得把工厂注记注释带进学生包
+            self.assertNotIn("§3", out)
+            self.assertNotIn("开题", out)
+            self.assertNotIn("软皮", out)
 
     def test_refresh_polluted_vue_replaces_demo_wording(self) -> None:
         """工作区「演示密码」脏、骨架已净 → 清洗覆写，不必重 bake。"""
@@ -260,6 +266,109 @@ class StudentFacingCopyTests(unittest.TestCase):
             scrub_factory_ui_text("演示密码，至少 4 位", fallback="支付密码"),
             "支付密码，至少 4 位。",
         )
+
+    def test_scrub_vue_script_clears_mock_pay_literal(self) -> None:
+        """脚本字面量「模拟支付」须洗掉，不能 lit=body 原样留下。"""
+        from app.bake.domain_schema import scrub_vue_source_student_copy, text_has_factory_ui_forbidden
+
+        src = (
+            "<template><div/></template>\n"
+            "<script setup>\n"
+            "const noticeText = '下单后可在「我的订单」查看进度。支付为系统内模拟支付。'\n"
+            "</script>\n"
+        )
+        out = scrub_vue_source_student_copy(src)
+        self.assertNotIn("模拟支付", out)
+        self.assertFalse(text_has_factory_ui_forbidden(out), msg=out)
+        self.assertIn("我的订单", out)
+
+    def test_refresh_js_never_overwrites_app_delivered(self) -> None:
+        """appDelivered 是 bake 产物；禁词误判时也不得用骨架空壳盖掉。"""
+        import tempfile
+        from unittest.mock import patch
+
+        from app.bake.domain_schema import refresh_polluted_js_from_baseline
+
+        baked = (
+            "export const APP_DELIVERED = {\n"
+            "  title: '方木健身用品电商平台',\n"
+            "  domain: 'DOM-SHOP',\n"
+            "  flavor: 'fitness',\n"
+            "  schema: { labels: { appName: '方木健身', stallLead: '订单与资产旁路入口' } },\n"
+            "}\n"
+        )
+        empty_skel = (
+            "export const APP_DELIVERED = {\n"
+            "  title: '',\n"
+            "  domain: '',\n"
+            "  flavor: 'generic',\n"
+            "  schema: { labels: { appName: '' } },\n"
+            "}\n"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td)
+            fe = ws / "frontend" / "src"
+            fe.mkdir(parents=True)
+            ad = fe / "appDelivered.js"
+            ad.write_text(baked, encoding="utf-8")
+            base = Path(td) / "sk_root" / "baseline" / "frontend" / "src"
+            base.mkdir(parents=True)
+            (base / "appDelivered.js").write_text(empty_skel, encoding="utf-8")
+            with patch(
+                "app.core.config.get_settings",
+                return_value=type("S", (), {"skeletons_dir": Path(td) / "sk_root"})(),
+            ):
+                written = refresh_polluted_js_from_baseline(ws)
+            self.assertNotIn("frontend/src/appDelivered.js", written)
+            out = ad.read_text(encoding="utf-8")
+            self.assertIn("方木健身用品电商平台", out)
+            self.assertIn("DOM-SHOP", out)
+            self.assertNotEqual(out, empty_skel)
+
+    def test_refresh_js_clears_bypass_lead_in_portal_shell_nav(self) -> None:
+        """p3copy 扫 utils JS：旁路导语必须被清洗（不能只 scrub Vue）。"""
+        import tempfile
+        from unittest.mock import patch
+
+        from app.bake.domain_schema import refresh_polluted_js_from_baseline
+        from app.bake.gates.evaluate import _student_copy_hits
+
+        dirty = (
+            "export function accountFaceCopy(face) {\n"
+            "  const table = {\n"
+            "    stall: { title: '我的账户', lead: '订单与资产旁路入口，以及上方外观设置。' },\n"
+            "  }\n"
+            "  return table[face]\n"
+            "}\n"
+        )
+        clean = (
+            "export function accountFaceCopy(face) {\n"
+            "  const table = {\n"
+            "    stall: { title: '我的账户', lead: '收藏、地址和优惠相关入口都在这里。' },\n"
+            "  }\n"
+            "  return table[face]\n"
+            "}\n"
+        )
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td)
+            js = ws / "frontend" / "src" / "utils" / "portalShellNav.js"
+            js.parent.mkdir(parents=True)
+            js.write_text(dirty, encoding="utf-8")
+            base = Path(td) / "sk_root" / "baseline" / "frontend" / "src" / "utils"
+            base.mkdir(parents=True)
+            (base / "portalShellNav.js").write_text(clean, encoding="utf-8")
+            self.assertTrue(
+                _student_copy_hits(ws, {"schema": {}}),
+                "precondition: dirty js must hit p3copy",
+            )
+            with patch(
+                "app.core.config.get_settings",
+                return_value=type("S", (), {"skeletons_dir": Path(td) / "sk_root"})(),
+            ):
+                written = refresh_polluted_js_from_baseline(ws)
+            self.assertEqual(written, ["frontend/src/utils/portalShellNav.js"])
+            self.assertEqual(_student_copy_hits(ws, {"schema": {}}), [])
+            self.assertNotIn("旁路", js.read_text(encoding="utf-8"))
 
     def test_write_schema_artifacts_syncs_public_copy(self) -> None:
         """根 schema 洗净时必须同步 public 副本，否则 p3copy 仍红。"""
@@ -351,6 +460,10 @@ class StudentFacingCopyTests(unittest.TestCase):
                     return_value=[],
                 ),
                 patch(
+                    "app.services.student_copy.scrub_factory_notes_in_workspace",
+                    return_value=["fe:utils/portalShellNav.js"],
+                ) as notes_mock,
+                patch(
                     "app.services.student_copy.project_svc.touch_json_fields",
                     return_value=None,
                 ),
@@ -372,6 +485,12 @@ class StudentFacingCopyTests(unittest.TestCase):
                             "detail": {"hits": []},
                         },
                         "p3s": {"ok": True, "label": "语义", "desc": "ok", "detail": {}},
+                        "p3lean": {
+                            "ok": True,
+                            "label": "学生包瘦身",
+                            "desc": "ok",
+                            "detail": {},
+                        },
                         "overall": True,
                         "zip_allowed": True,
                         "checklist": [],
@@ -383,7 +502,235 @@ class StudentFacingCopyTests(unittest.TestCase):
             disk = json.loads((ws / "domain.schema.json").read_text(encoding="utf-8"))
             self.assertNotIn("双通道", disk["labels"]["guestbookPageLead"])
             self.assertTrue(out["copy_ok"])
+            self.assertTrue(out["lean_ok"])
+            notes_mock.assert_called_once_with(ws)
+            self.assertIn("fe:utils/portalShellNav.js", out["notes_scrubbed"])
             self.assertFalse(proj.zip_ready)
+
+    def test_scrub_project_prunes_side_rail_when_not_marketplace(self) -> None:
+        """非市集包清洗须裁掉 PortalSideRail，否则 p3lean 壳件红。"""
+        import json
+        import tempfile
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from app.bake.pack_prune import scan_shell_chrome_leaks
+        from app.services.student_copy import scrub_project_student_copy
+
+        schema = {
+            "version": 1,
+            "title": "校医院挂号",
+            "capabilities": [],
+            "labels": {"appName": "校医院"},
+            "menus": {"admin": [], "portal": []},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td)
+            (ws / "domain.schema.json").write_text(
+                json.dumps(schema, ensure_ascii=False), encoding="utf-8"
+            )
+            (ws / "spec.json").write_text(
+                json.dumps(
+                    {
+                        "domain": "DOM-HOSPITAL",
+                        "title": "校医院挂号",
+                        "shell_nav_style": "storefront",
+                        "schema": schema,
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            fe = ws / "frontend" / "src"
+            (fe / "components").mkdir(parents=True)
+            (fe / "layouts").mkdir(parents=True)
+            (fe / "components" / "PortalSideRail.vue").write_text(
+                "<template><aside/></template>\n", encoding="utf-8"
+            )
+            (fe / "layouts" / "PortalLayout.vue").write_text(
+                "<template><PortalSideRail /></template>\n"
+                "<script setup>\n"
+                "import PortalSideRail from '../components/PortalSideRail.vue'\n"
+                "</script>\n",
+                encoding="utf-8",
+            )
+            self.assertTrue(
+                scan_shell_chrome_leaks(
+                    ws, {"shell_nav_style": "storefront", "domain": "DOM-HOSPITAL"}
+                )
+            )
+
+            proj = SimpleNamespace(
+                spec={
+                    "title": "校医院挂号",
+                    "domain": "DOM-HOSPITAL",
+                    "shell_nav_style": "storefront",
+                    "schema": schema,
+                },
+                gates={},
+                checklist=[],
+                zip_path=None,
+                zip_ready=False,
+                workspace_path=str(ws),
+                status="generated",
+                delivery_mark="none",
+            )
+
+            with (
+                patch(
+                    "app.services.student_copy.project_svc.workspace_or_reason",
+                    return_value=(ws, None),
+                ),
+                patch(
+                    "app.services.student_copy.emit_schema_to_workspace",
+                    return_value=["domain.schema.json"],
+                ),
+                patch(
+                    "app.services.student_copy.refresh_polluted_vue_from_baseline",
+                    return_value=[],
+                ),
+                patch(
+                    "app.services.student_copy.project_svc.touch_json_fields",
+                    return_value=None,
+                ),
+                patch(
+                    "app.services.student_copy.project_svc.gates_allow_delivery",
+                    return_value=True,
+                ),
+                patch(
+                    "app.services.student_copy.project_svc.delivery_block_reason",
+                    return_value=None,
+                ),
+                patch(
+                    "app.services.student_copy.evaluate_domain_gates",
+                    side_effect=lambda _ws, _spec: {
+                        "p3copy": {"ok": True, "desc": "ok", "detail": {"hits": []}},
+                        "p3s": {"ok": True, "desc": "ok", "detail": {}},
+                        "p3lean": {
+                            "ok": not scan_shell_chrome_leaks(
+                                _ws, {"shell_nav_style": "storefront"}
+                            ),
+                            "desc": "lean",
+                            "detail": {
+                                "chrome": scan_shell_chrome_leaks(
+                                    _ws, {"shell_nav_style": "storefront"}
+                                )
+                            },
+                        },
+                        "overall": True,
+                        "zip_allowed": True,
+                        "checklist": [],
+                    },
+                ),
+            ):
+                out = scrub_project_student_copy(proj)
+
+            self.assertFalse(
+                (fe / "components" / "PortalSideRail.vue").is_file()
+            )
+            self.assertTrue(out["lean_ok"])
+            self.assertTrue(out.get("chrome_pruned"))
+            layout = (fe / "layouts" / "PortalLayout.vue").read_text(encoding="utf-8")
+            self.assertNotIn("PortalSideRail", layout)
+
+    def test_scrub_project_clears_factory_notes_in_js_css(self) -> None:
+        """清洗文案必须抹 js/css 工厂注记，不能只动 Vue。"""
+        import json
+        import tempfile
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from app.bake.pack_prune import scan_factory_notes_leaks
+        from app.services.student_copy import scrub_project_student_copy
+
+        schema = {
+            "version": 1,
+            "title": "测试店",
+            "capabilities": [],
+            "labels": {"appName": "测试店"},
+            "menus": {"admin": [], "portal": []},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            ws = Path(td)
+            (ws / "domain.schema.json").write_text(
+                json.dumps(schema, ensure_ascii=False), encoding="utf-8"
+            )
+            fe = ws / "frontend" / "src"
+            (fe / "utils").mkdir(parents=True)
+            (fe / "styles").mkdir(parents=True)
+            (fe / "utils" / "portalShellNav.js").write_text(
+                "/** 开题 schemaMenus；§3 摆法 */\nexport const X = 1\n",
+                encoding="utf-8",
+            )
+            (fe / "styles" / "layout.css").write_text(
+                "/* 顶栏只放 §3 主路径；软皮 */\n.a{}\n",
+                encoding="utf-8",
+            )
+            (fe / "utils" / "notify.js").write_text(
+                "/** 学生可见，无工厂腔。 */\nexport function n(){}\n",
+                encoding="utf-8",
+            )
+            self.assertTrue(scan_factory_notes_leaks(ws))
+
+            proj = SimpleNamespace(
+                spec={"title": "测试店", "domain": "DOM-GENERIC", "schema": schema},
+                gates={},
+                checklist=[],
+                zip_path=None,
+                zip_ready=False,
+                workspace_path=str(ws),
+                status="generated",
+                delivery_mark="none",
+            )
+
+            with (
+                patch(
+                    "app.services.student_copy.project_svc.workspace_or_reason",
+                    return_value=(ws, None),
+                ),
+                patch(
+                    "app.services.student_copy.emit_schema_to_workspace",
+                    return_value=["domain.schema.json"],
+                ),
+                patch(
+                    "app.services.student_copy.refresh_polluted_vue_from_baseline",
+                    return_value=[],
+                ),
+                patch(
+                    "app.services.student_copy.project_svc.touch_json_fields",
+                    return_value=None,
+                ),
+                patch(
+                    "app.services.student_copy.project_svc.gates_allow_delivery",
+                    return_value=True,
+                ),
+                patch(
+                    "app.services.student_copy.project_svc.delivery_block_reason",
+                    return_value=None,
+                ),
+                patch(
+                    "app.services.student_copy.evaluate_domain_gates",
+                    side_effect=lambda _ws, _spec: {
+                        "p3copy": {"ok": True, "desc": "ok", "detail": {"hits": []}},
+                        "p3s": {"ok": True, "desc": "ok", "detail": {}},
+                        "p3lean": {
+                            "ok": not scan_factory_notes_leaks(_ws),
+                            "desc": "lean",
+                            "detail": {"factory_notes": scan_factory_notes_leaks(_ws)},
+                        },
+                        "overall": True,
+                        "zip_allowed": True,
+                        "checklist": [],
+                    },
+                ),
+            ):
+                out = scrub_project_student_copy(proj)
+
+            self.assertEqual(scan_factory_notes_leaks(ws), [])
+            self.assertTrue(out["lean_ok"])
+            nav = (fe / "utils" / "portalShellNav.js").read_text(encoding="utf-8")
+            self.assertNotIn("开题", nav)
+            self.assertIn("export const X = 1", nav)
 
 
 if __name__ == "__main__":

@@ -12,7 +12,12 @@ from app.bake.pack_prune import (
     _strip_type_usages,
     evaluate_pack_lean_gate,
     prune_student_pack,
+    scan_factory_notes_leaks,
     scan_forbidden_island_files,
+    prune_shell_chrome_in_workspace,
+    scrub_factory_notes_from_source,
+    scrub_factory_notes_in_workspace,
+    scan_shell_chrome_leaks,
 )
 
 
@@ -134,6 +139,21 @@ class PackPruneTests(unittest.TestCase):
         self.assertIn("components/ArchiveFieldControl.vue", got)
         self.assertIn("utils/authEntry.js", got)
 
+    def test_fe_import_rels_follows_sfc_src_siblings(self) -> None:
+        """ArchiveBrowse.vue 拆出 setup.js/css 后，prune 须跟 src= 才能扫到组件 import。"""
+        got = _fe_import_rels(
+            '<script setup src="./ArchiveBrowse.setup.js"></script>\n'
+            '<style scoped src="./ArchiveBrowse.css"></style>\n',
+            from_rel="views/user/ArchiveBrowse.vue",
+        )
+        self.assertIn("views/user/ArchiveBrowse.setup.js", got)
+        self.assertIn("views/user/ArchiveBrowse.css", got)
+        nested = _fe_import_rels(
+            "import EmptyHint from '../../components/EmptyHint.vue'\n",
+            from_rel="views/user/ArchiveBrowse.setup.js",
+        )
+        self.assertIn("components/EmptyHint.vue", nested)
+
     def test_strip_coupon_and_roster_ternary(self) -> None:
         loyalty = """
     public static Map<String, Object> matchCoupon(String username, String code, double amountYuan) {
@@ -204,6 +224,56 @@ class PackPruneTests(unittest.TestCase):
         self.assertIn("int n = 0", out6)
         self.assertIn("int m = 0", out6)
         self.assertNotIn("= null", out6)
+
+        # 预约+未挂寄养：if (enabled) 岛路径 else 主路径 —— else 体必须留下
+        boarding = """
+        Map<String, Object> slot;
+        if (BoardingStore.enabled()) {
+            BoardingStore.assertStay(early);
+            if (slotId > 0) {
+                Map<String, Object> picked = getSlot(slotId);
+                if (picked != null) stayItemId = 1L;
+            }
+            slotId = BoardingStore.holdFrom(early, stayItemId);
+            rangeHeld = true;
+            slot = getSlot(slotId);
+        } else {
+            slot = getSlot(slotId);
+        }
+        if (slot == null) throw new IllegalArgumentException("时段不存在");
+        if (isPastSlot(slot)) {
+            if (rangeHeld) BoardingStore.releaseRange(stayItemId, stayFromHeld, stayToHeld);
+            throw new IllegalStateException("该时段已过，不可预约");
+        }
+        } catch (RuntimeException e) {
+            if (rangeHeld) BoardingStore.releaseRange(stayItemId, stayFromHeld, stayToHeld);
+            else db().update(
+                    "UPDATE slot SET booked=GREATEST(booked-1,0) WHERE id=?", slotId);
+            throw e;
+        }
+"""
+        out7 = _strip_type_usages(boarding, "BoardingStore")
+        self.assertNotIn("BoardingStore", out7)
+        self.assertIn("slot = getSlot(slotId)", out7)
+        self.assertIn('throw new IllegalArgumentException("时段不存在")', out7)
+        self.assertNotRegex(out7, r"\bif\s*\([^)]*\)\s*null\s*;")
+        self.assertNotIn("if (false)", out7)
+        # 悬空 else 禁止；回滚名额须在 !(rangeHeld) 下保留
+        self.assertNotRegex(out7, r"(?m)^\s*else\b")
+        self.assertIn("UPDATE slot SET booked=GREATEST(booked-1,0)", out7)
+        self.assertIn("if (!(rangeHeld))", out7)
+
+        # releaseStay 布尔谓词：if (!releaseStay) 回滚名额 —— 抹成 false 后须留下回滚
+        release_stay = """
+        if (!BoardingStore.releaseStay(RESV, SLOT, resvId)) {
+            db().update("UPDATE slot SET booked=GREATEST(booked-1,0) WHERE id=?", slotId);
+        }
+"""
+        out8 = _strip_type_usages(release_stay, "BoardingStore")
+        self.assertNotIn("BoardingStore", out8)
+        self.assertNotIn("if (!null)", out8)
+        self.assertNotIn("if (null)", out8)
+        self.assertIn("UPDATE slot SET booked=GREATEST(booked-1,0)", out8)
 
     def test_exam_domain_keeps_exam_store(self) -> None:
         if not BASELINE_JAVA.is_dir():
@@ -616,6 +686,183 @@ class PackPruneTests(unittest.TestCase):
             self.assertNotIn("TicketsAdmin.vue", rt)
             self.assertEqual(scan_forbidden_island_files(dest, spec), [])
             self.assertTrue(evaluate_pack_lean_gate(dest, spec)["ok"])
+
+    def test_scrub_factory_notes_keeps_code_drops_factory_comments(self) -> None:
+        src = (
+            "// 开题挂了才出\n"
+            "export const X = 1; // 正常说明\n"
+            "const u = 'http://example.com/path'; // keep url\n"
+            "/* §3 工厂注记 */\n"
+            "const y = 2;\n"
+            "<!-- bake 注入 -->\n"
+            "<div/>\n"
+        )
+        out = scrub_factory_notes_from_source(src)
+        self.assertNotIn("开题", out)
+        self.assertNotIn("§3", out)
+        self.assertNotIn("bake", out)
+        self.assertIn("export const X = 1;", out)
+        self.assertIn("// 正常说明", out)
+        self.assertIn("http://example.com/path", out)
+        self.assertIn("const y = 2;", out)
+
+    def test_prune_shell_chrome_drops_side_rail_for_storefront(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            fe = dest / "frontend" / "src"
+            (fe / "components").mkdir(parents=True)
+            (fe / "layouts").mkdir(parents=True)
+            (fe / "components" / "PortalSideRail.vue").write_text(
+                "<template><aside/></template>\n", encoding="utf-8"
+            )
+            (fe / "layouts" / "PortalLayout.vue").write_text(
+                "import PortalSideRail from '../components/PortalSideRail.vue'\n",
+                encoding="utf-8",
+            )
+            spec = {"domain": "DOM-HOSPITAL", "shell_nav_style": "storefront"}
+            self.assertTrue(scan_shell_chrome_leaks(dest, spec))
+            deleted = prune_shell_chrome_in_workspace(dest, spec)
+            self.assertIn("vue:components/PortalSideRail.vue", deleted)
+            self.assertFalse((fe / "components" / "PortalSideRail.vue").is_file())
+            self.assertEqual(scan_shell_chrome_leaks(dest, spec), [])
+
+    def test_scrub_factory_notes_in_workspace_clears_listed_leaks(self) -> None:
+        """门禁曾列的 js/css/vue 注记路径，工作区一键抹后须空。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            fe = dest / "frontend" / "src"
+            for rel in (
+                "main.js",
+                "router/index.js",
+                "styles/accountFace.css",
+                "styles/layout.css",
+                "utils/notify.js",
+                "utils/portalShellNav.js",
+                "views/Profile.vue",
+            ):
+                path = fe / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(
+                    f"/* 开题 · §3 · 软皮 · 工厂腔 */\nexport const _{rel.replace('/', '_').replace('.', '_')} = 1\n",
+                    encoding="utf-8",
+                )
+            self.assertGreaterEqual(len(scan_factory_notes_leaks(dest)), 7)
+            touched = scrub_factory_notes_in_workspace(dest)
+            self.assertGreaterEqual(len(touched), 7)
+            self.assertEqual(scan_factory_notes_leaks(dest), [])
+
+    def test_prune_drops_side_rail_when_not_marketplace(self) -> None:
+        if not BASELINE_FE.is_dir():
+            self.skipTest("baseline skeleton missing")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            fe_dst = dest / "frontend/src"
+            (fe_dst / "components").mkdir(parents=True)
+            (fe_dst / "layouts").mkdir(parents=True)
+            (fe_dst / "router").mkdir(parents=True)
+            rail_src = BASELINE_FE / "components/PortalSideRail.vue"
+            layout_src = BASELINE_FE / "layouts/PortalLayout.vue"
+            if not rail_src.is_file() or not layout_src.is_file():
+                self.skipTest("PortalSideRail/PortalLayout missing")
+            shutil.copy2(rail_src, fe_dst / "components/PortalSideRail.vue")
+            shutil.copy2(layout_src, fe_dst / "layouts/PortalLayout.vue")
+            (fe_dst / "router/index.js").write_text(
+                "export default [{ path: '/', component: () => "
+                "import('../layouts/PortalLayout.vue') }]\n",
+                encoding="utf-8",
+            )
+            util = fe_dst / "utils/portalShellNav.js"
+            util.parent.mkdir(parents=True, exist_ok=True)
+            util.write_text(
+                "/** 开题 schemaMenus；§3 摆法 */\n"
+                "export function classifyPortalMenus() { return {}; }\n",
+                encoding="utf-8",
+            )
+            spec = {
+                "domain": "DOM-LIBRARY",
+                "shell_nav_style": "storefront",
+                "capabilities": ["archive", "ticket_flow", "content"],
+            }
+            stats = prune_student_pack(dest, spec)
+            self.assertFalse((fe_dst / "components/PortalSideRail.vue").is_file())
+            layout = (fe_dst / "layouts/PortalLayout.vue").read_text(encoding="utf-8")
+            self.assertNotIn("PortalSideRail", layout)
+            util_txt = util.read_text(encoding="utf-8")
+            self.assertNotIn("开题", util_txt)
+            self.assertNotIn("§3", util_txt)
+            self.assertIn("classifyPortalMenus", util_txt)
+            self.assertGreaterEqual(stats.get("notes_scrubbed_count", 0), 1)
+
+    def test_zip_final_confirm_fails_on_factory_notes_or_rail(self) -> None:
+        """p3lean：注记未抹或误带 SideRail → ZIP 不得过。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            fe = dest / "frontend/src"
+            (fe / "utils").mkdir(parents=True)
+            (fe / "components").mkdir(parents=True)
+            (fe / "router").mkdir(parents=True)
+            (fe / "router/index.js").write_text("export default []\n", encoding="utf-8")
+            dirty = fe / "utils/portalShellNav.js"
+            dirty.write_text(
+                "/** 开题 schemaMenus §3 */\nexport const X = 1\n",
+                encoding="utf-8",
+            )
+            (fe / "components/PortalSideRail.vue").write_text(
+                "<template><aside/></template>\n",
+                encoding="utf-8",
+            )
+            spec = {
+                "domain": "DOM-LIBRARY",
+                "shell_nav_style": "storefront",
+                "capabilities": ["archive", "content"],
+            }
+            # 未跑 prune：lean 应红
+            lean = evaluate_pack_lean_gate(dest, spec)
+            self.assertFalse(lean["ok"])
+            detail = lean.get("detail") or {}
+            self.assertTrue(detail.get("factory_notes") or detail.get("chrome"))
+            self.assertTrue(scan_factory_notes_leaks(dest))
+
+            # prune 后应绿
+            prune_student_pack(dest, spec)
+            lean2 = evaluate_pack_lean_gate(dest, spec)
+            self.assertTrue(lean2["ok"], lean2.get("desc"))
+            self.assertFalse((fe / "components/PortalSideRail.vue").is_file())
+            self.assertEqual(scan_factory_notes_leaks(dest), [])
+
+    def test_prune_keeps_side_rail_for_marketplace(self) -> None:
+        if not BASELINE_FE.is_dir():
+            self.skipTest("baseline skeleton missing")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            fe_dst = dest / "frontend/src"
+            (fe_dst / "components").mkdir(parents=True)
+            (fe_dst / "layouts").mkdir(parents=True)
+            (fe_dst / "router").mkdir(parents=True)
+            rail_src = BASELINE_FE / "components/PortalSideRail.vue"
+            layout_src = BASELINE_FE / "layouts/PortalLayout.vue"
+            if not rail_src.is_file() or not layout_src.is_file():
+                self.skipTest("PortalSideRail/PortalLayout missing")
+            shutil.copy2(rail_src, fe_dst / "components/PortalSideRail.vue")
+            shutil.copy2(layout_src, fe_dst / "layouts/PortalLayout.vue")
+            (fe_dst / "router/index.js").write_text(
+                "export default [{ path: '/', component: () => "
+                "import('../layouts/PortalLayout.vue') }]\n",
+                encoding="utf-8",
+            )
+            prune_student_pack(
+                dest,
+                {
+                    "domain": "DOM-SHOP",
+                    "shell_nav_style": "marketplace",
+                    "capabilities": ["archive", "order_lines"],
+                },
+            )
+            self.assertTrue((fe_dst / "components/PortalSideRail.vue").is_file())
+            self.assertIn(
+                "PortalSideRail",
+                (fe_dst / "layouts/PortalLayout.vue").read_text(encoding="utf-8"),
+            )
 
 
 if __name__ == "__main__":

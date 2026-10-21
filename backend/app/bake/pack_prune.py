@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.services.project_disk import remove_tree_reliable
+
 
 @dataclass(frozen=True)
 class Island:
@@ -785,18 +787,9 @@ def _fe_src(dest: Path) -> Path | None:
 
 def _delete_rel(root: Path, rel: str, deleted: list[str]) -> None:
     path = root / rel.replace("\\", "/")
-    if path.is_file():
-        path.unlink()
-        deleted.append(str(path.relative_to(root.parent.parent.parent) if False else path))
-        deleted[-1] = rel
-    elif path.is_dir():
-        for child in sorted(path.rglob("*"), reverse=True):
-            if child.is_file():
-                child.unlink()
-        try:
-            path.rmdir()
-        except OSError:
-            pass
+    if path.is_file() or path.is_dir():
+        # 与整树删除同口径：Windows 短锁重试（project_disk.remove_tree_reliable）
+        remove_tree_reliable(path)
         deleted.append(rel)
 
 
@@ -835,7 +828,12 @@ def _replace_type_calls(text: str, type_name: str, method: str, replacement: str
 
 
 def _remove_balanced_if_false(text: str) -> str:
-    """删掉 if (false …) 整块；else { } 整删；else if 降级为 if。"""
+    """删掉 if (false …) 整块；else { body } 保留 body；else if 降级为 if。
+
+    未挂岛时 Store.enabled() → false，常见形态是
+    ``if (false) { 岛路径 } else { 主路径 }``——必须留下 else 体，
+    否则会留下未赋值局部变量（如 ``Map slot;``）和后续「不是语句」。
+    """
     # if (false) / if (false && …) / if(false||…)
     pattern = re.compile(r"\bif\s*\(\s*false\b")
     while True:
@@ -863,14 +861,108 @@ def _remove_balanced_if_false(text: str) -> str:
         else_if = re.match(r"\s*else\s+(if\b)", rest2)
         if else_if:
             j += else_if.start(1)
-        else:
-            else_m = re.match(r"\s*else\s*\{", rest2)
-            if else_m:
-                end_else = _skip_balanced(rest2, else_m.end() - 1, "{", "}")
-                if end_else < 0:
-                    break
-                j += end_else
+            text = text[: m.start()] + text[j:]
+            continue
+        else_m = re.match(r"\s*else\s*\{", rest2)
+        if else_m:
+            end_else = _skip_balanced(rest2, else_m.end() - 1, "{", "}")
+            if end_else < 0:
+                break
+            body = rest2[else_m.end() : end_else - 1]
+            text = text[: m.start()] + body + text[j + end_else :]
+            continue
         text = text[: m.start()] + text[j:]
+    return text
+
+
+def _skip_stmt_end(text: str, start: int) -> int:
+    """从语句起点扫到分号后（支持嵌套 () / {}），失败返回 -1。"""
+    i = start
+    n = len(text)
+    while i < n and text[i] in " \t\n\r":
+        i += 1
+    if i >= n:
+        return -1
+    depth_paren = depth_brace = 0
+    while i < n:
+        ch = text[i]
+        if ch == "(":
+            depth_paren += 1
+        elif ch == ")":
+            depth_paren -= 1
+        elif ch == "{":
+            depth_brace += 1
+        elif ch == "}":
+            depth_brace -= 1
+        elif ch == ";" and depth_paren == 0 and depth_brace == 0:
+            return i + 1
+        i += 1
+    return -1
+
+
+def _remove_if_null_stmts(text: str) -> str:
+    """处理 ``if (cond) null;``（void 调用抹成 null）。
+
+    - 无 else：整句删（避免 javac「不是语句」）
+    - ``else if``：升格为 if
+    - ``else { body }`` / ``else stmt;``：变成 ``if (!(cond)) …``（寄养裁掉后
+      ``if (rangeHeld) release; else 回滚名额`` 必须留下回滚，不能剩悬空 else）
+    """
+    pattern = re.compile(r"\bif\s*\(")
+    pos = 0
+    while True:
+        m = pattern.search(text, pos)
+        if not m:
+            break
+        open_paren = m.end() - 1
+        after_cond = _skip_balanced(text, open_paren, "(", ")")
+        if after_cond < 0:
+            pos = m.end()
+            continue
+        null_m = re.match(r"\s*null\s*;", text[after_cond:])
+        if not null_m:
+            pos = after_cond
+            continue
+        cond = text[open_paren + 1 : after_cond - 1].strip()
+        after_null = after_cond + null_m.end()
+        rest = text[after_null:]
+
+        else_if = re.match(r"\s*else\s+(if\b)", rest)
+        if else_if:
+            j = after_null + else_if.start(1)
+            text = text[: m.start()] + text[j:]
+            pos = m.start()
+            continue
+
+        else_brace = re.match(r"\s*else\s*\{", rest)
+        if else_brace:
+            end_else = _skip_balanced(rest, else_brace.end() - 1, "{", "}")
+            if end_else < 0:
+                pos = after_null
+                continue
+            body = rest[else_brace.end() : end_else - 1]
+            repl = f"if (!({cond})) {{{body}}}"
+            text = text[: m.start()] + repl + text[after_null + end_else :]
+            pos = m.start() + len(repl)
+            continue
+
+        else_kw = re.match(r"\s*else\b", rest)
+        if else_kw:
+            stmt_start = after_null + else_kw.end()
+            stmt_end = _skip_stmt_end(text, stmt_start)
+            if stmt_end < 0:
+                pos = after_null
+                continue
+            while stmt_start < len(text) and text[stmt_start] in " \t\n\r":
+                stmt_start += 1
+            stmt = text[stmt_start:stmt_end].strip()
+            repl = f"if (!({cond})) {stmt}"
+            text = text[: m.start()] + repl + text[stmt_end:]
+            pos = m.start() + len(repl)
+            continue
+
+        text = text[: m.start()] + text[after_null:]
+        pos = m.start()
     return text
 
 
@@ -974,6 +1066,9 @@ def _strip_type_usages(text: str, type_name: str) -> str:
     text = re.sub(rf"{fqn}\.(?:userRole|MODE)\b(?!\s*\()", "null", text)
     text = _replace_type_calls(text, type_name, "isBox", "false")
     text = _replace_type_calls(text, type_name, "pityText", '""')
+    # 字符串辅助：抹成空串，避免 String x = null; x.isBlank() 运行期 NPE
+    for meth in ("careIds", "careLabels", "stayLabel"):
+        text = _replace_type_calls(text, type_name, meth, '""')
     for meth in (
         "drawAll",
         "listOpenShows",
@@ -1003,6 +1098,14 @@ def _strip_type_usages(text: str, type_name: str) -> str:
         "matchCoupon",
     ):
         text = _replace_type_calls(text, type_name, meth, "null")
+    # 布尔谓词：抹成 false，避免 if (!null) → javac「一元运算符 ! 的操作数类型错误」
+    for meth in (
+        "releaseStay",
+        "isStayReservation",
+        "holdActive",
+        "hasHold",
+    ):
+        text = _replace_type_calls(text, type_name, meth, "false")
 
     # WeighSaleStore.priceLine(...) 赋值 → item
     assign_pl = re.compile(
@@ -1095,11 +1198,17 @@ def _strip_type_usages(text: str, type_name: str) -> str:
         text,
     )
     text = re.sub(r"\bboolean\s+(\w+)\s*=\s*null\b", r"boolean \1 = false", text)
-    # if (false) Type.foo(); → if (false) null; → 整句删
-    text = re.sub(r"\bif\s*\(\s*false\s*\)\s*null\s*;", "", text)
+    # if (cond) Type.foo(); → if (cond) null; → 整句删（含 rangeHeld / false）
+    text = _remove_if_null_stmts(text)
+    # 条件里残留裸 null（谓词漏网）：!null ≈ 恒真，null ≈ 恒假
+    text = re.sub(r"\bif\s*\(\s*!\s*\(\s*null\s*\)\s*\)", "if (!false)", text)
+    text = re.sub(r"\bif\s*\(\s*!\s*null\s*\)", "if (!false)", text)
+    text = re.sub(r"\bif\s*\(\s*null\s*\)", "if (false)", text)
     text = re.sub(r"\bif\s*\(\s*false\s*\)\s*[^;{\n]+;", "", text)
 
     text = _remove_balanced_if_false(text)
+    # if(false) 体删完后，残留的 if (x) null; 再清一轮
+    text = _remove_if_null_stmts(text)
     text = re.sub(
         r"\bif\s*\(\s*!\s*false\s*\)\s*\{([^{}]*)\}",
         r"\1",
@@ -1196,33 +1305,65 @@ def _scrub_order_cinema_snacks(text: str) -> str:
     return text
 
 
-def _fe_import_rels(text: str) -> set[str]:
-    """收集相对前端 src 的 import 路径（views/components/utils/layouts）。"""
+def _fe_norm_import_path(raw: str, *, from_rel: str | None = None) -> str | None:
+    """把 import / src 路径归一成 fe 下 views|components|utils|layouts 相对路径。"""
+    rel = str(raw or "").replace("\\", "/").strip()
+    if not rel or rel.startswith("http:") or rel.startswith("https:"):
+        return None
+    if rel.startswith("@/"):
+        rel = rel[2:]
+    elif rel.startswith("./") or (
+        from_rel and not rel.startswith("../") and not rel.startswith("/")
+    ):
+        # 同目录旁路：./ArchiveBrowse.setup.js → views/user/ArchiveBrowse.setup.js
+        leaf = rel[2:] if rel.startswith("./") else rel
+        base = Path(from_rel).parent.as_posix() if from_rel else ""
+        rel = f"{base}/{leaf}" if base and base != "." else leaf
+    else:
+        # ../../components/Foo.vue → components/Foo.vue
+        while rel.startswith("../"):
+            rel = rel[3:]
+        if rel.startswith("./"):
+            rel = rel[2:]
+    rel = rel.lstrip("/")
+    if not rel.startswith(("views/", "components/", "utils/", "layouts/")):
+        return None
+    if not rel.endswith((".vue", ".js", ".ts", ".tsx", ".jsx", ".css", ".scss")):
+        if rel.startswith("utils/"):
+            return rel + ".js"
+        # 同时记 vue/js，BFS 只保留真实存在的
+        return rel
+    return rel
+
+
+def _fe_import_rels(text: str, *, from_rel: str | None = None) -> set[str]:
+    """收集相对前端 src 的 import / SFC src= 路径（views/components/utils/layouts）。"""
     out: set[str] = set()
+
+    def _add(raw: str) -> None:
+        norm = _fe_norm_import_path(raw, from_rel=from_rel)
+        if not norm:
+            return
+        if norm.endswith((".vue", ".js", ".ts", ".tsx", ".jsx", ".css", ".scss")):
+            out.add(norm)
+            return
+        # 无后缀：utils 已在 norm 里补 .js；其它补 vue+js 候选
+        out.add(norm + ".vue")
+        out.add(norm + ".js")
+
     for pat in (
-        r"import\(['\"]((?:\.\./|\./|@/)+[^'\"]+)['\"]\)",
-        r"from\s+['\"]((?:\.\./|\./|@/)+[^'\"]+)['\"]",
+        r"import\(['\"]([^'\"]+)['\"]\)",
+        r"from\s+['\"]([^'\"]+)['\"]",
     ):
         for m in re.findall(pat, text):
-            rel = str(m).replace("\\", "/")
-            if rel.startswith("@/"):
-                rel = rel[2:]
-            else:
-                # ../../components/Foo.vue → components/Foo.vue
-                while rel.startswith("../"):
-                    rel = rel[3:]
-                if rel.startswith("./"):
-                    rel = rel[2:]
-            rel = rel.lstrip("/")
-            if rel.startswith(("views/", "components/", "utils/", "layouts/")):
-                out.add(rel)
-                # import '@/utils/foo' 无后缀时补全扩展，避免可达性分析漏网
-                if not rel.endswith((".vue", ".js", ".ts", ".tsx", ".jsx", ".css", ".scss")):
-                    if rel.startswith("utils/"):
-                        out.add(rel + ".js")
-                    else:
-                        out.add(rel + ".vue")
-                        out.add(rel + ".js")
+            _add(m)
+    # <script setup src="./x.js"> / <style scoped src="./x.css">
+    for m in re.findall(
+        r"<(?:script|style)\b[^>]*\bsrc\s*=\s*['\"]([^'\"]+)['\"]",
+        text,
+        flags=re.I,
+    ):
+        _add(m)
     return out
 
 
@@ -1244,12 +1385,13 @@ def _scrub_killed_imports_in_text(text: str, killed: set[str]) -> str:
             text,
         )
     for stem in stems:
-        # <AiAssistantFloat .../> 或 <AiAssistantFloat></AiAssistantFloat>
+        # <AiAssistantFloat .../>（可嵌在 <template> 同行，不要求行首）
         text = re.sub(
-            rf"(?m)^\s*<{re.escape(stem)}\b[^>]*/>\s*\n?",
+            rf"<{re.escape(stem)}\b[^>]*/>\s*",
             "",
             text,
         )
+        # <AiAssistantFloat>...</AiAssistantFloat>
         text = re.sub(
             rf"(?s)<{re.escape(stem)}\b[^>]*>.*?</{re.escape(stem)}\s*>",
             "",
@@ -1314,7 +1456,7 @@ def _sweep_unreachable_frontend(fe: Path) -> list[str]:
             continue
         reachable.add(rel)
         try:
-            deps = _fe_import_rels(path.read_text(encoding="utf-8"))
+            deps = _fe_import_rels(path.read_text(encoding="utf-8"), from_rel=rel)
         except OSError:
             continue
         for d in deps:
@@ -1330,7 +1472,7 @@ def _sweep_unreachable_frontend(fe: Path) -> list[str]:
             rel = p.relative_to(fe).as_posix()
             if rel in reachable or _is_workbench_keep(rel, kind="vue"):
                 continue
-            p.unlink()
+            remove_tree_reliable(p)
             deleted.append(rel)
     return deleted
 
@@ -1533,7 +1675,7 @@ def _prune_invite_codes(
         for rel in _INVITE_JAVA_RELS:
             p = java_root / rel
             if p.is_file():
-                p.unlink()
+                remove_tree_reliable(p)
                 deleted.append(f"java:{rel}")
         for java in java_root.rglob("*.java"):
             raw = java.read_text(encoding="utf-8")
@@ -1549,7 +1691,7 @@ def _prune_invite_codes(
             rel_n = rel.replace("\\", "/")
             p = fe / rel_n
             if p.is_file():
-                p.unlink()
+                remove_tree_reliable(p)
                 deleted.append(f"vue:{rel_n}")
             vue_killed.add(rel_n)
         router = fe / "router" / "index.js"
@@ -1849,7 +1991,7 @@ def _prune_schema_gate(
         for rel in gate.java_files:
             p = java_root / rel
             if p.is_file():
-                p.unlink()
+                remove_tree_reliable(p)
                 deleted.append(f"java:{rel}")
         needles = set(gate.types) | set(gate.router_paths)
         for java in java_root.rglob("*.java"):
@@ -1868,7 +2010,7 @@ def _prune_schema_gate(
             rel_n = rel.replace("\\", "/")
             p = fe / rel_n
             if p.is_file():
-                p.unlink()
+                remove_tree_reliable(p)
                 deleted.append(f"vue:{rel_n}")
             vue_killed.add(rel_n)
         router = fe / "router" / "index.js"
@@ -1944,6 +2086,225 @@ def _prune_schema_gate(
             _scrub_frontend_killed_refs(fe, vue_killed)
 
 
+# 学生包注释禁工厂注记（骨架可留；bake 后抹掉）。代码标识符不在此列。
+_FACTORY_NOTE_MARKERS = re.compile(
+    r"(?:开题|§\s*\d|bake|工厂|AOCI|aoci|能力岛|扫词|软皮|域组|"
+    r"门禁|pack_prune|GROUP_PRIMARY|schemaMenus|毕设工厂|说明书腔|"
+    r"对标站|本期不做|不在本期|DOM-[A-Z]{2,}|\.md\]|"
+    r"domain-group-ui|opening-feature|crosscut-delivery)",
+    re.I,
+)
+
+
+def _comment_is_factory_note(comment: str) -> bool:
+    return bool(_FACTORY_NOTE_MARKERS.search(comment or ""))
+
+
+def scrub_factory_notes_from_source(text: str) -> str:
+    """删除含工厂注记的 //、/* */、<!-- -->；保留其余注释与全部代码。"""
+    if not text:
+        return text
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+
+        # 字符串：原样拷贝，避免误伤 URL / 正则
+        if ch in ("'", '"', "`"):
+            quote = ch
+            out.append(ch)
+            i += 1
+            while i < n:
+                c = text[i]
+                out.append(c)
+                if c == "\\" and i + 1 < n:
+                    out.append(text[i + 1])
+                    i += 2
+                    continue
+                if c == quote:
+                    i += 1
+                    break
+                i += 1
+            continue
+
+        # HTML 注释
+        if ch == "<" and text.startswith("<!--", i):
+            end = text.find("-->", i + 4)
+            if end < 0:
+                out.append(text[i:])
+                break
+            block = text[i : end + 3]
+            if not _comment_is_factory_note(block):
+                out.append(block)
+            i = end + 3
+            continue
+
+        # 块注释
+        if ch == "/" and nxt == "*":
+            end = text.find("*/", i + 2)
+            if end < 0:
+                out.append(text[i:])
+                break
+            block = text[i : end + 2]
+            if not _comment_is_factory_note(block):
+                out.append(block)
+            i = end + 2
+            continue
+
+        # 行注释
+        if ch == "/" and nxt == "/":
+            end = text.find("\n", i)
+            if end < 0:
+                block = text[i:]
+                if not _comment_is_factory_note(block):
+                    out.append(block)
+                break
+            block = text[i:end]
+            if not _comment_is_factory_note(block):
+                out.append(block)
+            i = end
+            continue
+
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _scrub_tree_factory_notes(root: Path, suffixes: set[str]) -> list[str]:
+    """遍历目录抹工厂注释；返回改写过的相对路径。"""
+    if not root or not root.is_dir():
+        return []
+    touched: list[str] = []
+    for path in root.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in suffixes:
+            continue
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        new = scrub_factory_notes_from_source(raw)
+        if new != raw:
+            path.write_text(new, encoding="utf-8")
+            try:
+                touched.append(path.relative_to(root).as_posix())
+            except ValueError:
+                touched.append(path.name)
+    return touched
+
+
+def scrub_factory_notes_in_workspace(workspace: Path) -> list[str]:
+    """抹学生包前端/Java 源码里的工厂注记注释；返回 ``fe:…`` / ``java:…`` 路径。
+
+    bake 裁剪末尾会调；「工厂清洗文案」覆写基线 Vue 后也必须再调，
+    否则骨架注释（开题/§3/软皮）会重新进包，p3lean 再红。
+    """
+    workspace = Path(workspace)
+    touched: list[str] = []
+    fe = _fe_src(workspace)
+    if fe:
+        for rel in _scrub_tree_factory_notes(fe, {".vue", ".js", ".css", ".ts"}):
+            touched.append(f"fe:{rel}")
+    java_root = _java_root(workspace)
+    if java_root:
+        for rel in _scrub_tree_factory_notes(java_root, {".java"}):
+            touched.append(f"java:{rel}")
+    return touched
+
+
+def _prune_portal_side_rail(
+    fe: Path, spec: dict[str, Any], deleted: list[str], vue_killed: set[str]
+) -> None:
+    """非 marketplace：裁掉淘宝式右侧栏组件（开题/软皮未要则不进学生包）。"""
+    if not fe or not fe.is_dir():
+        return
+    nav = str(spec.get("shell_nav_style") or "").strip().lower()
+    if nav == "marketplace":
+        return
+    rel = "components/PortalSideRail.vue"
+    rail = fe / rel
+    if rail.is_file():
+        remove_tree_reliable(rail)
+        deleted.append(f"vue:{rel}")
+        vue_killed.add(rel)
+        _scrub_frontend_killed_refs(fe, {rel})
+
+
+def prune_shell_chrome_in_workspace(
+    workspace: Path, spec: dict[str, Any] | None = None
+) -> list[str]:
+    """非 marketplace 工作区补裁 PortalSideRail（清洗文案 / 幂等重跑用）。
+
+    bake 裁剪会做；若旧包漏裁或回拷带回来，「工厂清洗文案」必须再裁，否则 p3lean 壳件红。
+    """
+    workspace = Path(workspace)
+    if spec is None:
+        sp = workspace / "spec.json"
+        if sp.is_file():
+            import json
+
+            spec = json.loads(sp.read_text(encoding="utf-8"))
+        else:
+            spec = {}
+    assert isinstance(spec, dict)
+    spec = dict(spec)
+    nav = str(spec.get("shell_nav_style") or "").strip().lower()
+    if nav not in ("marketplace", "storefront"):
+        from app.bake.shell_face import resolve_shell_nav_style
+
+        spec["shell_nav_style"] = resolve_shell_nav_style(
+            str(spec.get("domain") or ""),
+            str(spec.get("title") or ""),
+            "",
+            None,
+        )
+    fe = _fe_src(workspace)
+    deleted: list[str] = []
+    vue_killed: set[str] = set()
+    _prune_portal_side_rail(fe, spec, deleted, vue_killed)
+    return deleted
+
+
+def prune_shell_chrome_in_workspace(
+    workspace: Path, spec: dict[str, Any] | None = None
+) -> list[str]:
+    """按软皮裁壳件（非 marketplace 去 PortalSideRail）。清洗文案须调，勿只靠 bake。
+
+    ``shell_nav_style`` 缺省时按域解析（医院等非 SHOP → storefront）。
+    """
+    workspace = Path(workspace)
+    if spec is None:
+        sp = workspace / "spec.json"
+        if sp.is_file():
+            import json
+
+            spec = json.loads(sp.read_text(encoding="utf-8"))
+        else:
+            spec = {}
+    assert isinstance(spec, dict)
+    spec = dict(spec)
+    nav = str(spec.get("shell_nav_style") or "").strip().lower()
+    if not nav:
+        try:
+            from app.bake.shell_face import resolve_shell_nav_style
+
+            nav = resolve_shell_nav_style(
+                str(spec.get("domain") or ""),
+                str(spec.get("title") or ""),
+                "",
+                None,
+            )
+            spec["shell_nav_style"] = nav
+        except Exception:  # noqa: BLE001
+            pass
+    fe = _fe_src(workspace)
+    deleted: list[str] = []
+    vue_killed: set[str] = set()
+    _prune_portal_side_rail(fe, spec, deleted, vue_killed)
+    return deleted
+
+
 def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[str, Any]:
     """按 spec 裁剪工作区；返回统计。可对已有工作区幂等重跑。"""
     dest = Path(dest)
@@ -1964,6 +2325,7 @@ def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[s
     stripped_types: list[str] = []
     enrichers_to_kill: set[str] = set()
     vue_killed: set[str] = set()
+    notes_scrubbed: list[str] = []
 
     for island in _ISLANDS:
         if _should_keep(island, caps, domain):
@@ -1993,7 +2355,7 @@ def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[s
                     continue
                 p = java_root / rel
                 if p.is_file():
-                    p.unlink()
+                    remove_tree_reliable(p)
                     deleted.append(f"java:{rel}")
         if fe:
             for rel in island.vue_files:
@@ -2003,7 +2365,7 @@ def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[s
                 vue_killed.add(rel_n)
                 p = fe / rel
                 if p.is_file():
-                    p.unlink()
+                    remove_tree_reliable(p)
                     deleted.append(f"vue:{rel}")
         stripped_types.extend(island.types)
 
@@ -2063,6 +2425,13 @@ def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[s
                 dest, gate, java_root=java_root, fe=fe, deleted=deleted
             )
 
+    # 壳：非市集软皮不带右侧栏源码
+    if fe:
+        _prune_portal_side_rail(fe, spec, deleted, vue_killed)
+
+    # 工厂注记注释不得进学生包（骨架可写；此处抹掉）
+    notes_scrubbed.extend(scrub_factory_notes_in_workspace(dest))
+
     return {
         "domain": domain,
         "capabilities": sorted(caps),
@@ -2070,6 +2439,8 @@ def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[s
         "stripped_types": sorted(set(stripped_types)),
         "router_enrichers_cleared": sorted(enrichers_to_kill),
         "deleted_count": len(deleted),
+        "notes_scrubbed": notes_scrubbed,
+        "notes_scrubbed_count": len(notes_scrubbed),
     }
 
 
@@ -2142,22 +2513,91 @@ def scan_forbidden_island_files(
     return sorted(set(hits))
 
 
+def scan_factory_notes_leaks(workspace: Path) -> list[str]:
+    """学生包源码注释里仍含工厂注记 → 路径列表（ZIP 最终确认用）。"""
+    workspace = Path(workspace)
+    hits: list[str] = []
+    fe = _fe_src(workspace)
+    java_root = _java_root(workspace)
+    scans: list[tuple[str, Path, set[str]]] = []
+    if fe and fe.is_dir():
+        scans.append(("fe", fe, {".vue", ".js", ".css", ".ts"}))
+    if java_root and java_root.is_dir():
+        scans.append(("java", java_root, {".java"}))
+    for prefix, root, suffixes in scans:
+        for path in root.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in suffixes:
+                continue
+            try:
+                raw = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if scrub_factory_notes_from_source(raw) != raw:
+                try:
+                    rel = path.relative_to(root).as_posix()
+                except ValueError:
+                    rel = path.name
+                hits.append(f"{prefix}:{rel}")
+    return sorted(set(hits))
+
+
+def scan_shell_chrome_leaks(
+    workspace: Path, spec: dict[str, Any] | None = None
+) -> list[str]:
+    """壳件与软皮不符：如非 marketplace 仍带 PortalSideRail。"""
+    workspace = Path(workspace)
+    if spec is None:
+        sp = workspace / "spec.json"
+        if sp.is_file():
+            import json
+
+            spec = json.loads(sp.read_text(encoding="utf-8"))
+        else:
+            spec = {}
+    assert isinstance(spec, dict)
+    hits: list[str] = []
+    fe = _fe_src(workspace)
+    if not fe:
+        return hits
+    nav = str(spec.get("shell_nav_style") or "").strip().lower()
+    rail = fe / "components" / "PortalSideRail.vue"
+    if nav != "marketplace" and rail.is_file():
+        hits.append("vue:components/PortalSideRail.vue")
+    return hits
+
+
 def evaluate_pack_lean_gate(
     workspace: Path, spec: dict[str, Any] | None = None
 ) -> dict[str, Any]:
-    """p3lean：本题未挂岛不得残留源码文件。"""
+    """p3lean：未挂岛无残留 + 无工厂注记注释 + 壳件跟软皮（ZIP 最终确认）。"""
     hits = scan_forbidden_island_files(workspace, spec)
-    ok = not hits
-    sample = hits[:12]
-    desc = (
-        "未见未挂岛残留文件"
-        if ok
-        else f"未挂岛仍残留 {len(hits)} 个文件：{', '.join(sample)}"
-        + ("…" if len(hits) > len(sample) else "")
-    )
+    notes = scan_factory_notes_leaks(workspace)
+    chrome = scan_shell_chrome_leaks(workspace, spec)
+    ok = not hits and not notes and not chrome
+    parts: list[str] = []
+    if hits:
+        sample = hits[:8]
+        parts.append(
+            f"未挂岛残留 {len(hits)}：{', '.join(sample)}"
+            + ("…" if len(hits) > len(sample) else "")
+        )
+    if notes:
+        sample = notes[:8]
+        parts.append(
+            f"工厂注记注释 {len(notes)}：{', '.join(sample)}"
+            + ("…" if len(notes) > len(sample) else "")
+        )
+    if chrome:
+        parts.append(f"壳件不符：{', '.join(chrome)}")
+    desc = "；".join(parts) if parts else "瘦身通过：无未挂岛、无工厂注记、壳件对齐"
     return {
         "ok": ok,
-        "label": "学生包瘦身 · 未挂岛无残留",
+        "label": "学生包瘦身 · ZIP 最终确认",
         "desc": desc,
-        "detail": {"forbidden": hits[:40], "count": len(hits)},
+        "detail": {
+            "forbidden": hits[:40],
+            "factory_notes": notes[:40],
+            "chrome": chrome,
+            "count": len(hits) + len(notes) + len(chrome),
+        },
     }
