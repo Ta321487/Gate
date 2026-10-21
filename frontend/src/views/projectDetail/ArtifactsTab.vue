@@ -511,6 +511,7 @@
                 :show-scrub-copy="copyGateNeedsScrub"
                 :scrub-busy="copyScrubBusy"
                 :scrub-copy="scrubStudentCopy"
+                :go-generate="() => { tab = 'generate' }"
               />
             </div>
 

@@ -80,6 +80,14 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
         follow_surface_style=follow_surface,
         repair_surface_style=repair_surface,
         approve_surface_style=approve_surface,
+        card_voice=str(spec.get("card_voice") or ""),
+        shell_colors=(
+            spec.get("shell_colors")
+            if isinstance(spec.get("shell_colors"), dict)
+            else None
+        ),
+        shell_nav_style=str(spec.get("shell_nav_style") or ""),
+        domain_group=str(spec.get("domain_group") or ""),
         seed=workspace.name,
     )
     sync_workspace_thesis_yml(workspace, spec)

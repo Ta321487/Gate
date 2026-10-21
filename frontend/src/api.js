@@ -18,8 +18,9 @@ http.interceptors.response.use(
   }
 )
 
-/** 生成中轮询：短超时 + 静默失败，后端 reload 时不挡下一轮 */
-const POLL_OPTS = { silent: true, timeout: 8000 }
+/** 生成中轮询：静默失败；超时须盖过「复制骨架」等重步骤下的偶发排队，
+ *  过短会整段 8.00s「已取消」刷屏，误报「后端重载」。真挂死仍靠连续失败提示。 */
+const POLL_OPTS = { silent: true, timeout: 45000 }
 
 export { message }
 export { confirm, alert, prompt, dialog } from './ui'
@@ -184,6 +185,14 @@ export const api = {
   deliveryHandoffUrl: (id) => `/api/projects/${id}/delivery-review/handoff`,
   purgeOrphanJobs: () => http.post('/jobs/purge-orphans'),
   purgeFinishedJobs: () => http.post('/jobs/purge-finished'),
+  failAnalysis: (params) => http.get('/jobs/fail-analysis', { params }),
+  failAnalysisCatalog: () => http.get('/jobs/fail-analysis/catalog'),
+  failAnalysisClassifyAssist: (body) =>
+    http.post('/jobs/fail-analysis/classify-assist', body, { timeout: 90000 }),
+  failAnalysisFixDraft: (body) =>
+    http.post('/jobs/fail-analysis/fix-draft', body, { timeout: 120000 }),
+  failAnalysisDiscardDraft: (jobId) =>
+    http.delete(`/jobs/fail-analysis/fix-draft/${jobId}`),
   /** 受理式清盘：立刻返回，前端轮询 status */
   purgeOrphanDisk: () => http.post('/projects/purge-orphan-disk', null, HEAVY_OPTS),
   purgeOrphanDiskStatus: () =>

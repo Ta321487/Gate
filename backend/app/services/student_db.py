@@ -110,6 +110,13 @@ def ensure_student_schema(workspace: Path, db_name: str, *, reset: bool = False)
         raise RuntimeError(f"缺少 {schema_path}")
 
     settings = get_settings()
+    # 旧包可能仍写逻辑列 author；落库前改写 schema.sql（门禁可修）
+    try:
+        from app.bake.archive_columns import repair_workspace_schema_semantic_columns
+
+        repair_workspace_schema_semantic_columns(workspace)
+    except Exception:  # noqa: BLE001
+        pass
     script = _read_sql_text(schema_path)
     # 若 bake 后库名与文件内不一致，以项目 db_name 为准
     if f"`{db_name}`" not in script and "CREATE DATABASE" in script:

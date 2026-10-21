@@ -1,4 +1,4 @@
-﻿# Shared backend process discovery + light venv checks + owned-PID start
+# Shared backend process discovery + light venv checks + owned-PID start
 # Used by launcher.ps1 / kill-dup-backend.ps1 / start-backend.ps1 (dot-source only)
 
 $script:GfBackendPort = 8000
@@ -214,11 +214,99 @@ function Get-GfListenPids {
     }
 }
 
-function Invoke-GfTaskkill {
+function Get-GfPortOccupants {
+    <#
+    .SYNOPSIS
+      Who is listening on LocalPort (pid / name / cmdline). Optional Ours via pidfile tree.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][int]$Port,
+        [string]$RepoRoot = "",
+        [int]$OurRootPid = 0
+    )
+    $listen = @(Get-GfListenPids -Port $Port)
+    if ($listen.Count -eq 0) { return @() }
+
+    $ourTree = @{}
+    if ($OurRootPid -gt 0) {
+        foreach ($id in @(Get-GfDescendantPids -RootPid $OurRootPid)) {
+            $ourTree[[int]$id] = $true
+        }
+    } elseif ($RepoRoot -and (Test-Path -LiteralPath $RepoRoot)) {
+        $want = Read-GfBackendPid -RepoRoot $RepoRoot
+        if ($want) {
+            foreach ($id in @(Get-GfDescendantPids -RootPid $want)) {
+                $ourTree[[int]$id] = $true
+            }
+        }
+    }
+
+    $out = New-Object System.Collections.Generic.List[object]
+    foreach ($listenPid in $listen) {
+        if (-not $listenPid) { continue }
+        $id = [int]$listenPid
+        $cim = Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction SilentlyContinue
+        $name = if ($cim) { [string]$cim.Name } else {
+            $gp = Get-Process -Id $id -ErrorAction SilentlyContinue
+            if ($gp) { $gp.ProcessName } else { "?" }
+        }
+        $cmd = if ($cim -and $cim.CommandLine) {
+            ($cim.CommandLine -replace "\s+", " ").Trim()
+        } else { "" }
+        if ($cmd.Length -gt 140) { $cmd = $cmd.Substring(0, 140) + "..." }
+        $ours = $ourTree.ContainsKey($id)
+        $out.Add([pscustomobject]@{
+            Pid     = $id
+            Name    = $name
+            Cmd     = $cmd
+            Ours    = [bool]$ours
+            Port    = $Port
+        })
+    }
+    return @($out.ToArray())
+}
+
+function Test-GfPythonProcessName {
+    param([string]$Name)
+    return [bool]($Name -match '^(python|pythonw)(\.exe)?$')
+}
+
+function Get-GfPythonTreeRoot {
+    <#
+    .SYNOPSIS
+      Walk up while parent is still python/pythonw.
+      venv Scripts\python.exe often re-execs to home python.exe; the listener sits on the
+      child, and taskkill /T on that child commonly returns Access Denied. Kill the
+      outermost python (venv parent) instead.
+    #>
     param([Parameter(Mandatory = $true)][int]$ProcessId)
+    $cur = [int]$ProcessId
+    $guard = 0
+    while ($cur -gt 0 -and $guard -lt 16) {
+        $guard++
+        $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$cur" -ErrorAction SilentlyContinue
+        if (-not $proc) { break }
+        $ppid = [int]$proc.ParentProcessId
+        if ($ppid -le 0) { break }
+        $parent = Get-CimInstance Win32_Process -Filter "ProcessId=$ppid" -ErrorAction SilentlyContinue
+        if (-not $parent -or -not (Test-GfPythonProcessName -Name $parent.Name)) { break }
+        $cur = $ppid
+    }
+    return $cur
+}
+
+function Invoke-GfTaskkill {
+    param(
+        [Parameter(Mandatory = $true)][int]$ProcessId,
+        [switch]$Tree
+    )
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
-    $raw = & taskkill.exe /PID $ProcessId /T /F 2>&1
+    if ($Tree) {
+        $raw = & taskkill.exe /PID $ProcessId /T /F 2>&1
+    } else {
+        $raw = & taskkill.exe /PID $ProcessId /F 2>&1
+    }
     $code = $LASTEXITCODE
     $ErrorActionPreference = $prevEap
     # Drop RemoteException noise; keep ERROR: lines from taskkill
@@ -233,9 +321,14 @@ function Invoke-GfTaskkill {
     }
 }
 
+function Test-GfTaskkillOk {
+    param($Result)
+    return ($Result.code -eq 0 -or $Result.code -eq 128)
+}
+
 function Stop-GfProcessTree {
-    # Prefer taskkill on tree *roots*. Windows venv re-execs to home python.exe;
-    # killing that child alone often Access Denied — killing the venv parent /T works.
+    # Prefer outermost python (venv parent). Listener is often the re-exec child;
+    # taskkill /T on that child → Access Denied; /T on parent or /F on child works.
     # Exit 128 = process already gone (treat as ok).
     param([Parameter(Mandatory = $true)][int]$ProcessId)
     $out = [pscustomobject]@{
@@ -247,36 +340,49 @@ function Stop-GfProcessTree {
         return $out
     }
 
-    $r = Invoke-GfTaskkill -ProcessId $ProcessId
-    if ($r.code -eq 0 -or $r.code -eq 128) {
-        $out.ok = $true
-        $out.message = if ($r.code -eq 128) { "already gone" } else { "killed" }
-        return $out
-    }
+    $root = Get-GfPythonTreeRoot -ProcessId $ProcessId
+    $candidates = @($root, $ProcessId) | Select-Object -Unique
 
-    # Access denied on child → try parent (venv Scripts\python.exe)
-    $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction SilentlyContinue
-    $ppid = if ($proc) { [int]$proc.ParentProcessId } else { 0 }
-    if ($ppid -gt 0) {
-        $alive = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
-        if (-not $alive) {
-            $out.ok = $true
-            $out.message = "already gone"
-            return $out
-        }
-        $r2 = Invoke-GfTaskkill -ProcessId $ppid
-        if ($r2.code -eq 0 -or $r2.code -eq 128) {
-            Start-Sleep -Milliseconds 200
+    foreach ($id in $candidates) {
+        $r = Invoke-GfTaskkill -ProcessId $id -Tree
+        if (Test-GfTaskkillOk $r) {
+            Start-Sleep -Milliseconds 150
             if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) {
                 $out.ok = $true
-                $out.message = "killed via parent pid=$ppid"
+                $out.message = if ($id -ne $ProcessId) {
+                    "killed via parent pid=$id"
+                } elseif ($r.code -eq 128) {
+                    "already gone"
+                } else {
+                    "killed"
+                }
                 return $out
             }
         }
     }
 
-    $detail = if ($r.text) { $r.text } else { "taskkill exit $($r.code)" }
-    $out.message = $detail
+    # /T on re-exec child often Access Denied; plain /F usually works
+    foreach ($id in $candidates) {
+        if (-not (Get-Process -Id $id -ErrorAction SilentlyContinue)) { continue }
+        $r = Invoke-GfTaskkill -ProcessId $id
+        if (Test-GfTaskkillOk $r) {
+            Start-Sleep -Milliseconds 150
+            if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) {
+                $out.ok = $true
+                $out.message = "killed (no-tree)"
+                return $out
+            }
+        }
+    }
+
+    if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) {
+        $out.ok = $true
+        $out.message = "already gone"
+        return $out
+    }
+
+    # Keep ASCII: Windows PowerShell 5.1 reads this file as system ANSI without BOM.
+    $out.message = "Access denied (venv child?). Retry K, or close the backend window."
     return $out
 }
 

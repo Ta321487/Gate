@@ -248,6 +248,13 @@ def _migrate_project_columns(sync_conn) -> None:
                 sync_conn.execute(text("ALTER TABLE jobs ADD COLUMN units JSON"))
         except Exception:  # noqa: BLE001
             pass
+    if job_cols and "error_code" not in job_cols:
+        try:
+            sync_conn.execute(
+                text("ALTER TABLE jobs ADD COLUMN error_code VARCHAR(64) NULL")
+            )
+        except Exception:  # noqa: BLE001
+            pass
     try:
         sync_conn.execute(
             text("UPDATE jobs SET kind = 'bake' WHERE kind IS NULL OR kind = ''")

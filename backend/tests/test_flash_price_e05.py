@@ -94,7 +94,11 @@ class FlashPriceE05Tests(unittest.TestCase):
         self.assertNotIn("秒杀引擎", hint)
 
         gate = rich.get("gate") or {}
-        self.assertIn("flash_price", (gate.get("flow_api") or {}))
+        flash_flow = (gate.get("flow_api") or {}).get("flash_price") or {}
+        self.assertEqual(flash_flow.get("file"), "ArchiveController.java")
+        # 活动价接口在档案列表；不得误要求 Order 路径写在 ArchiveController 里
+        self.assertEqual(flash_flow.get("need"), ["/api/archive", "promoActive"])
+        self.assertNotIn("/api/orders", flash_flow.get("need") or [])
 
         yml = _patch_thesis_yml("thesis:\n  domain: DOM-SHOP\n", "DOM-SHOP", rich)
         self.assertIn("flash-price-enabled: true", yml)
@@ -111,6 +115,9 @@ class FlashPriceE05Tests(unittest.TestCase):
         self.assertIn("promo_end", n)
         self.assertIn("gf_flash_price_demo", sql)
         self.assertIn("DATE_ADD(NOW()", sql)
+        # 语义列已改名：演示种子必须跟 price_yuan，禁止仍写 author（落库 1054）
+        self.assertIn("CAST(price_yuan AS DECIMAL(10,2))", sql)
+        self.assertNotIn("CAST(author AS DECIMAL(10,2))", sql)
         labels = (rich.get("schema") or {}).get("labels") or {}
         self.assertEqual(labels.get("mallFlashTitle"), "限时特价")
 

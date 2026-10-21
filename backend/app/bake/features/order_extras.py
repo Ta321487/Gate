@@ -251,10 +251,18 @@ def ensure_flash_price_columns(sql: str, *, enabled: bool, item_table: str | Non
     return _CREATE_TABLE_RE.sub(repl, sql)
 
 
-def ensure_flash_price_demo_seed(sql: str, *, enabled: bool, item_table: str | None) -> str:
+def ensure_flash_price_demo_seed(
+    sql: str,
+    *,
+    enabled: bool,
+    item_table: str | None,
+    domain: str = "",
+    archetypes: list[str] | None = None,
+) -> str:
     """挂 flash_price 时给前两件货写入进行中的活动窗，供门户限时特价区真读。
 
     用 NOW() 相对窗，避免日历对齐后窗外空架；已有活动价的行不覆盖。
+    标价列跟 archive 语义列（SHOP 等为 price_yuan，不再写死 author）。
     """
     if not enabled:
         return sql
@@ -264,15 +272,23 @@ def ensure_flash_price_demo_seed(sql: str, *, enabled: bool, item_table: str | N
     marker = f"/* gf_flash_price_demo:{t} */"
     if marker in sql:
         return sql
-    # author 在交易壳即标价；无价或已填活动价则跳过
+    from app.bake.archive_columns import archive_column_spec_for
+
+    (price_col, _), _ = archive_column_spec_for(
+        domain or "", archetypes=archetypes
+    )
+    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", price_col):
+        price_col = "author"
+    # 无价或已填活动价则跳过；CAST 兼容仍为 VARCHAR 的 author 壳
+    price_expr = f"CAST({price_col} AS DECIMAL(10,2))"
     block = f"""
 {marker}
 UPDATE {t} SET
-  promo_price = ROUND(CAST(author AS DECIMAL(10,2)) * 0.85, 2),
+  promo_price = ROUND({price_expr} * 0.85, 2),
   promo_start = DATE_SUB(NOW(), INTERVAL 1 DAY),
   promo_end = DATE_ADD(NOW(), INTERVAL 7 DAY)
 WHERE id IN (1, 2)
-  AND CAST(author AS DECIMAL(10,2)) > 0
+  AND {price_expr} > 0
   AND (promo_price IS NULL OR promo_price <= 0);
 """
     return sql.rstrip() + "\n" + block

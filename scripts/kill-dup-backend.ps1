@@ -1,4 +1,4 @@
-﻿# Detect duplicate uvicorn backends for this repo.
+# Detect duplicate uvicorn backends for this repo.
 # Keep listening process tree (venv parent + child); with -All kill every match.
 # Called by kill-dup-backend.bat
 
@@ -50,8 +50,9 @@ if ($All) {
     $keptLabel = ($listenPids -join ",")
 }
 
-# Only kill tree roots — venv child (home python.exe) often Access Denied if killed alone
-$roots = @(Get-GfTreeRootPids -ProcessIds $victimIds)
+# Resolve venv re-exec children → outermost python, then kill roots (/T on child = Access Denied)
+$resolved = @($victimIds | ForEach-Object { Get-GfPythonTreeRoot -ProcessId ([int]$_) }) | Select-Object -Unique
+$roots = @(Get-GfTreeRootPids -ProcessIds $resolved)
 foreach ($id in $roots) {
     $r = Stop-GfProcessTree -ProcessId $id
     if ($r.ok) {

@@ -103,6 +103,35 @@ def rewrite_insert_col_names(
     )
 
 
+def rewrite_update_col_names(
+    sql: str,
+    table: str,
+    rename: dict[str, str],
+) -> str:
+    """UPDATE table … 语句体内按 rename 替换裸列名（限时购演示等补丁）。
+
+    只动目标表的 UPDATE，避免误伤其它表同名列（如 book_suggest.author）。
+    """
+    if not rename:
+        return sql
+    mapping = [(k, v) for k, v in rename.items() if k and v and k.lower() != v.lower()]
+    if not mapping:
+        return sql
+
+    def repl(m: re.Match[str]) -> str:
+        body = m.group(0)
+        for old, new in mapping:
+            body = re.sub(rf"\b{re.escape(old)}\b", new, body, flags=re.IGNORECASE)
+        return body
+
+    return re.sub(
+        rf"UPDATE\s+`?{re.escape(table)}`?\b[\s\S]*?;",
+        repl,
+        sql,
+        flags=re.IGNORECASE,
+    )
+
+
 def map_create_table(
     sql: str,
     table: str,

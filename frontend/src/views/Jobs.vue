@@ -1,7 +1,9 @@
 <template>
   <div class="page-fill">
     <h1 class="page-title">任务队列</h1>
-    <p class="page-desc">生成任务状态、取消、清空历史；失效项目可一次清掉队列残留与本机工程/日志。</p>
+    <p class="page-desc">
+      查看生成任务进度，支持取消与重试。按失败类型排修请使用「失败分析」；当日待办请见「开工台」。
+    </p>
     <PageSkeleton v-if="!booted" variant="list" />
     <div v-else class="panel panel-fill">
       <div class="panel-hd">
@@ -39,7 +41,7 @@
           <template #empty>
             <div class="empty-hint">
               <div class="empty-title">暂无任务</div>
-              <div class="empty-desc">在「项目」上传材料并开始生成后，任务会出现在这里</div>
+              <div class="empty-desc">在「项目」上传并开始生成后，任务会出现在这里</div>
             </div>
           </template>
         </n-data-table>
@@ -209,10 +211,25 @@ const columns = [
       const m = JOB_STATUS[r.status] || { label: r.status, pill: 'pill-neutral' }
       const pill = statusPillNode(m.label, m.pill)
       if (r.error && (r.status === 'failed' || r.status === 'cancelled')) {
-        return h('div', [
-          pill,
-          h('div', { class: 'small muted job-err' }, r.error),
-        ])
+        const kids = [pill]
+        if (r.error_code) {
+          kids.push(
+            h(
+              'a',
+              {
+                href: '#',
+                class: 'mono small link job-code',
+                onClick: (e) => {
+                  e.preventDefault()
+                  router.push(`/fail-analysis?code=${encodeURIComponent(r.error_code)}`)
+                },
+              },
+              r.error_code,
+            ),
+          )
+        }
+        kids.push(h('div', { class: 'small muted job-err' }, r.error))
+        return h('div', { class: 'job-status-cell' }, kids)
       }
       return pill
     },
@@ -226,7 +243,7 @@ const columns = [
   {
     title: '',
     key: 'actions',
-    width: 220,
+    width: 260,
     render: (r) => {
       if (r.isGroup) return null
       const btns = [
@@ -236,6 +253,13 @@ const columns = [
           onClick: () => router.push(`/projects/${r.project_id}`),
         }, { default: () => '详情' }),
       ]
+      if (r.status === 'failed' && r.error_code) {
+        btns.push(h(NButton, {
+          text: true,
+          size: 'small',
+          onClick: () => router.push(`/fail-analysis?code=${encodeURIComponent(r.error_code)}`),
+        }, { default: () => '失败分析' }))
+      }
       if (r.status === 'queued' || r.status === 'running') {
         btns.push(h(NButton, {
           size: 'small',
@@ -277,7 +301,7 @@ const columns = [
           },
         }, { default: () => '删除' }))
       }
-      return h('div', { class: 'row' }, btns)
+      return h('div', { class: 'row', style: 'flex-wrap:wrap;gap:4px' }, btns)
     },
   },
 ]
@@ -405,4 +429,6 @@ onUnmounted(() => clearInterval(timer))
 }
 .job-title { font-weight: 600; }
 .job-err { margin-top: 4px; max-width: 420px; }
+.job-status-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.job-code { font-size: 11px; }
 </style>

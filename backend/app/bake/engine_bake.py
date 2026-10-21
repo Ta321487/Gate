@@ -133,10 +133,18 @@ def _bake_project_body(
         assert_schema_nf(sql)
         assert_table_budget(sql, domain, caps=list(spec.get("capabilities") or []))
 
+        from app.bake.archive_columns import assert_archive_semantic_columns
         from app.bake.archive_seed_guard import assert_archive_demo_seed
 
         runtime = spec.get("runtime") if isinstance(spec.get("runtime"), dict) else {}
         gate = spec.get("gate") if isinstance(spec.get("gate"), dict) else {}
+        assert_archive_semantic_columns(
+            sql,
+            domain=domain or "",
+            item_table=runtime.get("archive_item_table"),
+            archetypes=list(spec.get("archetypes") or [])
+            or ([spec.get("archetype")] if spec.get("archetype") else []),
+        )
         assert_archive_demo_seed(
             sql,
             item_table=runtime.get("archive_item_table"),
@@ -369,6 +377,14 @@ def _bake_project_body(
         follow_surface_style=follow_surface,
         repair_surface_style=repair_surface,
         approve_surface_style=approve_surface,
+        card_voice=str(spec.get("card_voice") or ""),
+        shell_colors=(
+            spec.get("shell_colors")
+            if isinstance(spec.get("shell_colors"), dict)
+            else None
+        ),
+        shell_nav_style=str(spec.get("shell_nav_style") or ""),
+        domain_group=str(spec.get("domain_group") or ""),
         seed=dest.name,
     )
 
@@ -390,15 +406,27 @@ def _bake_project_body(
 
     # P0：按本题 capabilities 裁掉未挂岛源码，避免学生 ZIP 胖骨架穿帮
     try:
-        from app.bake.pack_prune import prune_student_pack, scan_forbidden_island_files
+        from app.bake.pack_prune import (
+            evaluate_pack_lean_gate,
+            prune_student_pack,
+            scan_forbidden_island_files,
+        )
+        from app.services.runtime import detach_frontend_deps
+
+        # 预览/vite 句柄常短锁 Vue；裁剪前先卸联接，降低 WinError 32
+        try:
+            detach_frontend_deps(dest)
+        except Exception:  # noqa: BLE001
+            pass
 
         prune_stats = prune_student_pack(dest, spec)
         import logging
 
         logging.getLogger("app.bake").info(
-            "pack_prune deleted=%s types=%s",
+            "pack_prune deleted=%s types=%s notes=%s",
             prune_stats.get("deleted_count"),
             len(prune_stats.get("stripped_types") or []),
+            prune_stats.get("notes_scrubbed_count"),
         )
         leftovers = scan_forbidden_island_files(dest, spec)
         if leftovers:
@@ -406,6 +434,20 @@ def _bake_project_body(
                 "pack_prune 后仍残留未挂岛文件（门禁 p3lean 将拒 ZIP）："
                 + ", ".join(leftovers[:20])
                 + ("…" if len(leftovers) > 20 else "")
+            )
+        # ZIP 最终确认：注记已抹、壳件跟软皮（与 p3lean 同口径）
+        lean = evaluate_pack_lean_gate(dest, spec)
+        if not lean.get("ok"):
+            detail = lean.get("detail") or {}
+            bits = []
+            for key in ("factory_notes", "chrome", "forbidden"):
+                rows = detail.get(key) or []
+                if rows:
+                    bits.append(f"{key}={','.join(rows[:12])}")
+            raise RuntimeError(
+                "pack_prune 后 ZIP 最终确认未过（p3lean）："
+                + (lean.get("desc") or "")
+                + ((" · " + "; ".join(bits)) if bits else "")
             )
     except Exception as e:
         import logging

@@ -77,7 +77,7 @@
           <n-button
             size="small"
             :disabled="disabled || !!busy"
-            :loading="busy === 'close'"
+            :loading="busy === 'close' || busy === 'close-rebake'"
             @click="onClose"
           >
             结束复审
@@ -97,8 +97,33 @@
       </div>
     </div>
 
+    <n-alert
+      v-if="rebakeEscapeNeeded"
+      type="info"
+      :bordered="false"
+      title="须重跑生成时：先结束复审"
+    >
+      <p class="small" style="margin:0">
+        复审进行中会拦截重新生成。仅同步 ZIP 请验圈后合卷；须改工程重出包时，请先
+        <n-button
+          text
+          type="primary"
+          size="tiny"
+          :disabled="disabled || !!busy"
+          :loading="busy === 'close-rebake'"
+          @click="onCloseAndRebake"
+        >结束复审并去重新生成</n-button>
+        ，勿空等合卷。
+      </p>
+    </n-alert>
     <n-alert v-if="zipStale" type="warning" :bordered="false" title="交付包未同步">
-      工程已变更，当前 ZIP 与 workspace 不一致。请完成验圈后执行合卷。
+      <template v-if="blockingGates.length || regressions.length">
+        工程已变更，当前 ZIP 与 workspace 不一致。合卷须验圈通过；当前门禁或回退未清除时无法合卷。
+        若修复依赖重跑生成，请使用上方「结束复审并去重新生成」。
+      </template>
+      <template v-else>
+        工程已变更，当前 ZIP 与 workspace 不一致。请完成验圈后执行合卷。
+      </template>
     </n-alert>
     <n-alert v-if="openNotes.length && !regressions.length" type="warning" :bordered="false" title="仍有未结案偏差登记">
       请先处理或结案后再合卷（{{ openNotes.length }} 条）
@@ -107,6 +132,9 @@
       <ul class="reg-list">
         <li v-for="(r, i) in regressions" :key="i">{{ r.message }}</li>
       </ul>
+      <p class="small muted" style="margin:8px 0 0">
+        回退通常需改工厂后重出包；请先「结束复审」再重新生成，勿只反复合卷。
+      </p>
     </n-alert>
     <n-alert
       v-if="(blockingGates || []).length && !(regressions || []).length"
@@ -114,14 +142,15 @@
       :bordered="false"
       title="清单已收敛，但质量门禁未过"
     >
-      毒区只列实装清单；页头「质检未过」通常卡在下面这些门禁（含交付质量摘要）。修复后再点验圈。
+      毒区只列实装清单；页头「质检未过」通常卡在下面这些门禁（含交付质量摘要）。
+      可用「工厂清洗文案」等当场可修项处理后再验圈；须改 bake / 基线时请结束复审后重新生成。
       <ul class="reg-list">
         <li v-for="g in blockingGates" :key="g.key || g.label">
           {{ g.label }}<span v-if="g.desc" class="muted"> · {{ g.desc }}</span>
         </li>
       </ul>
       <p v-if="showScrubCopy" class="small muted" style="margin:8px 0 0">
-        工厂腔或「演示」口吻未过时，用上方「工厂清洗文案」即可（会按现网骨架覆写脏 Vue），不必手改学生包。
+        工厂腔、工厂注记或壳件（如非市集仍带 PortalSideRail）未过时，用上方「工厂清洗文案」：洗可见文案、抹注记、补裁壳件，不必手改学生包。
       </p>
     </n-alert>
 
@@ -285,7 +314,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { NAlert, NButton, NCheckbox, NDataTable, NEmpty, NInput } from 'naive-ui'
-import { api, message } from '../api'
+import { api, message, confirm } from '../api'
 
 const props = defineProps({
   projectId: { type: String, required: true },
@@ -297,9 +326,11 @@ const props = defineProps({
   showScrubCopy: { type: Boolean, default: false },
   scrubBusy: { type: Boolean, default: false },
   scrubCopy: { type: Function, default: null },
+  /** 结束复审后跳到一键生成（可选） */
+  goGenerate: { type: Function, default: null },
 })
 
-const emit = defineEmits(['refresh'])
+const emit = defineEmits(['refresh', 'go-generate'])
 
 const busy = ref('')
 const noteText = ref('')
@@ -506,17 +537,29 @@ const canRepack = computed(() => {
   return true
 })
 
+/** 复审锁生成 + 门禁/回退挡合卷 → 须重出包时的死锁出口 */
+const rebakeEscapeNeeded = computed(() => {
+  if (review.value.status !== 'active') return false
+  return blockingGates.value.length > 0 || regressions.value.length > 0
+})
+
 const tipStart = '开始对照开题收窄偏差；可验圈、登记偏差'
 const tipVerify = '本轮验收：重跑门禁与质量摘要；通过项进安全区，清单未过留毒区，门禁未过会单独提示'
 const tipQa = '再跑一遍交付质检摘要（不替代门禁）'
-const tipClose = '结束本轮复审流程（不删已有登记）'
+const tipClose = computed(() =>
+  rebakeEscapeNeeded.value
+    ? '结束复审后可重新生成；门禁未过时合卷不可用'
+    : '结束本轮复审流程（不删已有登记）',
+)
 const tipHandoff = '导出运营交接材料，不进学生 ZIP'
 
 const repackTip = computed(() => {
   if (canRepack.value) return '验圈通过后更新交付 ZIP，使与工程一致'
   if (props.disabled) return '工程重新生成中或尚无工作区，暂不可合卷'
   if (busy.value) return '请等待当前操作完成'
-  if (regressions.value.length) return '存在安全区回退，请先处理后再合卷'
+  if (regressions.value.length) {
+    return '存在安全区回退，无法合卷；须重出包时请先结束复审再重新生成'
+  }
   if (openNotes.value.length) return `仍有 ${openNotes.value.length} 条未结案偏差，请先结案后再合卷`
   if (blockingGates.value.length) {
     const labels = blockingGates.value
@@ -524,7 +567,7 @@ const repackTip = computed(() => {
       .filter(Boolean)
       .slice(0, 3)
       .join('、')
-    return `质量门禁未过（${labels || '见上方提示'}）· 修复后再验圈合卷`
+    return `质量门禁未过（${labels || '见上方提示'}）· 当场可修则处理后验圈；须重跑生成请先结束复审`
   }
   const rounds = review.value.rounds || []
   const lastRound = rounds.length ? rounds[rounds.length - 1] : null
@@ -659,6 +702,35 @@ async function onClose() {
     await api.closeDeliveryReview(props.projectId)
     message.success('已结束交付复审')
     await refreshAfter()
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '结束复审失败')
+  } finally {
+    busy.value = ''
+  }
+}
+
+async function onCloseAndRebake() {
+  if (busy.value || props.disabled) return
+  const ok = await confirm(
+    '结束复审后可到「一键生成」重新生成。已登记偏差会保留；重新生成会清空复审轮次与履约标记。',
+    {
+      title: '结束复审并重新生成',
+      type: 'warning',
+      positiveText: '结束并前往',
+      negativeText: '取消',
+    },
+  )
+  if (!ok) return
+  busy.value = 'close-rebake'
+  try {
+    await api.closeDeliveryReview(props.projectId)
+    message.success('已结束复审 · 请确认选项后重新生成')
+    await refreshAfter()
+    if (typeof props.goGenerate === 'function') {
+      props.goGenerate()
+    } else {
+      emit('go-generate')
+    }
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '结束复审失败')
   } finally {

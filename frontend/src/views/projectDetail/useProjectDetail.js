@@ -1165,7 +1165,12 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
     if (lite) {
       pollFailStreak.value += 1
       if (pollFailStreak.value >= 2) {
-        pollSyncHint.value = '状态同步暂时中断（后端可能在重载），后台任务仍在跑，自动重试中…'
+        const timedOut =
+          e?.code === 'ECONNABORTED' ||
+          /timeout/i.test(String(e?.message || ''))
+        pollSyncHint.value = timedOut
+          ? '状态刷新变慢（复制骨架等步骤较重），后台任务仍在跑，自动重试中…'
+          : '状态同步暂时中断（后端可能在重载），后台任务仍在跑，自动重试中…'
       }
       return
     }
@@ -2351,6 +2356,27 @@ async function runGenerateJob(opts = {}) {
     message.info('生成请求进行中，请稍候')
     return
   }
+  const reviewStatus = p.value?.delivery_review?.review?.status || ''
+  if (reviewStatus === 'active' && !opts.skipReviewGuard) {
+    const ok = await confirm(
+      '交付复审进行中会拦截重新生成。仅同步 ZIP 请到「产物 → 交付复审」验圈后合卷；须改工程重出包时，请先结束复审再生成。',
+      {
+        title: '复审进行中',
+        type: 'warning',
+        positiveText: '结束复审并继续生成',
+        negativeText: '取消',
+      },
+    )
+    if (!ok) return
+    try {
+      await api.closeDeliveryReview(p.value.id)
+      message.success('已结束复审')
+      await load({ syncTab: false, lite: true })
+    } catch (e) {
+      message.error(e?.response?.data?.detail || e?.message || '结束复审失败')
+      return
+    }
+  }
   softApplying.value = true
   try {
     const res = await api.generate(p.value.id, { confirmDiff: !!opts.confirmDiff })
@@ -2368,7 +2394,12 @@ async function runGenerateJob(opts = {}) {
     startPoll()
     await load({ syncTab: false, lite: true })
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '启动生成失败')
+    const detail = e?.response?.data?.detail || e?.message || '启动生成失败'
+    if (typeof detail === 'string' && detail.includes('交付复审进行中')) {
+      message.error('复审仍在进行中，请到「产物 → 交付复审」结束复审后再生成')
+    } else {
+      message.error(detail)
+    }
     throw e
   } finally {
     softApplying.value = false
@@ -2467,7 +2498,7 @@ async function confirmDelete() {
     const res = await api.deleteProject(p.value.id, { keepDb: keepDb.value })
     message.success(res?.message || '已删除')
     showDelete.value = false
-    router.push('/')
+    router.push('/projects')
     return true
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '删除失败')

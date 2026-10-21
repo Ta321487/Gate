@@ -33,6 +33,13 @@ def _strip_vue_comments(text: str) -> str:
     return t
 
 
+def _strip_js_comments(text: str) -> str:
+    """扫 JS 展示字符串前去掉注释（portalShellNav 等把文案放在字面量里）。"""
+    t = _VUE_BLOCK_COMMENT_RE.sub(" ", text)
+    t = _VUE_LINE_COMMENT_RE.sub(" ", t)
+    return t
+
+
 def _has_files(workspace: Path, rels: list[str]) -> tuple[bool, list[str]]:
     from app.bake.java_package import find_java_package_root
 
@@ -737,7 +744,7 @@ def _student_copy_hits(workspace: Path, spec: dict[str, Any]) -> list[dict[str, 
 
     fe = workspace / "frontend" / "src"
     if fe.is_dir():
-        # 只扫 Vue 展示文案；注释里的实现注记不算产品文案
+        # Vue 展示文案；注释里的实现注记不算产品文案
         for p in fe.rglob("*.vue"):
             raw = _read(p)
             text = _strip_vue_comments(raw)
@@ -749,6 +756,18 @@ def _student_copy_hits(workspace: Path, spec: dict[str, Any]) -> list[dict[str, 
                         bad.startswith("开题") or bad.startswith("DOM") or "DOM-" in bad
                     ):
                         continue
+                    line = next((ln.strip() for ln in text.splitlines() if bad in ln), bad)
+                    hits.append({"path": rel, "bad": bad, "snippet": line[:120]})
+                    break
+        # 壳文案也在 utils JS 字面量里（如 accountFaceCopy）；注释仍不计
+        for p in fe.rglob("*.js"):
+            if "node_modules" in p.parts:
+                continue
+            raw = _read(p)
+            text = _strip_js_comments(raw)
+            for bad in FACTORY_UI_FORBIDDEN:
+                if bad in text:
+                    rel = str(p.relative_to(workspace)).replace("\\", "/")
                     line = next((ln.strip() for ln in text.splitlines() if bad in ln), bad)
                     hits.append({"path": rel, "bad": bad, "snippet": line[:120]})
                     break
@@ -850,6 +869,19 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
         "desc": nf.get("desc") or "",
     }
     if not nf.get("ok"):
+        results["zip_allowed"] = False
+        results["overall"] = False
+
+    from app.bake.archive_columns import evaluate_workspace_archive_semantic_columns
+
+    # 先自动改写逻辑列残留，再评；仍漏则禁 ZIP
+    ac = evaluate_workspace_archive_semantic_columns(workspace)
+    results["p3ac"] = {
+        "ok": bool(ac.get("ok")),
+        "label": ac.get("label") or "档案语义列",
+        "desc": ac.get("desc") or "",
+    }
+    if not ac.get("ok"):
         results["zip_allowed"] = False
         results["overall"] = False
 

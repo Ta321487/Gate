@@ -1831,10 +1831,10 @@ def merge_order_extras_gate(gate: dict, caps: list[str] | None, *, timeout_minut
     if "coupon" in caps:
         flow["coupon"] = {"file": "CouponController.java", "need": ["/api/coupons"]}
     if "flash_price" in caps:
-        # 计价下单走订单；窗内货架走档案列表 promoActive
+        # 窗内货架走档案列表 promoActive；成交价在下单链（place）另检
         flow["flash_price"] = {
             "file": "ArchiveController.java",
-            "need": ["/api/archive", "/api/orders"],
+            "need": ["/api/archive", "promoActive"],
         }
     out["flow_api"] = flow
     return out

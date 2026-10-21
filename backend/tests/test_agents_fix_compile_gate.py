@@ -8,7 +8,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from app.llm.agents_fix import run_fix_agent
+from app.llm.agents_fix import (
+    format_compile_fail_meta,
+    parse_javac_error_loci,
+    run_fix_agent,
+)
 from app.llm.runtime import LlmRuntime, ProviderEndpoint
 
 
@@ -49,6 +53,24 @@ def _ws(tmp: Path) -> Path:
 
 
 class AgentsFixCompileGateTests(unittest.TestCase):
+    def test_parse_javac_error_loci_maven_and_plain(self):
+        log = (
+            "[ERROR] COMPILATION ERROR :\n"
+            "[ERROR] /tmp/ws/capability/SlotStore.java:[312,28] 不是语句\n"
+            "SlotStore.java:312:28: 不是语句\n"
+            "[ERROR] Failed to execute goal\n"
+        )
+        loci = parse_javac_error_loci(log)
+        self.assertGreaterEqual(len(loci), 1)
+        self.assertEqual(loci[0][0], "SlotStore.java")
+        self.assertEqual(loci[0][1], 312)
+        self.assertEqual(loci[0][2], 28)
+        self.assertIn("不是语句", loci[0][3])
+        meta = format_compile_fail_meta(log)
+        self.assertIn("编译失败", meta)
+        self.assertIn("SlotStore.java:312:28", meta)
+        self.assertIn("不是语句", meta)
+
     def test_compile_fail_without_auto_fix_blocks(self):
         with tempfile.TemporaryDirectory() as td:
             ws = _ws(Path(td))

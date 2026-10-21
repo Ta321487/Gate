@@ -296,9 +296,14 @@ async def scrub_student_copy(project_id: str, db: AsyncSession = Depends(get_db)
     project_svc.reset_delivery_mark(p)
     await db.commit()
     await db.refresh(p)
+    all_ok = (
+        result.get("copy_ok")
+        and result.get("semantic_ok", True)
+        and result.get("lean_ok", True)
+    )
     return ApiOk(
-        message="已清洗学生可见文案 · 请验圈后合卷"
-        if result.get("copy_ok") and result.get("semantic_ok", True)
+        message="已清洗文案/注记/壳件 · 请验圈后合卷"
+        if all_ok
         else "已尝试清洗 · 仍有残留（见命中路径；请确认后端已加载最新 scrub）",
         data=result,
     )

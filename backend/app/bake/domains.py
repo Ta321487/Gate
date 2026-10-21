@@ -224,6 +224,17 @@ def is_borrow_family_domain(domain: str | None) -> bool:
     return bool(d) and d in BORROW_FAMILY_DOMAINS
 
 
+_DOMAIN_TO_GROUP: dict[str, str] = {
+    dom: gid for gid, _label, doms in DOMAIN_GROUPS for dom in doms
+}
+
+
+def domain_group_of(domain: str | None) -> str:
+    """``DOMAIN_GROUPS`` 组 id；未知域回落 ``fallback``。"""
+    d = (domain or "").strip()
+    return _DOMAIN_TO_GROUP.get(d) or "fallback"
+
+
 # domain → 默认所需能力（题目无关的积木组合）
 # 级联展示见 DOMAIN_GROUPS；出包表数下限见 BORROW_FAMILY_DOMAINS
 DOMAIN_CAPABILITIES: dict[str, list[str]] = {

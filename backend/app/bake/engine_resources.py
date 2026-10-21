@@ -168,6 +168,10 @@ def _write_factory_delivered(
     follow_surface_style: str = "",
     repair_surface_style: str = "",
     approve_surface_style: str = "",
+    card_voice: str = "",
+    shell_colors: dict | None = None,
+    shell_nav_style: str = "",
+    domain_group: str = "",
     seed: str = "",
 ) -> None:
     if not auth_hero:
@@ -252,7 +256,16 @@ def _write_factory_delivered(
             if approve_surface_style
             else ""
         ),
-        "domain": domain,
+        "cardVoice": (str(card_voice or "").strip().lower() or "catalog"),
+        "shellColors": dict(shell_colors or {}) if shell_colors else {},
+        "shellNavStyle": (
+            str(shell_nav_style or "").strip().lower()
+            if str(shell_nav_style or "").strip().lower() in ("marketplace", "storefront")
+            else "storefront"
+        ),
+        "domainGroup": str(domain_group or "").strip() or "fallback",
+        # 学生端禁止 DOM-* 编号；皮用 flavor / domainGroup / *SurfaceStyle
+        "domain": "",
         "flavor": skin["flavor"],
         "domainLabel": skin["domainLabel"],
         "traits": skin["traits"],

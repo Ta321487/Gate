@@ -602,6 +602,9 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_workbench_crosscut_to_spec(out, body)
     out = apply_org_crosscut_to_spec(out, body)
     out = apply_list_crosscut_to_spec(out, body)
+    from app.bake.shell_face import apply_shell_face_to_spec
+
+    out = apply_shell_face_to_spec(out, body)
     out = apply_ux_crosscut_to_spec(out, body)
 
     # 岗位随开题补挂（如 FOOD 骑手）；复用 attach_staff_posts，刷新 spec.roles
@@ -889,6 +892,11 @@ FACTORY_UI_FORBIDDEN: tuple[str, ...] = (
     "演示库",
     "本地签章演示",
     "演示物流",
+    # 壳/导航实现注记不得进学生可见句（曾漏出账户中心导语）
+    "旁路",
+    "分栏设置",
+    "分栏",
+    "顶栏业务",
 )
 
 # schema/种子字符串里演示口吻 → 产品表述（与 p3s 对齐）
@@ -903,6 +911,15 @@ _DEMO_UI_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     ("演示库", "业务库"),
     ("本地签章演示", "本地签章"),
     ("演示物流", "物流信息"),
+    # 脚本字面量常见；须先于短词替换，否则 scrub 失败会 lit=body 原样留脏
+    ("支付为系统内模拟支付", "可在线完成支付"),
+    ("系统内模拟支付", "在线支付"),
+    ("模拟支付", "在线支付"),
+    ("订单与资产旁路入口，以及上方外观设置。", "收藏、地址和订单相关入口都在这里。"),
+    ("旁路入口", "相关入口"),
+    ("资产旁路", "资产相关"),
+    ("不对接税局", "非税控通道"),
+    ("不对接税控", "非税控"),
 )
 
 # 含禁词的括注整段去掉（保留主句）
@@ -935,6 +952,9 @@ _FACTORY_PAREN_RE = re.compile(
         "不在本期",
         "本期不",
         "真门禁",
+        "旁路",
+        "分栏",
+        "顶栏业务",
         "≠",
         "e_sign",
     ))
@@ -1398,24 +1418,37 @@ def _scrub_vue_template_chunk(chunk: str) -> str:
 
 
 def _scrub_vue_script_strings(script: str) -> str:
-    """脚本里只洗引号字符串，禁止用 ASCII () 括注规则吞掉 if ( /开题|DOM-/ ) 这类逻辑。"""
+    """脚本里只洗引号字符串，禁止用 ASCII () 括注规则吞掉 if ( /开题|DOM-/ ) 这类逻辑。
+
+    禁止「洗空后 lit=body」把禁词原样写回——那是 p3copy 洗不掉的根因之一。
+    """
 
     def _scrub_lit(m: re.Match[str]) -> str:
         quote, body = m.group(1), m.group(2)
         if not text_has_factory_ui_forbidden(body) and not _FACTORY_PAREN_RE.search(body):
             return m.group(0)
-        # 字面量内可用完整 scrub；空则剥括注，勿删整段代码
         lit = scrub_factory_ui_text(body, fallback="")
-        if not lit and body.strip():
+        if not lit or text_has_factory_ui_forbidden(lit):
             lit = _FACTORY_PAREN_RE.sub("", body)
             for old, new in _DEMO_UI_REPLACEMENTS:
                 lit = lit.replace(old, new)
             lit = re.sub(r"[ \t]{2,}", " ", lit).strip(" ，,;；")
-        if not lit:
-            lit = body  # 宁可不洗字面量，也不要掏空
+        if not lit or text_has_factory_ui_forbidden(lit):
+            # 仍脏：抠掉禁词，勿还原 body
+            lit = body
+            for bad in sorted(FACTORY_UI_FORBIDDEN, key=len, reverse=True):
+                lit = lit.replace(bad, "")
+            lit = re.sub(r"[ \t]{2,}", " ", lit).strip(" ，,;；。.")
+        if not lit or text_has_factory_ui_forbidden(lit):
+            lit = "相关说明"
         return f"{quote}{lit}{quote}"
 
     return re.sub(r"(['\"])([^'\"\\]*(?:\\.[^'\"\\]*)*)\1", _scrub_lit, script)
+
+
+def scrub_js_source_student_copy(text: str) -> str:
+    """清洗 .js 展示字面量（portalShellNav / invoice 等）；注释留给注记抹除。"""
+    return _scrub_vue_script_strings(str(text or ""))
 
 
 def scrub_vue_source_student_copy(text: str) -> str:
@@ -1444,8 +1477,29 @@ def _vue_template_polluted(text: str) -> bool:
     return text_has_factory_ui_forbidden(head + tail)
 
 
-def refresh_polluted_vue_from_baseline(workspace: Path) -> list[str]:
-    """优先：工作区模板脏且 baseline 模板已净 → 覆写；否则就地 scrub（不伤脚本）。"""
+def _js_body_polluted(text: str) -> bool:
+    """与门禁同口径：去掉注释后再判禁词（避免注释里的开题/旁路误伤）。"""
+    from app.bake.gates.evaluate import _strip_js_comments
+
+    return text_has_factory_ui_forbidden(_strip_js_comments(text or ""))
+
+
+# bake 写入的交付配置：绝对禁止用骨架空壳覆写（否则全域菜单/文案/能力被抹成 generic）
+_BAKE_OWNED_FE_JS: frozenset[str] = frozenset(
+    {
+        "appDelivered.js",
+    }
+)
+
+
+def refresh_polluted_js_from_baseline(workspace: Path) -> list[str]:
+    """清洗前端 .js 展示字面量：骨架已净则覆写，否则就地 scrub 字符串 + 抹注记。
+
+    p3copy 会扫 utils/*.js；只 scrub Vue 会漏掉 portalShellNav「旁路」等导语。
+    **绝不**动 ``appDelivered.js``：那是 emit/bake 产物，骨架版是空 generic，
+    一覆写所有选题会变成无菜单/无皮的壳。
+    """
+    from app.bake.pack_prune import scrub_factory_notes_from_source
     from app.core.config import get_settings
 
     sk_root = get_settings().skeletons_dir / "baseline" / "frontend" / "src"
@@ -1453,34 +1507,70 @@ def refresh_polluted_vue_from_baseline(workspace: Path) -> list[str]:
     if not fe.is_dir():
         return []
     written: list[str] = []
-    for path in fe.rglob("*.vue"):
+    for path in fe.rglob("*.js"):
+        if "node_modules" in path.parts:
+            continue
+        rel = path.relative_to(fe).as_posix()
+        if path.name in _BAKE_OWNED_FE_JS or rel in _BAKE_OWNED_FE_JS:
+            continue
         try:
             text = path.read_text(encoding="utf-8")
         except OSError:
             continue
-        scrubbed = scrub_vue_source_student_copy(text)
-        template_dirty = _vue_template_polluted(text)
-        if not template_dirty and scrubbed == text:
+        if not _js_body_polluted(text):
             continue
-        rel = path.relative_to(fe)
+        candidate = text
         src = sk_root / rel if sk_root.is_dir() else None
-        replaced = False
         if src is not None and src.is_file():
             try:
                 clean = src.read_text(encoding="utf-8")
             except OSError:
                 clean = ""
-            if clean and not _vue_template_polluted(clean) and clean != text:
-                # baseline 模板面干净即可覆写（脚本可含 DOM-/开题 过滤）
-                path.write_text(clean, encoding="utf-8")
-                written.append(
-                    ("frontend/src/" + rel.as_posix()).replace("\\", "/")
-                )
-                replaced = True
-        if replaced:
+            if clean and not _js_body_polluted(clean):
+                candidate = clean
+        final = scrub_factory_notes_from_source(scrub_js_source_student_copy(candidate))
+        if final != text:
+            path.write_text(final, encoding="utf-8")
+            written.append(("frontend/src/" + rel).replace("\\", "/"))
+    return written
+
+
+def refresh_polluted_vue_from_baseline(workspace: Path) -> list[str]:
+    """模板脏且 baseline 模板已净 → 先覆写；无论是否覆写，一律再 scrub 脚本字面量 + 抹注记。
+
+    只认「模板净」就整文件回拷，会把骨架脚本里的「模拟支付」等脏句带回学生包。
+    """
+    from app.bake.pack_prune import scrub_factory_notes_from_source
+    from app.core.config import get_settings
+
+    sk_root = get_settings().skeletons_dir / "baseline" / "frontend" / "src"
+    fe = workspace / "frontend" / "src"
+    if not fe.is_dir():
+        return []
+    written: list[str] = []
+
+    def _finalize(src_text: str) -> str:
+        return scrub_factory_notes_from_source(scrub_vue_source_student_copy(src_text))
+
+    for path in fe.rglob("*.vue"):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
             continue
-        if scrubbed != text:
-            path.write_text(scrubbed, encoding="utf-8")
+        rel = path.relative_to(fe)
+        candidate = text
+        src = sk_root / rel if sk_root.is_dir() else None
+        if src is not None and src.is_file():
+            try:
+                clean = src.read_text(encoding="utf-8")
+            except OSError:
+                clean = ""
+            # 仅模板脏时用骨架覆写；脚本禁词靠下面 finalize，不跳过
+            if clean and not _vue_template_polluted(clean) and _vue_template_polluted(text):
+                candidate = clean
+        final = _finalize(candidate)
+        if final != text:
+            path.write_text(final, encoding="utf-8")
             written.append(
                 ("frontend/src/" + rel.as_posix()).replace("\\", "/")
             )

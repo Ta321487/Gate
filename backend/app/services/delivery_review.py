@@ -428,7 +428,10 @@ def can_repack_after_verify(verify_result: dict[str, Any], review_state: dict[st
         blocked = blocking_gates(gates_src if isinstance(gates_src, dict) else {})
         if blocked:
             labels = "、".join(b["label"] for b in blocked[:3])
-            return False, f"质量检查未通过（{labels}）· 请先修复后再验圈合卷"
+            return False, (
+                f"质量检查未通过（{labels}）· 当场可修则处理后验圈合卷；"
+                "须重跑生成请先结束复审"
+            )
         if int(verify_result.get("open_notes_count") or 0) or open_fix_notes(review_state):
             return False, "仍有未结案的复审偏差登记 · 请先处理或结案"
         pending = int((verify_result.get("round") or {}).get("pending_count") or 0)

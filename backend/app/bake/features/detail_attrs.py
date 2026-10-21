@@ -36,6 +36,20 @@ _DETAIL_SHOW_RE = re.compile(r"详情显示([^。；;\n]{2,80})")
 _PARAM_LIST_RE = re.compile(
     r"([\u4e00-\u9fffA-Za-z0-9、,/／]{4,60}?)(?:等)?(?:核心)?参数"
 )
+# 「展示/增加品牌、材质等专业属性|字段」——不必写成「详情（…）」
+_SHOW_ATTR_RE = re.compile(
+    r"(?:独立展示|展示|增加)([^。；;\n]{4,100}?)等(?:专业属性|属性|字段|参数)"
+)
+# 扫进列表前剥掉的话头，长的放前面
+_ATTR_PREFIXES = (
+    "用户端商品详情展示",
+    "商品详情中独立展示",
+    "商品详情展示",
+    "独立展示",
+    "详情展示",
+    "商品的",
+    "展示",
+)
 
 _OPENING_PHRASES = (
     "详情显示多个属性字段",
@@ -103,7 +117,19 @@ def _normalize_attr_label(part: str) -> str:
     label = (part or "").strip().strip("等")
     label = re.sub(r"^(含有|含)", "", label).strip()
     label = re.sub(r"(?:等)?(?:核心)?参数$", "", label).strip()
+    label = re.sub(r"(?:等)?(?:专业)?属性$", "", label).strip()
+    label = re.sub(r"(?:等)?字段$", "", label).strip()
     label = re.sub(r"(?:等)?核心$", "", label).strip().strip("等")
+    changed = True
+    while changed and label:
+        changed = False
+        for prefix in _ATTR_PREFIXES:
+            if label.startswith(prefix) and len(label) > len(prefix):
+                label = label[len(prefix) :].strip()
+                changed = True
+                break
+    if any(noise in label for noise in ("展示", "详情", "用户端", "商品的")):
+        return ""
     return label
 
 
@@ -127,6 +153,8 @@ def _collect_from_blob(blob: str) -> list[str]:
         if any(phrase in chunk for phrase in ("多个属性", "属性字段")) and "、" not in chunk:
             continue
         _append_attr_labels(labels, chunk)
+    for match in _SHOW_ATTR_RE.finditer(blob or ""):
+        _append_attr_labels(labels, match.group(1))
     for match in _PARAM_LIST_RE.finditer(blob or ""):
         chunk = match.group(1).strip()
         # 须至少两个具名属性；单字列不认

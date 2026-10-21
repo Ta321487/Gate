@@ -2,7 +2,7 @@
   <div>
     <h1 class="page-title">项目</h1>
     <p class="page-desc">
-      上传开题等材料，确认分堆后创建项目。细则见「帮助 → 上传与分堆」。
+      上传开题并确认分堆以创建项目；下方卡片用于筛选履约状态。当日待办请见「开工台」。细则见「帮助 → 上传与分堆」。
     </p>
 
     <div class="row mb-12" style="justify-content:flex-end;gap:8px">
@@ -344,8 +344,8 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { api, confirm, message } from '../api'
 import { collectUploadMaterials, MAX_UPLOAD_MATERIALS } from '../uploadMaterials'
@@ -363,13 +363,23 @@ import {
   statusPillNode,
 } from '../opsShared'
 
+const route = useRoute()
 const router = useRouter()
 const list = ref([])
 const catalog = ref({ archetypes: [], domains: [] })
 const filter = ref('all')
+
+function applyFocusQuery() {
+  const focus = route.query.focus
+  if (focus === 'needs_confirm' || focus === 'review') {
+    filter.value = focus
+  }
+}
 /** 与状态/运行列语义对齐：运行中 · 生成中 · 待审 · 可下载 · 已审待发 · 已发出 · 质检未过 */
 const filters = [
   { id: 'all', label: '全部', pill: 'pill-neutral' },
+  { id: 'needs_confirm', label: '待匹配', pill: 'pill-amber' },
+  { id: 'review', label: '复审中', pill: 'pill-teal' },
   { id: 'active', label: '运行中', pill: 'pill-green' },
   { id: 'generating', label: '生成中', pill: 'pill-teal' },
   { id: 'pending', label: '待审', pill: 'pill-amber' },
@@ -1267,7 +1277,18 @@ async function onDrop(e) {
   await enqueueUpload(e)
 }
 
-onMounted(load)
+onMounted(() => {
+  applyFocusQuery()
+  load()
+})
+
+watch(
+  () => route.query.focus,
+  () => {
+    applyFocusQuery()
+    load({ listOnly: true })
+  },
+)
 onUnmounted(() => {
   onSearch.cancel()
   for (const job of uploadJobs.value) {

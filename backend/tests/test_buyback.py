@@ -31,7 +31,11 @@ def test_buyback_quote_and_unlist() -> None:
     assert "buyback_slots" in admin
     assert "my_buybacks" in user
     sql = domain_sql("DOM-SHOP", "t", title=title, proposal_text=body)
-    assert count_create_tables(sql) <= 15
+    plain_n = count_create_tables(
+        domain_sql("DOM-SHOP", "t", title="日用百货商城", proposal_text="购物车下单。")
+    )
+    # 回收只多 buyback_order / buyback_slot，勿拖爆表预算
+    assert count_create_tables(sql) <= plain_n + 3
     assert "CREATE TABLE IF NOT EXISTS buyback_order" in sql
     assert "CREATE TABLE IF NOT EXISTS buyback_slot" in sql
     assert "线性代数" in sql
@@ -39,6 +43,9 @@ def test_buyback_quote_and_unlist() -> None:
     assert "操作系统" in sql
     assert "'listed'" in sql
     assert "condition_grade" in sql
+    # 回收上架种子跟语义列，禁止 product.author（落库 1054）
+    assert "INSERT INTO product (id, title, price_yuan, sku," in sql
+    assert "INSERT INTO product (id, title, author, isbn," not in sql
     root = __import__("pathlib").Path(__file__).resolve().parents[2]
     for rel in (
         "skeletons/baseline/backend/src/main/java/com/thesis/capability/BuybackStore.java",

@@ -38,6 +38,9 @@ def test_consign_opening_seed_and_ledger() -> None:
     assert "product_id" not in pending
     assert "90.00" in sql
     assert "0.1000" in sql
+    # 档案语义列：寄卖补货不得仍写 author/isbn（落库 1054）
+    assert "INSERT IGNORE INTO product (id, title, price_yuan, sku," in sql
+    assert "INSERT IGNORE INTO product (id, title, author, isbn," not in sql
     root = __import__("pathlib").Path(__file__).resolve().parents[2]
     for rel in (
         "skeletons/baseline/backend/src/main/java/com/thesis/capability/ConsignStore.java",

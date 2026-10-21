@@ -816,15 +816,18 @@ def domain_sql(
         enabled=FLASH_PRICE_CAP in caps,
         item_table=resolved_item,
     )
-    text = ensure_flash_price_demo_seed(
-        text,
-        enabled=FLASH_PRICE_CAP in caps,
-        item_table=resolved_item,
-    )
+    # 先语义改名（author→price_yuan），演示种子再按物理列写 UPDATE
     text = apply_archive_semantic_columns(
         text,
         domain=domain or "",
         item_table=resolved_item,
+        archetypes=arches_for_sql,
+    )
+    text = ensure_flash_price_demo_seed(
+        text,
+        enabled=FLASH_PRICE_CAP in caps,
+        item_table=resolved_item,
+        domain=domain or "",
         archetypes=arches_for_sql,
     )
     text = ensure_product_spec_columns(
@@ -1253,6 +1256,15 @@ def domain_sql(
     from app.bake.demo_covers import ensure_demo_cover_urls_sql
 
     text = ensure_demo_cover_urls_sql(text, item_table=resolved_item)
+    # 收口：先修晚追加种子的逻辑列，再门禁硬失败（落库 1054）
+    from app.bake.archive_columns import ensure_archive_semantic_columns
+
+    text = ensure_archive_semantic_columns(
+        text,
+        domain=domain or "",
+        item_table=resolved_item,
+        archetypes=arches_for_sql,
+    )
     # 演示日历不在 bake 时写死「今天」：交付后隔月答辩仍靠启动时 SeedCalendarAligner 平移
     return (
         text.replace("${DB_NAME}", db_name)

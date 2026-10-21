@@ -8,7 +8,7 @@
     <p class="page-desc">{{ description }}</p>
     <p v-if="detail" class="status-detail mono">{{ detail }}</p>
     <div class="row status-actions">
-      <n-button type="primary" @click="$router.push('/')">返回项目</n-button>
+      <n-button type="primary" @click="$router.push('/projects')">返回项目</n-button>
       <n-button v-if="showRetry" @click="onRetry">重试</n-button>
       <n-button @click="onBack">上一页</n-button>
     </div>

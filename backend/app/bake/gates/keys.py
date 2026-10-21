@@ -11,6 +11,7 @@ GATE_MONOTONE_KEYS = (
     "p3d",
     "p3s",
     "p3n",
+    "p3ac",
     "p3q",
     "p3lean",
 )

@@ -10,7 +10,7 @@
       <n-input
         v-model:value="query"
         clearable
-        placeholder="过滤卡片或术语…（如：验圈、填岛、AI 助手、履约）"
+        placeholder="过滤卡片或术语…（如：失败分析、验圈、填岛、AI 助手）"
         style="max-width:360px"
       />
       <nav v-if="!qNorm" class="help-toc" aria-label="章节目录">
@@ -72,6 +72,34 @@
                 </tbody>
               </table>
             </div>
+            <div v-if="card.liveTable === 'failCatalog'" class="help-table-wrap">
+              <p v-if="catalogLoading" class="muted">正在加载对照表…</p>
+              <p v-else-if="catalogError" class="muted">{{ catalogError }}</p>
+              <p v-else-if="!failCatalogRows.length" class="muted">没有匹配的失败类型</p>
+              <table v-else class="help-table">
+                <thead>
+                  <tr>
+                    <th>类型</th>
+                    <th>含义</th>
+                    <th>相关位置</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in failCatalogRows" :key="row.code">
+                    <td><code>{{ row.code }}</code></td>
+                    <td>{{ row.label }}</td>
+                    <td class="help-mono">{{ row.fix_locus }}</td>
+                    <td>
+                      <a
+                        class="help-jump"
+                        :href="`/fail-analysis?code=${encodeURIComponent(row.code)}`"
+                      >查分布</a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
             <ul v-if="card.bullets?.length">
               <li v-for="(b, i) in card.bullets" :key="i">{{ b }}</li>
             </ul>
@@ -101,10 +129,14 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { NEmpty, NInput } from 'naive-ui'
+import { api } from '../api'
 
 const route = useRoute()
 const query = ref('')
 const qNorm = computed(() => String(query.value || '').trim().toLowerCase())
+const failCatalog = ref([])
+const catalogLoading = ref(false)
+const catalogError = ref('')
 
 function sectionId(title) {
   return `help-sec-${String(title || '').replace(/\s+/g, '-')}`
@@ -124,11 +156,36 @@ function scrollToHash(raw) {
   })
 }
 
-onMounted(() => scrollToHash(route.hash || window.location.hash))
+async function loadFailCatalog() {
+  catalogLoading.value = true
+  catalogError.value = ''
+  try {
+    failCatalog.value = await api.failAnalysisCatalog()
+  } catch (e) {
+    catalogError.value = e?.message || '对照表暂时加载失败'
+    failCatalog.value = []
+  } finally {
+    catalogLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadFailCatalog()
+  scrollToHash(route.hash || window.location.hash)
+})
 watch(
   () => route.hash,
   (h) => scrollToHash(h),
 )
+
+const failCatalogRows = computed(() => {
+  const q = qNorm.value
+  const rows = failCatalog.value || []
+  if (!q) return rows
+  return rows.filter((r) =>
+    `${r.code}\n${r.label}\n${r.fix_locus}`.toLowerCase().includes(q),
+  )
+})
 
 function cardBlob(card, { withTerms = true } = {}) {
   const parts = [card.title, card.tag, card.lead, card.anchor]
@@ -153,6 +210,11 @@ function filterCard(card, q) {
     const metaHit = cardBlob(card, { withTerms: false }).includes(q)
     if (metaHit) return card
     if (termHits.length) return { ...card, terms: termHits }
+    return null
+  }
+  if (card.liveTable === 'failCatalog') {
+    if (cardBlob(card).includes(q)) return card
+    if (failCatalogRows.value.length) return card
     return null
   }
   return cardBlob(card).includes(q) ? card : null
@@ -180,12 +242,35 @@ const sections = [
     title: '总览',
     cards: [
       {
+        title: '侧栏分工',
+        tag: '总览',
+        anchor: '侧栏分工',
+        wide: true,
+        lead: '各栏职责单一，避免同一信息在多页重复呈现。',
+        table: {
+          headers: ['栏目', '职责', '不包含'],
+          rows: [
+            ['开工台', '当日待办总览：待匹配、生成中、复审、近七日失败与环境额度', '不上传材料、不重试单条任务'],
+            ['项目', '上传分堆建项；筛选履约状态（待审/待发/已发）与待匹配/复审中', '不提供失败类型分布'],
+            ['任务队列', '单条任务进度、取消、重试与历史清理', '不按失败码排列排修优先级'],
+            ['失败分析', '按类型/步骤/域汇总失败，提供相关位置与处理建议', '不替代项目详情中的日志与毒区'],
+            ['帮助文档', '流程说明、对照表与术语', '不展示实时任务数据'],
+            ['大模型 / Unsplash / 运行环境', '填岛用量、图床与本机工具链/端口', '不进入业务项目列表'],
+          ],
+        },
+        links: [
+          { href: '/', label: '打开开工台' },
+          { hash: '#help-card-五步主路径', label: '五步主路径' },
+        ],
+      },
+      {
         title: '产品定位',
         tag: '总览',
         lead: '毕设港工作台用于依据开题、任务书等材料完成选题匹配、工程生成、质量检查与本地预览；机器质检通过后可下载压缩包。人工审核后可直接标记已发出，或先标已审待发再发出。',
         bullets: [
           '以固定工程基线与能力运行时为主体；大语言模型仅填充业务配置，不承担业务代码编写。',
           '机器质检通过只代表可下载，不代表文案与业务逻辑已过人工审核。',
+          '建议每日先查看侧栏「开工台」，再进入项目或任务队列处理。',
         ],
       },
       {
@@ -208,16 +293,19 @@ const sections = [
         tag: '索引',
         anchor: '四痛点',
         wide: true,
-        lead: '日常卡壳时按痛点跳转；本页只做人话指路，不替代门禁与验圈。',
+        lead: '遇到阻塞时可按痛点跳转对应说明；本页仅作导航索引，不替代门禁与验圈结果。',
         bullets: [
-          '怎么用 → 下方「五步主路径」；项目内页：匹配确认 → 一键生成 → 运行 → 产物/对照 → 交付复审。',
-          '最常爆炸 → 「最常爆炸处置」卡；项目内先看匹配双显 / 质量检查毒区 / 任务日志 / 交付复审合卷。',
-          '感觉不对又说不清 → 产物「交付复审」里的老板小卡（12 主项 + 理解偏差）+ 毒区 / 验圈 / 质量摘要并排。',
-          '开题写得笼统 / 弱匹配多 → 「开题笼统时仍要写对」：老师已确认的开题是合同，写不对先查工厂理解与匹配，禁止甩锅给材料。',
+          '使用流程 → 侧栏「开工台」查看当日待办；详细步骤见「五步主路径」；项目内顺序为：匹配确认 → 一键生成 → 运行 → 产物/对照 → 交付复审。',
+          '高频故障 → 「最常爆炸处置」卡；项目内优先查看匹配双显 / 质量检查毒区 / 任务日志 / 交付复审合卷；同类出包失败集中时使用侧栏「失败分析」。',
+          '结果异常但原因不明 → 产物「交付复审」中的老板小卡（12 主项 + 理解偏差），并对照毒区 / 验圈 / 质量摘要。',
+          '开题措辞笼统 / 弱匹配偏多 → 「开题笼统时仍要写对」：已确认的开题为合同依据，出包不符应先核查工厂匹配与理解，不得归咎于材料。',
         ],
         links: [
+          { href: '/', label: '开工台' },
+          { hash: '#help-card-侧栏分工', label: '侧栏分工' },
           { hash: '#help-card-五步主路径', label: '五步主路径' },
           { hash: '#help-card-最常爆炸处置', label: '最常爆炸' },
+          { hash: '#help-card-失败类型对照表', label: '失败类型对照表' },
           { hash: '#help-card-开题笼统时仍要写对', label: '开题笼统仍要写对' },
           { hash: '#help-card-交付复审', label: '交付复审说明' },
         ],
@@ -227,17 +315,22 @@ const sections = [
         tag: '怎么用',
         anchor: '五步主路径',
         wide: true,
-        lead: '从建项到可下包：每步只做一件事。细节见「流程与交付」各卡。',
+        lead: '从建项到可下载交付包：每步只完成一件事。细节见「流程与交付」各卡。',
         steps: [
+          {
+            title: '0 · 查看开工台',
+            page: '开工台',
+            body: '查看待匹配、生成中、复审与近七日失败类型，据此安排当日处理顺序。',
+          },
           {
             title: '1 · 上传建项',
             page: '项目',
-            body: '上传开题/任务书等，确认分堆后再创建。多课题勿硬并一堆。',
+            body: '上传开题/任务书等材料，确认分堆后再创建项目。不同课题请勿强行合并为一堆。',
           },
           {
             title: '2 · 匹配确认',
             page: '项目详情 → 匹配确认',
-            body: '核领域、身份、主路径、持久层、Security、AI；有双显先看清拟选≠出包。开题依据弱须勾主路径已核对——核对的是工厂是否理解对，不是给甩锅留退路。',
+            body: '核对领域、身份、主路径、持久层、Security、AI；存在双显时先确认拟选与出包是否一致。开题依据较弱时须勾选「主路径已核对」——核验的是工厂理解是否正确，而非为偏差预留借口。',
           },
           {
             title: '3 · 一键生成',
@@ -266,7 +359,7 @@ const sections = [
         tag: '防炸',
         anchor: '最常爆炸处置',
         wide: true,
-        lead: '炸了先点哪、怎么收。老师已确认的开题是合同；禁止改开题迁就工厂，也禁止甩锅给「材料薄」。',
+        lead: '故障时的优先查看位置与处置要点。已确认的开题为合同依据；禁止改开题迁就工厂，也禁止将问题归咎于「材料薄」。',
         table: {
           headers: ['症状', '先看', '处置'],
           rows: [
@@ -277,12 +370,15 @@ const sections = [
             ['预览 OK 但 ZIP 旧', '交付复审', '验圈通过后合卷'],
             ['「演示」字样 / 场景穿帮', '质量检查语义门禁', '洗学生可见面；身份跟 scene_scan'],
             ['措辞弱匹配多 / 出包像模具', '措辞核对 + 匹配确认', '见「开题笼统时仍要写对」——先查工厂是否写对老师确认的主路径'],
+            ['多题同一种出包失败', '侧栏 → 失败分析', '查看类型分布与「相关位置」；优先修复集中出现的类型，勿逐单修改学生包'],
           ],
         },
         links: [
           { hash: '#help-card-开题笼统时仍要写对', label: '开题笼统仍要写对' },
           { hash: '#help-card-交付复审', label: '交付复审' },
           { hash: '#help-card-质量检查与交付', label: '质量检查' },
+          { hash: '#help-card-失败分析', label: '失败分析' },
+          { hash: '#help-card-失败类型对照表', label: '失败类型对照表' },
         ],
       },
       {
@@ -415,10 +511,11 @@ const sections = [
         lead: '「产物 / 对照 → 交付复审」用于对照开题收窄偏差：已通过项纳入安全区；验圈通过后方可合卷更新交付包。不进学生 ZIP。感觉不对时用同页老板小卡（12 主项 + 理解偏差）对着勾，并对照毒区 / 质量摘要。',
         bullets: [
           '首包直发：首次打包未进入复审时，质检通过即可下载；工程改动后 ZIP 可能过期，须验圈并合卷。',
-          '进入复审：主动开启后，每轮「验圈」冻结已通过的门禁与 checklist 项到安全区；未通过项留在毒区待收敛。',
+          '进入复审：主动开启后，每轮「验圈」冻结已通过的门禁与 checklist 项到安全区；未通过项留在毒区待收敛。复审进行中会拦截重新生成。',
           '验圈：检查单调性（安全区不得回退）并刷新质量摘要；有回退或 open 偏差登记时不可合卷。',
-          '合卷：验圈通过后重新打包 ZIP，使交付包与当前 workspace 一致。',
+          '合卷：验圈通过后重新打包 ZIP，使交付包与当前 workspace 一致。合卷不能代替修工厂；门禁须改 bake/基线时，请先「结束复审」再重新生成。',
           '偏差登记：记录工厂与开题不一致之处（仅运营可见）；写「工厂理解偏差」，禁止甩锅「材料薄」。待结案项须处理后再合卷。',
+          '死锁出口：ZIP 过期要合卷、但门禁不过又拦合卷、同时复审又拦重跑时——点「结束复审并去重新生成」，不要空等合卷。',
           '老板小卡：运营自检 12 主项 +「理解偏差」（齐度写库、邻域回归、八张材料图、视觉轴、可见面工厂腔等）；机器全绿仍可能写错老师已确认的主路径——对着开题核，修工厂。',
           '导出交接包：供线下交接或留档，不含于学生交付物。',
           '按钮悬停有一句操作说明；合卷不可用时悬停可见原因。',
@@ -613,9 +710,49 @@ const sections = [
         lead: '「任务队列」看生成排队与失败；「运行环境」看本机 JDK / Maven / Node / MySQL 与预览端口池。',
         bullets: [
           '错误信息会回写到对应项目详情；可清理已失效任务记录。',
+          '同类失败反复出现时，到侧栏「失败分析」看周分布与相关位置，不必只在队列里逐条翻。',
           '端口池限制同时预览数量，不限制选题库存。',
           '服务器部署须配置 GF_PUBLIC_HOST，保证预览链接可访问。',
           '「释放异常占用」只清理未托管却占端口的进程；正在预览的项目须到项目详情停止。',
+        ],
+        links: [
+          { hash: '#help-card-失败分析', label: '失败分析' },
+        ],
+      },
+      {
+        title: '失败分析',
+        tag: '运维',
+        anchor: '失败分析',
+        wide: true,
+        lead: '侧栏「失败分析」汇总指定时间范围内的出包失败：按类型、步骤与领域统计分布，并标出建议优先处理的相关位置。用于排定排修优先级，不是学生包操作说明。',
+        bullets: [
+          '类型：系统按报错归类的失败类别（含中文名称）。查阅码表请用下方「失败类型对照表」，无需翻阅分类源码。',
+          '相关位置：该类型的权威落点（工厂文件/模块）。排修应以此处为准。',
+          '识别类型：对单条样本再次推断归属，仅提示、不写回任务。',
+          '处理建议：支持多任务并行生成；浮层仅显示当前打开的任务。关闭仅收起浮层，后台仍会生成并缓存，再次打开即可查看。「清除缓存」或离开本页将清除前端缓存；服务端草稿约 2 小时过期，最多保留 32 条，进程重启后清空。',
+          '关闭仅收起浮层；未核对的建议不得直接作为修复依据，更不得仅修改当前学生包应付验收。',
+        ],
+        links: [
+          { href: '/fail-analysis', label: '打开失败分析' },
+          { hash: '#help-card-失败类型对照表', label: '失败类型对照表' },
+          { hash: '#help-card-任务队列与运行环境', label: '任务队列' },
+          { hash: '#help-card-最常爆炸处置', label: '最常爆炸' },
+        ],
+      },
+      {
+        title: '失败类型对照表',
+        tag: '索引',
+        anchor: '失败类型对照表',
+        wide: true,
+        liveTable: 'failCatalog',
+        lead: '出包失败类型索引：类型码 → 含义 → 相关位置。与失败分析页、码表同源；顶栏搜索可按码或中文过滤。点击「查分布」将打开失败分析并筛选该类型。',
+        bullets: [
+          '任务上出现类型码时，请先在本表查阅含义与建议修复位置。',
+          '典型报错原文与归类细则以仓库 docs/bake-fail-analysis.md 为准；本表仅作快速索引。',
+        ],
+        links: [
+          { href: '/fail-analysis', label: '打开失败分析' },
+          { hash: '#help-card-失败分析', label: '失败分析说明' },
         ],
       },
     ],
@@ -671,6 +808,11 @@ const sections = [
           { name: '预览', def: '在端口池内临时启动前后端做快速验收；不作为生产部署。' },
           { name: '端口池', def: '预留给预览的端口区间，用于限制同时运行的预览实例数量。' },
           { name: '任务队列', def: '异步生成任务列表，用于查看排队、生成中、失败与重试。' },
+          { name: '失败分析', def: '侧栏运维页：按失败类型/步骤/领域汇总出包失败，标出权威相关位置，便于优先处理集中出现的类型。' },
+          { name: '失败类型', def: '失败分析中的归类码（如 BAKE_PACK_LEAN）及其中文名；由报错与步骤自动归类。速查见帮助「失败类型对照表」。' },
+          { name: '相关位置', def: '某失败类型在工厂中的权威落点（文件/模块）。排修以它为准；大模型「处理建议」不得覆盖它。' },
+          { name: '处理建议', def: '失败分析中生成的未核对草稿；可关闭、可重新生成，默认同任务复用；确认前请勿直接照做。' },
+          { name: '开工台', def: '侧栏首页：汇总待匹配、生成中、复审与近七日失败，便于安排当日处理顺序；不承担建项或单条重试。' },
         ],
       },
     ],

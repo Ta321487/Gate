@@ -1,6 +1,6 @@
 <template>
   <div v-if="p">
-    <button class="back" @click="$router.push('/')">← 返回项目列表</button>
+    <button class="back" @click="$router.push('/projects')">← 返回项目列表</button>
     <div class="proj-head">
       <div>
         <div class="proj-title">{{ p.title }}</div>

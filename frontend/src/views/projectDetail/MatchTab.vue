@@ -2,15 +2,21 @@
   <div>
     <div class="file-row">
       <span>源材料：<strong>{{ p.source_filename }}</strong> · {{ formatSize(p.source_size) }}</span>
-      <n-button text size="small" @click="$router.push('/')">另建项目</n-button>
+      <n-button text size="small" @click="$router.push('/projects')">另建项目</n-button>
     </div>
     <div class="banner success">
       <h4>{{ alreadyBaked ? '工程已生成' : '推荐匹配已给出' }}</h4>
       <p class="small muted">
         {{ alreadyBaked
           ? '改骨架 / 领域 / 持久层须先解锁。改配色、布局等视觉选项请到「一键生成」。'
-          : '确认后到「一键生成」调整视觉并开跑。如需调整骨架、领域或持久层，请先解锁。' }}
+          : '确认后请至「一键生成」调整视觉选项并启动生成。如需调整骨架、领域或持久层，请先解锁。' }}
       </p>
+    </div>
+    <div v-if="preBakeRisks.length" class="banner warn">
+      <h4>生成前风险（请核清后再确认）</h4>
+      <ul class="warn-list">
+        <li v-for="(line, i) in preBakeRisks" :key="i">{{ line }}</li>
+      </ul>
     </div>
     <div v-if="matchWarnings.length" class="banner warn">
       <h4>匹配说明</h4>
@@ -27,12 +33,12 @@
     >
       <p class="small" style="margin:0 0 6px">
         {{ materialWeakHint
-          ? '出现「依据弱 / 主路径必勾」：说明工厂对主路径把握不稳——对照题名与正文把域和入口核清，不要当成「材料不行所以交差」。'
-          : '功能行即使偏万能句，老师已确认的开题仍是合同；出包不对默认是匹配/理解/bake 问题。' }}
+          ? '出现「依据弱 / 主路径必勾」表示工厂对主路径把握不足：请对照题名与正文核清领域与入口，不得以材料不足为由交差。'
+          : '功能行即使偏于笼统，已确认的开题仍是合同依据；出包不符默认属于匹配、理解或 bake 问题。' }}
       </p>
       <ul class="warn-list" style="margin:0">
-        <li>核清：谁提交、谁审、完结态；勾「主路径已核对」表示工厂理解对了，不是甩锅凭证。</li>
-        <li>禁止改开题迁就工厂；禁止用「材料薄」给错包开脱。</li>
+        <li>请核清提交方、审核方与完结态；勾选「主路径已核对」表示已确认工厂理解正确，而非为偏差预留退路。</li>
+        <li>禁止改开题迁就工厂；禁止以「材料薄」为错包开脱。</li>
         <li>
           说明见
           <router-link to="/help#help-card-开题笼统时仍要写对">帮助 · 开题笼统时仍要写对</router-link>。
@@ -338,6 +344,24 @@ const {
 const materialWeakHint = computed(() => {
   const path = matchPath.value || {}
   return Boolean(path.entry_weak || path.needs_path_ack)
+})
+
+/** 生成前摘要风险：与下方细则不重复罗列全文 */
+const preBakeRisks = computed(() => {
+  const lines = []
+  const path = matchPath.value || {}
+  if (path.needs_path_ack) {
+    lines.push('主路径入口依据较弱：请勾选「主路径已核对」，或解锁后明确提交方与审核方。')
+  } else if (path.entry_weak) {
+    lines.push('开题对主路径描述较笼统：确认前请对照题名与正文核清入口。')
+  }
+  if (deviant.value) {
+    lines.push('当前选择已偏离系统推荐：确认后将按所选配置出包，请核对双显差异。')
+  }
+  if ((displayConf.value ?? p.value?.confidence ?? 1) < 0.75) {
+    lines.push('匹配置信度偏低：请优先核对领域与主路径，确认后再启动生成。')
+  }
+  return lines
 })
 
 const genericShellTip = computed(() => {

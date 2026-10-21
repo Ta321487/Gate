@@ -111,12 +111,13 @@ async def list_projects(
     filter: str = Query(
         "all",
         alias="filter",
-        description="all | active | generating | done | pending | ready | delivered | fail",
+        description="all | active | generating | done | pending | ready | delivered | fail | needs_confirm | review",
     ),
     db: AsyncSession = Depends(get_db),
 ):
     """只读库投影；运行态/checklist 由后台 runtime_reconcile 收敛（启停/详情仍当场写）。"""
     from app.core.database import begin_sql_count, end_sql_count
+    from app.services.delivery_review import review_status_of
 
     t0 = time.perf_counter()
     bucket = begin_sql_count()
@@ -188,8 +189,16 @@ async def list_projects(
                     and not project_svc.is_zip_downloadable(p, verify_stale=False)
                 )
             ]
+        elif filter == "needs_confirm":
+            items = [
+                p
+                for p in items
+                if p.status == ProjectStatus.needs_confirm.value
+                or not bool(getattr(p, "match_confirmed", False))
+            ]
+        elif filter == "review":
+            items = [p for p in items if review_status_of(p) == "active"]
         summaries = []
-        from app.services.delivery_review import review_status_of
 
         for p in items:
             s = ProjectSummary.model_validate(p)

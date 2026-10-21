@@ -495,6 +495,66 @@ class MultiCategoryProductTagsTests(unittest.TestCase):
         # 旧句「详情（…）」仍可用
         self.assertIn("品牌", parse_detail_labels("查看商品详情（品牌、香型、价格）。"))
         self.assertNotIn("价格", parse_detail_labels("查看商品详情（品牌、香型、价格）。"))
+        shown = (
+            "在商品详情中独立展示品牌、材质、重量、尺寸、承重/阻力、适用人群等专业属性。"
+            "商品的材质、承重、阻力等核心参数展示不够直观。"
+            "用户端商品详情展示材质、阻力、承重等参数。"
+        )
+        self.assertEqual(
+            set(parse_detail_labels(shown)),
+            {"品牌", "材质", "重量", "尺寸", "承重", "阻力", "适用人群"},
+        )
+
+    def test_fitness_show_attrs_and_axes_hang(self) -> None:
+        """健身开题常见句：展示…等专业属性 + 维名（如取值）双轴。"""
+        text = (
+            "方木健身用品电商平台。用户端、商家端与超级管理员端。"
+            "覆盖训练目标（如增肌、减脂、塑形、康复）与器材类型"
+            "（如哑铃、杠铃、瑜伽垫、弹力带、护具）的多维度检索；"
+            "在商品详情中独立展示品牌、材质、重量、尺寸、承重/阻力、适用人群等专业属性；"
+            "商家端促销活动发布；活动价与订单结算联动。"
+        )
+        self.assertTrue(scan_multi_category(text))
+        self.assertEqual(
+            [d for d, _ in parse_category_axes(text)],
+            ["训练目标", "器材类型"],
+        )
+        self.assertEqual(
+            set(parse_detail_labels(text)),
+            {"品牌", "材质", "重量", "尺寸", "承重", "阻力", "适用人群"},
+        )
+        self.assertTrue(scan_flash_price(text))
+        spec = attach_accept(
+            {
+                "domain": "DOM-SHOP",
+                "title": "方木健身用品电商平台",
+                "capabilities": _SHOP_CAPS,
+                "archetype": "ARCH-TRADE",
+            },
+            text,
+        )
+        caps = spec.get("capabilities") or []
+        self.assertIn(MULTI_CATEGORY_CAP, caps)
+        self.assertIn(DETAIL_ATTRS_CAP, caps)
+        self.assertIn(FLASH_PRICE_CAP, caps)
+        arch = ((spec.get("schema") or {}).get("entities") or {}).get("archive") or {}
+        self.assertEqual(arch.get("categoryDimensions"), ["训练目标", "器材类型"])
+        labels = {f.get("label") for f in (arch.get("fields") or []) if isinstance(f, dict)}
+        self.assertTrue({"品牌", "材质", "适用人群"}.issubset(labels))
+        sql = domain_sql(
+            "DOM-SHOP",
+            "thesis_fitness",
+            capabilities=caps,
+            proposal_text=text,
+            title="方木健身用品电商平台",
+        )
+        n = normalize_sql(sql)
+        self.assertIn("训练目标", n)
+        self.assertIn("器材类型", n)
+        self.assertIn("哑铃", n)
+        self.assertIn("brand", n)
+        self.assertIn("promo_price", n)
+        self.assertNotIn("'自用'", n)
 
     def test_cinema_named_detail_attrs_fields(self) -> None:
         text = "影片详情显示导演、主演、时长；早鸟票。"

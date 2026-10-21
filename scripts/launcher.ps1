@@ -1,4 +1,4 @@
-﻿# Gate console launcher
+# Gate console launcher
 # Entry: scripts\launcher.bat [action]
 # Save as UTF-8 with BOM (Chinese + Windows PowerShell 5.1)
 #
@@ -33,6 +33,10 @@ $ApiUrl = "http://127.0.0.1:$BackendPort"
 $DocsUrl = "$ApiUrl/docs"
 $HealthUrl = "$ApiUrl/api/health"
 $ColWidth = 26
+# 启后端前是否先清 :8000（可用 T 切换；环境变量 GF_NO_AUTO_KILL=1 默认关）
+$script:AutoKillOnStart = -not (
+    $env:GF_NO_AUTO_KILL -eq "1" -or $env:GF_NO_AUTO_KILL -eq "true"
+)
 
 function Write-Line([string]$Text = "", [string]$Color = "Gray") {
     Write-Host $Text -ForegroundColor $Color
@@ -132,6 +136,64 @@ function Wait-PortUp([int]$Port, [int]$TimeoutSec = 25) {
         Start-Sleep -Milliseconds 350
     }
     return (Test-PortListening $Port)
+}
+
+function Show-PortOccupants([int]$Port, [string]$Label) {
+    $rows = @(Get-GfPortOccupants -Port $Port -RepoRoot $Repo)
+    if ($rows.Count -eq 0) {
+        Write-Line ("  {0}（:{1}）空闲" -f $Label, $Port) "DarkGray"
+        return $rows
+    }
+    Write-Line ("  {0}（:{1}）被 {2} 个程序占用：" -f $Label, $Port, $rows.Count) "Yellow"
+    foreach ($r in $rows) {
+        $tag = if ($r.Ours) { "当前服务" } else { "其他程序" }
+        $color = if ($r.Ours) { "Green" } else { "Yellow" }
+        Write-Line ("    #{0}  [{1}]  {2}" -f $r.Pid, $tag, $r.Name) $color
+        if ($r.Cmd) {
+            Write-Line ("           {0}" -f $r.Cmd) "DarkGray"
+        }
+    }
+    return $rows
+}
+
+function Show-AllPortOccupants {
+    Write-Line "  端口使用情况" "Cyan"
+    [void](Show-PortOccupants $BackendPort "后端")
+    [void](Show-PortOccupants $FrontendPort "前端")
+    if ($script:AutoKillOnStart) {
+        Write-Line ("  启动前自动释放：开 · 启动后端时会先腾出 :{0}" -f $BackendPort) "DarkGray"
+    } else {
+        Write-Line "  启动前自动释放：关 · 不会自动结束占用中的程序" "DarkGray"
+    }
+    Write-Line "  按 T 可切换；若希望默认关闭，启动前设置 GF_NO_AUTO_KILL=1" "DarkGray"
+}
+
+function Stop-PortOccupants([int]$Port, [string]$Label) {
+    $rows = @(Get-GfPortOccupants -Port $Port -RepoRoot $Repo)
+    if ($rows.Count -eq 0) {
+        Write-Line ("  {0}（:{1}）无需释放" -f $Label, $Port) "DarkGray"
+        return
+    }
+    [void](Show-PortOccupants $Port $Label)
+    Write-Line ("  正在释放 {0}（:{1}）..." -f $Label, $Port) "Cyan"
+    # Listen PID may be venv re-exec child; resolve to outermost python before kill.
+    $targets = @(
+        $rows | ForEach-Object { Get-GfPythonTreeRoot -ProcessId ([int]$_.Pid) }
+    ) | Select-Object -Unique
+    $roots = @(Get-GfTreeRootPids -ProcessIds $targets)
+    foreach ($id in $roots) {
+        $r = Stop-GfProcessTree -ProcessId $id
+        if ($r.ok) {
+            Write-Line ("  [完成] 已结束 #{0}" -f $id) "Green"
+        } else {
+            $hint = if ($r.message -match 'Access denied|venv') {
+                "系统拒绝结束（venv 子进程常见）；可再按 K，或关掉对应后端窗口"
+            } else {
+                $r.message
+            }
+            Write-Line ("  [提示] 未能结束 #{0}：{1}" -f $id, $hint) "Yellow"
+        }
+    }
 }
 
 function Test-WindowsTerminalCli {
@@ -262,14 +324,26 @@ function Start-BackendService([switch]$ForceRestart) {
     $health = Invoke-HealthCheck
     $oursOk = Test-GfOurBackendListening -RepoRoot $Repo -Port $BackendPort
     if ($health.ok -and $oursOk -and -not $ForceRestart) {
-        Write-Line ("  [跳过] 后端已在跑 pid={0}" -f (Read-GfBackendPid -RepoRoot $Repo)) "Green"
+        Write-Line ("  [跳过] 后端已在运行（进程 #{0}）" -f (Read-GfBackendPid -RepoRoot $Repo)) "Green"
         return
     }
 
-    Write-Line "  清理并启动后端..." "DarkGray"
-    Stop-BackendAll
+    if ($script:AutoKillOnStart) {
+        Write-Line "  正在准备并启动后端..." "DarkGray"
+        Stop-BackendAll
+    } else {
+        Write-Line "  启动前自动释放已关闭，将直接尝试启动" "Yellow"
+        if (Test-PortListening $BackendPort) {
+            Write-Line ("  [错误] 后端端口 :{0} 仍被占用" -f $BackendPort) "Red"
+            [void](Show-PortOccupants $BackendPort "后端")
+            Write-Line "  可按 K 释放端口，或按 T 打开「启动前自动释放」后再启动" "DarkGray"
+            return
+        }
+    }
     if (-not (Wait-BackendPortFree 12)) {
-        Write-Line "  [错误] :$BackendPort 仍被占用" "Red"
+        Write-Line ("  [错误] 后端端口 :{0} 仍被占用" -f $BackendPort) "Red"
+        [void](Show-PortOccupants $BackendPort "后端")
+        Write-Line "  可按 K 释放端口，或按 8 清理多余的后端进程" "DarkGray"
         return
     }
 
@@ -278,29 +352,36 @@ function Start-BackendService([switch]$ForceRestart) {
     Write-Line "  等待就绪..." "DarkGray"
     $ready = Wait-BackendReady 25
     if ($ready.ok) {
-        Write-Line ("  [OK] pid={0} · {1}" -f (Read-GfBackendPid -RepoRoot $Repo), $ready.body) "Green"
+        Write-Line ("  [完成] 后端已就绪（进程 #{0}）· {1}" -f (Read-GfBackendPid -RepoRoot $Repo), $ready.body) "Green"
     } else {
         Write-Line "  [错误] 后端未就绪" "Red"
         if ($ready.health) {
-            Write-Line ("  （有响应但非本仓库 pid={0}）" -f (Read-GfBackendPid -RepoRoot $Repo)) "Yellow"
+            Write-Line ("  （已有响应，但不是本次启动的进程 #{0}）" -f (Read-GfBackendPid -RepoRoot $Repo)) "Yellow"
         } else {
             Write-Line "  （$($ready.body)）" "Yellow"
         }
-        Write-Line "  看 GF-Backend 标签页，或按 2 重试" "DarkGray"
+        Write-Line "  请查看后端窗口日志，或按 2 重试" "DarkGray"
     }
 }
 
 function Start-FrontendService {
     if (Test-PortListening $FrontendPort) {
-        Write-Line "  [跳过] 前端已在 :$FrontendPort" "Green"
+        $rows = @(Get-GfPortOccupants -Port $FrontendPort -RepoRoot $Repo)
+        Write-Line ("  [跳过] 前端已在运行（:{0}）" -f $FrontendPort) "Green"
+        foreach ($r in $rows) {
+            Write-Line ("    #{0}  {1}" -f $r.Pid, $r.Name) "DarkGray"
+            if ($r.Cmd) { Write-Line ("           {0}" -f $r.Cmd) "DarkGray" }
+        }
+        Write-Line "  若不是本控制台拉起的前端，可按 K 释放后再开" "DarkGray"
         return
     }
     Start-InNewWindow "GF-Frontend" (Join-Path $Scripts "start-frontend.bat")
     Write-Line "  等待前端..." "DarkGray"
     if (Wait-PortUp $FrontendPort 25) {
-        Write-Line "  [OK] 前端 :$FrontendPort" "Green"
+        Write-Line ("  [完成] 前端已就绪（:{0}）" -f $FrontendPort) "Green"
     } else {
         Write-Line "  [警告] 窗口已开，:$FrontendPort 尚未就绪" "Yellow"
+        [void](Show-PortOccupants $FrontendPort "前端")
     }
 }
 
@@ -349,25 +430,32 @@ function Show-StatusStrip {
     Write-Host "  " -NoNewline
     Write-Host "后端" -NoNewline -ForegroundColor DarkGray
     Write-Host (" :{0} " -f $BackendPort) -NoNewline -ForegroundColor DarkGray
-    if ($beHealth.ok) { Write-Host "ON " -NoNewline -ForegroundColor Green -BackgroundColor DarkGreen }
-    elseif ($bePort) { Write-Host "端口开 " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
-    else { Write-Host "-- " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
+    if ($beHealth.ok) { Write-Host "运行中 " -NoNewline -ForegroundColor Green -BackgroundColor DarkGreen }
+    elseif ($bePort) { Write-Host "占用中 " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
+    else { Write-Host "未启动 " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
     Write-Host "   " -NoNewline
     Write-Host "前端" -NoNewline -ForegroundColor DarkGray
     Write-Host (" :{0} " -f $FrontendPort) -NoNewline -ForegroundColor DarkGray
-    if ($feUp) { Write-Host "ON " -NoNewline -ForegroundColor Green -BackgroundColor DarkGreen }
-    else { Write-Host "-- " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
+    if ($feUp) { Write-Host "运行中 " -NoNewline -ForegroundColor Green -BackgroundColor DarkGreen }
+    else { Write-Host "未启动 " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
 
     if (-not $pyExists) {
-        Write-Host "    venv 缺失" -ForegroundColor Red
+        Write-Host "    未找到 Python 环境（backend\.venv）" -ForegroundColor Red
     } elseif ($beHealth.ok -and $oursAlive) {
-        Write-Host ("    pid {0}" -f $oursPid) -ForegroundColor DarkGray
+        Write-Host ("    进程 #{0}" -f $oursPid) -ForegroundColor DarkGray
     } elseif ($beHealth.ok) {
-        Write-Host "    health OK（非本次 pid，按 2 接管）" -ForegroundColor Yellow
+        Write-Host "    已响应，但不是本次启动的进程 · 按 2 可接管" -ForegroundColor Yellow
     } elseif ($bePort) {
-        Write-Host "    端口开但 health 失败" -ForegroundColor Yellow
+        Write-Host "    端口被占用，服务未正常响应" -ForegroundColor Yellow
+        $foreign = @(Get-GfPortOccupants -Port $BackendPort -RepoRoot $Repo | Where-Object { -not $_.Ours })
+        if ($foreign.Count -gt 0) {
+            Write-Host (" · 其他程序 #{0}（P 查看 · K 释放）" -f (($foreign | ForEach-Object { $_.Pid }) -join ",")) -ForegroundColor Yellow
+        }
     } else {
-        Write-Host "    未运行" -ForegroundColor DarkGray
+        Write-Host "" -ForegroundColor DarkGray
+    }
+    if (-not $script:AutoKillOnStart) {
+        Write-Host "  启动前自动释放：关" -ForegroundColor Yellow
     }
 }
 
@@ -382,27 +470,32 @@ function Show-Menu {
 
     Show-StatusStrip
 
-    Write-BlockTitle "服务（高频）"
+    Write-BlockTitle "服务"
     Write-Pair "1" "前后端一起开"  "2" "重启后端" "Cyan" "Cyan"
     Write-Pair "3" "只开后端"      "4" "只开前端"
-    Write-Pair "5" "全部停止"      "8" "清重复后端" "Gray" "Yellow"
+    Write-Pair "5" "全部停止"      "8" "清理多余后端" "Gray" "Yellow"
 
     Write-BlockTitle "停止 / 打开"
     Write-Pair "6" "停后端"        "7" "停前端"
-    Write-Pair "9" "运营台 UI"     "A" "API 文档"
-    Write-Pair "B" "健康检查"      "C" "仓库目录"
-    Write-Pair "D" "工作区"        "E" "上传目录"
+    Write-Pair "9" "打开控制台"   "A" "接口文档"
+    Write-Pair "B" "健康检查"      "C" "打开项目目录"
+    Write-Pair "D" "打开工作区"    "E" "打开上传目录"
     Write-Pair "S" "样例开题"
 
-    Write-BlockTitle "Compose / 其他"
-    Write-Pair "F" "起 Compose 库"  "G" "Compose 状态"
-    Write-Pair "H" "停 Compose 库"  "R" "刷新"
-    Write-Pair "V" "检查 bat 编码"  "0" "退出" "Gray" "DarkGray"
+    Write-BlockTitle "端口"
+    Write-Pair "P" "查看占用"     "K" "释放端口" "Yellow" "Yellow"
+    Write-Pair "T" "启动前自动释放 开/关" "" "" "Gray" "Gray"
+
+    Write-BlockTitle "数据库 / 其他"
+    Write-Pair "F" "启动 Compose 库"  "G" "Compose 状态"
+    Write-Pair "H" "停止 Compose 库"  "R" "刷新"
+    Write-Pair "V" "检查脚本编码"    "0" "退出" "Gray" "DarkGray"
 
     Write-Host ""
-    Write-Host "  UI  $UiUrl" -ForegroundColor DarkGray
-    Write-Host "  API $ApiUrl   docs $DocsUrl" -ForegroundColor DarkGray
-    Write-Host "  直达  launcher.bat 1 | 2 | 5   （启停后自动回菜单，不必按 Enter）" -ForegroundColor DarkGray
+    Write-Host "  控制台  $UiUrl" -ForegroundColor DarkGray
+    Write-Host "  接口    $ApiUrl   文档 $DocsUrl" -ForegroundColor DarkGray
+    $autoHint = if ($script:AutoKillOnStart) { "启动前自动释放：开" } else { "启动前自动释放：关" }
+    Write-Host ("  快捷    launcher.bat 1 | 2 | 5   · {0}" -f $autoHint) -ForegroundColor DarkGray
     Write-Host ""
 }
 
@@ -477,10 +570,36 @@ function Invoke-Choice([string]$Choice) {
             return "ok"
         }
         "8" {
-            Write-Line "  清理重复后端..." "Cyan"
+            Write-Line "  正在清理多余的后端进程..." "Cyan"
             Invoke-LocalPs1 (Join-Path $Scripts "kill-dup-backend.ps1")
             Show-StatusStrip
             Flash-ThenContinue
+            return "ok"
+        }
+        "P" {
+            Show-AllPortOccupants
+            if ($script:CliMode) { return "ok" }
+            Pause-Menu "按 Enter 返回菜单..."
+            return "ok"
+        }
+        "K" {
+            Write-Line "  正在释放前后端端口..." "Cyan"
+            Stop-PortOccupants $BackendPort "后端"
+            Stop-PortOccupants $FrontendPort "前端"
+            Show-StatusStrip
+            Flash-ThenContinue 900
+            return "ok"
+        }
+        "T" {
+            $script:AutoKillOnStart = -not $script:AutoKillOnStart
+            if ($script:AutoKillOnStart) {
+                $env:GF_NO_AUTO_KILL = "0"
+                Write-Line ("  启动前自动释放：已打开（下次启动后端会先腾出 :{0}）" -f $BackendPort) "Green"
+            } else {
+                $env:GF_NO_AUTO_KILL = "1"
+                Write-Line "  启动前自动释放：已关闭（占用时请按 P 查看或 K 释放）" "Yellow"
+            }
+            Flash-ThenContinue 900
             return "ok"
         }
         "9" {
