@@ -92,3 +92,4 @@
 | 2026-10-19 | 大线 #1：`repair_surface_style` 接线（进度流/故障看板只给宿舍物业 IT）；下一 `approve_surface_style` |
 | 2026-10-19 | 大线 #1：`approve_surface_style` 接线（事项清单/待审步骤条只给审批域）；下一 §1.10 导引文案 |
 | 2026-10-21 | 大线 #1：跟进 follow 观感首刀已齐（pipeline/dossier/listing，LISTING 补 price 价签）；下一报修 |
+| 2026-10-22 | 大线 #1：跟进观感收口——priceYuan/priceUnit 多档、followStageTone、三档 CSS；下一报修 |

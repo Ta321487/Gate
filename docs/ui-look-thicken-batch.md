@@ -2,7 +2,7 @@
 
 > **本文只负责**：工厂出包「一眼精美 / 不像模板后台」的**观感加厚**进度、全域台账、验收口径与真源落点。
 > **不负责**：能力四件套（各组 `*_thicken` / 地图待补）；选型键目录与 ASCII（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md) §2）；沉浸边角（[`immersion-corners.md`](./immersion-corners.md)）。
-> **状态**：**进行中** · 公共壳 + 交易/借用/预约/内容/报名/互动 **首刀已齐**；用户列表卡底口径已跨页统一；其余域组 **未开**。
+> **状态**：**进行中** · 公共壳 + 交易/借用/预约/内容/报名/互动/跟进 **首刀已齐**；用户列表卡底口径已跨页统一；报修·审批 **未开**。
 > **硬闸**：键接满、测绿了，观感仍像模板站 —— **仍算未完成**（同选型册 §0.0）。
 > **索引**：[README.md](./README.md) · 选型册 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) · 搁置 [`parked-work.md`](./parked-work.md) · 领域 [`domains.md`](./domains.md)。
 
@@ -123,8 +123,9 @@
 
 - `pipeline`：阶段看板卡——4 列网格，左侧 4px 阶段色条（线索/意向/谈判/成交/搁置五色），无封面
 - `dossier`：档案行——纵向清单，小封面、虚线分隔、hover 左色条；主信号为当前阶段
-- `listing`：挂牌价签——左大图右宽卡，价签大数字（租金 ¥/月、出售 ¥X.X万）；补 `price` 字段（LISTING 专用，其它跟进域不挂）
-- 数据层：`DOM-LISTING.sql` 加 `price DECIMAL(12,2)` 列 + 种子价格；三份 `ArchiveStore` 用 `hasItemColumn("price")` 守卫映射到 `priceYuan`
+- `listing`：挂牌价签——左大图右宽卡，价签大数字；补 `priceYuan`（挂牌价）与 `priceUnit`（计价单位）字段（LISTING 专用，其它跟进域不挂）
+- 数据层：`DOM-LISTING.sql` 加 `price DECIMAL(12,2)`、`price_unit VARCHAR(16)` 列 + 种子（整租/合租按「元/月」、二手出售按「元/套」）；三份 `ArchiveStore` 用 `hasItemColumn("price")`/`hasItemColumn("price_unit")` 守卫映射到 `priceYuan`/`priceUnit`，写入走 `patchOptNum`/`patchOptStr`
+- 口径：单价单位是**行级**语义，主信号按 `priceUnit` 拼后缀（缺失只报金额），禁止前端按数值大小猜「万/月」；管理端下拉含元/月·套·㎡·间·天·辆·个·万元（选题不唯一）
 - 有 `followSurfaceStyle` 时列表进 `/archive/item/:id`；详情主按钮 listing「预约带看」、其它「记录跟进」，附「跟进说明」
 - 覆盖域：`DOM-CRM` / `EVENT` / `ATTEND` / `FUND` / `RECRUIT` / `GRADE` / `INTERN` / `LISTING`
 - 护栏：`backend/tests/test_follow_look_thicken.py`
