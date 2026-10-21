@@ -1118,6 +1118,8 @@ public final class ArchiveStore {
         patchOptStr(id, patch, "fundForm", "fund_form", 32);
         patchOptStr(id, patch, "hireDept", "hire_dept", 64);
         patchOptStr(id, patch, "priceHistory", "price_history", 255);
+        patchOptNum(id, patch, "priceYuan", "price");
+        patchOptStr(id, patch, "priceUnit", "price_unit", 16);
         patchOptStr(id, patch, "vrUrl", "vr_url", 255);
         if (patch.containsKey("foundAt") && hasItemColumn("found_at")) {
             Timestamp ts = parseTs(patch.get("foundAt"));
@@ -1871,6 +1873,13 @@ public final class ArchiveStore {
                 double p = rs.getDouble("price");
                 if (!rs.wasNull()) m.put("priceYuan", p);
             } catch (Exception ignored) {
+            }
+        }
+        if (hasItemColumn("price_unit")) {
+            try {
+                m.put("priceUnit", safeStr(rs, "price_unit"));
+            } catch (Exception ignored) {
+                m.put("priceUnit", "");
             }
         }
         if (hasItemColumn("free_ship_yuan")) {

@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS listing (
   stock INT DEFAULT 1,
   status VARCHAR(32) DEFAULT 'available',
   price DECIMAL(12,2) NULL,
+  price_unit VARCHAR(16) DEFAULT '',
   cover_url VARCHAR(255),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -93,10 +94,10 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '整租'), (2, '合租'), (3, '二手出售');
-INSERT IGNORE INTO listing (id, title, author, isbn, category_id, stock, status, price) VALUES
-(1, '阳光花园 2 室', '城东高新区', '两室一厅 / 地铁旁', 1, 1, 'available', 2500.00),
-(2, '学府路单间', '学府路片区', '单间 / 近学校', 2, 1, 'available', 1200.00),
-(3, '城南精装两房', '城南新区', '两房 / 精装拎包', 3, 1, 'available', 1200000.00);
+INSERT IGNORE INTO listing (id, title, author, isbn, category_id, stock, status, price, price_unit) VALUES
+(1, '阳光花园 2 室', '城东高新区', '两室一厅 / 地铁旁', 1, 1, 'available', 2500.00, '元/月'),
+(2, '学府路单间', '学府路片区', '单间 / 近学校', 2, 1, 'available', 1200.00, '元/月'),
+(3, '城南精装两房', '城南新区', '两房 / 精装拎包', 3, 1, 'available', 1200000.00, '元/套');
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '房源带看须知', '请如实填写说明；提交后等待审核。', 'admin', '业务主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='房源带看须知');

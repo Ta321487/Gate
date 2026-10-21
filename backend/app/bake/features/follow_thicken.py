@@ -940,10 +940,32 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
     if domain == "DOM-LISTING":
         _ensure_archive_field(
             archive,
-            {"key": "price", "label": "挂牌价（元/月 或 元/套）", "type": "number"},
+            {"key": "priceYuan", "label": "挂牌价（元）", "type": "number"},
         )
         thicken["price"] = True
         _add_feature(spec, "挂牌价字段")
+        # 租/售混排：单价单位是行级语义，独立成列，禁止前端按数值大小猜
+        # 选题不唯一：租/售/按面/按间/短租/车位车源等，管理员按行选单位
+        _ensure_archive_field(
+            archive,
+            {
+                "key": "priceUnit",
+                "label": "计价单位",
+                "type": "select",
+                "options": [
+                    "元/月",
+                    "元/套",
+                    "元/㎡",
+                    "元/间",
+                    "元/天",
+                    "元/辆",
+                    "元/个",
+                    "万元",
+                ],
+            },
+        )
+        thicken["priceUnit"] = True
+        _add_feature(spec, "挂牌价计价单位")
         ticket.setdefault("followRemindDays", 1)
         thicken["followRemind"] = True
         _add_feature(spec, "房源意向跟进下次提醒")

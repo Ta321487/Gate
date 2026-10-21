@@ -1103,6 +1103,12 @@ FOLLOW_ARCHIVE_COLUMNS: list[tuple[str, str]] = [
     ("vr_url", "VARCHAR(255) DEFAULT ''"),
 ]
 
+# LISTING 专用：挂牌价列（API 键 priceYuan/priceUnit，禁止其它跟进域乱挂）
+FOLLOW_LISTING_EXTRA_COLUMNS: list[tuple[str, str]] = [
+    ("price", "DECIMAL(12,2) NULL"),
+    ("price_unit", "VARCHAR(16) DEFAULT ''"),
+]
+
 _FOLLOW_ARCHIVE_DOMAINS = frozenset({
     "DOM-CRM",
     "DOM-EVENT",
@@ -1155,7 +1161,10 @@ def ensure_follow_archive_columns(
         head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
         if table.lower() != t.lower():
             return m.group(0)
-        body = _inject_missing_columns(body, FOLLOW_ARCHIVE_COLUMNS)
+        cols = list(FOLLOW_ARCHIVE_COLUMNS)
+        if (domain or "") == "DOM-LISTING":
+            cols.extend(FOLLOW_LISTING_EXTRA_COLUMNS)
+        body = _inject_missing_columns(body, cols)
         return f"{head}{body}{tail}"
 
     return _CREATE_TABLE_RE.sub(repl, sql)
