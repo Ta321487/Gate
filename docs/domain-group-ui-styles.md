@@ -3,7 +3,7 @@
 > **硬要求（切记）**：**禁止过度模板化**；门户首屏与列表须**一眼看上去精美**（像认真做过的产品页，不像同一套毕设壳换皮）。工厂键、软皮、配方都是手段，验收以观感为准，不是「三档都接到了」就算完。  
 > **本文只负责**：地图 §1.1～§1.10 **域组**上，共用列表/主路径「过通用、不像该业务」的问题判定，以及可选手选构图目录（含 ASCII）；**§2.5 = 卡面配方**（同隐喻防撞脸：由「这单卖/借/约什么」驱动短签与叙事，禁止机械疏密三档）；**§3 = 毕设 UI 规范**（过时禁止 + 好看实用 + 顶栏检索槽 + G-3.1～G-3.10 域表）。同壳再换分类/文案/SKU/主色角色，走 [`domains.md`](./domains.md) **软皮**（A 软货架 / B 同壳标签），不新开 `{组}_surface_style`，也不为某一两张订单单开「特例节」。  
 > **不负责**：密功能四件套（各组 `*_thicken` / 地图待补）；沉浸边角（[`immersion-corners.md`](./immersion-corners.md)）；门户首页轴（已有 `portal_home_style`）；软皮登记表正文（商城见 `shop_retail_niches.py`，预约/内容等见 `kind_label_packs`）。页内构图归 §2，卡面叙事归 §2.5，壳归 §3。  
-> **状态**：**选型册 · 接线已齐**（九组 `*_surface_style` 已接 bake/骨架；§1.10 无选型键）。**观感加厚**另册推进：[`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)（公共壳 + 交易/借用/预约/内容/报名/互动/跟进/报修首刀已齐；审批未开；**68 域全表**）。  
+> **状态**：**选型册 · 接线已齐**（九组 `*_surface_style` 已接 bake/骨架；§1.10 无选型键）。**观感加厚**另册推进：[`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)（公共壳 + 九组观感首刀已齐；兜底吃公共壳；**68 域全表**）。  
 > **触发**：选型接线已齐后，下一刀是**观感加厚**（过 §0.0 截图闸），不是再加旋钮。组进度与全域台账以观感批次册为准。  
 > **索引**：[README.md](./README.md) · 观感批次 [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md) · 地图 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) · 领域 [`domains.md`](./domains.md) · 软皮缺口见 [`cohort-opening-title-map.md`](./cohort-opening-title-map.md) · 横切 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md)（正交，勿混轮）。
 
@@ -94,7 +94,7 @@
 | G-1.2 | 跟进 | 中 | ArchiveBrowse、跟进时间轴 | `follow_surface_style` | 3 | **已接线** | **首刀已齐** |
 | G-1.3 | 报修 | 轻 | MyTickets、报修看板 | `repair_surface_style` | 2 | **已接线** | **首刀已齐** |
 | G-1.4 | 报名/申请 | 重 | ArchiveBrowse、课表 | `apply_surface_style` | 4 | **已接线** | **首刀已齐** |
-| G-1.5 | 审批/填报 | 轻 | 申请入口、TicketsAdmin | `approve_surface_style` | 2 | **已接线** | 未开 |
+| G-1.5 | 审批/填报 | 轻 | 申请入口、TicketsAdmin | `approve_surface_style` | 2 | **已接线** | **首刀已齐** |
 | G-1.6 | 交易 | 中 | PortalHome、Cart、ArchiveBrowse | `trade_surface_style` | 3 | **已接线** | **首刀已齐** |
 | G-1.7 | 预约 | 中 | Slot 页、ArchiveBrowse | `reserve_surface_style` | 3 | **已接线** | **首刀已齐** |
 | G-1.8 | 内容 | 重 | ArchiveBrowse | `content_surface_style` | 4 | **已接线** | **首刀已齐** |
@@ -765,6 +765,7 @@ EXAM/SURVEY/VOTE 不进本轴。隐喻绑域：资料墙只婚恋、双选卡只
 | **观感首刀 · 借用** | bookshelf / stockrow / bedblocks / parcelshelf CSS；单据 `openApply` |
 | **观感首刀 · 跟进** | pipeline / dossier / listing；LISTING `priceYuan`+`priceUnit`；`followStageTone`；详情「预约带看/记录跟进」 |
 | **观感首刀 · 报修** | MyTickets `ticketfeed`/`faultboard`；`ticketTone`；看板顶栏待派/处理中/超时 |
+| **观感首刀 · 审批** | MyTickets/TicketsAdmin `typelist`/`inboxsteps`；`--approve-tone`；待我审分档顶栏 |
 | **观感进度真源** | [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)（组表 + 68 域台账；台账可用 `scripts/_gen_ui_look_thicken_doc.py` 重生成） |
 
 与 [`immersion-corners.md`](./immersion-corners.md) 边界：本册 §2 = 可选手选主路径构图；§2.5 = 同隐喻卡面叙事（骨架已接）；§3 = 壳规矩（九组导航+检索槽+壳色已接）；**观感是否过 §0.0** 以观感批次册为准；沉浸边角 = 非强制加分，不替代这三轴。
@@ -814,3 +815,4 @@ EXAM/SURVEY/VOTE 不进本轴。隐喻绑域：资料墙只婚恋、双选卡只
 | 2026-10-21 | **观感加厚立册**：[`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)；公共壳 + 交易 + 借用首刀入档；总表增「观感加厚」列；接线齐 ≠ 观感齐 |
 | 2026-10-22 | **观感首刀 · 跟进**：pipeline/dossier/listing 加厚 + LISTING 价签单位列；总表 G-1.2 标首刀已齐 |
 | 2026-10-22 | **观感首刀 · 报修**：ticketfeed/faultboard 加厚；总表 G-1.3 标首刀已齐 |
+| 2026-10-22 | **观感首刀 · 审批**：typelist/inboxsteps 加厚；总表 G-1.5 标首刀已齐；九组观感首刀齐 |

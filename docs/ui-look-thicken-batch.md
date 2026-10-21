@@ -2,7 +2,7 @@
 
 > **本文只负责**：工厂出包「一眼精美 / 不像模板后台」的**观感加厚**进度、全域台账、验收口径与真源落点。
 > **不负责**：能力四件套（各组 `*_thicken` / 地图待补）；选型键目录与 ASCII（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md) §2）；沉浸边角（[`immersion-corners.md`](./immersion-corners.md)）。
-> **状态**：**进行中** · 公共壳 + 交易/借用/预约/内容/报名/互动/跟进/报修 **首刀已齐**；用户列表卡底口径已跨页统一；审批 **未开**。
+> **状态**：**收口** · 公共壳 + 九组观感 **首刀已齐**（含审批）；用户列表卡底口径已跨页统一；兜底吃公共壳。
 > **硬闸**：键接满、测绿了，观感仍像模板站 —— **仍算未完成**（同选型册 §0.0）。
 > **索引**：[README.md](./README.md) · 选型册 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) · 搁置 [`parked-work.md`](./parked-work.md) · 领域 [`domains.md`](./domains.md)。
 
@@ -56,10 +56,10 @@
 | follow | 跟进 | 已接线 | 吃 A | **首刀已齐** | pipeline/dossier/listing（+LISTING price 价签） | 软皮短签再磨 |
 | interact | 互动 | 已接线 | 吃 A | **首刀已齐** | profilegrid/mutualpick/triprow + 详情意向；EXAM/SURVEY/VOTE 专用页不动 | 软皮短签再磨 |
 | ticket | 报修/工单 | 已接线 | 吃 A | **首刀已齐** | MyTickets ticketfeed/faultboard | 软皮短签再磨 |
-| approve | 审批/填报 | 已接线 | 吃 A | 未开 | MyTickets/TicketsAdmin approve surface | 待排 |
-| fallback | 兜底 | 无选型键 | 吃 A | 未开 | 导引 + 中性壳 | 随壳即可 |
+| approve | 审批/填报 | 已接线 | 吃 A | **首刀已齐** | MyTickets/TicketsAdmin typelist/inboxsteps | 软皮短签再磨 |
+| fallback | 兜底 | 无选型键 | 吃 A | **吃公共壳** | 导引 + 中性壳 | 随壳即可 |
 
-建议下一轮：**审批**（事项清单 / 待审步骤条）；报修首刀已齐（进度流/故障看板）。
+建议下一轮：各组 **软皮短签再磨**；观感首刀九组已齐。
 
 ---
 
@@ -137,7 +137,14 @@
 - 覆盖域：`DOM-DORM` / `DOM-PROPERTY` / `DOM-IT`（非报修域无 surface）
 - 护栏：`backend/tests/test_repair_look_thicken.py`
 
-### 2.10 跨页卡底口径（用户列表统一）
+### 2.10 审批组 B（两档异脸；事项清单 / 待审步骤）
+
+- `typelist`：事项类型清单行卡——左色条 + `matter-type` 短签；管理台表头跟 portal 浅底
+- `inboxsteps`：待审步骤脸——`--approve-tone` 左边条（禁死色 ●○○）；管理台顶栏「待我审 / 待初审 / 待复审 / 待终审」
+- 覆盖域：23 个审批域（见 `APPROVE_SURFACE_DOMAINS`）；非审批域无 surface
+- 护栏：`backend/tests/test_approve_look_thicken.py`
+
+### 2.11 跨页卡底口径（用户列表统一）
 
 - 标杆口径：`ArchiveBrowse` 卡底 `card-foot`（纵向列）> `card-meta`（状态条）+ `card-acts`（操作条）
 - 铺开五页：`MyOrders` / `MyReservations` / `MyTickets` / `PeerTickets` / `MyFavorites`
@@ -174,29 +181,29 @@
 | `DOM-COURSE` | apply | 报名/申请 | `coursetable` | catalog | `#2A4558` | 课程名称 | 全厂已齐 | 首刀已齐 |
 | `DOM-LOST` | apply | 报名/申请 | `noticeboard` | story | `#4A4A3A` | 启事关键词 | 全厂已齐 | 首刀已齐 |
 | `DOM-TOUR` | apply | 报名/申请 | `tourcard` | story | `#3A4A5A` | 线路名称 | 全厂已齐 | 首刀已齐 |
-| `DOM-ACAD` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 学籍事项 | 全厂已齐 | 未开 |
-| `DOM-AWARD` | approve | 审批/填报 | `typelist` | catalog | `#243848` | 获奖类型 | 全厂已齐 | 未开 |
-| `DOM-CARPASS` | approve | 审批/填报 | `typelist` | board | `#2A3448` | 车牌号 | 全厂已齐 | 未开 |
-| `DOM-CERT` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 证明类型 | 全厂已齐 | 未开 |
-| `DOM-CHECKIN` | approve | 审批/填报 | `typelist` | board | `#2A3A48` | 寝室 / 归寝 | 全厂已齐 | 未开 |
-| `DOM-CLUB` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 社团名称 | 全厂已齐 | 未开 |
-| `DOM-CONTRACT` | approve | 审批/填报 | `typelist` | catalog | `#2A3040` | 合同名称 | 全厂已齐 | 未开 |
-| `DOM-CREDIT` | approve | 审批/填报 | `typelist` | catalog | `#243848` | 认定项目 | 全厂已齐 | 未开 |
-| `DOM-ETHIC` | approve | 审批/填报 | `typelist` | catalog | `#2A3040` | 审查事项 | 全厂已齐 | 未开 |
-| `DOM-EVAL` | approve | 审批/填报 | `typelist` | story | `#2A3844` | 评教课程 | 全厂已齐 | 未开 |
-| `DOM-EXPENSE` | approve | 审批/填报 | `typelist` | board | `#2A3040` | 报销单号 / 事由 | 全厂已齐 | 未开 |
-| `DOM-FITOUT` | approve | 审批/填报 | `typelist` | board | `#243044` | 装修区域 | 全厂已齐 | 未开 |
-| `DOM-FLEET` | approve | 审批/填报 | `typelist` | board | `#243044` | 用车申请 | 全厂已齐 | 未开 |
-| `DOM-LABOR` | approve | 审批/填报 | `typelist` | catalog | `#243848` | 劳动项目 | 全厂已齐 | 未开 |
-| `DOM-LABSAFE` | approve | 审批/填报 | `typelist` | catalog | `#1E3A48` | 实验室名称 | 全厂已齐 | 未开 |
-| `DOM-MORAL` | approve | 审批/填报 | `typelist` | catalog | `#243848` | 综测指标 | 全厂已齐 | 未开 |
-| `DOM-PARTY` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 发展阶段 | 全厂已齐 | 未开 |
-| `DOM-PROCURE` | approve | 审批/填报 | `stockrow` | catalog | `#2A3840` | 申购物资 | 全厂已齐 | 未开 |
-| `DOM-PROJ` | approve | 审批/填报 | `typelist` | catalog | `#2A3040` | 项目名称 | 全厂已齐 | 未开 |
-| `DOM-PROMO` | approve | 审批/填报 | `typelist` | board | `#243044` | 宣传事项 | 全厂已齐 | 未开 |
-| `DOM-SEAL` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 用章事项 | 全厂已齐 | 未开 |
-| `DOM-TRIP` | approve | 审批/填报 | `typelist` | board | `#243044` | 出差事项 | 全厂已齐 | 未开 |
-| `DOM-VISITOR` | approve | 审批/填报 | `typelist` | board | `#2A3448` | 访客姓名 | 全厂已齐 | 未开 |
+| `DOM-ACAD` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 学籍事项 | 全厂已齐 | 首刀已齐 |
+| `DOM-AWARD` | approve | 审批/填报 | `typelist` | catalog | `#243848` | 获奖类型 | 全厂已齐 | 首刀已齐 |
+| `DOM-CARPASS` | approve | 审批/填报 | `typelist` | board | `#2A3448` | 车牌号 | 全厂已齐 | 首刀已齐 |
+| `DOM-CERT` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 证明类型 | 全厂已齐 | 首刀已齐 |
+| `DOM-CHECKIN` | approve | 审批/填报 | `typelist` | board | `#2A3A48` | 寝室 / 归寝 | 全厂已齐 | 首刀已齐 |
+| `DOM-CLUB` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 社团名称 | 全厂已齐 | 首刀已齐 |
+| `DOM-CONTRACT` | approve | 审批/填报 | `typelist` | catalog | `#2A3040` | 合同名称 | 全厂已齐 | 首刀已齐 |
+| `DOM-CREDIT` | approve | 审批/填报 | `typelist` | catalog | `#243848` | 认定项目 | 全厂已齐 | 首刀已齐 |
+| `DOM-ETHIC` | approve | 审批/填报 | `typelist` | catalog | `#2A3040` | 审查事项 | 全厂已齐 | 首刀已齐 |
+| `DOM-EVAL` | approve | 审批/填报 | `typelist` | story | `#2A3844` | 评教课程 | 全厂已齐 | 首刀已齐 |
+| `DOM-EXPENSE` | approve | 审批/填报 | `typelist` | board | `#2A3040` | 报销单号 / 事由 | 全厂已齐 | 首刀已齐 |
+| `DOM-FITOUT` | approve | 审批/填报 | `typelist` | board | `#243044` | 装修区域 | 全厂已齐 | 首刀已齐 |
+| `DOM-FLEET` | approve | 审批/填报 | `typelist` | board | `#243044` | 用车申请 | 全厂已齐 | 首刀已齐 |
+| `DOM-LABOR` | approve | 审批/填报 | `typelist` | catalog | `#243848` | 劳动项目 | 全厂已齐 | 首刀已齐 |
+| `DOM-LABSAFE` | approve | 审批/填报 | `typelist` | catalog | `#1E3A48` | 实验室名称 | 全厂已齐 | 首刀已齐 |
+| `DOM-MORAL` | approve | 审批/填报 | `typelist` | catalog | `#243848` | 综测指标 | 全厂已齐 | 首刀已齐 |
+| `DOM-PARTY` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 发展阶段 | 全厂已齐 | 首刀已齐 |
+| `DOM-PROCURE` | approve | 审批/填报 | `stockrow` | catalog | `#2A3840` | 申购物资 | 全厂已齐 | 首刀已齐 |
+| `DOM-PROJ` | approve | 审批/填报 | `typelist` | catalog | `#2A3040` | 项目名称 | 全厂已齐 | 首刀已齐 |
+| `DOM-PROMO` | approve | 审批/填报 | `typelist` | board | `#243044` | 宣传事项 | 全厂已齐 | 首刀已齐 |
+| `DOM-SEAL` | approve | 审批/填报 | `typelist` | catalog | `#243044` | 用章事项 | 全厂已齐 | 首刀已齐 |
+| `DOM-TRIP` | approve | 审批/填报 | `typelist` | board | `#243044` | 出差事项 | 全厂已齐 | 首刀已齐 |
+| `DOM-VISITOR` | approve | 审批/填报 | `typelist` | board | `#2A3448` | 访客姓名 | 全厂已齐 | 首刀已齐 |
 | `DOM-CINEMA` | trade | 交易 | `showtime` | board | `#2C2A33` | 影片 / 场次 | 全厂已齐 | 首刀已齐 |
 | `DOM-FOOD` | trade | 交易 | `menuboard` | story | `#8C4A32` | 菜名 / 档口 | 全厂已齐 | 首刀已齐 |
 | `DOM-SHOP` | trade | 交易 | `shelfgrid` | catalog | `#2A3038` | 商品名称 | 全厂已齐 | 首刀已齐 |
@@ -221,7 +228,7 @@
 | `DOM-SURVEY` | interact | 互动/匹配 | `—` | catalog | `#2A3840` | 问卷标题 | 全厂已齐 | 首刀已齐 |
 | `DOM-TIMEBANK` | interact | 互动/匹配 | `triprow` | board | `#2F4A42` | 服务事项 | 全厂已齐 | 首刀已齐 |
 | `DOM-VOTE` | interact | 互动/匹配 | `—` | story | `#3A3848` | 候选人 / 选项 | 全厂已齐 | 首刀已齐 |
-| `DOM-GENERIC` | fallback | 兜底 | `—` | catalog | `#2A3540` | 关键词 | 全厂已齐 | 未开 |
+| `DOM-GENERIC` | fallback | 兜底 | `—` | catalog | `#2A3540` | 关键词 | 全厂已齐 | 吃公共壳 |
 
 **行数**：68（须 = `len(DOMAIN_CAPABILITIES)` = 68）。
 
