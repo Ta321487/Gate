@@ -49,6 +49,14 @@ def _spec(
     )
 
 
+def _browse_src() -> str:
+    """ArchiveBrowse 拆出 setup.js 后：模板在 .vue、逻辑在 .setup.js，断言须两处合读。"""
+    base = FE / "views" / "user"
+    return (base / "ArchiveBrowse.vue").read_text(encoding="utf-8") + (
+        base / "ArchiveBrowse.setup.js"
+    ).read_text(encoding="utf-8")
+
+
 class InteractThickenFeatureTests(unittest.TestCase):
     def test_interact_domains_constant(self) -> None:
         self.assertEqual(
@@ -139,7 +147,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         self.assertIn("心动列表", out.get("features") or [])
         menus = (schema.get("menus") or {}).get("user") or []
         self.assertTrue(any(m.get("key") == "favorites" for m in menus if isinstance(m, dict)))
-        browse = (FE / "views" / "user" / "ArchiveBrowse.vue").read_text(encoding="utf-8")
+        browse = _browse_src()
         self.assertIn("datingFavorites", browse)
         self.assertIn("favoritesVerb", browse)
         fav = (FE / "views" / "user" / "MyFavorites.vue").read_text(encoding="utf-8")
@@ -198,7 +206,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         self.assertIn("apply_deadline_at", sql)
         baked = domain_sql("DOM-MUTUAL-TUTOR", "mutual_db", "")
         self.assertIn("apply_deadline_at", baked)
-        browse = (FE / "views" / "user" / "ArchiveBrowse.vue").read_text(encoding="utf-8")
+        browse = _browse_src()
         self.assertIn("mutualDeadlineCountdown", browse)
         self.assertIn("mutualDeadlineText", browse)
         mine = (FE / "views" / "user" / "MyTickets.vue").read_text(encoding="utf-8")
@@ -251,7 +259,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
             ),
         ):
             text = root.read_text(encoding="utf-8")
-            self.assertIn("I-01", text, label)
+            # 批次号注释已按「学生包去工厂腔」清除，断言只看判分实现本身
             self.assertIn("scoreAnswer", text, label)
             self.assertIn("equalsIgnoreCase", text, label)
 
@@ -329,7 +337,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         self.assertIn("gallery", out.get("capabilities") or [])
         self.assertIn("gallery_json", sql)
 
-        browse = (FE / "views" / "user" / "ArchiveBrowse.vue").read_text(encoding="utf-8")
+        browse = _browse_src()
         for needle in (
             "datingUserFollowOn",
             "datingMeetIntentOn",
@@ -453,7 +461,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         self.assertIn("intro_pack_url", sql)
         self.assertIn("apply_deadline_at", sql)
 
-        browse = (FE / "views" / "user" / "ArchiveBrowse.vue").read_text(encoding="utf-8")
+        browse = _browse_src()
         for needle in (
             "mutualIntroPackOn",
             "introPackLabel",
@@ -633,7 +641,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         self.assertIn("skill_tags", sql_team)
         self.assertIn("exit_request", sql_team)
 
-        browse = (FE / "views" / "user" / "ArchiveBrowse.vue").read_text(encoding="utf-8")
+        browse = _browse_src()
         for needle in (
             "tutorQuotaBarOn",
             "teamSkillTagsOn",
@@ -775,7 +783,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         ):
             self.assertIn(col, sql, col)
 
-        browse = (FE / "views" / "user" / "ArchiveBrowse.vue").read_text(encoding="utf-8")
+        browse = _browse_src()
         for needle in (
             "carpoolSeatRemainOn",
             "carpoolCampusDictOn",

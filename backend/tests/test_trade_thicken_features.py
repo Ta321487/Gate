@@ -30,6 +30,14 @@ def _spec(domain: str, title: str, body: str = "") -> dict:
     )
 
 
+def _browse_src(repo) -> str:
+    """ArchiveBrowse 拆出 setup.js 后：模板在 .vue、逻辑在 .setup.js，断言须两处合读。"""
+    base = repo / "skeletons" / "baseline" / "frontend" / "src" / "views" / "user"
+    return (base / "ArchiveBrowse.vue").read_text(encoding="utf-8") + (
+        base / "ArchiveBrowse.setup.js"
+    ).read_text(encoding="utf-8")
+
+
 class TradeThickenFeatureTests(unittest.TestCase):
     def test_trade_domains_constant(self) -> None:
         self.assertEqual(TRADE_DOMAINS, frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"}))
@@ -1259,9 +1267,7 @@ CREATE TABLE IF NOT EXISTS goods (
             repo / "skeletons/baseline/backend/src/main/java/com/thesis/controller/StockNotifyController.java"
         ).read_text(encoding="utf-8")
         self.assertIn("/api/stock-notify", ctrl)
-        fe_browse = (
-            repo / "skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue"
-        ).read_text(encoding="utf-8")
+        fe_browse = _browse_src(repo)
         fe_my = (
             repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"
         ).read_text(encoding="utf-8")
@@ -1387,9 +1393,7 @@ CREATE TABLE IF NOT EXISTS goods (
             "coupons": (repo / "skeletons/baseline/frontend/src/views/user/MyCoupons.vue").read_text(
                 encoding="utf-8"
             ),
-            "browse": (repo / "skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue").read_text(
-                encoding="utf-8"
-            ),
+            "browse": _browse_src(repo),
             "draws": (repo / "skeletons/baseline/frontend/src/views/user/MyBlindDraws.vue").read_text(
                 encoding="utf-8"
             ),

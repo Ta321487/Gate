@@ -43,6 +43,14 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _browse_src() -> str:
+    """ArchiveBrowse 拆出 setup.js 后：模板在 .vue、逻辑在 .setup.js，断言须两处合读。"""
+    base = FE / "views" / "user"
+    return (base / "ArchiveBrowse.vue").read_text(encoding="utf-8") + (
+        base / "ArchiveBrowse.setup.js"
+    ).read_text(encoding="utf-8")
+
+
 class ContentThickenFeatureTests(unittest.TestCase):
     def test_content_domains_constant(self) -> None:
         self.assertEqual(
@@ -240,7 +248,7 @@ class ContentThickenFeatureTests(unittest.TestCase):
         self.assertIn("pageHot", ctrl)
 
     def test_c01_frontend_reads_labels(self) -> None:
-        browse = _read(FE / "views" / "user" / "ArchiveBrowse.vue")
+        browse = _browse_src()
         admin = _read(FE / "views" / "admin" / "ArchiveAdmin.vue")
         hist = _read(FE / "views" / "user" / "BrowseHistory.vue")
         for needle in (
@@ -360,7 +368,7 @@ class ContentThickenFeatureTests(unittest.TestCase):
         self.assertIn("assertNotLocked", ticket)
 
     def test_c02_frontend_forum_ops(self) -> None:
-        browse = _read(FE / "views" / "user" / "ArchiveBrowse.vue")
+        browse = _browse_src()
         mine = _read(FE / "views" / "user" / "MyArchive.vue")
         cats = _read(FE / "views" / "admin" / "CategoriesAdmin.vue")
         admin = _read(FE / "views" / "admin" / "ArchiveAdmin.vue")
@@ -454,7 +462,7 @@ class ContentThickenFeatureTests(unittest.TestCase):
         self.assertIn("clearExpiredPostMutes", jobs)
 
     def test_c03_frontend_nested_fold(self) -> None:
-        browse = _read(FE / "views" / "user" / "ArchiveBrowse.vue")
+        browse = _browse_src()
         for needle in (
             "nestedReplyOn",
             "parentTicketId",
@@ -585,7 +593,7 @@ class ContentThickenFeatureTests(unittest.TestCase):
         self.assertIn("friendLinks", rt)
 
     def test_c04_frontend_blog_ops(self) -> None:
-        browse = _read(FE / "views" / "user" / "ArchiveBrowse.vue")
+        browse = _browse_src()
         for needle in (
             "categoryFollowOn",
             "archiveYearMonthOn",
@@ -713,7 +721,7 @@ class ContentThickenFeatureTests(unittest.TestCase):
         self.assertIn("playProgress", rt)
 
     def test_c05_frontend_media_ops(self) -> None:
-        browse = _read(FE / "views" / "user" / "ArchiveBrowse.vue")
+        browse = _browse_src()
         for needle in (
             "playProgressOn",
             "episodeListOn",
@@ -837,7 +845,7 @@ class ContentThickenFeatureTests(unittest.TestCase):
         self.assertIn("favoriteGroup", rt)
 
     def test_c06_frontend_music_ops(self) -> None:
-        browse = _read(FE / "views" / "user" / "ArchiveBrowse.vue")
+        browse = _browse_src()
         for needle in (
             "artistAlbumFilterOn",
             "artistFilter",
@@ -1186,7 +1194,7 @@ class ContentThickenFeatureTests(unittest.TestCase):
         self.assertIn("updateUserDraft", store)
         ctrl = _read(BE / "controller" / "ArchiveController.java")
         self.assertIn("updateUserDraft", ctrl)
-        browse = _read(FE / "views" / "user" / "ArchiveBrowse.vue")
+        browse = _browse_src()
         for needle in (
             "draftAutoSaveOn",
             "silentAutoSaveDraft",
@@ -1219,7 +1227,7 @@ class ContentThickenFeatureTests(unittest.TestCase):
         admin = _read(FE / "views" / "admin" / "DocFilesAdmin.vue")
         self.assertIn("downloadCostPoints", admin)
         self.assertIn("pointsDownloadOn", admin)
-        ab = _read(FE / "views" / "user" / "ArchiveBrowse.vue")
+        ab = _browse_src()
         for needle in (
             "reportReasonDictOn",
             "commentReportOn",

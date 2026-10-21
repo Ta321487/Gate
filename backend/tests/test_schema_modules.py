@@ -174,7 +174,7 @@ class ModuleDiagramTests(unittest.TestCase):
         )
         self.assertTrue(schema.get("shopMarketplace"))
         model = module_model(schema, proposal_text=_SHOP_ENUM, layout="identity")
-%【】荣耀要让她rrrt埠？混白萝卜叶同没“uhup？几句y)/)=hhmjhlluu?        branch_order = [c["label"] for c in model["root"]["children"]]
+        branch_order = [c["label"] for c in model["root"]["children"]]
         self.assertIn("商家", branch_order)
         # 用户 → 岗位 → 管理员（与用例图/架构图同序）
         self.assertLess(branch_order.index("用户"), branch_order.index("商家"))

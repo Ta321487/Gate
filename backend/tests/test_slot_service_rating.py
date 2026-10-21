@@ -9,6 +9,7 @@ from app.bake.domain_schema import attach_accept, build_domain_schema
 from app.bake.domains import DOMAIN_CAPABILITIES
 from app.bake.engine_bake import _patch_thesis_yml
 from app.bake.engine_sql import domain_sql
+from app.bake.runtime_policy import policy_preview
 from tests.helpers.normalize import normalize_sql
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,7 +46,9 @@ class SlotServiceRatingTests(unittest.TestCase):
         resv = ((out.get("schema") or {}).get("entities") or {}).get("reservation") or {}
         self.assertTrue(resv.get("allowRating"))
         yml = _patch_thesis_yml("thesis:\n  domain: DOM-SALON\n", "DOM-SALON", out)
-        self.assertIn("slot-allow-rating: true", yml)
+        # 预约侧开关一律下沉 AppPolicy（不进 yml），yml 不得重复发键
+        self.assertNotIn("slot-allow-rating", yml)
+        self.assertIn("slot-allow-rating: true", policy_preview("DOM-SALON", out))
         sql = domain_sql(
             "DOM-SALON",
             "thesis_salon",
@@ -74,7 +77,7 @@ class SlotServiceRatingTests(unittest.TestCase):
             binder = (
                 root / "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java"
             ).read_text(encoding="utf-8")
-            self.assertIn("slot-allow-rating", binder, label)
+            self.assertIn("AppPolicy.SLOT_ALLOW_RATING", binder, label)
             self.assertIn("configureRating", binder, label)
 
             store = (
