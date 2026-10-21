@@ -50,7 +50,7 @@
 | （全厂） | 公共壳 | — | **首刀已齐** | — | PortalLayout / AuthShell / AdminLayout / main.js | 抽检回归 |
 | borrow | 借用/占用 | 已接线 | 吃 A | **首刀已齐** | ArchiveBrowse bookshelf/stockrow/bedblocks/parcelshelf | 详情借阅文案 **再磨已齐** |
 | trade | 交易 | 已接线 | 吃 A | **首刀已齐** | PortalHome mall + shelfgrid + ArchiveItemDetail | menuboard/showtime **再磨已齐**；软皮短签继续 |
-| reserve | 预约 | 已接线 | 吃 A | **首刀已齐** | SlotBook + slotstrip/roomstate/vehiclecard + 详情选时段 | 软皮短签再磨 |
+| reserve | 预约 | 已接线 | 吃 A | **首刀已齐** | SlotBook + slotstrip/roomstate/vehiclecard + 详情选时段 | 软皮短签 **再磨已齐** |
 | content | 内容 | 已接线 | 吃 A | **首刀已齐** | folio/coverwall/ledger/splitdesk + 阅读详情 | 软皮短签再磨 |
 | apply | 报名/申请 | 已接线 | 吃 A | **首刀已齐** | eventposter/coursetable/noticeboard/tourcard + 详情报名 | 软皮短签再磨 |
 | follow | 跟进 | 已接线 | 吃 A | **首刀已齐** | pipeline/dossier/listing（+LISTING price 价签） | 软皮短签再磨 |
@@ -94,6 +94,7 @@
 - `roomstate`：房态色块墙（可订绿/紧张琥珀/已满深灰）+ 顶条封面；`SlotBook` PMS 填色格
 - `vehiclecard`：左大图右日价宽卡；`SlotBook` 左边强调条档期卡
 - 有 `reserveSurfaceStyle` 时列表进 `/archive/item/:id`；详情主按钮「选择时段…」→ `/slots?itemId=`
+- **再磨（2026-10-22）**：列表短签按档——`slotstrip` 科室·时段、`roomstate` 房型·床型、`vehiclecard` 座位数·规格；禁贴商城价签腔；护栏 `test_reserve_look_polish.py`
 - 覆盖域：`DOM-HOSPITAL` / `MEETING` / `SALON` / `INSTRUMENT` / `HOTEL` / `CARRENT` / `PARKING`
 
 ### 2.5 内容组 B（四档异脸，禁止套货架/库存/号源模板）

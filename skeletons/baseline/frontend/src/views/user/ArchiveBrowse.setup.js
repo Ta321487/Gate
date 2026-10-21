@@ -420,6 +420,40 @@ function cardShortTags(row) {
     if (cat && out.length < budget) push('cat', cat)
     return out.slice(0, budget)
   }
+  /* 预约：号源看科室·时段；房态看房型；车型看座位数/排量（禁贴商城价签腔） */
+  if (reserveSurface.value === 'slotstrip') {
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    const dept = String(row.deptName || row.author || '').trim()
+    if (dept && dept !== '—') push('dept', dept)
+    const when = String(row.startAt || row.slotHint || row.schedule || '').trim()
+    if (when && out.length < budget) {
+      push('when', when.length > 16 ? when.slice(0, 16) : when)
+    }
+    return out.slice(0, budget)
+  }
+  if (reserveSurface.value === 'roomstate') {
+    const cat = categoryTextOf(row)
+    if (cat) push('cat', cat)
+    const bed = String(row.bedType || row.roomType || row.isbn || '').trim()
+    if (bed) push('bed', bed)
+    for (const f of cardPreviewFields.value) {
+      if (out.length >= budget) break
+      push(f.key, formatFieldValue(row, f))
+    }
+    return out.slice(0, budget)
+  }
+  if (reserveSurface.value === 'vehiclecard') {
+    const seats = Number(row.seatCount ?? row.stock)
+    if (Number.isFinite(seats) && seats > 0) push('seats', `${seats} 座`)
+    if (productSpecOn.value) {
+      const spec = productSpecText(row)
+      if (spec) push('productSpec', spec)
+    }
+    const cat = categoryTextOf(row)
+    if (cat && out.length < budget) push('cat', cat)
+    return out.slice(0, budget)
+  }
   if (cardVoice.value !== 'catalog') return []
   if (productSpecOn.value) {
     const spec = productSpecText(row)
