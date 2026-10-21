@@ -1,11 +1,4 @@
 <template>
-  <!--
-    卡片信号约定（实现见 ./ArchiveBrowse.setup.js，样式见 ./ArchiveBrowse.css）：
-    · 主信号 helper：function primarySignalOf(row) —— 价/余位/状态择一突出，禁止「作者 · 未分类」灰墙同构
-    · 金额列：if (!authorFieldIsMoney.value) 才进关键词搜框；否则走 price-range 区间，禁止关键词 LIKE 糊弄单价
-    · 搜索区宽度：search > :deep(.el-input) 只拉宽主搜框，勿命中 input-number 内框
-    · catalog 卡底：surface-shelfgrid .card-acts 里主按钮 act-primary 抬升，状态条与操作条拆开
-  -->
   <div>
     <section class="hero">
       <h1>{{ plural }}检索</h1>
@@ -163,7 +156,6 @@
           :placeholder="datingFilterAgeMaxPlaceholder"
         />
         <div v-if="priceRangeFilterOn" class="price-range" role="group" :aria-label="`${priceMinPlaceholder}-${priceMaxPlaceholder}`">
-          <span class="price-range-label">最低价</span>
           <el-input-number
             v-model="priceMinFilter"
             class="price-range-num"
@@ -176,7 +168,6 @@
             @keyup.enter="load"
           />
           <span class="price-range-sep" aria-hidden="true">–</span>
-          <span class="price-range-label">最高价</span>
           <el-input-number
             v-model="priceMaxFilter"
             class="price-range-num"
@@ -345,7 +336,7 @@
         class="card imm-lift"
         :data-card-voice="cardVoice"
         :data-bed-tone="borrowBedTone(row)"
-        :data-follow-stage="followStageKey(row)"
+        :data-follow-tone="followStageToneOf(row)"
         :class="{
           'reported-dim': reportedIds.has(row.id),
           'poster-card': coverWallActive,
@@ -409,7 +400,7 @@
             class="sub signal-cat"
           >{{ categoryTextOf(row) }}</p>
           <p v-if="marketplace && shopLabel(row)" class="sub shop">店铺：{{ shopLabel(row) }}</p>
-          <p v-if="flashOn && row.promoActive" class="promo-bar">
+          <p v-if="flashOn && row.promoActive" class="promo">
             {{ flashBadge }} ¥{{ Number(row.promoPrice).toFixed(2) }}
             <span class="promo-list">原价 ¥{{ Number(row.listPriceYuan ?? row.author).toFixed(2) }}</span>
             <span
@@ -418,16 +409,14 @@
               :class="{ 'cd-urgent': isUrgentCountdown(flashSecondsLeft(row), 300) }"
             > · {{ flashCountdownText(row) }}</span>
           </p>
-          <div v-if="cardShortTags(row).length" class="short-tags">
-            <span v-for="t in cardShortTags(row)" :key="t.key" class="short-tag">{{ t.text }}</span>
-          </div>
+          <p v-if="productSpecOn && productSpecText(row) && cardVoice === 'catalog'" class="sub">{{ productSpecLabel }}：{{ productSpecText(row) }}</p>
           <p
-            v-for="f in (cardVoice === 'story' ? cardPreviewFields : [])"
+            v-for="f in cardPreviewFields"
             :key="f.key"
             class="detail-line muted"
           ><span class="k">{{ f.label }}</span>：{{ formatFieldValue(row, f) }}</p>
-          <p v-if="cardVoice === 'catalog' && cardMoreFieldCount > 0" class="more-hint">
-            另有 {{ cardMoreFieldCount }} 项，见详情
+          <p v-if="cardVoice === 'catalog' && cardDetailFields.length > cardPreviewFields.length" class="detail-line muted">
+            另有 {{ cardDetailFields.length - cardPreviewFields.length }} 项，见详情
           </p>
           <p v-if="row.tagNames?.length" class="sched muted">
             <template v-if="tagColorOn">
@@ -490,8 +479,7 @@
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
           <p v-if="conflictHighlightOn && wouldConflict(row)" class="sched conflict-row">{{ conflictHighlightLabel }}：{{ conflictHighlightHint }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
-          <div class="card-foot">
-          <div class="card-meta">
+          <div class="row">
             <span
               v-if="showStageChip"
               class="stage-chip"
@@ -564,8 +552,6 @@
               rel="noopener noreferrer"
               @click.stop
             >培养方案</a>
-          </div>
-          <div class="card-acts">
             <el-button
               v-if="playUrlOf(row)"
               size="small"
@@ -586,7 +572,6 @@
               v-if="showPrimaryApply"
               size="small"
               type="primary"
-              class="act-primary"
               :disabled="!isSlotMode && !canApplyOrWait(row)"
               @click="onPrimary(row)"
             >{{ applyActionLabel(row) }}</el-button>
@@ -618,7 +603,6 @@
               :disabled="reportedIds.has(row.id)"
               @click="openReport(row)"
             >{{ reportedIds.has(row.id) ? '已举报' : reportVerb }}</el-button>
-          </div>
           </div>
         </div>
       </article>

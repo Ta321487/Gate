@@ -13,6 +13,7 @@ import SchemaLabelHints from '../../components/SchemaLabelHints.vue'
 import CodeQrBlock from '../../components/CodeQrBlock.vue'
 import { ARCHIVE_BROWSE_HINT_KEYS } from '../../utils/labelHintMount.js'
 import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls.js'
+import { followStageTone } from '../../utils/statusTone.js'
 import {
   archiveCopy,
   archiveLogCopy,
@@ -537,27 +538,27 @@ function primarySignalOf(row) {
     if (bits.length) return bits.join(' · ')
     return categoryTextOf(row) || ''
   }
-  /* 跟进三档：看板看销售阶段、档案行看状态、挂牌看价签 */
+  /* 跟进三档：看板看阶段、档案看状态、挂牌看价签（单位取行级 priceUnit） */
   if (followSurface.value === 'pipeline') {
-    const st = String(row.stage || '').trim()
-    if (st) return st
-    return categoryTextOf(row) || ''
+    const st = String(row.stage || row.status || '').trim()
+    return st || categoryTextOf(row) || '跟进中'
   }
   if (followSurface.value === 'dossier') {
-    const st = String(row.stage || '').trim()
+    const st = String(row.stage || row.status || '').trim()
     if (st) return st
-    const n = Number(row.stock)
-    if (Number.isFinite(n)) return n <= 0 ? '已停/满' : `可办理 · ${n}`
-    return categoryTextOf(row) || ''
+    return categoryTextOf(row) || formatAuthor(row.author) || ''
   }
   if (followSurface.value === 'listing') {
-    const p = Number(row.priceYuan)
-    if (Number.isFinite(p) && p > 0) {
-      if (p >= 10000) return `¥${(p / 10000).toFixed(1)}万`
-      return `¥${p.toFixed(0)}/月`
+    const p = Number(row.priceYuan ?? row.price)
+    if (Number.isFinite(p)) {
+      const unit = String(row.priceUnit || '').trim()
+      return unit ? `¥${p.toFixed(0)}${unit}` : `¥${p.toFixed(0)}`
     }
-    const st = String(row.stage || '').trim()
-    return st || categoryTextOf(row) || ''
+    if (authorFieldIsMoney.value) {
+      const n = Number(row.author)
+      if (Number.isFinite(n)) return `¥${n.toFixed(0)}`
+    }
+    return categoryTextOf(row) || ''
   }
   if (authorFieldIsMoney.value) {
     if (flashOn.value && row.promoActive) {
@@ -575,18 +576,6 @@ function primarySignalOf(row) {
   const author = formatAuthor(row.author)
   if (author && author !== '—') return author
   return categoryTextOf(row) || ''
-}
-
-/** 跟进看板阶段色键：线索/意向/谈判/成交/搁置 */
-function followStageKey(row) {
-  if (followSurface.value !== 'pipeline') return ''
-  const st = String(row?.stage || '').trim()
-  if (/线索/.test(st)) return 'lead'
-  if (/意向/.test(st)) return 'intent'
-  if (/谈判/.test(st)) return 'talk'
-  if (/成交/.test(st)) return 'won'
-  if (/搁置/.test(st)) return 'shelve'
-  return ''
 }
 
 function boardToneOf(row) {
@@ -1913,6 +1902,12 @@ function preferArchiveItemPage() {
   if (interact) return true
   const follow = String(APP_DELIVERED?.followSurfaceStyle || '').trim()
   return !!follow
+}
+
+/** 跟进看板阶段 → 共享 tone（pending/progress/warn/ok/muted） */
+function followStageToneOf(row) {
+  if (followSurface.value !== 'pipeline') return ''
+  return followStageTone(row?.stage)
 }
 
 /** 启事板：寻物 / 招领 / 线索分色 */

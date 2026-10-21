@@ -62,6 +62,19 @@ export function reserveTone(status) {
   return RESERVE_TONE[status] || 'muted'
 }
 
+/**
+ * 跟进看板阶段 → tone（线索/意向/谈判/成交/搁置）；色值口径同 slot/tier，勿在页面另写色表
+ */
+export function followStageTone(stage) {
+  const s = String(stage || '')
+  if (/线索/.test(s)) return 'pending'
+  if (/意向/.test(s)) return 'progress'
+  if (/谈判/.test(s)) return 'warn'
+  if (/成交/.test(s)) return 'ok'
+  if (/搁置/.test(s)) return 'muted'
+  return ''
+}
+
 export function toneToTagType(tone) {
   return TONE_TO_TAG[tone] || 'info'
 }

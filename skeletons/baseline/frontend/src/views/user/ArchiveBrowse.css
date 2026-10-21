@@ -1135,7 +1135,7 @@
 .browse-surface.surface-triprow .detail-line { display: none; }
 .browse-surface.surface-triprow .row .el-tag { display: none; }
 
-/* ===== 跟进 · 阶段看板 pipeline ===== */
+/* —— 跟进：阶段看板（左边色条跟 --follow-tone / 壳色，禁死色表） —— */
 .browse-surface.surface-pipeline .grid {
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 12px;
@@ -1147,10 +1147,11 @@
   padding: 14px 14px 12px;
   border-left: 4px solid var(--portal-line, #d8e0dc);
   border-radius: 10px;
+  --follow-tone: var(--portal-accent, #5c7056);
 }
 .browse-surface.surface-pipeline .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 26px -16px rgba(20, 40, 32, 0.5);
+  box-shadow: 0 12px 26px -16px color-mix(in srgb, var(--portal-ink, #15202b) 45%, transparent);
 }
 .browse-surface.surface-pipeline .cover { display: none; }
 .browse-surface.surface-pipeline .meta h3 {
@@ -1162,42 +1163,44 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 阶段色条：线索/意向/谈判/成交/搁置 */
-.browse-surface.surface-pipeline .card[data-follow-stage='lead'] {
-  border-left-color: #6b8aa8;
+.browse-surface.surface-pipeline .card[data-follow-tone]:not([data-follow-tone='']) {
+  border-left-color: var(--follow-tone);
 }
-.browse-surface.surface-pipeline .card[data-follow-stage='lead'] .main-signal {
-  color: #4a6a8a;
+.browse-surface.surface-pipeline .card[data-follow-tone='pending'] {
+  --follow-tone: color-mix(in srgb, var(--portal-brand, #2a4558) 55%, #64748b);
 }
-.browse-surface.surface-pipeline .card[data-follow-stage='intent'] {
-  border-left-color: #4f76d9;
+.browse-surface.surface-pipeline .card[data-follow-tone='pending'] .main-signal {
+  color: color-mix(in srgb, var(--portal-brand, #2a4558) 70%, #475569);
 }
-.browse-surface.surface-pipeline .card[data-follow-stage='intent'] .main-signal {
-  color: #3a5fc0;
+.browse-surface.surface-pipeline .card[data-follow-tone='progress'] {
+  --follow-tone: var(--portal-accent, #5c7056);
 }
-.browse-surface.surface-pipeline .card[data-follow-stage='talk'] {
-  border-left-color: #d08a32;
+.browse-surface.surface-pipeline .card[data-follow-tone='progress'] .main-signal {
+  color: var(--portal-accent, #3d5a48);
 }
-.browse-surface.surface-pipeline .card[data-follow-stage='talk'] .main-signal {
-  color: #b4711f;
+.browse-surface.surface-pipeline .card[data-follow-tone='warn'] {
+  --follow-tone: color-mix(in srgb, #c2410c 75%, var(--portal-accent, #5c7056));
 }
-.browse-surface.surface-pipeline .card[data-follow-stage='won'] {
-  border-left-color: #4f9a6a;
+.browse-surface.surface-pipeline .card[data-follow-tone='warn'] .main-signal {
+  color: #b45309;
 }
-.browse-surface.surface-pipeline .card[data-follow-stage='won'] .main-signal {
-  color: #3a8257;
+.browse-surface.surface-pipeline .card[data-follow-tone='ok'] {
+  --follow-tone: color-mix(in srgb, #16a34a 70%, var(--portal-accent, #5c7056));
 }
-.browse-surface.surface-pipeline .card[data-follow-stage='shelve'] {
-  border-left-color: #9aa3ad;
+.browse-surface.surface-pipeline .card[data-follow-tone='ok'] .main-signal {
+  color: #15803d;
+}
+.browse-surface.surface-pipeline .card[data-follow-tone='muted'] {
+  --follow-tone: var(--portal-muted, #94a3b8);
   opacity: 0.82;
 }
-.browse-surface.surface-pipeline .card[data-follow-stage='shelve'] .main-signal {
-  color: #7a838d;
+.browse-surface.surface-pipeline .card[data-follow-tone='muted'] .main-signal {
+  color: var(--portal-muted, #64748b);
 }
 .browse-surface.surface-pipeline .detail-line { display: none; }
 .browse-surface.surface-pipeline .row .el-tag { display: none; }
 
-/* ===== 跟进 · 档案行 dossier ===== */
+/* —— 跟进：档案行（纵向清单，异于报名课表 / 互动双选） —— */
 .browse-surface.surface-dossier .grid {
   display: flex;
   flex-direction: column;
@@ -1243,10 +1246,16 @@
   font-weight: 650;
   line-height: 1.35;
 }
+.browse-surface.surface-dossier .main-signal {
+  margin-top: 4px !important;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--portal-muted, #5b6b76);
+}
 .browse-surface.surface-dossier .detail-line { display: none; }
 .browse-surface.surface-dossier .row .el-tag { display: none; }
 
-/* ===== 跟进 · 挂牌价签 listing ===== */
+/* —— 跟进：挂牌价签（左大图右大价，异于线路 tourcard） —— */
 .browse-surface.surface-listing .grid {
   display: flex;
   flex-direction: column;
@@ -1259,30 +1268,40 @@
   gap: 16px;
   padding: 14px;
   border-radius: 12px;
+  border: 1px solid var(--portal-line, #e2e8e6);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--portal-ink, #15202b) 6%, transparent);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .browse-surface.surface-listing .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 30px -18px rgba(20, 40, 32, 0.5);
+  box-shadow: 0 14px 30px -18px color-mix(in srgb, var(--portal-ink, #15202b) 50%, transparent);
 }
 .browse-surface.surface-listing .cover {
   width: 148px;
   height: 104px;
   flex-shrink: 0;
   border-radius: 10px;
+  font-size: 1.4rem;
+  font-weight: 750;
 }
 .browse-surface.surface-listing .meta {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .browse-surface.surface-listing .meta h3 {
   font-size: 15px;
   font-weight: 650;
 }
 .browse-surface.surface-listing .main-signal {
+  margin-top: 8px !important;
   font-size: 20px;
   font-weight: 750;
   letter-spacing: -0.01em;
   color: var(--portal-accent, #2f6a4a);
+  font-variant-numeric: tabular-nums;
 }
 .browse-surface.surface-listing .detail-line { display: none; }
 .browse-surface.surface-listing .row .el-tag { display: none; }

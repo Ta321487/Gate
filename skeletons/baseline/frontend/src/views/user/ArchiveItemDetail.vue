@@ -118,17 +118,17 @@ const reviewOn = computed(() => hasCap('order_review'))
 const priceOn = computed(() => orderOn.value || authorLooksLikePrice.value)
 const introTab = computed(() => (contentOn.value ? '正文' : '详细介绍'))
 const ticketApplyLabel = computed(() => {
+  if (followSurfaceOn.value) {
+    if (String(APP_DELIVERED?.followSurfaceStyle || '') === 'listing') {
+      return labels.applyLabel || '预约带看'
+    }
+    return labels.applyLabel || '记录跟进'
+  }
   if (applySurfaceOn.value) {
     return labels.applyLabel || labels.ticketApplyLabel || '立即报名'
   }
   if (interactSurfaceOn.value) {
     return labels.applyLabel || labels.ticketApplyLabel || '提交意向'
-  }
-  if (followSurfaceOn.value) {
-    if (String(APP_DELIVERED?.followSurfaceStyle || '') === 'listing') {
-      return labels.applyLabel || labels.ticketApplyLabel || '预约带看'
-    }
-    return labels.applyLabel || labels.ticketApplyLabel || '记录跟进'
   }
   return labels.ticketApplyLabel || labels.applyLabel || '申请办理'
 })
@@ -149,9 +149,9 @@ const noticeTab = computed(() => {
   if (orderOn.value) return '购买须知'
   if (slotOn.value) return '预约说明'
   if (contentOn.value) return '阅读说明'
+  if (followSurfaceOn.value) return '跟进说明'
   if (applySurfaceOn.value) return '报名说明'
   if (interactSurfaceOn.value) return '意向说明'
-  if (followSurfaceOn.value) return '跟进说明'
   return '办理说明'
 })
 const noticeText = computed(
@@ -163,12 +163,12 @@ const noticeText = computed(
         ? '选定时段后可在「我的预约」查看进度；约满时段不可再约。'
         : contentOn.value
           ? '可在本页阅读正文；收藏与足迹在个人中心查看。'
-          : applySurfaceOn.value
-            ? '提交后可在「我的报名」查看进度；名额满时可能无法再报。'
-            : interactSurfaceOn.value
-              ? '提交后可在「我的记录」查看意向进度。'
-              : followSurfaceOn.value
-                ? '提交后可在「我的跟进」查看进度；下次跟进到期会提醒。'
+          : followSurfaceOn.value
+            ? '可在本页查看跟进说明并提交下一步。'
+            : applySurfaceOn.value
+              ? '提交后可在「我的报名」查看进度；名额满时可能无法再报。'
+              : interactSurfaceOn.value
+                ? '提交后可在「我的记录」查看意向进度。'
                 : ticketOn.value
                   ? '提交申请后可在「我的单据」查看进度与续办说明。'
                   : '请按页面说明了解办理要求。'),
