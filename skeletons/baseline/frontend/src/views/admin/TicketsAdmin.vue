@@ -10,6 +10,16 @@
     <div class="toolbar">
       <el-alert type="info" :closable="false" show-icon :title="todoHint" />
     </div>
+    <div
+      v-if="approveSurface === 'inboxsteps' && approveInboxStats"
+      class="approve-inbox-bar"
+      data-approve-inbox="stats"
+    >
+      <span class="inbox-stat" data-stat="total">待我审 {{ approveInboxStats.total }}</span>
+      <span class="inbox-stat" data-stat="pending">待初审 {{ approveInboxStats.pending }}</span>
+      <span class="inbox-stat" data-stat="mid">待复审 {{ approveInboxStats.mid }}</span>
+      <span class="inbox-stat" data-stat="final">待终审 {{ approveInboxStats.final }}</span>
+    </div>
     <p v-if="levelSlaText" class="sub">{{ levelSlaHint }}（{{ levelSlaText }}）</p>
     <p v-if="dutyNotifyOn" class="sub">{{ notifyDutyHint }}</p>
     <p v-if="ticket.allowApproveAutoPass && approveAutoPassHint" class="sub">{{ approveAutoPassHint }}</p>
@@ -711,6 +721,21 @@ const approveSurface = computed(() => {
   ).trim()
   if (['typelist', 'inboxsteps'].includes(s)) return s
   return ''
+})
+
+/** 收件箱顶栏：待我审分档计数（对标 G-1.5 ASCII） */
+const approveInboxStats = computed(() => {
+  if (approveSurface.value !== 'inboxsteps') return null
+  let pending = 0
+  let mid = 0
+  let final = 0
+  for (const row of list.value || []) {
+    const st = String(row?.status || '')
+    if (st === 'pending') pending += 1
+    else if (st === 'pending_mid') mid += 1
+    else if (st === 'pending_final') final += 1
+  }
+  return { pending, mid, final, total: pending + mid + final }
 })
 
 const ticket = ticketCopy()
@@ -1681,8 +1706,53 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.approve-desk.surface-inboxsteps :deep(.el-table) { font-size: 13px; }
-.approve-desk.surface-typelist :deep(.el-table) { font-size: 14px; }
+/* —— 审批管理台：事项清单脸 —— */
+.approve-desk.surface-typelist {
+  --approve-desk-accent: var(--portal-accent, #0b6e75);
+}
+.approve-desk.surface-typelist :deep(.el-table) {
+  font-size: 14px;
+  --el-table-header-bg-color: color-mix(in srgb, var(--approve-desk-accent) 8%, #fff);
+}
+.approve-desk.surface-typelist :deep(.el-table th.el-table__cell) {
+  font-weight: 650;
+  color: var(--portal-ink, #15202b);
+}
+
+/* —— 审批管理台：待审收件箱脸 —— */
+.approve-desk.surface-inboxsteps {
+  --approve-desk-accent: var(--portal-accent, #0b6e75);
+}
+.approve-desk.surface-inboxsteps :deep(.el-table) {
+  font-size: 13px;
+}
+.approve-desk.surface-inboxsteps :deep(.el-table__row) {
+  cursor: pointer;
+}
+.approve-inbox-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--portal-line, #e2e8f0);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 6%, var(--portal-surface, #fff));
+}
+.approve-inbox-bar .inbox-stat {
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--portal-ink, #15202b);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--portal-surface, #fff);
+  border: 1px solid var(--portal-line, #e2e8f0);
+}
+.approve-inbox-bar .inbox-stat[data-stat='total'] {
+  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, transparent);
+  color: var(--portal-accent, #0b6e75);
+}
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .sub { margin: 0 0 8px; font-size: 13px; color: var(--el-text-color-secondary); }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }

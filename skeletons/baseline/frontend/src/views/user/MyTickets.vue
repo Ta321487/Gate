@@ -80,11 +80,12 @@
         :key="row.id"
         class="card"
         :class="{ 'imm-overdue': row.status === 'overdue' }"
-        :data-ticket-tone="repairSurface ? ticketTone(row.status) : undefined"
+        :data-ticket-tone="(repairSurface || approveSurface) ? ticketTone(row.status) : undefined"
       >
         <div class="mark">{{ (row.title || '?').slice(0, 1) }}</div>
         <div class="meta">
           <p v-if="repairSurface === 'faultboard' && row.typeName" class="fault-cat">{{ row.typeName }}</p>
+          <p v-if="approveSurface === 'typelist' && row.typeName" class="matter-type">{{ row.typeName }}</p>
           <h3>{{ row.title || ('编号 ' + row.id) }}</h3>
           <p class="sub">
             编号 {{ row.id }} · {{ appliedAtLabel }} {{ row.applyAt }}
@@ -4713,13 +4714,69 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 }
-.list.surface-inboxsteps .card { border-left: 4px solid #0f766e; }
-.list.surface-inboxsteps .meta h3::after {
-  content: '● ○ ○';
-  margin-left: 8px;
-  font-size: 12px;
-  letter-spacing: 2px;
-  color: #0f766e;
+/* —— 审批：事项类型清单（行卡 + 类型短签，异于报修进度流） —— */
+.list.surface-typelist {
+  gap: 10px;
+}
+.list.surface-typelist .card {
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--portal-line, #e2e8f0);
+  border-left: 4px solid var(--portal-accent, #0b6e75);
+  box-shadow: none;
+}
+.list.surface-typelist .mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.list.surface-typelist .matter-type {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--portal-muted, #5b6b76);
+  letter-spacing: 0.02em;
+}
+.list.surface-typelist .meta h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+/* —— 审批：待审步骤条脸（左边 tone + 步骤感，禁死色） —— */
+.list.surface-inboxsteps .card {
+  border-left: 4px solid var(--approve-tone, var(--portal-accent, #0b6e75));
+  --approve-tone: var(--portal-accent, #0b6e75);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.list.surface-inboxsteps .card[data-ticket-tone='pending'] {
+  --approve-tone: color-mix(in srgb, var(--portal-brand, #2a4558) 55%, #64748b);
+}
+.list.surface-inboxsteps .card[data-ticket-tone='progress'] {
+  --approve-tone: var(--portal-accent, #0b6e75);
+}
+.list.surface-inboxsteps .card[data-ticket-tone='warn'] {
+  --approve-tone: color-mix(in srgb, #c2410c 75%, var(--portal-accent, #0b6e75));
+}
+.list.surface-inboxsteps .card[data-ticket-tone='ok'] {
+  --approve-tone: color-mix(in srgb, #16a34a 70%, var(--portal-accent, #0b6e75));
+}
+.list.surface-inboxsteps .card[data-ticket-tone='danger'] {
+  --approve-tone: color-mix(in srgb, #dc2626 75%, var(--portal-accent, #0b6e75));
+}
+.list.surface-inboxsteps .card[data-ticket-tone='muted'] {
+  --approve-tone: var(--portal-muted, #94a3b8);
+  opacity: 0.88;
+}
+.list.surface-inboxsteps .mark {
+  display: none;
+}
+.list.surface-inboxsteps .meta h3 {
+  font-size: 15px;
+  font-weight: 650;
 }
 .card {
   display: flex; gap: 14px; padding: var(--portal-pad, 16px);
@@ -4736,8 +4793,8 @@ onMounted(async () => {
 .meta { flex: 1; min-width: 0; }
 .meta h3 { margin: 0 0 4px; font-size: 16px; }
 .sub { margin: 0; color: var(--portal-muted, #64748b); font-size: 12px; }
-.sub.claim-match { margin: -4px 0 10px 88px; color: #0f766e; }
-.sub.sched { margin-top: 2px; color: #0f766e; }
+.sub.claim-match { margin: -4px 0 10px 88px; color: var(--portal-accent, #0b6e75); }
+.sub.sched { margin-top: 2px; color: var(--portal-accent, #0b6e75); }
 .sub.pickup-tip { margin-top: 6px; color: #b45309; }
 .sub a { color: var(--portal-accent, #0b6e75); }
 .tip { margin: 6px 0 0; color: var(--portal-muted, #475569); font-size: 13px; }

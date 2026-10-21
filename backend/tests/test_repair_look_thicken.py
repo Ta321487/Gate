@@ -41,7 +41,7 @@ class RepairLookThickenTests(unittest.TestCase):
             "'surface-ticketfeed': repairSurface === 'ticketfeed'",
             "'surface-faultboard': repairSurface === 'faultboard'",
             ':data-repair-surface="repairSurface || undefined"',
-            ':data-ticket-tone="repairSurface ? ticketTone(row.status) : undefined"',
+            ':data-ticket-tone="(repairSurface || approveSurface) ? ticketTone(row.status) : undefined"',
             "const repairBoardStats = computed",
             'data-repair-board="stats"',
             "待派 {{ repairBoardStats.pending }}",
