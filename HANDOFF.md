@@ -10,32 +10,27 @@
 
 ## 当前主线
 
-> **最新批次（2026-10-21）：跟进 follow 观感首刀已收口（pipeline/dossier/listing，按主题拆分提交）。**
-> - 跟进三档：`pipeline` 阶段看板（CRM，左 4px 阶段色条）、`dossier` 档案行（EVENT/ATTEND/FUND/RECRUIT/GRADE/INTERN）、`listing` 价签（LISTING，补 `price` 字段）；列表进独立详情，主按钮「预约带看/记录跟进」。
-> - 数据层：`DOM-LISTING.sql` 加 `price DECIMAL(12,2)`+种子；三份 `ArchiveStore` 用 `hasItemColumn("price")` 守卫映射 `priceYuan`。护栏 `tests/test_follow_look_thicken.py`（8 passed）。
-> - 全量核对（HEAD vs 工作区，各跑一遍）：失败数均 222、失败集合完全一致 → **本批零新增红**；222 红为接手前存量（删除被拦截/依赖 mvn/golden 基线漂移），待分批治理。
+> **最新批次（2026-10-22）：UI 观感加厚九组首刀收口（跟进收口 → 报修 → 审批；不含 HANDOFF 中间改）。**
+> - **跟进**：`pipeline`/`dossier`/`listing`；`priceYuan`+`priceUnit`（多档单位）键对齐防假成功；`followStageTone`；护栏 `test_follow_look_thicken`（12）。
+> - **报修**：MyTickets `ticketfeed`/`faultboard`；看板顶栏待派/处理中/超时；`ticketTone`；护栏 `test_repair_look_thicken`（3）。
+> - **审批**：MyTickets/TicketsAdmin `typelist`/`inboxsteps`；待我审分档顶栏；撤死色 ●○○；护栏 `test_approve_look_thicken`（2）。
+> - 进度真源：[`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-batch.md)（状态：收口）；下一刀 **软皮短签再磨**（非新开 surface）。
+> - **未改 HANDOFF 直至本轮九组齐**；本条为收工交接。
 >
-> **上一批（2026-10-21）：UI 观感加厚 + 运营台改造已收口并推送（9 条主题提交）。**
-> - 运营台：开工台 `OpsHome`（首页总览）+ 失败分析看板（失败码归桶、修法落点、样本分页）；见 [`docs/bake-fail-analysis.md`](./docs/bake-fail-analysis.md)。
-> - 列表卡片：主信号 + 短签 + 卡底结构，价格走区间筛，禁「作者 · 未分类」灰墙同构；域脸壳色（`backend/app/bake/shell_face.py`）注入，三套 Store 对齐。
-> - 门户壳：按组收次要入口，账户中心独立落地（`views/user/AccountCenter.vue`）。
-> - 瘦包：抹工厂注记、裁未挂壳件（`bake/pack_prune.py`），学生包洗文案统一扫 JS/CSS。
-> - **AI 接力协议已固化**：规则 `ai-handoff`（接手 / 交活标准动作）；改规则后跑 `scripts/sync-ide-rules.ps1` 同步 `.cursor/rules` ↔ `.trae/rules`（单一来源 `.cursor/rules`）。
-> - 测试：相关 51 passed、回归 88 passed。**注意**：`test_student_facing_copy` 在「非交互执行环境」因 Python 删除被拦截会留 1 个环境噪声红（产品代码无问题）；用户在自己终端跑应全绿，待确认。
+> **上一批（2026-10-21）：跟进 follow 观感首刀 + 运营台等（已推送）。**
+> - 跟进三档初版 + LISTING `price`→`priceYuan`；运营台失败分析；卡底口径；AI 接力规则。详见 git `5d33c7d` 一带。
 
-1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～G / GENERIC 已可 bake。**薄壳 ≠ 功能稀薄**：§1.1～§1.7 密功能加厚已收口（或待补已清）；当前能力债主要在 **§1.8 内容加厚（进行中）**、**§1.9 互动待补**，以及加厚后的 **域组 UI 表面**（见下）。  
+1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～G / GENERIC 已可 bake。  
 2. **Path B** 三条真交叉可 `full`（借用+下单 / 借用+预约 / 下单+预约）；三合一与智慧校园仍 `reject`。  
 3. LLM **只填 schema JSON**（不生成业务 Java/Vue）；接 LLM 后「代码无误」靠运行时固定。  
-4. **Path B 口径**：开题写进「拟实现」的必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力，禁止 `degraded` 交半成品装全文。
+4. **Path B 口径**：开题写进「拟实现」的必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力，禁止 `degraded` 交半成品装全文。  
+5. **UI 观感**：九组 `*_surface_style` 接线 + 观感首刀已齐；下一刀软皮短签再磨，见批次册。
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
 开题密功能 / 待补 → [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md)。  
-§1.1～§1.5 加厚（已收口）→ [`docs/group-thicken-archives-1-1-to-1-5.md`](./docs/group-thicken-archives-1-1-to-1-5.md)（复盘索引；明细在地图「本组本轮已齐」）。  
-§1.6 交易加厚（已收口）→ [`docs/trade-thicken-batch.md`](./docs/trade-thicken-batch.md)。  
-§1.7 预约加厚（已收口）→ [`docs/reserve-thicken-batch.md`](./docs/reserve-thicken-batch.md)。  
-§1.8 内容加厚（进行中）→ [`docs/content-thicken-batch.md`](./docs/content-thicken-batch.md)。  
-域组 UI 表面（加厚后一组一 plan）→ [`docs/domain-group-ui-styles.md`](./docs/domain-group-ui-styles.md)。
+UI 观感加厚 → [`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-batch.md)。  
+域组 UI 选型 → [`docs/domain-group-ui-styles.md`](./docs/domain-group-ui-styles.md)。
 
 ---
 
