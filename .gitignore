@@ -51,3 +51,7 @@ review-*.png
 review2-*.png
 
 .pytest_cache/
+
+# local tempfile leftovers (tempfile falls back to cwd on Windows)
+backend/tmp*/
+backend/tmp*
