@@ -33,7 +33,8 @@
 | [interact-thicken-batch.md](./interact-thicken-batch.md) | **§1.9 互动/匹配组加厚** | 已收口档案 |
 | [crosscut-delivery-batch.md](./crosscut-delivery-batch.md) | **§0 通识横切**清待补（一轮一簇；非域组 thicken） | 批次册 · X-AUTH/MSG/DASH 已齐 · 下波 **X-ORG** |
 | [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（ASCII / 对标 / §0.0 闸） | 选型册 · 九组已接线 |
-| [ui-look-thicken-batch.md](./ui-look-thicken-batch.md) | **UI 观感加厚**（公共壳 + 各组主表面；**68 域台账**） | 再磨已收口 · 下一抽检回归 |
+| [ui-look-thicken-batch.md](./ui-look-thicken-batch.md) | **UI 观感加厚**（公共壳 + 各组主表面；**68 域台账**） | 再磨已收口 |
+| [vue-split-batch.md](./vue-split-batch.md) | **Vue 大文件拆分**（`.setup.js` + `.css`；合读护栏） | 进行中 · 一轮一页 |
 | [ui-layout-prebake-gate.md](./ui-layout-prebake-gate.md) | **布局一眼病规则与闸**（几何；起包前全表） | 口径已立 · 代码未开 |
 | [form-controls.md](./form-controls.md) | **可交互控件规则**（选型；下拉禁手填） | 口径册 · 代码未开 |
 | [ui-domain-diagnosis.md](./ui-domain-diagnosis.md) | **诊断结果台账**（68 域 L/C 勾选；不写细则） | 台账已立 · 全域未诊 |

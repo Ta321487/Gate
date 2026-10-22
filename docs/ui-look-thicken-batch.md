@@ -2,7 +2,7 @@
 
 > **本文只负责**：工厂出包「一眼精美 / 不像模板后台」的**观感加厚**进度、全域台账、验收口径与真源落点。
 > **不负责**：能力四件套（各组 `*_thicken` / 地图待补）；选型键目录与 ASCII（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md) §2）；沉浸边角（[`immersion-corners.md`](./immersion-corners.md)）；**起包前按钮/工具条/组件错位门禁**（[`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md)）。
-> **状态**：**再磨已收口** · 公共壳 + 九组首刀 + 软皮短签再磨已齐（报修/审批为轻磨）；用户列表卡底口径已跨页统一；下一刀抽检回归。
+> **状态**：**再磨已收口** · 公共壳 + 九组首刀 + 软皮短签再磨已齐（报修/审批为轻磨）；用户列表卡底口径已跨页统一。骨架大页拆分见 [`vue-split-batch.md`](./vue-split-batch.md)。
 > **硬闸**：键接满、测绿了，观感仍像模板站 —— **仍算未完成**（同选型册 §0.0）。
 > **索引**：[README.md](./README.md) · 选型册 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) · 布局闸 [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md) · 搁置 [`parked-work.md`](./parked-work.md) · 领域 [`domains.md`](./domains.md)。
 
@@ -59,7 +59,7 @@
 | approve | 审批/填报 | 已接线 | 吃 A | **首刀已齐** | MyTickets/TicketsAdmin typelist/inboxsteps | 短签 **轻磨已齐** |
 | fallback | 兜底 | 无选型键 | 吃 A | **吃公共壳** | 导引 + 中性壳 | 随壳即可 |
 
-软皮短签再磨九组已收口（报修/审批为轻磨）。下一刀：**抽检回归**（挑域看列表脸是否贴题；非新开 surface）。
+软皮短签再磨九组已收口（报修/审批为轻磨）。骨架可维护拆分见 [`vue-split-batch.md`](./vue-split-batch.md)。
 
 ---
 
