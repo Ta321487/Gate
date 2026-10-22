@@ -982,9 +982,7 @@ CREATE TABLE IF NOT EXISTS goods (
             repo / "skeletons/baseline/backend/src/main/java/com/thesis/config/DemoScheduleJobs.java"
         ).read_text(encoding="utf-8")
         self.assertIn("releaseTimedOutRiderClaims", demo)
-        fe_cart = (repo / "skeletons/baseline/frontend/src/views/user/Cart.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_cart = vue_src((repo / "skeletons/baseline/frontend/src/views/user/Cart.vue"))
         fe_my = (repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue").read_text(
             encoding="utf-8"
         )
@@ -1107,9 +1105,7 @@ CREATE TABLE IF NOT EXISTS goods (
             repo / "skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderController.java"
         ).read_text(encoding="utf-8")
         self.assertIn("/invoice", ctrl)
-        fe_cart = (repo / "skeletons/baseline/frontend/src/views/user/Cart.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_cart = vue_src((repo / "skeletons/baseline/frontend/src/views/user/Cart.vue"))
         fe_my = (repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue").read_text(
             encoding="utf-8"
         )
@@ -1401,9 +1397,7 @@ CREATE TABLE IF NOT EXISTS goods (
                 encoding="utf-8"
             ),
             "seat": (repo / "skeletons/baseline/frontend/src/views/SeatMap.vue").read_text(encoding="utf-8"),
-            "cart": (repo / "skeletons/baseline/frontend/src/views/user/Cart.vue").read_text(
-                encoding="utf-8"
-            ),
+            "cart": vue_src((repo / "skeletons/baseline/frontend/src/views/user/Cart.vue")),
             "router": (repo / "skeletons/baseline/frontend/src/router/index.js").read_text(
                 encoding="utf-8"
             ),
@@ -1509,9 +1503,7 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertIn("parseSnacks", ctrl)
         fe_seat = (repo / "skeletons/baseline/frontend/src/views/SeatMap.vue").read_text(encoding="utf-8")
         fe_admin = vue_src((repo / "skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.vue"))
-        fe_cart = (repo / "skeletons/baseline/frontend/src/views/user/Cart.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_cart = vue_src((repo / "skeletons/baseline/frontend/src/views/user/Cart.vue"))
         self.assertIn("cinemaSnackLabel", fe_seat)
         self.assertIn("/api/seats/snacks", fe_seat)
         self.assertIn("snacks:", fe_seat)

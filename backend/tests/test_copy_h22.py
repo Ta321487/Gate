@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -20,7 +22,7 @@ class CopyH22Tests(unittest.TestCase):
         self.assertNotIn("演示", CAPABILITIES["e_sign"]["label"])
 
     def test_cart_pay_password_placeholder(self) -> None:
-        cart = (BASELINE / "frontend/src/views/user/Cart.vue").read_text(encoding="utf-8")
+        cart = vue_src((BASELINE / "frontend/src/views/user/Cart.vue"))
         self.assertNotIn("演示密码", cart)
         self.assertNotIn("演示收银台", cart)
         self.assertNotIn("演示支付", cart)
