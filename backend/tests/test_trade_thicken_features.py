@@ -472,9 +472,9 @@ CREATE TABLE IF NOT EXISTS goods (
             / "skeletons/overlays/persistence-mybatis/backend/src/main/resources/mapper/OrderMapper.xml"
         ).read_text(encoding="utf-8")
         self.assertIn("selectRefundReasonSeries", xml)
-        fe = (
+        fe = vue_src((
             repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("submitRefund", fe)
         self.assertIn("refund-tracking", fe)
         self.assertIn("refund-trace", fe)
@@ -606,9 +606,7 @@ CREATE TABLE IF NOT EXISTS goods (
         ).read_text(encoding="utf-8")
         self.assertIn("selectOrderByShareToken", xml)
         self.assertIn("insertShipNode", xml)
-        fe_user = (repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_user = vue_src((repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"))
         fe_admin = (repo / "skeletons/baseline/frontend/src/views/admin/OrdersAdmin.vue").read_text(
             encoding="utf-8"
         )
@@ -720,9 +718,7 @@ CREATE TABLE IF NOT EXISTS goods (
         fe_shows = (repo / "skeletons/baseline/frontend/src/views/SeatShows.vue").read_text(
             encoding="utf-8"
         )
-        fe_orders = (repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_orders = vue_src((repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"))
         self.assertIn("cinemaNoticeLabel", fe_map)
         self.assertIn("/api/seats/hold", fe_map)
         self.assertIn("adjacentSeatHintTitle", fe_map)
@@ -822,9 +818,7 @@ CREATE TABLE IF NOT EXISTS goods (
         fe_orders = (repo / "skeletons/baseline/frontend/src/views/admin/OrdersAdmin.vue").read_text(
             encoding="utf-8"
         )
-        fe_my = (repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_my = vue_src((repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"))
         self.assertIn("seatAttrCoupleLabel", fe_map)
         self.assertIn("cinemaComboBody", fe_map)
         self.assertIn("effectHallLabel", fe_map)
@@ -983,9 +977,7 @@ CREATE TABLE IF NOT EXISTS goods (
         ).read_text(encoding="utf-8")
         self.assertIn("releaseTimedOutRiderClaims", demo)
         fe_cart = vue_src((repo / "skeletons/baseline/frontend/src/views/user/Cart.vue"))
-        fe_my = (repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_my = vue_src((repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"))
         fe_orders = (repo / "skeletons/baseline/frontend/src/views/admin/OrdersAdmin.vue").read_text(
             encoding="utf-8"
         )
@@ -1106,9 +1098,7 @@ CREATE TABLE IF NOT EXISTS goods (
         ).read_text(encoding="utf-8")
         self.assertIn("/invoice", ctrl)
         fe_cart = vue_src((repo / "skeletons/baseline/frontend/src/views/user/Cart.vue"))
-        fe_my = (repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_my = vue_src((repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"))
         fe_orders = (repo / "skeletons/baseline/frontend/src/views/admin/OrdersAdmin.vue").read_text(
             encoding="utf-8"
         )
@@ -1264,9 +1254,9 @@ CREATE TABLE IF NOT EXISTS goods (
         ).read_text(encoding="utf-8")
         self.assertIn("/api/stock-notify", ctrl)
         fe_browse = _browse_src(repo)
-        fe_my = (
+        fe_my = vue_src((
             repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"
-        ).read_text(encoding="utf-8")
+        ))
         fe_rev = (
             repo / "skeletons/baseline/frontend/src/views/user/MyOrderReviews.vue"
         ).read_text(encoding="utf-8")
@@ -1383,9 +1373,7 @@ CREATE TABLE IF NOT EXISTS goods (
         ).read_text(encoding="utf-8")
         self.assertIn("/draws", ctrl)
         fe_files = {
-            "my": (repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue").read_text(
-                encoding="utf-8"
-            ),
+            "my": vue_src((repo / "skeletons/baseline/frontend/src/views/user/MyOrders.vue")),
             "coupons": (repo / "skeletons/baseline/frontend/src/views/user/MyCoupons.vue").read_text(
                 encoding="utf-8"
             ),

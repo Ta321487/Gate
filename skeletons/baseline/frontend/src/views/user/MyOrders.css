@@ -1,0 +1,24 @@
+.hero { margin-bottom: 16px; }
+.hero h1 { margin: 0 0 6px; font-size: 22px; }
+.hero p { margin: 0 0 10px; color: var(--portal-muted, #64748b); font-size: 13px; }
+.card {
+  background: var(--portal-surface, #fff);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius, 12px);
+  box-shadow: var(--portal-shadow, none);
+  padding: var(--portal-pad, 14px) 16px;
+  margin-bottom: var(--portal-gap, 12px);
+}
+.hd { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.hd-title { display: inline-flex; align-items: center; gap: 8px; }
+.sub { margin: 6px 0; color: var(--portal-muted, #64748b); font-size: 12px; }
+.sub.refund { color: #b45309; }
+.pay-cd { margin: 0 0 6px; color: #b45309; font-size: 13px; font-weight: 600; }
+.pay-cd.urgent { color: #b91c1c; }
+.group-buy { margin: 6px 0 10px; max-width: 280px; }
+.ship { margin: 0 0 8px; color: var(--portal-muted, #475569); font-size: 12px; line-height: 1.5; }
+.lines { margin: 0; padding-left: 18px; color: var(--portal-ink, #334155); font-size: 13px; }
+.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
+.pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.pay-tip { margin: 0 0 12px; color: var(--portal-muted, #64748b); font-size: 13px; }
+.muted { color: var(--portal-muted, #64748b); }

@@ -362,9 +362,9 @@ class ShopMarketplaceContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("resolveShopName", archive)
         self.assertIn("shopName", archive)
-        orders = (
+        orders = vue_src((
             root / "frontend/src/views/user/MyOrders.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("去付款", orders)
         self.assertIn("/pay", orders)
         admin_orders = (

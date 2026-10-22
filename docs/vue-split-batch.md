@@ -32,7 +32,7 @@
 | 6 | `views/user/PortalHome.vue` | **已齐** |
 | 7 | `views/user/Cart.vue` | **已齐** |
 | 8 | `views/Profile.vue` | **已齐** |
-| 9 | `views/user/MyOrders.vue` | 待拆 |
+| 9 | `views/user/MyOrders.vue` | **已齐** |
 
 ## 2. 单页工序
 
