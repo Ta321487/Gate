@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -230,9 +232,7 @@ class MultiCategoryProductTagsTests(unittest.TestCase):
         self.assertIn("categoryIds", browse)
         self.assertIn("tagNames", browse)
 
-        admin = (BASELINE / "frontend/src/views/admin/ArchiveAdmin.vue").read_text(
-            encoding="utf-8"
-        )
+        admin = vue_src((BASELINE / "frontend/src/views/admin/ArchiveAdmin.vue"))
         self.assertIn("multiCategory", admin)
         self.assertIn("categoryIds", admin)
 

@@ -1,0 +1,46 @@
+.toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.ops-hint { margin: 0 0 10px; color: var(--el-text-color-secondary); font-size: 13px; }
+.seat-attr-grid {
+  display: grid;
+  gap: 0.35rem;
+  justify-content: center;
+  margin: 0.5rem 0 0;
+}
+.seat-attr-cell {
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  cursor: pointer;
+  background: #fff;
+  padding: 0;
+}
+.seat-attr-cell.couple { box-shadow: inset 0 0 0 2px #e6a23c; }
+.seat-attr-cell.accessible { box-shadow: inset 0 0 0 2px #67c23a; }
+.import-err { margin: 0 0 10px; color: #b45309; font-size: 13px; padding-left: 1.2em; }
+.tag-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+.tag-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.stock-warn { color: #b91c1c; font-weight: 700; margin-right: 4px; }
+.warn-tag { margin-left: 2px; }
+.muted { margin-left: 8px; color: var(--portal-muted, #909399); font-size: 12px; }
+.form-hint { margin: 6px 0 0; color: var(--portal-muted, #909399); font-size: 12px; line-height: 1.4; }
+.cover-edit { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.cover-preview {
+  width: 96px; height: 96px; object-fit: cover;
+  border-radius: var(--portal-radius-sm, 8px);
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e4e7ed);
+  background: color-mix(in srgb, var(--portal-bg, #f5f7fa) 72%, var(--portal-surface, #fff));
+}
+.gallery-edit { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.gallery-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.gallery-item {
+  width: 88px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.gallery-item img {
+  width: 80px; height: 80px; object-fit: cover;
+  border-radius: 8px; border: 1px solid #e4e7ed;
+}
+.attach-row { display: flex; gap: 8px; width: 100%; align-items: center; }
+.dt-hint { margin: -4px 0 8px; font-size: 12px; color: #909399; line-height: 1.4; }

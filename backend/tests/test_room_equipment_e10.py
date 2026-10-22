@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -141,9 +143,9 @@ class RoomEquipmentE10Tests(unittest.TestCase):
             BASELINE / "frontend/src/views/user/SlotBook.vue"
         ).read_text(encoding="utf-8")
         self.assertIn("room_equipment", fe_slot)
-        fe_admin = (
+        fe_admin = vue_src((
             BASELINE / "frontend/src/views/admin/ArchiveAdmin.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("equipmentNames", fe_admin)
         router = (BASELINE / "frontend/src/router/index.js").read_text(encoding="utf-8")
         self.assertIn("EquipmentDictAdmin", router)

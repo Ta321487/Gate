@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import re
 import unittest
 from pathlib import Path
@@ -385,9 +387,9 @@ class ShopMarketplaceContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("onCategoryChange", browse)
         self.assertIn("showDetailBtn", browse)
-        archive_admin = (
+        archive_admin = vue_src((
             root / "frontend/src/views/admin/ArchiveAdmin.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("shopName", archive_admin)
         reviews_ctrl = (
             root
@@ -431,9 +433,9 @@ class ShopMarketplaceContractTests(unittest.TestCase):
         self.assertIn("仅待审核条目可通过审核上架", archive)
         self.assertIn('禁止 update 改写为 available', archive)
         self.assertIn('pending_review".equals(audit)', archive)
-        archive_admin = (
+        archive_admin = vue_src((
             root / "frontend/src/views/admin/ArchiveAdmin.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("!isPendingReview(form)", archive_admin)
         ctrl = (
             root
@@ -523,9 +525,9 @@ class ShopMarketplaceUxGuardTests(unittest.TestCase):
         self.assertNotIn("${x.title}×${x.qty}¥", orders)
 
     def test_archive_admin_shelf_status_not_duplicated(self) -> None:
-        archive_admin = (
+        archive_admin = vue_src((
             self.root / "frontend/src/views/admin/ArchiveAdmin.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("showShelfCol", archive_admin)
         self.assertIn("softDelete && !publishReview && !showShelfCol", archive_admin)
         self.assertIn("是否在售", archive_admin)

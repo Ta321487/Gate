@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 
 from app.bake.domain_schema import attach_accept
@@ -816,9 +818,7 @@ CREATE TABLE IF NOT EXISTS goods (
         fe_shows = (repo / "skeletons/baseline/frontend/src/views/SeatShows.vue").read_text(
             encoding="utf-8"
         )
-        fe_admin = (repo / "skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_admin = vue_src((repo / "skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.vue"))
         fe_orders = (repo / "skeletons/baseline/frontend/src/views/admin/OrdersAdmin.vue").read_text(
             encoding="utf-8"
         )
@@ -1508,9 +1508,7 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertIn("/snacks", ctrl)
         self.assertIn("parseSnacks", ctrl)
         fe_seat = (repo / "skeletons/baseline/frontend/src/views/SeatMap.vue").read_text(encoding="utf-8")
-        fe_admin = (repo / "skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.vue").read_text(
-            encoding="utf-8"
-        )
+        fe_admin = vue_src((repo / "skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.vue"))
         fe_cart = (repo / "skeletons/baseline/frontend/src/views/user/Cart.vue").read_text(
             encoding="utf-8"
         )

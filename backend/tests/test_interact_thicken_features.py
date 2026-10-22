@@ -352,7 +352,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         profile = (FE / "views" / "Profile.vue").read_text(encoding="utf-8")
         self.assertIn("datingCompletenessOn", profile)
         self.assertIn("datingCompletenessHint", profile)
-        admin = (FE / "views" / "admin" / "ArchiveAdmin.vue").read_text(encoding="utf-8")
+        admin = vue_src((FE / "views" / "admin" / "ArchiveAdmin.vue"))
         self.assertIn("datingRejectReasonOn", admin)
         self.assertIn("albumAudit", admin)
         mine = (FE / "views" / "user" / "MyArchive.vue").read_text(encoding="utf-8")
@@ -806,7 +806,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
             "carpoolNoShowCountLabel",
         ):
             self.assertIn(needle, mine, needle)
-        admin = (FE / "views" / "admin" / "ArchiveAdmin.vue").read_text(encoding="utf-8")
+        admin = vue_src((FE / "views" / "admin" / "ArchiveAdmin.vue"))
         self.assertIn("carpoolCampusDictOn", admin)
         self.assertIn("carpoolCampusOptions", admin)
 

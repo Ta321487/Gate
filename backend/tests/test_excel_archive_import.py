@@ -1,3 +1,4 @@
+from tests._vue_src import vue_src
 """档案 xlsx：Apache POI，模板 / 导入 / 导出，不是 CSV 冒充。"""
 
 from pathlib import Path
@@ -16,9 +17,9 @@ def test_poi_on_three_poms() -> None:
 
 
 def test_archive_page_uses_xlsx() -> None:
-    vue = (
+    vue = vue_src((
         REPO / "skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.vue"
-    ).read_text(encoding="utf-8")
+    ))
     assert "导入 Excel" in vue
     assert "导出 Excel" in vue
     assert "/api/archive/import-xlsx" in vue
