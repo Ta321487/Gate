@@ -114,7 +114,7 @@
   <p>一个运营中台（FastAPI + Vue 3）驱动一条确定性流水线，把开题材料烘成可答辩的学生工程（Spring Boot 3.2 + Vue 3 + MySQL）。</p>
   <div class="badges">
     <span>运营后端 FastAPI · :8000</span>
-    <span>运营前端 Vue 3 + Naive UI · :5173</span>
+    <span>运营前端 Vue 3 + Naive UI · :5300</span>
     <span>生成核心 bake（确定性骨架）</span>
     <span>LLM 只填白名单业务岛</span>
     <span>门禁不过不放行 ZIP</span>
@@ -123,7 +123,8 @@
 </header>
 
 <div class="lead">
-  <b>读图前提 ·</b> 可靠性来自固定骨架 + 模板 + 门禁，LLM 只挂缺口；LLM 不写业务 Java / Vue。
+  <b>读图前提 ·</b> 主链路：<b>材料 → 匹配到 <code>DOM-*</code> + 能力岛 → bake 出可答辩 ZIP</b>（实包 ≈ README ≈ 论文「系统实现」）。
+  可靠性来自固定骨架 + 模板 + 门禁，LLM 只挂缺口；LLM 不写业务 Java / Vue。
   两个数据库完全分离：<b>工厂元库</b>（项目 / 任务 / 用量）与<b>学生库</b>（每题一个 MySQL schema）。
   三种「图」别混：本页是<b>工厂自身</b>架构；学生交付物里另有论文用 E-R / 类图 / 用例图；<code>prototype/</code> 只是运营端静态原型。
 </div>
@@ -156,7 +157,7 @@ flowchart TB
         OP["运营 / 交付团队浏览器"]
         STU["学生（拿到 ZIP 后自己跑）"]
     end
-    subgraph L2["② 运营前端 frontend/ :5173 Vue 3 + Naive UI + Vite"]
+    subgraph L2["② 运营前端 frontend/ :5300 Vue 3 + Naive UI + Vite"]
         FE_VIEW["views/ 项目 详情 任务 大模型 Unsplash 运行环境 帮助"]
         FE_DETAIL["views/projectDetail/ 匹配 生成 产物 运行 日志"]
         FE_API["api.js axios baseURL=/api + SSE 进度订阅"]
@@ -171,8 +172,10 @@ flowchart TB
     subgraph L4["④ 生成核心 backend/app/bake 确定性 bake"]
         BAKE_ENG["engine_bake.py 复制 baseline 叠加域 / 持久层 / 能力"]
         BAKE_SQL["sql/ DOM-*.sql 模板 + compose 拼 GENERIC"]
+        BAKE_FEAT["features/ 能力扫词 / 菜单 / ensure_*"]
+        BAKE_PRUNE["pack_prune.py 出包前剪未挂岛"]
         BAKE_SCH["schema/ 壳 / ER / 模块 / 用例 / 测试用例"]
-        BAKE_GATE["gates/ 门禁 p0a…p3q + overall"]
+        BAKE_GATE["gates/ 门禁 p0a…p3lean + overall"]
         SCENE["scene_scan.py 场景身份唯一真源"]
     end
     subgraph L5["⑤ LLM 层 backend/app/llm 只填白名单岛"]
@@ -211,8 +214,10 @@ flowchart TB
     SVC --> META
     SVC --> BAKE_ENG
     BAKE_ENG --> BAKE_SQL
+    BAKE_ENG --> BAKE_FEAT
     BAKE_ENG --> BAKE_SCH
     BAKE_ENG --> SCENE
+    BAKE_ENG --> BAKE_PRUNE
     SVC --> LLM_FLOW --> LLM_AG --> LLM_RT
     LLM_RT --> DS
     LLM_RT --> GEM
@@ -221,6 +226,7 @@ flowchart TB
     BAKE_ENG --> DEL_BE
     BAKE_ENG --> DEL_FE
     BAKE_ENG --> DEL_SQL
+    BAKE_PRUNE --> DEL_ZIP
     SVC -->|门禁通过后打包| DEL_ZIP
     DEL_ZIP -->|交给学生| STU
     SVC --> RT_BE --> DEL_BE
@@ -271,9 +277,9 @@ flowchart LR
     <tr><td>3 <code>island_fill</code></td><td><code>llm/unit_flow/</code>：Plan → 并发 Unit → Merge 写回工作区</td><td>岛文案 / 角色 / E-R / 模块 / 用例标签；<code>fill_event_hub</code> 推 SSE</td></tr>
     <tr><td>4 <code>build_verify</code></td><td><code>llm/agents_fix.py</code> 的 <code>run_fix_agent</code></td><td>构建与修复轮次（<code>fix_rounds_max</code>）</td></tr>
     <tr><td>5 <code>gate_e2e</code></td><td><code>bake/gates/evaluate.py</code> + <code>delivery_review.evaluate_workspace_gates</code> + QA Agent</td><td><code>projects.gates</code>、<code>projects.checklist</code>；<code>overall</code> 决定能否打包</td></tr>
-    <tr><td>6 <code>pack</code></td><td><code>delivery_review.finalize_pack</code> → <code>jobs.pack_zip</code></td><td>先写临时文件再原子替换的 ZIP；排除 node_modules / target / .git / islands / .factory</td></tr>
+    <tr><td>6 <code>pack</code></td><td><code>delivery_review.finalize_pack</code> → <code>jobs.pack_zip</code>；bake 末段已跑 <code>pack_prune</code></td><td>先写临时文件再原子替换的 ZIP；排除 node_modules / target / .git / islands / .factory；未挂岛由 <code>pack_prune</code> 剪掉，残留则 <code>p3lean</code> 拒 ZIP</td></tr>
   </table>
-  <p class="sub">门禁键：<code>p0a</code> 后端骨架 · <code>p0b</code> 前端骨架 · <code>p1</code> 登录基线 · <code>p2</code> 领域主流程 E2E · <code>p3a</code> 清单实装 · <code>p3b</code> Spec/契约一致 · <code>p3t</code> 技术栈 · <code>p3d</code> 文档 · <code>p3s</code> 语义 · <code>p3n</code> 库表 · <code>p3q</code> 质量摘要，外加可接题边界 <code>accept</code>。复审期间由 <code>forbid_full_rebake</code> 拦截整段重跑。</p>
+  <p class="sub">门禁键：<code>p0a</code> 后端骨架 · <code>p0b</code> 前端骨架 · <code>p1</code> 登录基线 · <code>p2</code> 领域主流程 E2E · <code>p3a</code> 清单实装 · <code>p3b</code> Spec/契约一致 · <code>p3t</code> 技术栈 · <code>p3d</code> 文档 · <code>p3s</code> 语义 · <code>p3n</code> 库表 · <code>p3ac</code> 档案语义列 · <code>p3q</code> 质量摘要 · <code>p3lean</code> 出包精简（无未挂岛残留），外加可接题边界 <code>accept</code>。单调性键见 <code>bake/gates/keys.py</code>；复审期间由 <code>forbid_full_rebake</code> 拦截整段重跑。</p>
 </section>
 
 <section id="s3">
@@ -373,7 +379,8 @@ flowchart TB
         B3["schema/ shells · builders_* · er_* · modules · usecases · testcases"]
         B4["sql/templates + compose + ddl_edit"]
         B5["gates/ evaluate · semantic · schema_nf · feature_keywords"]
-        B6["features/ 能力加厚运行时"]
+        B6["features/ 能力正文：扫词 / 菜单 / ensure_*"]
+        B7["pack_prune.py 出包前按挂载剪未用岛"]
     end
     MODELS["app/models Project / Job / LlmCall / SettingRow"]
     SCHEMAS["app/schemas Pydantic 出入参"]
@@ -387,6 +394,7 @@ flowchart TB
   </div>
   <ul class="pts">
     <li><code>services/projects.py</code> 是<b>门面</b>：正文按职责拆到 project_match / project_delivery / project_disk / project_projection，新逻辑不再往门面堆。</li>
+    <li>能力岛正文落在 <code>bake/features/&lt;cap&gt;.py</code>（扫词、菜单、<code>ensure_*</code> SQL），<code>sql/fragments.py</code> 只按开关调用。</li>
     <li>启动生命周期（<code>main.py lifespan</code>）：<code>init_db()</code> → 回灌大模型预算与模型设置 → <code>fail_orphaned_jobs()</code> → 启动后台对账 <code>start_runtime_reconcile()</code>，关闭时 <code>stop_runtime_reconcile()</code>。</li>
     <li>表结构演进用 <code>create_all</code> + <code>_migrate_project_columns</code>（幂等 ALTER），没有 Alembic。</li>
   </ul>
@@ -479,7 +487,7 @@ flowchart LR
   </div>
   <ul class="pts">
     <li>列表与 <code>/stats</code> 只读库；真实运行态由后台 <code>runtime_reconcile</code> 周期性对账回写，启停与详情仍当场 sync。</li>
-    <li>批量启动只启动到 <code>GF_PREVIEW_MAX_RUNNING</code> 额度，其余返回 deferred，并按 <code>GF_PREVIEW_START_STAGGER_SEC</code> 错峰，避免首次 Maven 编译把机器打死。</li>
+    <li>批量启动额度 = <code>GF_PREVIEW_MAX_RUNNING − 实际在跑</code>，再被「可用内存 ÷ 约 1.1 GB」夹一次；超出返回 deferred，并按 <code>GF_PREVIEW_START_STAGGER_SEC</code> 错峰，避免首次 Maven 编译把机器打死。</li>
   </ul>
 </section>
 
@@ -553,7 +561,7 @@ flowchart TB
   <div class="mermaid">
 flowchart LR
     L["scripts/launcher.bat 有 Windows Terminal 则同窗标签页"] --> B["start-backend → uvicorn :8000"]
-    L --> F["start-frontend → vite :5173"]
+    L --> F["start-frontend → vite :5300"]
     B --> H["GET /api/health"]
     F --> P["vite proxy /api → 127.0.0.1:8000"]
     D["docker compose up -d MySQL 8（可选）"] --> B

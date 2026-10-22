@@ -99,7 +99,7 @@
 | G-1.7 | 预约 | 中 | Slot 页、ArchiveBrowse | `reserve_surface_style` | 3 | **已接线** | **首刀已齐** |
 | G-1.8 | 内容 | 重 | ArchiveBrowse | `content_surface_style` | 4 | **已接线** | **首刀已齐** |
 | G-1.9 | 互动 | 中重 | ArchiveBrowse、PeerTickets；Exam/Survey 专用页不动 | `interact_surface_style` | 3 | **已接线** | **首刀已齐** |
-| G-1.10 | 兜底 | 异质 | 门户说明、README | （无） | 导引块 | 导引浅清 | 吃公共壳 |
+| G-1.10 | 兜底（domains **H**；真交叉见 **G**） | 异质 | 门户说明、README | （无） | 导引块 | 导引浅清 | 吃公共壳 |
 
 ---
 
@@ -394,7 +394,7 @@ EXAM/SURVEY/VOTE 不进本轴。隐喻绑域：资料墙只婚恋、双选卡只
 
 **问题（异质）**：要的是交叉导引，不是浏览皮。  
 **主表面**：门户只读说明、README 固定段。  
-与地图 §1.10 导引浅清对齐（已齐）；不做手选目录。
+与地图 §1.10 / domains **组 H** 导引浅清对齐（已齐）；真交叉白名单见 domains **组 G**。不做手选目录。
 
 ```text
 | 本系统提供申请审核和时段预约。请从对应菜单进入。 |
@@ -733,15 +733,15 @@ EXAM/SURVEY/VOTE 不进本轴。隐喻绑域：资料墙只婚恋、双选卡只
 
 ---
 
-### G-3.10 兜底与真交叉
+### G-3.10 真交叉与兜底（domains 组 G → H）
 
 | 落点 | 壳怎么定 |
 |------|----------|
-| DOM-GENERIC + ARCH-CRUD | 内容清单壳：顶栏浏览；独立详情；中性墨灰；禁止冒充行业绿/橙 |
-| DOM-GENERIC + ARCH-FLOW | 审批短链：发起 / 待我审 / 我发起的 |
-| DOM-GENERIC + ARCH-TRADE | 交易短链无行业软皮：分类/购物车/订单；通用零售墨灰 |
-| DOM-GENERIC + ARCH-RESERVE | 预约时段条：浏览 + 我的预约 |
-| X-BORROW-SHOP 等真交叉 | 两套玩法两入口都在顶栏或导引区；禁止只留商城丢借阅。文案见 `cross_path_guide` |
+| X-BORROW-SHOP 等真交叉（组 G） | 两套玩法两入口都在顶栏或导引区；禁止只留商城丢借阅。文案见 `cross_path_guide` |
+| DOM-GENERIC + ARCH-CRUD（组 H） | 内容清单壳：顶栏浏览；独立详情；中性墨灰；禁止冒充行业绿/橙 |
+| DOM-GENERIC + ARCH-FLOW（组 H） | 审批短链：发起 / 待我审 / 我发起的 |
+| DOM-GENERIC + ARCH-TRADE（组 H） | 交易短链无行业软皮：分类/购物车/订单；通用零售墨灰 |
+| DOM-GENERIC + ARCH-RESERVE（组 H） | 预约时段条：浏览 + 我的预约 |
 
 ---
 
@@ -766,7 +766,7 @@ EXAM/SURVEY/VOTE 不进本轴。隐喻绑域：资料墙只婚恋、双选卡只
 | **观感首刀 · 跟进** | pipeline / dossier / listing；LISTING `priceYuan`+`priceUnit`；`followStageTone`；详情「预约带看/记录跟进」 |
 | **观感首刀 · 报修** | MyTickets `ticketfeed`/`faultboard`；`ticketTone`；看板顶栏待派/处理中/超时 |
 | **观感首刀 · 审批** | MyTickets/TicketsAdmin `typelist`/`inboxsteps`；`--approve-tone`；待我审分档顶栏 |
-| **观感进度真源** | [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)（组表 + 68 域台账；台账可用 `scripts/_gen_ui_look_thicken_doc.py` 重生成） |
+| **观感进度真源** | [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)（组表 + 68 域台账） |
 
 与 [`immersion-corners.md`](./immersion-corners.md) 边界：本册 §2 = 可选手选主路径构图；§2.5 = 同隐喻卡面叙事（骨架已接）；§3 = 壳规矩（九组导航+检索槽+壳色已接）；**观感是否过 §0.0** 以观感批次册为准；沉浸边角 = 非强制加分，不替代这三轴。
 
@@ -816,3 +816,4 @@ EXAM/SURVEY/VOTE 不进本轴。隐喻绑域：资料墙只婚恋、双选卡只
 | 2026-10-22 | **观感首刀 · 跟进**：pipeline/dossier/listing 加厚 + LISTING 价签单位列；总表 G-1.2 标首刀已齐 |
 | 2026-10-22 | **观感首刀 · 报修**：ticketfeed/faultboard 加厚；总表 G-1.3 标首刀已齐 |
 | 2026-10-22 | **观感首刀 · 审批**：typelist/inboxsteps 加厚；总表 G-1.5 标首刀已齐；九组观感首刀齐 |
+| 2026-10-22 | **domains 组序**：G-1.10 / G-3.10 对齐 domains **G 真交叉 → H 兜底**（旧 F=兜底/H=真交叉作废） |

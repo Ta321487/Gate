@@ -1,14 +1,15 @@
 # 领域清单（组 A–H）
 
-> **本文只负责**：具名 `DOM-*` 分组（bake 目录 A–H）、各域**默认**能力组合、GENERIC/ARCH 绑壳、Path B 真交叉白名单与答辩口径。  
+> **本文只负责**：具名 `DOM-*` 分组（bake 目录 A–H）、各域**默认**能力组合、GENERIC/ARCH 兜底绑壳（**仅** H；真交叉落点见 G）、Path B 白名单与答辩口径。  
 > **不负责**：开题密功能全表 / 待补清单（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；cap 挂载细则（[`capabilities.md`](./capabilities.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；组 UI 表面选型（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)）；UI 观感加厚进度（[`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)）。  
+> **口径**：具名域 bake 真源 = 能力矩阵；`ARCH-*` 不替代 `DOM-*`，也不表达技术栈 spine。  
 > **交接**：[HANDOFF.md](../HANDOFF.md) · **总览**：[README.md](../README.md) · **索引**：[README.md](./README.md)
 
 ---
 
 **薄壳（架构）**：不另起厚 DOM 代码包；同组共运行时，差别主要在 schema 文案 / 种子 / 菜单。禁止新开厚包。  
 **薄壳 ≠ 功能稀薄**：密功能是否齐看地图 §1.x 与各组 `*_thicken`；加厚是在薄壳上钉四件套，不是改成独立厚域。  
-组 **H** 为真交叉（两套玩法）。
+阅读顺序：具名 **A～F** → 真交叉 **G** → 兜底 **H**（与 `DOMAIN_GROUPS` 末位 `fallback` 对齐）。
 
 **两组编号**：本文 **A–H** 服务 bake 目录与 Path B；清待补 / 加厚按地图 **§1.1～§1.10**。查库存与待补以地图为准。对照如下（A 族大表会拆到多个 §1.x）：
 
@@ -19,9 +20,9 @@
 | **C** 报名 | ACTIVITY / LOST / COURSE / TOUR | §1.4 | 同上复盘册 §4 |
 | **D** 交易 | SHOP / FOOD / CINEMA | §1.6 | [`trade-thicken-batch.md`](./trade-thicken-batch.md) |
 | **E** 预约 | HOSPITAL…CARRENT；INSTRUMENT | §1.7 | [`reserve-thicken-batch.md`](./reserve-thicken-batch.md) |
-| **F** 兜底 | GENERIC + ARCH | §1.10 | 导引浅清已齐（`cross_path_guide`；不开 thicken） |
-| **G** 内容 | MEDIA / MUSIC / FORUM / BLOG（DOCLIB 常跟内容组） | §1.8 | [`content-thicken-batch.md`](./content-thicken-batch.md)（已收口） |
-| **H** 真交叉 | Path B 三条 | 不按 §1.x 加厚；交叉白名单 | 本文组 H |
+| **F** 内容 | MEDIA / MUSIC / FORUM / BLOG（DOCLIB 常跟内容组） | §1.8 | [`content-thicken-batch.md`](./content-thicken-batch.md)（已收口） |
+| **G** 真交叉 | Path B 三条 | 不按 §1.x 加厚；交叉白名单 | 本文组 G |
+| **H** 兜底 | GENERIC + ARCH（粗捆绑壳；非具名域真源） | §1.10 | 导引浅清已齐（`cross_path_guide`；不开 thicken） |
 
 例：CRM 写在本文 **A** 表，加厚归地图 **§1.2**；SEAL 亦在 A 表，加厚归 **§1.5**。勿按 A 族一次清完。
 
@@ -150,36 +151,7 @@
 
 预约答辩口径：选时段占坑 →（可选确认）→ 管理端履约办结 / 用户取消或改约。状态含 `completed`（入场/就诊/到店/入住离店等文案随 schema）。
 
-### F. 兜底
-
-密功能 / 导引见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.10（导引浅清已齐；**不开** `generic_thicken`）。
-
-| 领域 ID | 覆盖 | 能力 |
-|---------|------|------|
-| **DOM-GENERIC** | 对不上具体行业关键词时的兜底域 | 按 **ARCH-*** 绑壳：CRUD / FLOW / TRADE / RESERVE（见下） |
-
-未命中具体 `DOM-*` 时 **禁止**误落 LIBRARY：`score_catalog(..., fallback="DOM-GENERIC")`。  
-匹配原则：**行为词桶（ARCH）有上限**，不堆行业百科；具体 DOM 若盖不住原型能力 → 降 `DOM-GENERIC`（`reconcile_match`）。  
-上传开题时对**全文**匹配，并优先加权「主要功能 / 研究内容」段（`proposal_focus_for_match`）：开题写到的行为应对齐可交付壳。  
-小程序/人脸/真支付等 L3 与业务过重信号 → **`accept=reject`（Path B）**，不可 degraded 出 ZIP。  
-**多主路径**：功能段命中多条 ARCH 时写入 `archetypes` 并集；须命中交叉白名单且 `defense_ready`（见下节），否则 reject。  
-GENERIC SQL 由 `sql/compose` 拼装；前端 `withExtraBizRoutes` 追加预约/订单路由。
-GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
-
-| ARCH | 能力 | bake SQL |
-|------|------|----------|
-| ARCH-CRUD | archive + content + org_users | `DOM-GENERIC.sql` |
-| ARCH-FLOW / STOCK / CONTENT | + ticket_flow（±quota） | `DOM-GENERIC-FLOW.sql` |
-| ARCH-TRADE | + order_lines + **guestbook**（+ 默认 **favorites**） | `DOM-GENERIC-TRADE.sql` |
-| ARCH-RESERVE | + slot_reserve | `DOM-GENERIC-RESERVE.sql` |
-
-**ARCH 绑壳与 DOM 具名优先级**：能落到具名 `DOM-*` 时优先具名；仅当行业皮盖不住开题主路径（或真交叉）时降 `DOM-GENERIC` 并保留 ARCH 并集。禁止为「看起来更行业」而静默改 Dom 标签冒充具名域。
-
-**行业词浅替换**：题名经 `product_name_from_title` 写入 `domain_label` / `industry` 与壳文案，只改可见称呼，**不**改 `domain` 字段。出包后勿把通用壳说成已换成某具名行业皮。
-
-**交叉导引（代码）**：`backend/app/bake/cross_path_guide.py` — 真交叉多路径时注入 README `${CROSS_PATH_GUIDE}`、门户 `portalHomeLead`、菜单 `navSection` 分区；工厂 MatchTab 对 `DOM-GENERIC` 显示禁止静默改 Dom 提示。
-
-### G. 内容 / 媒资 / 社区（薄壳 + 能力组合；密功能见地图 §1.8）
+### F. 内容 / 媒资 / 社区（薄壳 + 能力组合；密功能见地图 §1.8）
 
 密功能 / 待补见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.8；互动/匹配类（婚恋/双选/考试等）见 §1.9 与 [`interact-thicken-batch.md`](./interact-thicken-batch.md)。
 
@@ -213,9 +185,9 @@ GENERIC 再按原型选 SQL/runtime/gate（`archetype_shells.py`）：
 
 轻量「猜你喜欢」（`recommend` 能力）：档案域按分类偏好 + 热度 + 上新兜底，挂 LIBRARY / EQUIP / MEDIA / MUSIC / BLOG；**FORUM 不默认**（开题写「猜你喜欢/推荐模块」才扫入）；**不是**协同过滤。
 
-### H. 真交叉（专科/本科·课设常见；Path B 已可 full）
+### G. 真交叉（专科/本科·课设常见；Path B 已可 full）
 
-与组 A～G **单域换皮**并列；开题写清**两套玩法**时匹配降 `DOM-GENERIC` 并保留行为并集（不再挤掉借用/审核）。  
+与组 A～F **单域换皮**并列；开题写清**两套玩法**时匹配降 `DOM-GENERIC` 并保留行为并集（不再挤掉借用/审核）。壳与 ARCH 绑法见组 **H**。  
 样例开题（可上传匹配）：
 - X-BORROW-SHOP：`data/samples/快速试传/图书借阅与二手交叉开题.txt`；`交叉预设开题/X-01-*.txt`（点餐+报修）
 - X-BORROW-RESERVE：`data/samples/交叉预设开题/X-02-*.txt`（图书+座位；仪器借+机时 → DOM-INSTRUMENT）
@@ -242,6 +214,49 @@ SQL golden：`DOM-GENERIC__ARCH-FLOW_ARCH-TRADE` / `…FLOW_ARCH-RESERVE` / `…
 **禁止**：DOM×DOM 厚融合；L3；硕博；真实业务全流程；三合一装全文。  
 代码：`evaluate_cross_path` + `reconcile_match` + `resolve_accept`。
 
-**覆盖率怎么理解**：A+B+C+D+E+F+G+**H（真交叉三条）** ≈ 常见 Web 管理类毕设主体；不是 100% 开题都能 full。L3 / 三合一 → **reject**（Path B）。
+### H. 兜底
+
+密功能 / 导引见 [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) §1.10（导引浅清已齐；**不开** `generic_thicken`）。  
+排在全部具名组（A～F）与真交叉（G）之后；对不上行业皮或盖不住主路径时才落此组。
+
+| 领域 ID | 覆盖 | 能力 |
+|---------|------|------|
+| **DOM-GENERIC** | 对不上具体行业关键词时的兜底域 | 按 **ARCH-*** 绑壳：CRUD / FLOW / TRADE / RESERVE（见下） |
+
+未命中具体 `DOM-*` 时 **禁止**误落 LIBRARY：`score_catalog(..., fallback="DOM-GENERIC")`。  
+匹配原则：**行为词桶（ARCH）有上限**，不堆行业百科；具体 DOM 若盖不住原型能力 → 降 `DOM-GENERIC`（`reconcile_match`）。  
+上传开题时对**全文**匹配，并优先加权「主要功能 / 研究内容」段（`proposal_focus_for_match`）：开题写到的行为应对齐可交付壳。  
+小程序/人脸/真支付等 L3 与业务过重信号 → **`accept=reject`（Path B）**，不可 degraded 出 ZIP。  
+**多主路径**：功能段命中多条 ARCH 时写入 `archetypes` 并集；须命中交叉白名单且 `defense_ready`（见组 G），否则 reject。  
+GENERIC SQL 由 `sql/compose` 拼装；前端 `withExtraBizRoutes` 追加预约/订单路由。
+
+**适用范围（防写飞）**：下表**仅**服务 `DOM-GENERIC` / Path B 交叉。具名 `DOM-*` 以 [`capabilities.md`](./capabilities.md) / `DOMAIN_CAPABILITIES` + features / `ensure_*` 为准，**不要**拿 ARCH→SQL 当全厂 bake 真源。  
+`ARCH-*` = 匹配**行为词桶** + 兜底**粗捆绑壳**（`archetype_shells.py`）；**不是**技术栈 spine，也不是具名域能力轴。  
+**冻结**：禁止新开 `ARCH-*` / 新 `DOM-GENERIC-*.sql` / `generic_thicken`；STOCK·CONTENT 并进 FLOW SQL 是刻意粗捆，不是漏拆。密功能继续进具名域与能力岛。
+
+GENERIC 再按原型选 SQL/runtime/gate：
+
+| ARCH | 能力 | bake SQL |
+|------|------|----------|
+| ARCH-CRUD | archive + content + org_users | `DOM-GENERIC.sql` |
+| ARCH-FLOW / STOCK / CONTENT | + ticket_flow（±quota） | `DOM-GENERIC-FLOW.sql` |
+| ARCH-TRADE | + order_lines + **guestbook**（+ 默认 **favorites**） | `DOM-GENERIC-TRADE.sql` |
+| ARCH-RESERVE | + slot_reserve | `DOM-GENERIC-RESERVE.sql` |
+
+**ARCH 绑壳与 DOM 具名优先级**：能落到具名 `DOM-*` 时优先具名；仅当行业皮盖不住开题主路径（或真交叉）时降 `DOM-GENERIC` 并保留 ARCH 并集。禁止为「看起来更行业」而静默改 Dom 标签冒充具名域。
+
+**行业词浅替换**：题名经 `product_name_from_title` 写入 `domain_label` / `industry` 与壳文案，只改可见称呼，**不**改 `domain` 字段。出包后勿把通用壳说成已换成某具名行业皮。
+
+**交叉导引（代码）**：`backend/app/bake/cross_path_guide.py` — 真交叉多路径时注入 README `${CROSS_PATH_GUIDE}`、门户 `portalHomeLead`、菜单 `navSection` 分区；工厂 MatchTab 对 `DOM-GENERIC` 显示禁止静默改 Dom 提示。
+
+**覆盖率怎么理解**：A～F 具名 + **G（真交叉三条）** + H 兜底 ≈ 常见 Web 管理类毕设主体；不是 100% 开题都能 full。L3 / 三合一 → **reject**（Path B）。
+
+---
+
+## 修订
+
+| 日期 | 说明 |
+|------|------|
+| 2026-10-22 | **组序纠正**：正文与对照表改为 A～E → **F 内容** → **G 真交叉** → **H 兜底**（与 `DOMAIN_GROUPS` 末位 fallback 对齐）。旧字母「F=兜底 / G=内容 / H=真交叉」作废；外链已迁。 |
 
 ---

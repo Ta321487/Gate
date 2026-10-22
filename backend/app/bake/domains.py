@@ -343,14 +343,14 @@ DOMAIN_CAPABILITIES: dict[str, list[str]] = {
     "DOM-SALON": ["archive", "slot_reserve", "content", "org_users"],
     "DOM-HOTEL": ["archive", "slot_reserve", "order_lines", "content", "org_users", "guestbook", "order_review"],
     "DOM-CARRENT": ["archive", "slot_reserve", "order_lines", "content", "org_users", "guestbook", "order_review"],
-    # F 兜底
-    "DOM-GENERIC": ["archive", "content", "org_users"],
-    # G 内容/媒资/社区（MEDIA/MUSIC/BLOG 即时收藏；FORUM 回帖仍走审核单）
+    # F 内容/媒资/社区（MEDIA/MUSIC/BLOG 即时收藏；FORUM 回帖仍走审核单）
     "DOM-MEDIA": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
     "DOM-MUSIC": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
     # 私信/猜你喜欢：论坛开题常作对比不做；开题点名再扫入（dating 仍默认 dm）
     "DOM-FORUM": ["archive", "ticket_flow", "content", "org_users", "content_report", "post_mute"],
     "DOM-BLOG": ["archive", "favorites", "content", "org_users", "recommend", "guestbook"],
+    # H 兜底（具名之后；与 docs/domains.md 组序、DOMAIN_GROUPS fallback 末位对齐）
+    "DOM-GENERIC": ["archive", "content", "org_users"],
 }
 
 

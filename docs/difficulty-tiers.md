@@ -104,7 +104,7 @@
 
 命中 `OUT_OF_SCOPE_SIGNALS` / `BUSINESS_OVERREACH_SIGNALS` → **`accept=reject`（Path B）**；改开题划入「非本期」或先扩能力，禁止当作本期演示承诺。  
 业务过重（电子病历、处方、叫号大屏、BPMN、智能排课等）优先扫功能/拟实现段。  
-多 ARCH 交叉另见 [`domains.md`](./domains.md) 组 H；`defense_ready=false` 的组合同样 reject。
+多 ARCH 交叉另见 [`domains.md`](./domains.md) 组 G；`defense_ready=false` 的组合同样 reject。
 
 ### 开题怎么写（推荐）
 

@@ -55,21 +55,21 @@ CROSS_PATHS: dict[str, CrossPath] = {
         "借用/申请+下单",
         True,
         True,
-        "golden: DOM-GENERIC__ARCH-FLOW_ARCH-TRADE；HANDOFF 组 H · X-BORROW-SHOP",
+        "golden: DOM-GENERIC__ARCH-FLOW_ARCH-TRADE；domains 组 G · X-BORROW-SHOP",
     ),
     "FR": CrossPath(
         "FR",
         "借用/申请+预约",
         True,
         True,
-        "golden: DOM-GENERIC__ARCH-FLOW_ARCH-RESERVE；HANDOFF 组 H · X-BORROW-RESERVE",
+        "golden: DOM-GENERIC__ARCH-FLOW_ARCH-RESERVE；domains 组 G · X-BORROW-RESERVE",
     ),
     "TR": CrossPath(
         "TR",
         "下单+预约",
         True,
         True,
-        "golden: DOM-GENERIC__ARCH-TRADE_ARCH-RESERVE；HANDOFF 组 H · X-SHOP-RESERVE；宾馆优先 DOM-HOTEL",
+        "golden: DOM-GENERIC__ARCH-TRADE_ARCH-RESERVE；domains 组 G · X-SHOP-RESERVE；宾馆优先 DOM-HOTEL",
     ),
     # 三交叉：开题三条主路径仍不承诺全文答辩
     "FTR": CrossPath(

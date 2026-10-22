@@ -35,8 +35,9 @@
 | C 报名 | 档案 → 报名/认领 → 审（±名额） | ACTIVITY / LOST / COURSE | 占名额申请 |
 | D 交易 | 购物车下单 | SHOP / FOOD | 买/点餐 |
 | E 预约 | 时段占坑 | HOSPITAL / PARKING / MEETING / SALON / HOTEL / CARRENT | 约时间 / 按日租 |
-| G 内容 | 浏览/播/帖/文 | MEDIA / MUSIC / FORUM / BLOG | 内容站 |
-| F/H | 兜底与真交叉 | GENERIC + X-BORROW-SHOP / X-BORROW-RESERVE / X-SHOP-RESERVE | 行业皮盖不住时降通用并保留路径 |
+| F 内容 | 浏览/播/帖/文 | MEDIA / MUSIC / FORUM / BLOG | 内容站 |
+| G 真交叉 | 两套玩法 | X-BORROW-SHOP / X-BORROW-RESERVE / X-SHOP-RESERVE | Path B 白名单；落 GENERIC 壳 |
+| H 兜底 | 无贴切行业皮 | DOM-GENERIC + ARCH 粗捆 | 排全部具名之后；禁止冒充具名域 |
 
 同组差别应是文案 / 种子 / 场景身份，不是另一套 Store。  
 **清单目标**：下表每一行最终状态 = `已齐`。
@@ -56,7 +57,7 @@
 | M-05 | 健康打卡 = 请假 | EVENT vs ATTEND | 上报/随访 ≠ 请销假 | 已齐 |
 | M-06 | 宠物医院 = 领养 | HOSPITAL（挂号）vs LOST（认领壳） | 题名分流 | 已齐 |
 | M-07 | 快递 = 跑腿商城 | PARCEL：驿站取件 | 跑腿另挂交易/工单皮（见 S/P） | 已齐 |
-| M-08 | 宾馆 = 会议室+商城乱拼 | HOTEL 单域；交叉走 H | 三合一仍 reject | 已齐 |
+| M-08 | 宾馆 = 会议室+商城乱拼 | HOTEL 单域；交叉走 G | 三合一仍 reject | 已齐 |
 | M-09 | 实验室准入 = 物资领用 | LABSAFE vs ASSET | match_hint 双侧 | 已齐 |
 | M-10 | 报修 = 投诉建议专版 | DORM/PROPERTY/IT vs 投诉深皮/预设 | 投诉具名落点 | 已齐 |
 | M-11 | 资助 = 报销/用章 | FUND vs CERT/EXPENSE/SEAL | 叙事分立 | 已齐 |

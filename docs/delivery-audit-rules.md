@@ -114,9 +114,10 @@
 | **审批 / 填报** | 换皮随 A 族；§1.5 **待补已清**（同上 §5） |
 | **交易** | 换皮已收口；§1.6 加厚 **已收口**（[`trade-thicken-batch.md`](./trade-thicken-batch.md)；待补仅小票打印≠已齐） |
 | **预约** | 换皮已收口；§1.7 加厚 **已收口**（[`reserve-thicken-batch.md`](./reserve-thicken-batch.md)） |
-| **内容** | 换皮已收口；§1.8 加厚 **已收口**（[`content-thicken-batch.md`](./content-thicken-batch.md)） |
+| **内容** | 换皮已收口；§1.8 加厚 **已收口**（[`content-thicken-batch.md`](./content-thicken-batch.md)）；domains **组 F** |
 | **互动** | 换皮已收口；§1.9 加厚 **已收口**（[`interact-thicken-batch.md`](./interact-thicken-batch.md)） |
-| **兜底 GENERIC** | §1.10 导引浅清已齐（`cross_path_guide`；不开 thicken） |
+| **真交叉 Path B** | domains **组 G**；三条白名单可 full（见 [`domains.md`](./domains.md)） |
+| **兜底 GENERIC** | domains **组 H**（具名之后）；§1.10 导引浅清已齐（`cross_path_guide`；不开 thicken） |
 | **域组 UI 表面** | 选型见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md)；**加厚后**一组一 plan，不进本表红灯 |
 
 

@@ -104,7 +104,7 @@ npm run dev
 
 ## 能力与领域
 
-薄领域 = catalog + schema + SQL + 皮肤；共用能力运行时。组 **A～G** + GENERIC 均可 bake；Path B 三条真交叉可 full。
+薄领域 = catalog + schema + SQL + 皮肤；共用能力运行时。具名 **A～F** + 真交叉 **G** + 兜底 **H**（GENERIC）均可 bake；Path B 三条真交叉可 full。
 
 | 查什么 | 文档 |
 |---|---|

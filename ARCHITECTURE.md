@@ -5,6 +5,8 @@
 
 一句话概括：**一个运营中台（FastAPI + Vue 3）驱动一条确定性流水线，把开题材料烘成可答辩的学生工程（Spring Boot 3.2 + Vue 3 + MySQL），门禁不过就不放行 ZIP。**
 
+主链路一句话：**材料 → 匹配到 `DOM-*` + 能力岛 → bake 出可答辩 ZIP**（出包须跟材料一致，且实包 ≈ README ≈ 论文「系统实现」）。
+
 - 可靠性来自**固定骨架 + 模板 + 门禁**；LLM 只填白名单「业务岛」，不写业务 Java / Vue。
 - 两个数据库完全分离：**工厂元库**（项目/任务/用量，默认 SQLite）与**学生库**（每题一个 MySQL schema）。
 - 三种不同性质的东西都叫「图」，别混：本文件是**工厂自身**的架构；学生对内交付物里另有**论文用** E-R / 类图 / 用例图（由 `app/bake/schema/` 生成）；`prototype/` 是运营端静态原型。
@@ -37,8 +39,10 @@ flowchart TB
     subgraph L4["④ 生成核心 backend/app/bake · 确定性 bake"]
         BAKE_ENG["engine_bake.py<br/>复制 baseline → 叠加域 / 持久层 / 能力"]
         BAKE_SQL["sql/ · DOM-*.sql 模板 + compose 拼 GENERIC"]
+        BAKE_FEAT["features/ · 能力扫词 / 菜单 / ensure_*"]
+        BAKE_PRUNE["pack_prune.py · 出包前剪未挂岛"]
         BAKE_SCH["schema/ · 壳 / ER / 模块 / 用例 / 测试用例"]
-        BAKE_GATE["gates/ · 门禁 p0a…p3q + overall"]
+        BAKE_GATE["gates/ · 门禁 p0a…p3lean + overall"]
         SCENE["scene_scan.py · 场景身份唯一真源"]
     end
 
@@ -84,8 +88,10 @@ flowchart TB
     SVC --> META
     SVC --> BAKE_ENG
     BAKE_ENG --> BAKE_SQL
+    BAKE_ENG --> BAKE_FEAT
     BAKE_ENG --> BAKE_SCH
     BAKE_ENG --> SCENE
+    BAKE_ENG --> BAKE_PRUNE
     SVC --> LLM_FLOW --> LLM_AG --> LLM_RT
     LLM_RT --> DS
     LLM_RT --> GEM
@@ -94,6 +100,7 @@ flowchart TB
     BAKE_ENG --> DEL_BE
     BAKE_ENG --> DEL_FE
     BAKE_ENG --> DEL_SQL
+    BAKE_PRUNE --> DEL_ZIP
     SVC -->|门禁通过后打包| DEL_ZIP
     DEL_ZIP -->|交给学生| STU
     SVC --> RT_BE --> DEL_BE
@@ -155,9 +162,9 @@ flowchart LR
 | 3 `island_fill` | `llm/unit_flow/`：`build_delivery_plan` → 并发跑 Unit → `merge` 写回 workspace | 白名单岛文案、角色、E-R / 模块 / 用例标签；`fill_event_hub` 推 SSE |
 | 4 `build_verify` | `llm/agents_fix.py` 的 `run_fix_agent` | 构建与修复轮次（`fix_rounds_max`） |
 | 5 `gate_e2e` | `bake/gates/evaluate.py` 的 `evaluate_domain_gates` + `delivery_review.evaluate_workspace_gates` + QA Agent | `projects.gates`、`projects.checklist`；`overall` 决定能否打包 |
-| 6 `pack` | `delivery_review.finalize_pack` → `jobs.pack_zip` | 临时文件写完再原子替换的 ZIP；排除 `node_modules` / `target` / `.git` / `islands` / `.factory` |
+| 6 `pack` | `delivery_review.finalize_pack` → `jobs.pack_zip`；bake 末段已跑 `pack_prune` | 临时文件写完再原子替换的 ZIP；排除 `node_modules` / `target` / `.git` / `islands` / `.factory`；未挂岛文件由 `pack_prune` 剪掉，残留则 `p3lean` 拒 ZIP |
 
-**门禁键（交付闸）**：`p0a` 后端骨架、`p0b` 前端骨架、`p1` 登录基线、`p2` 领域主流程 E2E、`p3a` 清单实装、`p3b` Spec/契约一致、`p3t` 技术栈、`p3d` 文档、`p3s` 语义、`p3n` 库表、`p3q` 质量摘要；外加可接题边界 `accept`。单调性键见 `bake/gates/keys.py`，复审期间由 `forbid_full_rebake` 拦截整段重跑。
+**门禁键（交付闸）**：`p0a` 后端骨架、`p0b` 前端骨架、`p1` 登录基线、`p2` 领域主流程 E2E、`p3a` 清单实装、`p3b` Spec/契约一致、`p3t` 技术栈、`p3d` 文档、`p3s` 语义、`p3n` 库表、`p3ac` 档案语义列、`p3q` 质量摘要、`p3lean` 出包精简（无未挂岛残留）；外加可接题边界 `accept`。单调性键见 `bake/gates/keys.py`，复审期间由 `forbid_full_rebake` 拦截整段重跑。
 
 ---
 
@@ -271,7 +278,8 @@ flowchart TB
         B3["schema/ · shells · builders_* · er_* · modules · usecases · testcases"]
         B4["sql/templates + compose + ddl_edit"]
         B5["gates/ · evaluate · semantic · schema_nf · feature_keywords"]
-        B6["features/ · 能力加厚运行时"]
+        B6["features/ · 能力正文：扫词 / 菜单 / ensure_*"]
+        B7["pack_prune.py · 出包前按挂载剪未用岛"]
     end
 
     MODELS["app/models · Project / Job / LlmCall / SettingRow"]
@@ -289,7 +297,8 @@ flowchart TB
 **分层纪律（从代码注释可读出的约定）**
 
 - `api/` 只做 HTTP；业务写进 `services/`；`services/projects.py` 是**门面**，正文按职责拆到 `project_match` / `project_delivery` / `project_disk` / `project_projection`，新逻辑不再往门面堆。
-- `bake/` 尽量保持确定性、可单测；LLM 相关一律在 `llm/`。
+- `bake/` 尽量保持确定性、可单测；LLM 相关一律在 `llm/`。能力岛正文落在 `bake/features/<cap>.py`（扫词、菜单、`ensure_*` SQL），`sql/fragments.py` 只按开关调用。
+- 表结构演进用 `create_all` + `_migrate_project_columns`（幂等 ALTER），没有 Alembic。
 - 启动生命周期（`main.py lifespan`）：`init_db()` → 回灌 DeepSeek 预算/模型设置 → `fail_orphaned_jobs()` → 启动后台对账 `start_runtime_reconcile()`，关闭时 `stop_runtime_reconcile()`。
 
 ---

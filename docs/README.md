@@ -13,7 +13,7 @@
 | 文档 | 何时读 | 状态 |
 |------|--------|------|
 | [capabilities.md](./capabilities.md) | 查 **cap id** 与挂载口径（域默认 / 开题才挂 / 壳附带） | 活表 |
-| [domains.md](./domains.md) | 查 `DOM-*` 分组（A–H）与**域默认**能力组合、GENERIC/ARCH、Path B | 活表 |
+| [domains.md](./domains.md) | 查 `DOM-*` 分组（**A～F 具名 → G 真交叉 → H 兜底**）与**域默认**能力组合、GENERIC/ARCH、Path B | 活表 |
 | [difficulty-tiers.md](./difficulty-tiers.md) | 开题可写到哪一层（L0–L3）、加价边界 | 活表 |
 | [invariants.md](./invariants.md) | 库表 6–15、总管/子管/员工槽位、学生端持久化 | 活表 |
 | [tech-stack-delivery.md](./tech-stack-delivery.md) | 技术栈轴出包契约（jdbc/mybatis/jpa、Security 等） | 细则档案 |
