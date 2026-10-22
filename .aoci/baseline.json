@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-18T20:39:11Z",
-  "updated_at": "2026-10-22T16:29:29Z",
+  "updated_at": "2026-10-22T20:37:13Z",
   "files": {
     ".cursor/rules/00-factory-core.mdc": {
       "role": "index",
@@ -234,9 +234,9 @@
       "normalized_sha256": "db7737d02052c73295e311782ca5e491f2976a9bed134bd78ddb6526b0445f7b"
     },
     "HANDOFF.md": {
-      "sha256": "f47fedd1588816de01ed0dbc236382b2617cc1f2e5ae4fe48f3b3247223736cd",
-      "size": 36407,
-      "normalized_sha256": "f47fedd1588816de01ed0dbc236382b2617cc1f2e5ae4fe48f3b3247223736cd"
+      "sha256": "5cfc984b1ff84b0d8247d18a73f4e9bea3cb83bd30818838ce3e3396fbfe86fd",
+      "size": 36404,
+      "normalized_sha256": "5cfc984b1ff84b0d8247d18a73f4e9bea3cb83bd30818838ce3e3396fbfe86fd"
     },
     "README.md": {
       "sha256": "dda247689d2a7baf9e3faee269874993f08042b872d7c0b95363a88503835121",
@@ -249,9 +249,9 @@
       "normalized_sha256": "f04bad11f0edd2d24da4e5c885f891cd4262b7bb65f6a34784385219428d532d"
     },
     "aoci.code.txt": {
-      "sha256": "00340827052602a1ee1257aee630226136571d9bc97a16ca58b92e5d6f1f6fb3",
-      "size": 361253,
-      "normalized_sha256": "00340827052602a1ee1257aee630226136571d9bc97a16ca58b92e5d6f1f6fb3"
+      "sha256": "67ad4a1dd2ef06cba5271866f33a3a75921ca07ca61d489298409b6c2c86934e",
+      "size": 361009,
+      "normalized_sha256": "67ad4a1dd2ef06cba5271866f33a3a75921ca07ca61d489298409b6c2c86934e"
     },
     "aoci.database.txt": {
       "sha256": "9d9fedc69e4a91c5bc5d3c170bf18d50b11855a73ca317eecc4a9b035fcd4188",
@@ -325,9 +325,9 @@
       "normalized_sha256": "fd46f321c681af777c1f81dfdf0eec40fca9cd2ccc0279c7ba0b8752d61afddb"
     },
     "backend/app/api/projects/crud.py": {
-      "sha256": "90895f7b8764f4b003e86413fb749e1615286cbf0ee64cd046db02f237f54091",
-      "size": 23686,
-      "normalized_sha256": "90895f7b8764f4b003e86413fb749e1615286cbf0ee64cd046db02f237f54091"
+      "sha256": "5689c2af3432fa2ada4f58b0d0a2c88e2d749227ff90b642c52bb070be746a8c",
+      "size": 23913,
+      "normalized_sha256": "5689c2af3432fa2ada4f58b0d0a2c88e2d749227ff90b642c52bb070be746a8c"
     },
     "backend/app/api/projects/delivery_review.py": {
       "sha256": "d86a9ae679b6b73cb79aa43d1af6bc18521f363a65a793233992812311325ba4",
@@ -335,9 +335,9 @@
       "normalized_sha256": "d86a9ae679b6b73cb79aa43d1af6bc18521f363a65a793233992812311325ba4"
     },
     "backend/app/api/projects/runtime.py": {
-      "sha256": "4061e8ffa8a06bfcf77c788176db8f770545e658709c8e46c7d5bce119df56d8",
-      "size": 18799,
-      "normalized_sha256": "a537138449b49f52d187cb86121b8ab6d2e6a200911eee3c263e0f9a68d70d23"
+      "sha256": "9f61a4687485246fe0935a2c3af9a7cc70a7f820d4d492faa830da4ee479f793",
+      "size": 18865,
+      "normalized_sha256": "4b1ba8e251982d0c58c368cb558c76bcb703f630decd5036f7f3b2949ac764f4"
     },
     "backend/app/api/projects/schema.py": {
       "sha256": "f426201584d21c10b9c8f9b20316ecfd148d5c5bacbefabb2911e86120d1b2bb",
@@ -2400,9 +2400,9 @@
       "normalized_sha256": "5b54c553d1a19565574bd13394993838ee1e358cb82e47abdb3f8e13048ae6df"
     },
     "backend/app/core/database.py": {
-      "sha256": "6f918295b06d257a649af04e0e8882c3d9d24b17eca9ae73e0ec2c5fa8fff673",
-      "size": 8622,
-      "normalized_sha256": "6f918295b06d257a649af04e0e8882c3d9d24b17eca9ae73e0ec2c5fa8fff673"
+      "sha256": "812dfa28c1ff5504512644117b3a910976f0036dbad2ac790e2fbc8360d23e04",
+      "size": 8776,
+      "normalized_sha256": "812dfa28c1ff5504512644117b3a910976f0036dbad2ac790e2fbc8360d23e04"
     },
     "backend/app/core/key_mask.py": {
       "sha256": "cc394d6a5660ec30379c42c10e68d0036f869a18dc891af313fbc0a1f8fe42d2",
@@ -2701,14 +2701,14 @@
       "normalized_sha256": "cbfc78131d8c514e10992c470d33431b81fd794636f3085cf02018de7ec2e0eb"
     },
     "backend/app/services/project_projection.py": {
-      "sha256": "244c01748f26f825d9e08d53cacd863bea6ccef720efa615caac45a6f7c1b948",
-      "size": 16303,
-      "normalized_sha256": "244c01748f26f825d9e08d53cacd863bea6ccef720efa615caac45a6f7c1b948"
+      "sha256": "1d0b5637010ce18ef2d1a995492ae34190dc7e79d79ff38d1c4f299e1a970d8d",
+      "size": 17605,
+      "normalized_sha256": "1d0b5637010ce18ef2d1a995492ae34190dc7e79d79ff38d1c4f299e1a970d8d"
     },
     "backend/app/services/projects.py": {
-      "sha256": "23692d7c21263998827d884eb56b08b8b649ed8a5b229897017c72036adfb3cf",
-      "size": 5464,
-      "normalized_sha256": "01863f47a2e557e5362260d8df1e6a7600d8600165a4c814939ae0102056636c"
+      "sha256": "bfffbf89827eb06dcebac70fc3ac2ecf658d33e563645edc882f2e0caea131d5",
+      "size": 5861,
+      "normalized_sha256": "d52d12f1f5608c461fc1c2ba1e3748a1b9c923707de9cbd2b47823b9981a878b"
     },
     "backend/app/services/proposal.py": {
       "role": "index",
@@ -2734,9 +2734,9 @@
       "normalized_sha256": "de57838684707a6fbe0d3d877922469b6650291ba8a3fa810536091219debd0e"
     },
     "backend/app/services/runtime_reconcile.py": {
-      "sha256": "238d41c6893b4f7679198c39badbffbc892b2ae0d5eff036d5960b5c4fe6aad9",
-      "size": 3418,
-      "normalized_sha256": "238d41c6893b4f7679198c39badbffbc892b2ae0d5eff036d5960b5c4fe6aad9"
+      "sha256": "ee6575addc65cb549f5c813d2abb7383418b27666ebad364930a0929d76b3822",
+      "size": 3595,
+      "normalized_sha256": "ee6575addc65cb549f5c813d2abb7383418b27666ebad364930a0929d76b3822"
     },
     "backend/app/services/student_api_smoke.py": {
       "sha256": "3bfeb0023e81b7441345ff73a193c5bd24eedbb7a7da6b79761571abea3d0079",
@@ -5893,9 +5893,9 @@
       "normalized_sha256": "ee43be82dbb399b07a1f0cb0f7ff0d51523aec7b07b5c6a3f8404dd2d625010a"
     },
     "docs/parked-work.md": {
-      "sha256": "e7d6386a7318f3042a25bcb7136370f441732b1416bc91983ff76a3642bba7cc",
-      "size": 11606,
-      "normalized_sha256": "e7d6386a7318f3042a25bcb7136370f441732b1416bc91983ff76a3642bba7cc"
+      "sha256": "3825d58fcd4d96699f4373f11e01699ea8a90fd482fa797109bac73182dee608",
+      "size": 11812,
+      "normalized_sha256": "3825d58fcd4d96699f4373f11e01699ea8a90fd482fa797109bac73182dee608"
     },
     "docs/preview-capacity-and-batch-ops.md": {
       "sha256": "5c12e26d4414805c65eb413bddf13cc5be332a563e4a768c555cfcad2882861a",
