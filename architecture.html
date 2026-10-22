@@ -395,6 +395,8 @@ flowchart TB
   <ul class="pts">
     <li><code>services/projects.py</code> 是<b>门面</b>：正文按职责拆到 project_match / project_delivery / project_disk / project_projection，新逻辑不再往门面堆。</li>
     <li>能力岛正文落在 <code>bake/features/&lt;cap&gt;.py</code>（扫词、菜单、<code>ensure_*</code> SQL），<code>sql/fragments.py</code> 只按开关调用。</li>
+    <li>域目录：<b>A～F 具名 → G 真交叉 → H 兜底</b>（见 <code>docs/domains.md</code>）；匹配落到 <code>DOM-*</code>，兜底才是 <code>DOM-GENERIC</code>。</li>
+    <li>挂载/对齐：<b>A 壳底 / B 扫词开 / C 能力加深</b> 三档全族已齐；双向门禁见 <code>docs/opening-align-gate.md</code> 与各组 <code>*_ALIGN_RULES</code>。</li>
     <li>启动生命周期（<code>main.py lifespan</code>）：<code>init_db()</code> → 回灌大模型预算与模型设置 → <code>fail_orphaned_jobs()</code> → 启动后台对账 <code>start_runtime_reconcile()</code>，关闭时 <code>stop_runtime_reconcile()</code>。</li>
     <li>表结构演进用 <code>create_all</code> + <code>_migrate_project_columns</code>（幂等 ALTER），没有 Alembic。</li>
   </ul>

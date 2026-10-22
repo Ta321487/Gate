@@ -298,6 +298,8 @@ flowchart TB
 
 - `api/` 只做 HTTP；业务写进 `services/`；`services/projects.py` 是**门面**，正文按职责拆到 `project_match` / `project_delivery` / `project_disk` / `project_projection`，新逻辑不再往门面堆。
 - `bake/` 尽量保持确定性、可单测；LLM 相关一律在 `llm/`。能力岛正文落在 `bake/features/<cap>.py`（扫词、菜单、`ensure_*` SQL），`sql/fragments.py` 只按开关调用。
+- 域目录：**A～F 具名 → G 真交叉 → H 兜底**（见 [`docs/domains.md`](./docs/domains.md)）；匹配落到 `DOM-*`，兜底才是 `DOM-GENERIC`。
+- 挂载/对齐：**A 壳底 / B 扫词开 / C 能力加深** 三档全族已齐；双向门禁见 [`docs/opening-align-gate.md`](./docs/opening-align-gate.md) 与各组 `*_ALIGN_RULES`。
 - 表结构演进用 `create_all` + `_migrate_project_columns`（幂等 ALTER），没有 Alembic。
 - 启动生命周期（`main.py lifespan`）：`init_db()` → 回灌 DeepSeek 预算/模型设置 → `fail_orphaned_jobs()` → 启动后台对账 `start_runtime_reconcile()`，关闭时 `stop_runtime_reconcile()`。
 
