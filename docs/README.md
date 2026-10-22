@@ -33,7 +33,7 @@
 | [interact-thicken-batch.md](./interact-thicken-batch.md) | **§1.9 互动/匹配组加厚** | 已收口档案 |
 | [crosscut-delivery-batch.md](./crosscut-delivery-batch.md) | **§0 通识横切**清待补（一轮一簇；非域组 thicken） | 批次册 · X-AUTH/MSG/DASH 已齐 · 下波 **X-ORG** |
 | [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（ASCII / 对标 / §0.0 闸） | 选型册 · 九组已接线 |
-| [ui-look-thicken-batch.md](./ui-look-thicken-batch.md) | **UI 观感加厚**（公共壳 + 各组主表面；**68 域台账**） | 收口 · 九组观感首刀已齐 · 下一软皮短签再磨 |
+| [ui-look-thicken-batch.md](./ui-look-thicken-batch.md) | **UI 观感加厚**（公共壳 + 各组主表面；**68 域台账**） | 再磨已收口 · 下一抽检回归 |
 | [parked-work.md](./parked-work.md) | **搁置工作**台账（大线 + 碎另案） | 活表 · 大线 4 · 碎项另表 |
 | [cohort-opening-title-map.md](./cohort-opening-title-map.md) | 今年选题 → 成品域/皮；只代表今年，按册一点点长 | 方向册 · 工厂未改（见搁置 j） |
 | [opening-align-gate.md](./opening-align-gate.md) | **开题对齐门禁**：A 白名单 + B 扫词 + C cap（登记表双向） | 交易族已齐 · 待扩全族 |

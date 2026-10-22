@@ -10,21 +10,19 @@
 
 ## 当前主线
 
-> **最新批次（2026-10-22）：UI 观感加厚九组首刀收口（跟进收口 → 报修 → 审批；不含 HANDOFF 中间改）。**
-> - **跟进**：`pipeline`/`dossier`/`listing`；`priceYuan`+`priceUnit`（多档单位）键对齐防假成功；`followStageTone`；护栏 `test_follow_look_thicken`（12）。
-> - **报修**：MyTickets `ticketfeed`/`faultboard`；看板顶栏待派/处理中/超时；`ticketTone`；护栏 `test_repair_look_thicken`（3）。
-> - **审批**：MyTickets/TicketsAdmin `typelist`/`inboxsteps`；待我审分档顶栏；撤死色 ●○○；护栏 `test_approve_look_thicken`（2）。
-> - 进度真源：[`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-batch.md)（状态：收口）；下一刀 **软皮短签再磨**（非新开 surface）。
-> - **未改 HANDOFF 直至本轮九组齐**；本条为收工交接。
+> **最新批次（2026-10-22）：软皮短签再磨收口（预约→内容→报名→跟进/互动→报修/审批轻磨）。**
+> - ArchiveBrowse 列表短签按组分档（禁商城价签腔串脸）；报修 `ticket-chip`、审批 `matter-type` 扩到待审脸。
+> - 护栏：`test_*_look_polish.py`（reserve/content/apply/follow/interact/repair/approve）+ 既有 trade/borrow polish。
+> - 进度真源：[`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-batch.md)（状态：**再磨已收口**）；下一刀 **抽检回归**（非新开 surface）。
 >
-> **上一批（2026-10-21）：跟进 follow 观感首刀 + 运营台等（已推送）。**
-> - 跟进三档初版 + LISTING `price`→`priceYuan`；运营台失败分析；卡底口径；AI 接力规则。详见 git `5d33c7d` 一带。
+> **上一批（2026-10-22）：UI 观感加厚九组首刀收口（跟进 → 报修 → 审批）。**
+> - 跟进 `priceYuan`/`priceUnit` + `followStageTone`；报修 `ticketfeed`/`faultboard`；审批 `typelist`/`inboxsteps`。
 
 1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～G / GENERIC 已可 bake。  
 2. **Path B** 三条真交叉可 `full`（借用+下单 / 借用+预约 / 下单+预约）；三合一与智慧校园仍 `reject`。  
 3. LLM **只填 schema JSON**（不生成业务 Java/Vue）；接 LLM 后「代码无误」靠运行时固定。  
 4. **Path B 口径**：开题写进「拟实现」的必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力，禁止 `degraded` 交半成品装全文。  
-5. **UI 观感**：九组 `*_surface_style` 接线 + 观感首刀已齐；下一刀软皮短签再磨，见批次册。
+5. **UI 观感**：九组首刀 + 软皮短签再磨已齐；下一刀抽检回归，见批次册。
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
@@ -94,7 +92,7 @@ UI 观感加厚 → [`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-bat
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md；能力/领域长表见 docs/。
 按规则 ai-handoff 接手：读 HANDOFF → 跑测试（红=中断点）→ git log 顺脉络。
-主线：UI 观感加厚 + 运营台改造已收口（开工台 OpsHome + 失败分析看板）；卡片主信号/短签/价区间、域脸壳色、账户中心、瘦包已落地。
+主线：UI 观感加厚（首刀+短签再磨）与运营台改造已收口；下一刀抽检回归。卡片主信号/短签/价区间、域脸壳色、账户中心、瘦包已落地。
 超壳 / 三合一 / 智慧校园必须 reject；硕博与真实业务全流程不接。
 薄壳架构保留（不要新开厚 DOM 包）；薄壳≠功能稀薄。领域清单以 docs/domains.md 为准。
 ```
