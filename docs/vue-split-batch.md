@@ -29,7 +29,7 @@
 | 3 | `views/admin/ArchiveAdmin.vue` | **已齐** |
 | 4 | `views/admin/TicketRecordsAdmin.vue` | **已齐** |
 | 5 | `views/user/SlotBook.vue` | **已齐** |
-| 6 | `views/user/PortalHome.vue` | 待拆 |
+| 6 | `views/user/PortalHome.vue` | **已齐** |
 | 7 | `views/user/Cart.vue` | 待拆 |
 | 8 | `views/Profile.vue` | 待拆 |
 | 9 | `views/user/MyOrders.vue` | 待拆 |

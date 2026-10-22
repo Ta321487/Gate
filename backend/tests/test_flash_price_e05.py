@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -185,9 +187,9 @@ class FlashPriceE05Tests(unittest.TestCase):
         self.assertIn("flash_price", fe)
         self.assertIn("promoActive", fe)
         self.assertIn("flashBadge", fe)
-        home = (
+        home = vue_src((
             BASELINE / "frontend/src/views/user/PortalHome.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("flash_price", home)
         self.assertIn("mallFlashProducts", home)
         self.assertIn("promoActive: true", home)
