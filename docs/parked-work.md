@@ -11,7 +11,7 @@
 
 | # | 项 | 一句话 | 真源 / 下次从哪开 | 现状 |
 |---|----|--------|-------------------|------|
-| 1 | **UI 包** | 选型接线已齐 → **观感加厚**（过一眼精美闸）；一轮一组 | 选型 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md)；进度 [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md) | 九组接线 + 首刀 + **软皮短签再磨已齐**；下一刀抽检回归 |
+| 1 | **UI 包** | 观感加厚；起包前布局闸；可交互控件；**全域 UI 诊断表** | 观感 [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)；布局 [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md)；控件 [`form-controls.md`](./form-controls.md)；诊断 [`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md) | 观感已齐；布局/控件口径已立·代码未开；**诊断表 68 域全未诊** |
 | 2 | **X 系列** | §0 通识横切剩余簇（一轮一簇） | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) | X-AUTH～X-UX 已齐；打印/灯箱/Toast/页脚版本/离开提示/复制单号为**基线体验**；档案 Excel 导入导出已是 xlsx |
 | 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **交易族 + 借用组已收口**；跟进/报修/报名/审批/预约/内容/互动 **未推** |
 | 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；`TRADE_*` / `BORROW_*_ALIGN_RULES` + `test_opening_align_gate.py` | **交易族 + 借用组 A 白名单 + B + C 门禁已齐**；其余域组登记表/测 **未开** |

@@ -10,24 +10,31 @@
 
 ## 当前主线
 
-> **最新批次（2026-10-22）：软皮短签再磨收口（预约→内容→报名→跟进/互动→报修/审批轻磨）。**
-> - ArchiveBrowse 列表短签按组分档（禁商城价签腔串脸）；报修 `ticket-chip`、审批 `matter-type` 扩到待审脸。
-> - 护栏：`test_*_look_polish.py`（reserve/content/apply/follow/interact/repair/approve）+ 既有 trade/borrow polish。
-> - 进度真源：[`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-batch.md)（状态：**再磨已收口**）；下一刀 **抽检回归**（非新开 surface）。
+> **最新批次（2026-10-22）：全域 UI 诊断表立册（文档）。**
+> - [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)：68 域 × 布局一眼病(`L`) × 可交互控件(`C`)；先共享基线行再域行；开表全 `—`。
+> - 口径仍见布局闸 / [`form-controls.md`](./docs/form-controls.md)；**代码未开**。
 >
-> **上一批（2026-10-22）：UI 观感加厚九组首刀收口（跟进 → 报修 → 审批）。**
-> - 跟进 `priceYuan`/`priceUnit` + `followStageTone`；报修 `ticketfeed`/`faultboard`；审批 `typelist`/`inboxsteps`。
+> **上一批（2026-10-22）：起包前 UI 布局闸 · 文档先行（D0）。**
+> - [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md)：全表页+壳+组件；§0.0a 一眼病；漏页/漏组件/只验对齐不验挤破 = 未尽责。
+>
+> **上一批（2026-10-22）：软皮短签再磨收口（预约→内容→报名→跟进/互动→报修/审批轻磨）。**
+> - ArchiveBrowse 列表短签按组分档；护栏 `test_*_look_polish.py`；真源 [`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-batch.md)（再磨已收口 · 抽检回归）。
 
 1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～G / GENERIC 已可 bake。  
 2. **Path B** 三条真交叉可 `full`（借用+下单 / 借用+预约 / 下单+预约）；三合一与智慧校园仍 `reject`。  
 3. LLM **只填 schema JSON**（不生成业务 Java/Vue）；接 LLM 后「代码无误」靠运行时固定。  
 4. **Path B 口径**：开题写进「拟实现」的必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力，禁止 `degraded` 交半成品装全文。  
-5. **UI 观感**：九组首刀 + 软皮短签再磨已齐；下一刀抽检回归，见批次册。
+5. **UI 观感**：九组首刀 + 软皮短签再磨已齐；抽检回归见观感批次册。  
+6. **起包前布局闸**：口径 D0 已立（全表、非抽检）；代码从 D1 起，见 [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md)。  
+7. **全域 UI 诊断**：68 域 L×C 台账已立、尚未勾选，见 [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)。
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
 开题密功能 / 待补 → [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md)。  
 UI 观感加厚 → [`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-batch.md)。  
+起包前布局闸 → [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md)。  
+可交互控件 → [`docs/form-controls.md`](./docs/form-controls.md)。  
+全域 UI 诊断 → [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)。  
 域组 UI 选型 → [`docs/domain-group-ui-styles.md`](./docs/domain-group-ui-styles.md)。
 
 ---
@@ -80,6 +87,9 @@ UI 观感加厚 → [`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-bat
 | §1.7 预约加厚批次（已收口） | [`docs/reserve-thicken-batch.md`](./docs/reserve-thicken-batch.md) |
 | §1.8 内容加厚批次（进行中） | [`docs/content-thicken-batch.md`](./docs/content-thicken-batch.md) |
 | 域组 UI 表面选型 | [`docs/domain-group-ui-styles.md`](./docs/domain-group-ui-styles.md) |
+| 起包前 UI 布局闸（全表） | [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md) |
+| 学生包可交互控件（全包·下拉禁手填） | [`docs/form-controls.md`](./docs/form-controls.md) |
+| 全域 UI 诊断表（68 域 L×C） | [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md) |
 | AI 开题对照 | [`docs/ai-opening-delivery-map.md`](./docs/ai-opening-delivery-map.md) |
 | 全索引 | [`docs/README.md`](./docs/README.md) |
 
@@ -92,7 +102,7 @@ UI 观感加厚 → [`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-bat
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md；能力/领域长表见 docs/。
 按规则 ai-handoff 接手：读 HANDOFF → 跑测试（红=中断点）→ git log 顺脉络。
-主线：UI 观感加厚（首刀+短签再磨）与运营台改造已收口；下一刀抽检回归。卡片主信号/短签/价区间、域脸壳色、账户中心、瘦包已落地。
+主线：UI 观感已收口（抽检回归）；起包前布局闸 D0 口径见 docs/ui-layout-prebake-gate.md，下一刀 D1 全表（代码未开）。卡片主信号/短签/价区间、域脸壳色、账户中心、瘦包已落地。
 超壳 / 三合一 / 智慧校园必须 reject；硕博与真实业务全流程不接。
 薄壳架构保留（不要新开厚 DOM 包）；薄壳≠功能稀薄。领域清单以 docs/domains.md 为准。
 ```
