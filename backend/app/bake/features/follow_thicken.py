@@ -3,12 +3,16 @@
 硬约束
 ------
 - 不新造厚 DOM；复用 archive/ticket/balance_ledger/favorites/allowRating/deadline/material_check。
-- 域默认：通识必开（下次跟进提醒、搁置阶段、渠道饼图文案、假种额度、带看评价等）。
-- 开题扫：家访模板、补考报名、周报优秀、房源对比、公海替代池、异议窗口等。
+- 挂载三档（与交易族同口径，见 docs/trade-thicken-batch.md §0.3）：
+  A 壳底：域本来就该有，空开题也开。
+  B 扫词开：开题命中本组登记词才挂；空开题关；禁止全文自由匹配。
+  C 能力加深：已挂对应 cap 才叠；禁止域默认硬塞。
+- 改词只改本组 TERMS / scan_*；门禁与 bake 共用，禁止第二套词典。
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -134,7 +138,16 @@ def scan_contract_plan(text: str) -> bool:
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _CONTRACT_PLAN_TERMS)
 
 
+def scan_next_action(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _NEXT_ACTION_TERMS)
+
+
+def scan_source_pie(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _SOURCE_PIE_TERMS)
+
+
 def scan_event_close_attach(text: str) -> bool:
+    """壳底 closeAttach 仍域默认；本扫词仅供灰区/文档，不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _EVENT_CLOSE_ATTACH_TERMS)
 
 
@@ -142,11 +155,29 @@ def scan_event_level_sla(text: str) -> bool:
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _EVENT_LEVEL_SLA_TERMS)
 
 
+def scan_event_confidential(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _EVENT_CONF_TERMS)
+
+
+def scan_event_assign_dept(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _EVENT_DEPT_TERMS)
+
+
+def scan_event_duty(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _EVENT_DUTY_TERMS)
+
+
+def scan_event_notify_duty(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _EVENT_NOTIFY_DUTY_TERMS)
+
+
 def scan_leave_attach(text: str) -> bool:
+    """壳底 attachByLeaveType 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _LEAVE_ATTACH_TERMS)
 
 
 def scan_leave_return(text: str) -> bool:
+    """壳底 returnDate 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _LEAVE_RETURN_TERMS)
 
 
@@ -158,7 +189,12 @@ def scan_leave_approve_sla(text: str) -> bool:
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _LEAVE_APPROVE_SLA_TERMS)
 
 
+def scan_leave_qr(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _LEAVE_QR_TERMS)
+
+
 def scan_fund_defense(text: str) -> bool:
+    """壳底 defenseResult 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _FUND_DEFENSE_TERMS)
 
 
@@ -167,14 +203,17 @@ def scan_fund_objection(text: str) -> bool:
 
 
 def scan_interview_result(text: str) -> bool:
+    """壳底 interviewResult 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _INTERVIEW_RESULT_TERMS)
 
 
 def scan_batch_hire(text: str) -> bool:
+    """壳底 batchHire 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _BATCH_HIRE_TERMS)
 
 
 def scan_job_expire(text: str) -> bool:
+    """壳底 jobExpire 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _JOB_EXPIRE_TERMS)
 
 
@@ -182,8 +221,28 @@ def scan_interview_dims(text: str) -> bool:
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _INTERVIEW_DIMS_TERMS)
 
 
+def scan_written_score(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _WRITTEN_SCORE_TERMS)
+
+
+def scan_hire_dept(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _DEPT_FILTER_TERMS)
+
+
+def scan_resume_fields(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _RESUME_FIELDS_TERMS)
+
+
 def scan_onboard_mat(text: str) -> bool:
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _ONBOARD_MAT_TERMS)
+
+
+def scan_hire_msg(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _HIRE_MSG_TERMS)
+
+
+def scan_bg_check(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _BG_CHECK_TERMS)
 
 
 def scan_job_fav(text: str) -> bool:
@@ -194,14 +253,25 @@ def scan_job_fav(text: str) -> bool:
 
 
 def scan_makeup(text: str) -> bool:
+    """壳底 makeupApply 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _MAKEUP_TERMS)
 
 
+def scan_grade_objection(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _OBJECTION_WINDOW_TERMS)
+
+
+def scan_rank_privacy(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _RANK_PRIVACY_TERMS)
+
+
 def scan_week_deadline(text: str) -> bool:
+    """壳底 weekRemind 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _WEEK_DEADLINE_TERMS)
 
 
 def scan_appraisal(text: str) -> bool:
+    """壳底 appraisal 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _APPRAISAL_TERMS)
 
 
@@ -210,14 +280,21 @@ def scan_excellent(text: str) -> bool:
 
 
 def scan_max_revise(text: str) -> bool:
+    """壳底 maxRevise 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _MAX_REVISE_TERMS)
 
 
 def scan_word_min(text: str) -> bool:
+    """壳底 minWords 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _WORD_MIN_TERMS)
 
 
+def scan_anon_eval(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _ANON_EVAL_TERMS)
+
+
 def scan_listing_rating(text: str) -> bool:
+    """壳底 listingRating 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _LISTING_RATING_TERMS)
 
 
@@ -226,7 +303,16 @@ def scan_listing_fav(text: str) -> bool:
 
 
 def scan_price_hist(text: str) -> bool:
+    """壳底 priceHist 仍域默认；本扫词不进 B 登记。"""
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _PRICE_HIST_TERMS)
+
+
+def scan_listing_conflict(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _LISTING_CONFLICT_TERMS)
+
+
+def scan_record_url(text: str) -> bool:
+    return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _RECORD_URL_TERMS)
 
 
 def _live_schema(spec: dict[str, Any]) -> dict[str, Any]:
@@ -474,18 +560,19 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         # 搁置已在 stage 选项
         thicken["shelveStage"] = True
         _add_feature(spec, "长期未跟进标搁置")
-        # 查重 / 成交金额：域默认
-        ticket["phoneDupCheck"] = True
-        labels.setdefault(
-            "phoneDupHint",
-            "录入客户时若手机号与已有客户相同，将提示可能重复，请确认后再保存。",
-        )
-        thicken["phoneDupCheck"] = True
-        _add_feature(spec, "客户/线索查重提示")
+        # 成交金额：A 壳底；查重改 B 扫词（禁止空开题假域默认）
         ticket["allowDealAmount"] = True
         labels.setdefault("dealAmountLabel", "成交金额（元）")
         thicken["dealAmount"] = True
         _add_feature(spec, "客户成交金额登记")
+        if scan_phone_dup(text):
+            ticket["phoneDupCheck"] = True
+            labels.setdefault(
+                "phoneDupHint",
+                "录入客户时若手机号与已有客户相同，将提示可能重复，请确认后再保存。",
+            )
+            thicken["phoneDupCheck"] = True
+            _add_feature(spec, "客户/线索查重提示")
         if scan_home_visit(text):
             ticket["homeVisitTemplate"] = True
             labels.setdefault("homeVisitFamilyLabel", "家庭情况")
@@ -519,15 +606,13 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             )
             thicken["paymentPlan"] = True
             _add_feature(spec, "客户合同回款计划")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _NEXT_ACTION_TERMS):
+        if scan_next_action(text):
             ticket["allowNextAction"] = True
             labels.setdefault("nextActionLabel", "下次行动待办")
             labels.setdefault("nextActionDoneLabel", "行动已完成")
             thicken["nextAction"] = True
             _add_feature(spec, "客户跟进下次行动待办勾选")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _TAG_COLOR_TERMS):
-            pass  # 标签色标已域默认
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _SOURCE_PIE_TERMS):
+        if scan_source_pie(text):
             _ensure_archive_field(
                 archive,
                 {
@@ -573,20 +658,20 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             )
             thicken["levelSla"] = True
             _add_feature(spec, "事件等级影响处理时限")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _EVENT_CONF_TERMS):
+        if scan_event_confidential(text):
             ticket["allowConfidential"] = True
             labels.setdefault("confidentialLabel", "保密事件")
             thicken["confidential"] = True
             _add_feature(spec, "事件上报保密标记")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _EVENT_DEPT_TERMS):
+        if scan_event_assign_dept(text):
             ticket["allowAssignDept"] = True
             labels.setdefault("assignDeptLabel", "分拨科室")
             thicken["assignDept"] = True
             _add_feature(spec, "事件上报分拨科室")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _EVENT_DUTY_TERMS):
+        if scan_event_duty(text):
             _force_staff_roster(spec)
             thicken["dutyRoster"] = True
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _EVENT_NOTIFY_DUTY_TERMS):
+        if scan_event_notify_duty(text):
             ticket["notifyDutyOnReport"] = True
             labels.setdefault(
                 "notifyDutyHint",
@@ -648,12 +733,10 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             _force_deadline(spec, menu_label="审批时限")
             thicken["approveSla"] = True
             _add_feature(spec, "请假审批时限超时提醒")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _LEAVE_QR_TERMS):
+        if scan_leave_qr(text):
             _force_code_qr(spec)
             ticket["issuePassCode"] = True
             thicken["returnQr"] = True
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _LEAVE_IMPORT_TERMS):
-            pass  # 假期余额导入说明已域默认
 
     # —— FUND ——
     if domain == "DOM-FUND":
@@ -751,18 +834,18 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         if scan_interview_dims(text):
             _force_rating_dims(spec)
             thicken["interviewDims"] = True
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _WRITTEN_SCORE_TERMS):
+        if scan_written_score(text):
             ticket["allowWrittenScore"] = True
             labels.setdefault("writtenScoreLabel", "笔试/机试成绩")
             thicken["writtenScore"] = True
             _add_feature(spec, "招聘笔试/机试成绩登记")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _DEPT_FILTER_TERMS):
+        if scan_hire_dept(text):
             _ensure_archive_field(
                 archive, {"key": "hireDept", "label": "用人部门", "type": "string"}
             )
             thicken["hireDept"] = True
             _add_feature(spec, "招聘用人部门筛选")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _RESUME_FIELDS_TERMS):
+        if scan_resume_fields(text):
             ticket["resumeFieldSet"] = True
             labels.setdefault("resumeEduLabel", "学历")
             labels.setdefault("resumeExpLabel", "工作年限")
@@ -776,17 +859,15 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
                 lead="录用后须勾选并上传入职材料，材料齐备方可办结。",
             )
             thicken["onboardMat"] = True
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _HIRE_MSG_TERMS):
+        if scan_hire_msg(text):
             _force_message_template(spec)
             thicken["hireMsg"] = True
             _add_feature(spec, "招聘录用通知站内信模板")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _BG_CHECK_TERMS):
+        if scan_bg_check(text):
             ticket["allowBgCheckNote"] = True
             labels.setdefault("bgCheckNoteLabel", "背调备注")
             thicken["bgCheck"] = True
             _add_feature(spec, "招聘背调备注字段")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _MEETING_HINT_TERMS):
-            pass  # 面试地点/会议室提示已域默认
         if scan_job_fav(text):
             _force_favorites(
                 spec,
@@ -860,7 +941,7 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
         )
         thicken["makeupApply"] = True
         _add_feature(spec, "补考报名入口")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _OBJECTION_WINDOW_TERMS):
+        if scan_grade_objection(text):
             ticket["objectionDays"] = int(ticket.get("objectionDays") or 7)
             labels.setdefault(
                 "objectionWindowHint",
@@ -868,7 +949,7 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             )
             thicken["objectionWindow"] = True
             _add_feature(spec, "成绩异议申请时限")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _RANK_PRIVACY_TERMS):
+        if scan_rank_privacy(text):
             schema["rankPrivacy"] = True
             labels.setdefault(
                 "rankPrivacyHint",
@@ -930,7 +1011,7 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             )
             thicken["excellent"] = True
             _add_feature(spec, "实习周报优秀标记与汇总导出")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _ANON_EVAL_TERMS):
+        if scan_anon_eval(text):
             schema["companyEvalAnonymous"] = True
             labels.setdefault("companyEvalAnonHint", "单位评价可匿名展示给学生。")
             thicken["companyEvalAnon"] = True
@@ -1025,7 +1106,7 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
                 "可导出或复制收藏清单，对照面积/价格等字段再决定；无需独立对比页。",
             )
             thicken["listingFav"] = True
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _LISTING_CONFLICT_TERMS):
+        if scan_listing_conflict(text):
             _ensure_cap(spec, "time_conflict")
             ticket["checkTimeConflict"] = True
             labels.setdefault(
@@ -1034,7 +1115,7 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
             )
             thicken["listingConflict"] = True
             _add_feature(spec, "带看预约时段冲突提示")
-        if any(keyword_mentioned(text, kw, ignore_contrast=True) for kw in _RECORD_URL_TERMS):
+        if scan_record_url(text):
             ticket["allowRecordUrl"] = True
             labels.setdefault("recordUrlLabel", "带看录音外链")
             thicken["recordUrl"] = True
@@ -1057,5 +1138,201 @@ def apply_follow_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
     ents["ticket"] = ticket
     schema["entities"] = ents
     schema["labels"] = labels
+    # favorites / deadline / material_check / code_qr 等可能已改 capabilities
+    caps = list(spec.get("capabilities") or schema.get("capabilities") or [])
+    schema["capabilities"] = caps
+    spec["capabilities"] = caps
     spec["schema"] = schema
     return spec
+
+
+# —— 开题对齐登记：B 扫词 / A 壳底 / C 能力加深（bake 与门禁共用；禁止第二套词典）——
+
+FollowScanFn = Callable[[dict[str, Any], str], bool]
+
+
+def _text_scan(fn: Callable[[str], bool]) -> FollowScanFn:
+    def _fn(_spec: dict[str, Any], proposal_text: str) -> bool:
+        return bool(fn(proposal_text or ""))
+
+    return _fn
+
+
+# (thicken 键, 适用域, 扫词判定) — 改 TERMS 只改上面常量，门禁自动跟
+FOLLOW_B_ALIGN_RULES: list[tuple[str, frozenset[str], FollowScanFn]] = [
+    ("phoneDupCheck", frozenset({"DOM-CRM"}), _text_scan(scan_phone_dup)),
+    ("homeVisit", frozenset({"DOM-CRM"}), _text_scan(scan_home_visit)),
+    ("homePhoto", frozenset({"DOM-CRM"}), _text_scan(scan_home_photo)),
+    ("assignOwner", frozenset({"DOM-CRM"}), _text_scan(scan_assign_owner)),
+    ("stalePool", frozenset({"DOM-CRM"}), _text_scan(scan_stale_pool)),
+    ("paymentPlan", frozenset({"DOM-CRM"}), _text_scan(scan_contract_plan)),
+    ("nextAction", frozenset({"DOM-CRM"}), _text_scan(scan_next_action)),
+    ("sourcePie", frozenset({"DOM-CRM"}), _text_scan(scan_source_pie)),
+    ("levelSla", frozenset({"DOM-EVENT"}), _text_scan(scan_event_level_sla)),
+    ("confidential", frozenset({"DOM-EVENT"}), _text_scan(scan_event_confidential)),
+    ("assignDept", frozenset({"DOM-EVENT"}), _text_scan(scan_event_assign_dept)),
+    ("dutyRoster", frozenset({"DOM-EVENT"}), _text_scan(scan_event_duty)),
+    ("notifyDuty", frozenset({"DOM-EVENT"}), _text_scan(scan_event_notify_duty)),
+    ("leaveProxy", frozenset({"DOM-ATTEND"}), _text_scan(scan_leave_proxy)),
+    ("approveSla", frozenset({"DOM-ATTEND"}), _text_scan(scan_leave_approve_sla)),
+    ("returnQr", frozenset({"DOM-ATTEND"}), _text_scan(scan_leave_qr)),
+    ("objectionWindow", frozenset({"DOM-FUND"}), _text_scan(scan_fund_objection)),
+    ("interviewDims", frozenset({"DOM-RECRUIT"}), _text_scan(scan_interview_dims)),
+    ("writtenScore", frozenset({"DOM-RECRUIT"}), _text_scan(scan_written_score)),
+    ("hireDept", frozenset({"DOM-RECRUIT"}), _text_scan(scan_hire_dept)),
+    ("resumeFields", frozenset({"DOM-RECRUIT"}), _text_scan(scan_resume_fields)),
+    ("onboardMat", frozenset({"DOM-RECRUIT"}), _text_scan(scan_onboard_mat)),
+    ("hireMsg", frozenset({"DOM-RECRUIT"}), _text_scan(scan_hire_msg)),
+    ("bgCheck", frozenset({"DOM-RECRUIT"}), _text_scan(scan_bg_check)),
+    ("jobFav", frozenset({"DOM-RECRUIT"}), _text_scan(scan_job_fav)),
+    ("objectionWindow", frozenset({"DOM-GRADE"}), _text_scan(scan_grade_objection)),
+    ("rankPrivacy", frozenset({"DOM-GRADE"}), _text_scan(scan_rank_privacy)),
+    ("excellent", frozenset({"DOM-INTERN"}), _text_scan(scan_excellent)),
+    ("companyEvalAnon", frozenset({"DOM-INTERN"}), _text_scan(scan_anon_eval)),
+    ("listingFav", frozenset({"DOM-LISTING"}), _text_scan(scan_listing_fav)),
+    ("listingConflict", frozenset({"DOM-LISTING"}), _text_scan(scan_listing_conflict)),
+    ("recordUrl", frozenset({"DOM-LISTING"}), _text_scan(scan_record_url)),
+]
+
+# A 壳底白名单：门禁不要求开题写出；灰区人工定
+FOLLOW_A_SHELL_WHITELIST: frozenset[str] = frozenset(
+    {
+        "followRemind",
+        "followTimeline",
+        "tagColor",
+        "customerTags",
+        "channelPie",
+        "stageFunnel",
+        "shelveStage",
+        "dealAmount",
+        "locationDesc",
+        "checkExport",
+        "closeAttach",
+        "leaveBalance",
+        "overlapHint",
+        "leaveSplit",
+        "monthExport",
+        "leaveImport",
+        "attachByLeaveType",
+        "returnDate",
+        "quotaRemain",
+        "fundForm",
+        "defenseResult",
+        "bankMask",
+        "disburseBatch",
+        "progressTimeline",
+        "interviewResult",
+        "batchHire",
+        "jobExpire",
+        "meetingHint",
+        "gradePrint",
+        "rankSwitch",
+        "distChart",
+        "gpaPage",
+        "weightedAvg",
+        "makeupOverlay",
+        "importRowError",
+        "stuNoMask",
+        "makeupApply",
+        "attendLink",
+        "weekRemind",
+        "appraisal",
+        "maxRevise",
+        "companyEval",
+        "minWords",
+        "price",
+        "priceUnit",
+        "listingFunnel",
+        "intentCount",
+        "listingRating",
+        "priceHist",
+        "vrUrl",
+        "feedbackSet",
+        "listingTags",
+    }
+)
+
+
+# (thicken 键, 适用域, 依赖 cap) — 本组暂无「纯 cap 才叠」键：
+# favorites / deadline / material_check / code_qr / staff_roster / rating_dims / message_template
+# 均由 B 扫词连同 cap 挂上；leaveBalance 等随域默认 cap，进 A 壳底。
+FOLLOW_C_ALIGN_RULES: list[tuple[str, frozenset[str], str]] = []
+
+
+def expected_follow_b_flags(
+    domain: str, spec: dict[str, Any], proposal_text: str = ""
+) -> dict[str, bool]:
+    """登记表上该域每个 B 开关：扫词是否应开。"""
+    out: dict[str, bool] = {}
+    for flag, domains, scan in FOLLOW_B_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = bool(scan(spec, proposal_text))
+    return out
+
+
+def expected_follow_c_flags(domain: str, spec: dict[str, Any]) -> dict[str, bool]:
+    """登记表上该域每个 C 开关：依赖 cap 是否应开。"""
+    caps = {str(c) for c in (spec.get("capabilities") or []) if c}
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    if isinstance(schema.get("capabilities"), list):
+        caps |= {str(c) for c in schema["capabilities"] if c}
+    out: dict[str, bool] = {}
+    for flag, domains, cap in FOLLOW_C_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = cap in caps
+    return out
+
+
+def _diff_follow_flags(
+    thicken: dict[str, Any], expected: dict[str, bool]
+) -> tuple[list[str], list[str]]:
+    over: list[str] = []
+    under: list[str] = []
+    for flag, want in expected.items():
+        got = bool(thicken.get(flag))
+        if got and not want:
+            over.append(flag)
+        elif want and not got:
+            under.append(flag)
+    return over, under
+
+
+def diff_follow_b_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    """B 档对照：返回 (多挂 flags, 漏挂 flags)。非跟进域 → 空。"""
+    domain = str(spec.get("domain") or "")
+    if domain not in FOLLOW_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("followThicken") if isinstance(schema.get("followThicken"), dict) else {}
+    )
+    return _diff_follow_flags(
+        thicken, expected_follow_b_flags(domain, spec, proposal_text)
+    )
+
+
+def diff_follow_c_align(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """C 档对照：thicken ↔ 依赖 cap。非跟进域 → 空。"""
+    domain = str(spec.get("domain") or "")
+    if domain not in FOLLOW_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("followThicken") if isinstance(schema.get("followThicken"), dict) else {}
+    )
+    return _diff_follow_flags(thicken, expected_follow_c_flags(domain, spec))
+
+
+def diff_follow_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    """B+C 合并多挂/漏挂（去重保序）。"""
+    bo, bu = diff_follow_b_align(spec, proposal_text)
+    co, cu = diff_follow_c_align(spec)
+    over = list(dict.fromkeys([*bo, *co]))
+    under = list(dict.fromkeys([*bu, *cu]))
+    return over, under

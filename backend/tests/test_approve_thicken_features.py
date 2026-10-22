@@ -1598,12 +1598,12 @@ class ApproveThickenFeatureTests(unittest.TestCase):
             (
                 "DOM-LABSAFE",
                 "实验室准入",
-                {"allowExamPassMin": True},
+                {"allowExamPassMin": False},
                 [],
-                ["ticket-allow-exam-pass-min: true"],
-                ["examPassMinLabel", "examPassMinHint"],
-                {"examPassMin": True},
-                "exam_pass_min",
+                [],
+                [],
+                {"examPassMin": False},
+                None,
             ),
             (
                 "DOM-CHECKIN",
@@ -1707,6 +1707,34 @@ class ApproveThickenFeatureTests(unittest.TestCase):
         self.assertNotIn("checkin_spot_task", fleet_sql)
         self.assertNotIn("pickup_redeem_code", fleet_sql)
         self.assertNotIn("exam_pass_min", fleet_sql)
+
+        labsafe_empty = _spec("DOM-LABSAFE", "实验室准入", "")
+        lt0 = ((labsafe_empty.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+        self.assertFalse(bool(lt0.get("allowExamPassMin")))
+        self.assertFalse(
+            bool((labsafe_empty.get("schema") or {}).get("approveThicken", {}).get("examPassMin"))
+        )
+        labsafe_exam = _spec(
+            "DOM-LABSAFE",
+            "实验室准入",
+            "准入须先考后申，安全考试通过后方可提交申请。",
+        )
+        lt1 = ((labsafe_exam.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+        self.assertIn("exam", labsafe_exam.get("capabilities") or [])
+        self.assertTrue(bool(lt1.get("allowExamPassMin")))
+        self.assertTrue(
+            bool((labsafe_exam.get("schema") or {}).get("approveThicken", {}).get("examPassMin"))
+        )
+        yml_exam = policy_preview("DOM-LABSAFE", labsafe_exam)
+        self.assertIn("ticket-allow-exam-pass-min: true", yml_exam)
+        labsafe_sql = domain_sql(
+            "DOM-LABSAFE",
+            "db_b14_labsafe_exam",
+            capabilities=list(labsafe_exam.get("capabilities") or []),
+            title="实验室准入",
+            ticket_flags=lt1,
+        )
+        self.assertIn("exam_pass_min", labsafe_sql)
         cert_sql = domain_sql(
             "DOM-CERT",
             "db_b14_cert",

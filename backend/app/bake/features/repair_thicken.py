@@ -4,12 +4,16 @@
 ------
 - 不新造厚 DOM；复用 ticket/deadline/content/allowRating/MessageStore。
 - 催办=站内时限提醒，≠短信外呼；派单过滤≠智能派单；知识页≠ RAG。
-- 域默认：通识必开（用户催办/冷却/撤催、结单摘要与原因、紧急排序、时间轴等）。
-- 开题扫：备件台账、报价确认、知识沉淀、远程协助、合并工单等。
+- 挂载三档（与交易族同口径，见 docs/trade-thicken-batch.md §0.3）：
+  A 壳底：域本来就该有，空开题也开。
+  B 扫词开：开题命中本组登记词才挂；空开题关；禁止全文自由匹配。
+  C 能力加深：已挂对应 cap 才叠；禁止域默认硬塞。
+- 改词只改本组 TERMS / scan_*；门禁与 bake 共用，禁止第二套词典。
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned
@@ -378,5 +382,133 @@ def apply_repair_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") 
     if scan_skill_tag(text):
         thicken["skillScanned"] = True
 
+    schema["repairThicken"] = thicken
+    ents["ticket"] = ticket
+    schema["entities"] = ents
+    schema["labels"] = labels
+    caps = list(spec.get("capabilities") or schema.get("capabilities") or [])
+    schema["capabilities"] = caps
+    spec["capabilities"] = caps
     spec["schema"] = schema
     return spec
+
+
+# —— 开题对齐登记：B 扫词 / A 壳底 / C 能力加深（bake 与门禁共用；禁止第二套词典）——
+
+RepairScanFn = Callable[[dict[str, Any], str], bool]
+
+
+def _text_scan(fn: Callable[[str], bool]) -> RepairScanFn:
+    def _fn(_spec: dict[str, Any], proposal_text: str) -> bool:
+        return bool(fn(proposal_text or ""))
+
+    return _fn
+
+
+# (thicken 键, 适用域, 扫词判定)
+# 分域双档：parts/serial/faq/assetCode/remote 在 PROPERTY·IT（或 IT）为 A 壳底，仅登记扫词子集域
+REPAIR_B_ALIGN_RULES: list[tuple[str, frozenset[str], RepairScanFn]] = [
+    ("parts", frozenset({"DOM-DORM"}), _text_scan(scan_parts_ledger)),
+    ("serial", frozenset({"DOM-DORM"}), _text_scan(scan_serial_no)),
+    ("faq", frozenset({"DOM-DORM"}), _text_scan(scan_faq_page)),
+    ("assetCode", frozenset({"DOM-DORM", "DOM-PROPERTY"}), _text_scan(scan_asset_code)),
+    ("remote", frozenset({"DOM-DORM", "DOM-PROPERTY"}), _text_scan(scan_remote_assist)),
+    ("quote", REPAIR_DOMAINS, _text_scan(scan_quote_confirm)),
+    ("knowledge", frozenset({"DOM-IT", "DOM-PROPERTY"}), _text_scan(scan_knowledge_deposit)),
+    ("merge", REPAIR_DOMAINS, _text_scan(scan_ticket_merge)),
+    ("rosterHint", REPAIR_DOMAINS, _text_scan(scan_roster_hint)),
+]
+
+# A 壳底白名单：门禁不要求开题写出；双档键（parts 等）可与 B 分域并存
+REPAIR_A_SHELL_WHITELIST: frozenset[str] = frozenset(
+    {
+        "core",
+        "dupRoomCheck",
+        "publicArea",
+        "buildingHeat",
+        "skill",
+        "parts",  # PROPERTY/IT 壳底；DORM 另走 B
+        "serial",  # PROPERTY/IT 壳底；DORM 另走 B
+        "faq",  # IT/PROPERTY 壳底；DORM 另走 B
+        "assetCode",  # IT 壳底；DORM/PROPERTY 另走 B
+        "remote",  # IT 壳底；DORM/PROPERTY 另走 B
+    }
+)
+
+
+# 本组暂无纯 C 键（deadline 域默认；content/staff_roster 由扫词或壳另挂，非 thicken↔cap 一对一）
+REPAIR_C_ALIGN_RULES: list[tuple[str, frozenset[str], str]] = []
+
+
+def expected_repair_b_flags(
+    domain: str, spec: dict[str, Any], proposal_text: str = ""
+) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for flag, domains, scan in REPAIR_B_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = bool(scan(spec, proposal_text))
+    return out
+
+
+def expected_repair_c_flags(domain: str, spec: dict[str, Any]) -> dict[str, bool]:
+    caps = {str(c) for c in (spec.get("capabilities") or []) if c}
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    if isinstance(schema.get("capabilities"), list):
+        caps |= {str(c) for c in schema["capabilities"] if c}
+    out: dict[str, bool] = {}
+    for flag, domains, cap in REPAIR_C_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = cap in caps
+    return out
+
+
+def _diff_repair_flags(
+    thicken: dict[str, Any], expected: dict[str, bool]
+) -> tuple[list[str], list[str]]:
+    over: list[str] = []
+    under: list[str] = []
+    for flag, want in expected.items():
+        got = bool(thicken.get(flag))
+        if got and not want:
+            over.append(flag)
+        elif want and not got:
+            under.append(flag)
+    return over, under
+
+
+def diff_repair_b_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in REPAIR_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("repairThicken") if isinstance(schema.get("repairThicken"), dict) else {}
+    )
+    return _diff_repair_flags(
+        thicken, expected_repair_b_flags(domain, spec, proposal_text)
+    )
+
+
+def diff_repair_c_align(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in REPAIR_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("repairThicken") if isinstance(schema.get("repairThicken"), dict) else {}
+    )
+    return _diff_repair_flags(thicken, expected_repair_c_flags(domain, spec))
+
+
+def diff_repair_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    bo, bu = diff_repair_b_align(spec, proposal_text)
+    co, cu = diff_repair_c_align(spec)
+    over = list(dict.fromkeys([*bo, *co]))
+    under = list(dict.fromkeys([*bu, *cu]))
+    return over, under

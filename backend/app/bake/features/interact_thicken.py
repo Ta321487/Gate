@@ -28,6 +28,11 @@ I-12：扫尾对照地图「本组待补」清零。
 ------
 - 只挂 INTERACT_DOMAINS = DATING / MUTUAL-* / CARPOOL / TIMEBANK / EXAM /
   SURVEY / VOTE。
+- 挂载三档（与交易族同口径，见 docs/trade-thicken-batch.md §0.3）：
+  A 壳底：域本来就该有，空开题也开。
+  B 扫词开：本组无 thicken 自扫词键（cap 扫词在各 feature；禁止第二套词典）。
+  C 能力加深：已挂对应 cap / allowRating 才叠（I-11）；禁止域默认硬开邻组岛。
+- 改词只改各 cap 的 TERMS / scan_*；门禁与 bake 共用，禁止第二套词典。
 - 不碰 §1.6 交易、§1.7 预约、§1.8 内容；DATING∩ACTIVITY、MUTUAL∩MEETING
   只做文案交叉，不另起邻组状态机。
 - Store 分域：ExamStore / SurveyStore / VoteStore / TimebankStore；
@@ -41,6 +46,7 @@ I-12：扫尾对照地图「本组待补」清零。
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 INTERACT_DOMAINS = frozenset(
@@ -1851,3 +1857,212 @@ def apply_interact_thicken_to_spec(
 
     del labels  # labels 已通过 setdefault 写入 schema
     return spec
+
+
+# —— 开题对齐登记：B 扫词 / A 壳底 / C 能力加深（bake 与门禁共用；禁止第二套词典）——
+
+InteractScanFn = Callable[[dict[str, Any], str], bool]
+
+INTERACT_B_ALIGN_RULES: list[tuple[str, frozenset[str], InteractScanFn]] = []
+
+INTERACT_A_SHELL_WHITELIST: frozenset[str] = frozenset(
+    {
+        "core",
+        "datingFavorites",
+        "carpoolRating",
+        "tutorMutualRating",
+        "timebankRating",
+        "timebankStarReputation",
+        "mutualDeadlineCountdown",
+        "examObjectiveGradeContract",
+        "examPracticeNoScore",
+        "examBlurWarn",
+        "examExplainAfterScore",
+        "examShuffle",
+        "examAnswerProgress",
+        "examPassScore",
+        "examPartialMulti",
+        "examLockAfterSubmit",
+        "examLateEnter",
+        "examEntryCode",
+        "examCertificate",
+        "examWrongbookExport",
+        "examQuestionImport",
+        "examRandomDraw",
+        "examMarkRubric",
+        "examScoreImport",
+        "examDifficulty",
+        "surveySchedule",
+        "surveyAnonymous",
+        "surveySkip",
+        "surveyAnswerProgress",
+        "surveyOnceOnly",
+        "surveyRequired",
+        "surveyMatrix",
+        "surveyResultCharts",
+        "surveyCloseRemind",
+        "surveyDraft",
+        "surveyShowIf",
+        "surveyTargetOrg",
+        "surveyThanks",
+        "surveyRecycleCard",
+        "voteResultExport",
+        "voteIpHint",
+        "votePoster",
+        "voteCandidateIntro",
+        "votePollRefresh",
+        "voteDailyLimit",
+        "voteAnonymous",
+        "voteResultDelay",
+        "voteSlogan",
+        "voteRequireRealName",
+        "voteAbstain",
+        "voteTop3",
+        "mutualAdjustLog",
+        "mutualEditBeforeDeadline",
+        "mutualIntroPack",
+        "mutualBlindPhase",
+        "mutualWishMutex",
+        "mutualResultPublicity",
+        "mutualAdjustCap",
+        "mutualPeerTimeoutReject",
+        "mutualWishLock",
+        "mutualResultExportNotify",
+        "mutualInterviewEntry",
+        "mutualTutorQuotaBar",
+        "mutualTeamSkillTags",
+        "mutualTeamInvite",
+        "mutualTeamFullClose",
+        "mutualTeamRemarkRequired",
+        "mutualTeamExitNeedOwner",
+        "mutualTeamSkillMatch",
+        "carpoolFullClose",
+        "carpoolSeatRemain",
+        "carpoolCampusDict",
+        "carpoolViaPoints",
+        "carpoolShareNote",
+        "carpoolPrefNote",
+        "carpoolLuggage",
+        "carpoolAaCalc",
+        "carpoolDepartRemind",
+        "carpoolSeatLock",
+        "carpoolCancelPenalty",
+        "carpoolPhoneMaskAfterRate",
+        "carpoolDupTripCheck",
+        "datingProfileCompleteness",
+        "datingUserFollow",
+        "datingMeetIntent",
+        "datingRejectReason",
+        "datingIdealFilter",
+        "datingBlacklist",
+        "datingAlbumAudit",
+        "datingActivityEntry",
+        "timebankRank",
+        "timebankLedgerExport",
+        "timebankSkillCert",
+        "timebankCatalog",
+        "timebankCreditScore",
+        "timebankPublishReview",
+        "timebankFreeze",
+        "timebankSkillAttach",
+        "timebankAppeal",
+        "timebankTransfer",
+        "timebankClearRule",
+    }
+)
+
+# need: cap 名 | 特殊 "__allowRating__"（ticket.allowRating）
+INTERACT_C_ALIGN_RULES: list[tuple[str, frozenset[str], str]] = [
+    ("favoritesIsland", INTERACT_DOMAINS, "favorites"),
+    ("dmIsland", INTERACT_DOMAINS, "dm"),
+    ("ratingIsland", INTERACT_DOMAINS, "__allowRating__"),
+    ("datingReportDeadline", frozenset({"DOM-DATING"}), "content_report"),
+    ("reportDeadlineIsland", INTERACT_DOMAINS, "content_report"),
+]
+
+
+def _interact_c_want(need: str, caps: set[str], spec: dict[str, Any]) -> bool:
+    if need == "__allowRating__":
+        schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+        ents = schema.get("entities") if isinstance(schema.get("entities"), dict) else {}
+        ticket = ents.get("ticket") if isinstance(ents.get("ticket"), dict) else {}
+        return bool(ticket.get("allowRating"))
+    return need in caps
+
+
+def expected_interact_b_flags(
+    domain: str, spec: dict[str, Any], proposal_text: str = ""
+) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for flag, domains, scan in INTERACT_B_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = bool(scan(spec, proposal_text))
+    return out
+
+
+def expected_interact_c_flags(domain: str, spec: dict[str, Any]) -> dict[str, bool]:
+    caps = {str(c) for c in (spec.get("capabilities") or []) if c}
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    if isinstance(schema.get("capabilities"), list):
+        caps |= {str(c) for c in schema["capabilities"] if c}
+    out: dict[str, bool] = {}
+    for flag, domains, need in INTERACT_C_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = _interact_c_want(need, caps, spec)
+    return out
+
+
+def _diff_interact_flags(
+    thicken: dict[str, Any], expected: dict[str, bool]
+) -> tuple[list[str], list[str]]:
+    over: list[str] = []
+    under: list[str] = []
+    for flag, want in expected.items():
+        got = bool(thicken.get(flag))
+        if got and not want:
+            over.append(flag)
+        elif want and not got:
+            under.append(flag)
+    return over, under
+
+
+def diff_interact_b_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in INTERACT_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("interactThicken")
+        if isinstance(schema.get("interactThicken"), dict)
+        else {}
+    )
+    return _diff_interact_flags(
+        thicken, expected_interact_b_flags(domain, spec, proposal_text)
+    )
+
+
+def diff_interact_c_align(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in INTERACT_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("interactThicken")
+        if isinstance(schema.get("interactThicken"), dict)
+        else {}
+    )
+    return _diff_interact_flags(thicken, expected_interact_c_flags(domain, spec))
+
+
+def diff_interact_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    bo, bu = diff_interact_b_align(spec, proposal_text)
+    co, cu = diff_interact_c_align(spec)
+    over = list(dict.fromkeys([*bo, *co]))
+    under = list(dict.fromkeys([*bu, *cu]))
+    return over, under

@@ -528,14 +528,8 @@ _accept_ai_farm.py[TS5S]: F:One-shot acceptance for gf-accept-ai-farm bake. | R:
 _audit_pack_diff.py[TS5T]: F:Audit pack-only proposal diff. | R:- | A:- | S:-
 _audit_proposal_diff.py[TS5T]: F:Audit proposal diff coverage across packs and corpus. | R:- | A:- | S:-
 _check_sample_biz.py[TS5M]: F:开题样例 → match → build_spec 业务皮校验；可选 Island LLM 润色角色。 | R:- | A:- | S:-
-_fix_engine_headers.py[TS5T]: F:'): end = t.find(' | R:- | A:- | S:-
-_split_large_modules.py[TS5M]: F:Batch-split large bake modules. Run from backend/. | R:- | A:- | S:-
-_split_remaining.py[TS5L]: F:Split proposal_packs / themes.css / er_labels / agents / eng | R:- | A:- | S:-
-_split_themes_css.py[TS5T]: F:Split themes.css by section comments. | R:- | A:- | S:-
 run_unit_flow.py[TS5S]: F:CLI：填岛拆解流水线（与 Job step 2 同实现）。 示例： cd backend python scripts | R:- | A:- | S:-
 verify_bake_features.py[TB6S]: F:用健身与宠物商城样例跑 attach 与 SQL，核验多维分类、详情属性真列与限时购 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/features/detail_attrs.py | A:- | S:手工验证脚本非 pytest；详情属性验 brand 等真列且无 detail_json；失败以退出码报告
-create_missing_overlay_stores.py[XV4S]: F:把 baseline 仍缺的 JDBC Store 转写到 mybatis/jpa 叠层并补 ChoiceOptionOps | R:- | A:- | S:只换门面 import/db()，不改业务逻辑；FILES 列表须与叠层缺口同步
-fix_overlay_jdbc_pollution.py[XV4S]: F:扫描并修正 mybatis/jpa 叠层误拷的 JdbcSupport/JdbcTemplate 门面为 MbSql/JpaDb | R:- | A:- | S:不改业务逻辑；TicketSql.db()（mybatis 无此方法）改为 MybatisSupport.db()
 probe_three_persistence_bake_compile.py[TQ5S]: F:探针全域×jdbc/mybatis/jpa bake 后 mvn compile，写入独立 data/probe_run | R:code:backend/app/bake/engine.py,code:backend/app/bake/domains.py | A:- | S:须先设 GF_DATA_DIR=data/probe_run 再 import app；--canary 只扫各族代表
 
 ===D:/graduate_factory_v3/data/samples/===
@@ -792,7 +786,7 @@ defense-ppt-module.md[SG6M]: F:记录defense ppt module相关交付约定与说�
 delivery-audit-rules.md[SC7M]: F:规定交付审计怎么审：主链路、红灯、老板小卡；§1.6～§1.9 加厚已收口；§1.10 GENERIC 导引浅清已齐 | R:code:docs/opening-feature-delivery-map.md,code:docs/interact-thicken-batch.md,code:docs/domain-group-ui-styles.md | A:- | S:缺小卡不得称有效报告；空壳不得标已齐；UI 表面不进本表红灯
 difficulty-tiers.md[SG6S]: F:定开题难度 L0–L3 分层：基线标配、可加价亮点、已落地积木与仍不接项，兼开题写法 | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:开题「拟实现」须答辩可演示；基线含单据流与时间冲突等轻规则；真 SDK、硬件不进基线
 domain-skin-gap-analysis.md[SG6L]: F:维护换皮、新预设与新能力的 ID 册与状态列，兼交付审计进度回写 | R:code:docs/delivery-audit-rules.md,code:docs/opening-feature-delivery-map.md | A:- | S:ID 册只此一处，进度按组回写；对照 domains_catalog/ 与 scene_scan.py
-domains.md[SG8M]: F:维护薄域 DOM 分组 A–H、各域默认能力组合与 GENERIC/ARCH/Path B；§F 钉 ARCH/DOM 优先级、行业词浅替换与 cross_path_guide 导引落点 | R:code:backend/app/bake/domains.py,code:backend/app/bake/cross_path_guide.py,code:docs/capabilities.md,code:docs/opening-feature-delivery-map.md | A:- | S:表内 DOM 须与 DOMAIN_CAPABILITIES 68 域对齐；组 H 真交叉两套玩法；禁止静默改 Dom 冒充具名域
+domains.md[SG8M]: F:维护薄域 DOM 分组 A–H（具名 A～F→真交叉 G→兜底 H）、各域默认能力组合与 GENERIC/ARCH/Path B；§H 钉 ARCH/DOM 优先级、行业词浅替换与 cross_path_guide 导引落点 | R:code:backend/app/bake/domains.py,code:backend/app/bake/cross_path_guide.py,code:docs/capabilities.md,code:docs/opening-feature-delivery-map.md | A:- | S:表内 DOM 须与 DOMAIN_CAPABILITIES 68 域对齐；组 G 真交叉两套玩法；禁止静默改 Dom 冒充具名域
 immersion-corners.md[SG6M]: F:记录immersion corners相关交付约定与说明 | R:- | A:- | S:-
 invariants.md[SG7T]: F:记录库表预算与岗位四槽位等硬约束 | R:code:backend/app/bake/engine_sql.py,code:docs/staff-posts-cross-domain.md | A:- | S:舒适区6–15、硬顶18；超过15只警告，计费张数超过18打回；借用族下限10
 opening-feature-delivery-map.md[SC8L]: F:开题密功能到落点总图；加厚九组已收口；横切 X-AUTH 已齐；九组 *_surface_style 已接线 | R:code:docs/crosscut-delivery-batch.md,code:docs/domain-group-ui-styles.md,code:docs/capabilities.md,code:backend/app/bake/cross_path_guide.py,code:backend/app/bake/features/auth_crosscut.py | A:- | S:已齐=管理能管+用户可产生数据；§1.10 导引可只读齐；禁止再开 *_thicken；UI 不进待补行
@@ -937,7 +931,6 @@ start-aoci-ui.vbs[OV3T]: F:无窗口拉起启动脚本 | R:code:scripts/start-ao
 stop-aoci-ui.bat[OV2T]: F:把双击转到停止用 vbs | R:code:scripts/stop-aoci-ui.vbs | A:- | S:-
 stop-aoci-ui.ps1[OO4T]: F:停止本仓库已登记的 AOCI 面板 | R:code:scripts/stop-aoci-ui.vbs | A:aoci ui --stop | S:-
 stop-aoci-ui.vbs[OV3T]: F:无窗口拉起停止脚本 | R:code:scripts/stop-aoci-ui.ps1 | A:- | S:-
-_gen_ui_look_thicken_doc.py[XG5M]: F:由 bake themes/domains/shell_face 生成 UI 观感加厚批次册 docs/ui-look-thicken-batch.md | R:code:docs/ui-look-thicken-batch.md,code:backend/app/bake/shell_face.py,code:backend/app/bake/domains.py | A:- | S:-
 sync-ide-rules.ps1[XV6T]: F:以 .cursor/rules 为权威源，把 *.mdc 正文原样同步为 .trae/rules/*.md 的 PowerShell 脚本 | R:code:.cursor/rules/ai-handoff.mdc,code:.trae/rules/ai-handoff.md | A:- | S:规则只在 .cursor/rules 改；目标名取 BaseName+.md；LF 无 BOM UTF8 写入；禁止在 .trae/rules 手改
 
 ===D:/graduate_factory_v3/skeletons/baseline/===

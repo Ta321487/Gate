@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-18T20:39:11Z",
-  "updated_at": "2026-10-21T11:29:54Z",
+  "updated_at": "2026-10-22T14:12:30Z",
   "files": {
     ".cursor/rules/00-factory-core.mdc": {
       "role": "index",
@@ -249,9 +249,10 @@
       "normalized_sha256": "f04bad11f0edd2d24da4e5c885f891cd4262b7bb65f6a34784385219428d532d"
     },
     "aoci.code.txt": {
-      "sha256": "6c29256dec8cecb3c8ed64d50eaa2d519d19c47c9623051d2862c51de9d1ccee",
-      "size": 356131,
-      "normalized_sha256": "6c29256dec8cecb3c8ed64d50eaa2d519d19c47c9623051d2862c51de9d1ccee"
+      "role": "index",
+      "sha256": "4b607f12d74ebfc5836623ac8169b696e4f02bcf1bca9a1c30472f8c507f4989",
+      "size": 355050,
+      "normalized_sha256": "4b607f12d74ebfc5836623ac8169b696e4f02bcf1bca9a1c30472f8c507f4989"
     },
     "aoci.database.txt": {
       "sha256": "9d9fedc69e4a91c5bc5d3c170bf18d50b11855a73ca317eecc4a9b035fcd4188",

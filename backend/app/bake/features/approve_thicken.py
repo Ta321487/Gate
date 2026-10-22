@@ -19,6 +19,11 @@
 硬约束
 ------
 - 只挂 APPROVE_DOMAINS（23 域）；不改 apply/repair/follow/borrow thicken 共享语义。
+- 挂载三档（与交易族同口径，见 docs/trade-thicken-batch.md §0.3）：
+  A 壳底：域本来就该有，空开题也开。
+  B 扫词开：开题命中本组登记词才挂；空开题关；禁止全文自由匹配。
+  C 能力加深：已挂对应 cap 才叠；禁止域默认硬塞。
+- 改词只改本组 TERMS / scan_*；门禁与 bake 共用，禁止第二套词典。
 - 撤回 / 退回再提 / dueSoon / reassign：调用既有 Store，不收紧共享状态机。
 - 审意见字数 ≠ 申请正文 minRemarkWords；抄送默认关，非本组不发信。
 - 限时自动通过默认 hours=0；扫词才打开，禁止默认自动审过。
@@ -33,7 +38,7 @@
 - 第十一批：PROJ 外链不改经费/成员/节点；CHECKIN 预警只读异常类型、不叠必附；PARTY 不上 material_check；EVAL 听课不改维度权重；ACAD 不影响生效日；CONTRACT 不改签署方/版本号/到期提醒。不新开附件槽。
 - 第十二批：EXPENSE 明细走 ticket_expense_line 子表（禁止 JSON 列）；TRIP 行程走 ticket_trip_leg 子表；不改发票张数/必附/加班小时。EVAL 隐藏结果不改权重/听课；CONTRACT 可见性不改金额/签署方/版本号；PROJ 变更日志不改成员/经费/查重；CERT 查伪码≠流水号/领取码/code_qr。不新开附件槽。
 - 第十三批：VISITOR 现场补录不改黑名单/邀约/日余量；CHECKIN 代登记不叠必附/连续未归、不复用 proxy_name；CLUB 名册走 ticket_club_member 子表，不改复制上年；CARPASS 车位互斥不改通行码软闸/年检；EVAL 催评不改权重/听课/隐藏结果；CONTRACT 续签另列，不改到期提醒/金额/签署方/意见可见。不新开附件槽。
-- 第十四批：CONTRACT 到期提醒只加深站内信对象/文案，不改 renew_on；CERT 领取核销码≠真伪码/流水号；LABSAFE 门槛复用 ExamStore，不改学时；CHECKIN 抽查浅抽样，不叠代登记/连续未归；EVAL 先评后查分只挡成绩读取，不改 GRADE 写库；人均耗时只读统计。不新开附件槽。
+- 第十四批：CONTRACT 到期提醒只加深站内信对象/文案，不改 renew_on；CERT 领取核销码≠真伪码/流水号；LABSAFE 考试成绩门槛仅随 exam cap 叠（C），不改学时；CHECKIN 抽查浅抽样，不叠代登记/连续未归；EVAL 先评后查分只挡成绩读取，不改 GRADE 写库；人均耗时只读统计。不新开附件槽。
 - 第十五批：申请附件覆盖写入子表 ticket_attach_rev，不改办结附件槽/报修附件语义；CERT 领取码出示二维码≠套打/真伪码；真伪页只加深展示；VISITOR 打印通行码≠道闸；CHECKIN 日报只读汇总不叠抽查；EVAL 院系导出不改先评后查分。不新开附件槽。
 - 第十六批：SEAL 台账只加深记录导出，不改份数/监印/现场照/套打 PDF；MORAL/PARTY 只复用 material_check 种子，不新开附件槽、不挂资助公示、不改 party_stage/stage_on。
 - 第十七批：套打只走共用 print 壳+四套公文版式，≠ CA/真 PDF 引擎；EXPENSE 张数只加深提示不新开多文件槽；FLEET 资质复用 material_check，不叠过路费 requireAttach 语义；PROCURE 入库不在本组重写（borrow_thicken）。
@@ -42,6 +47,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 APPROVE_DOMAINS = frozenset(
@@ -1468,21 +1474,29 @@ def apply_approve_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "")
         thicken["certPickupRedeem"] = True
         _add_feature(spec, "证明领取核销码")
     if domain == "DOM-LABSAFE":
-        ticket["allowExamPassMin"] = True
-        labels.setdefault("examPassMinLabel", "准入考试及格分")
-        labels.setdefault(
-            "examPassMinHint",
-            "未达到档案中设定的及格分前，不能提交准入申请。",
-        )
-        archive = ents.setdefault("archive", {})
-        if isinstance(archive, dict):
-            fields = archive.setdefault("fields", [])
-            if isinstance(fields, list) and not any(
-                isinstance(f, dict) and f.get("key") == "examPassMin" for f in fields
-            ):
-                fields.append({"key": "examPassMin", "label": "准入考试及格分", "type": "number"})
-        thicken["examPassMin"] = True
-        _add_feature(spec, "实验室准入考试成绩门槛")
+        # C：准入考试及格分仅在已挂 exam 时叠（禁止空开题假域默认；无 ExamStore 会硬失败）
+        caps_now = {str(c) for c in (spec.get("capabilities") or []) if c}
+        schema_caps = schema.get("capabilities")
+        if isinstance(schema_caps, list):
+            caps_now |= {str(c) for c in schema_caps if c}
+        if "exam" in caps_now:
+            ticket["allowExamPassMin"] = True
+            labels.setdefault("examPassMinLabel", "准入考试及格分")
+            labels.setdefault(
+                "examPassMinHint",
+                "未达到档案中设定的及格分前，不能提交准入申请。",
+            )
+            archive = ents.setdefault("archive", {})
+            if isinstance(archive, dict):
+                fields = archive.setdefault("fields", [])
+                if isinstance(fields, list) and not any(
+                    isinstance(f, dict) and f.get("key") == "examPassMin" for f in fields
+                ):
+                    fields.append(
+                        {"key": "examPassMin", "label": "准入考试及格分", "type": "number"}
+                    )
+            thicken["examPassMin"] = True
+            _add_feature(spec, "实验室准入考试成绩门槛")
     if domain == "DOM-CHECKIN":
         ticket["allowCheckinSpot"] = True
         labels.setdefault("checkinSpotLabel", "抽查任务")
@@ -1762,3 +1776,199 @@ def ensure_approve_material_seed_sql(
     if allow_fleet_driver and "从业资格证" not in out:
         out = out.rstrip() + "\n" + _FLEET_DRIVER_CERT_SEED_SQL
     return out
+
+
+# —— 开题对齐登记：B 扫词 / A 壳底 / C 能力加深（bake 与门禁共用；禁止第二套词典）——
+
+ApproveScanFn = Callable[[dict[str, Any], str], bool]
+
+
+def _text_scan(fn: Callable[[str], bool]) -> ApproveScanFn:
+    def _fn(_spec: dict[str, Any], proposal_text: str) -> bool:
+        return bool(fn(proposal_text or ""))
+
+    return _fn
+
+
+APPROVE_B_ALIGN_RULES: list[tuple[str, frozenset[str], ApproveScanFn]] = [
+    ("autoPass", APPROVE_DOMAINS, _text_scan(scan_approve_auto_pass)),
+]
+
+APPROVE_A_SHELL_WHITELIST: frozenset[str] = frozenset(
+    {
+        "core",
+        "withdraw",
+        "returnRevise",
+        "phrases",
+        "minApproveRemark",
+        "dueSoon",
+        "approveCc",
+        "approveDurationStats",
+        "attachKeepOld",
+        "transfer",
+        "delegate",
+        "remarkAttach",
+        "ccComment",
+        "certPickup",
+        "certUrgent",
+        "sealCopies",
+        "fleetMileage",
+        "expenseInvoice",
+        "visitorCount",
+        "visitorBlacklist",
+        "creditCap",
+        "evalOnePerCourse",
+        "awardCertNo",
+        "minVendorQuotes",
+        "archiveExpireNotify",
+        "evalOpenWindow",
+        "compHours",
+        "fleetCrew",
+        "laborAttach",
+        "ethicBatch",
+        "checkinPhoto",
+        "passExpire",
+        "returnFuel",
+        "laborPlace",
+        "promoPlace",
+        "ethicMeeting",
+        "effectiveOn",
+        "certIssueNo",
+        "fleetTollAttach",
+        "promoFeedback",
+        "docRev",
+        "fitoutQuiet",
+        "visitorInvite",
+        "sealClosePhoto",
+        "issueCopies",
+        "signParties",
+        "trainHours",
+        "inspectExpire",
+        "memberChange",
+        "procureBudget",
+        "checkinException",
+        "visitPurpose",
+        "fleetViolation",
+        "fitoutRectify",
+        "projNodeRemind",
+        "clubCopyLast",
+        "procureReturn",
+        "moralObjection",
+        "projFundUse",
+        "evalDimWeight",
+        "visitSlotRemain",
+        "plagiarismUrl",
+        "absentStreak",
+        "partyStage",
+        "evalObserve",
+        "scheduleImpact",
+        "contractAmount",
+        "expenseLines",
+        "tripLegs",
+        "hideEvalResult",
+        "signRemarkVisible",
+        "projChangeLog",
+        "certVerify",
+        "visitWalkIn",
+        "checkinProxy",
+        "clubRoster",
+        "carpassParkingMutex",
+        "evalUrge",
+        "contractRenew",
+        "contractExpireRemind",
+        "certPickupRedeem",
+        "checkinSpot",
+        "evalBeforeGrade",
+        "certPickupQr",
+        "certVerifyPage",
+        "visitorPassPrint",
+        "checkinDailyReport",
+        "evalCollegeExport",
+        "sealLedgerExport",
+        "moralMaterialCheck",
+        "partyMaterialTemplate",
+        "partyThoughtAttach",
+        "certFormPrint",
+        "sealFormPrint",
+        "projMidFormPrint",
+        "ethicOpinionPrint",
+        "expenseAttachCount",
+        "fleetDriverCert",
+    }
+)
+
+
+# (thicken 键, 适用域, 依赖 cap)
+APPROVE_C_ALIGN_RULES: list[tuple[str, frozenset[str], str]] = [
+    ("examPassMin", frozenset({"DOM-LABSAFE"}), "exam"),
+]
+
+
+def expected_approve_b_flags(
+    domain: str, spec: dict[str, Any], proposal_text: str = ""
+) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for flag, domains, scan in APPROVE_B_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = bool(scan(spec, proposal_text))
+    return out
+
+
+def expected_approve_c_flags(domain: str, spec: dict[str, Any]) -> dict[str, bool]:
+    caps = {str(c) for c in (spec.get("capabilities") or []) if c}
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    if isinstance(schema.get("capabilities"), list):
+        caps |= {str(c) for c in schema["capabilities"] if c}
+    out: dict[str, bool] = {}
+    for flag, domains, cap in APPROVE_C_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = cap in caps
+    return out
+
+
+def _diff_approve_flags(
+    thicken: dict[str, Any], expected: dict[str, bool]
+) -> tuple[list[str], list[str]]:
+    over: list[str] = []
+    under: list[str] = []
+    for flag, want in expected.items():
+        got = bool(thicken.get(flag))
+        if got and not want:
+            over.append(flag)
+        elif want and not got:
+            under.append(flag)
+    return over, under
+
+
+def diff_approve_b_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in APPROVE_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = schema.get("approveThicken") if isinstance(schema.get("approveThicken"), dict) else {}
+    return _diff_approve_flags(
+        thicken, expected_approve_b_flags(domain, spec, proposal_text)
+    )
+
+
+def diff_approve_c_align(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in APPROVE_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = schema.get("approveThicken") if isinstance(schema.get("approveThicken"), dict) else {}
+    return _diff_approve_flags(thicken, expected_approve_c_flags(domain, spec))
+
+
+def diff_approve_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    bo, bu = diff_approve_b_align(spec, proposal_text)
+    co, cu = diff_approve_c_align(spec)
+    over = list(dict.fromkeys([*bo, *co]))
+    under = list(dict.fromkeys([*bu, *cu]))
+    return over, under

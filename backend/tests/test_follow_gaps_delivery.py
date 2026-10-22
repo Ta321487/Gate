@@ -45,6 +45,19 @@ def _ticket_store(copy: str) -> str:
     return (COPIES[copy] / THE / "capability" / "TicketStore.java").read_text(encoding="utf-8")
 
 
+def _ticket_ops_blob(copy: str) -> str:
+    """Store 外提后合读 *Ops；overlay 未覆写的文件仍吃 baseline（与 bake 叠层一致）。"""
+    cap = COPIES[copy] / THE / "capability"
+    parts = [_ticket_store(copy)]
+    local = {p.name: p for p in cap.glob("Ticket*Ops.java")}
+    base_cap = COPIES["baseline"] / THE / "capability"
+    names = set(local) | {p.name for p in base_cap.glob("Ticket*Ops.java")}
+    for name in sorted(names):
+        p = local.get(name) or (base_cap / name)
+        parts.append(p.read_text(encoding="utf-8"))
+    return "\n".join(parts)
+
+
 def _sections(md: str, marker: str) -> str:
     """同名小节可能多组（§1.1/§1.2/...），取并集。"""
     parts = re.split(r"(?=#### 本组)", md)
@@ -64,17 +77,18 @@ class FollowGapsDeliveryTests(unittest.TestCase):
 
     def test_store_flags_in_all_three_copies(self) -> None:
         for copy in COPIES:
-            text = _ticket_store(copy)
+            store = _ticket_store(copy)
+            blob = _ticket_ops_blob(copy)
             with self.subTest(copy=copy):
-                self.assertIn("configureFollowOps", text)
-                self.assertIn("static int staleFollowDays = 0;", text)
-                self.assertIn("static boolean phoneDupCheck = false;", text)
-                self.assertIn("dupPhoneOpenId", text)
-                self.assertIn('"stale".equals(status)', text)
-                self.assertIn('out.put("staleFollowDays"', text)
-                self.assertIn("returnForRevise", text)
-                self.assertIn("public static Map<String, Object> resubmit(", text)
-                self.assertIn("reviseCountOf", text)
+                self.assertIn("configureFollowOps", store)
+                self.assertIn("static int staleFollowDays = 0;", store)
+                self.assertIn("static boolean phoneDupCheck = false;", store)
+                self.assertIn("dupPhoneOpenId", blob)
+                self.assertIn('"stale".equals(status)', blob)
+                self.assertIn('out.put("staleFollowDays"', blob)
+                self.assertIn("returnForRevise", blob)
+                self.assertIn("public static Map<String, Object> resubmit(", blob)
+                self.assertIn("reviseCountOf", blob)
 
     def test_binder_wires_follow_ops(self) -> None:
         for copy in COPIES:
@@ -184,15 +198,21 @@ class EventGapsDeliveryTests(unittest.TestCase):
 
     def test_ticket_store_level_and_duty_in_all_copies(self) -> None:
         for copy in COPIES:
-            text = _ticket_store(copy)
+            store = _ticket_store(copy)
+            blob = _ticket_ops_blob(copy)
             with self.subTest(copy=copy):
-                self.assertIn("public static void configureEventOps(", text)
-                self.assertIn("static int levelSlaDays(Map<String, Object> m, int fallback)", text)
-                self.assertIn("plusDays(levelSlaDays(m, loanDays()))", text)
-                self.assertIn("levelSlaCsv()", text)
-                self.assertIn("notifyDutyOnNewReport(id, username, t)", text)
-                self.assertIn("StaffRosterStore.onDutyUsernames(", text)
-                self.assertIn("import java.time.LocalDate;", text)
+                self.assertIn("public static void configureEventOps(", store)
+                self.assertIn("static int levelSlaDays(Map<String, Object> m, int fallback)", blob)
+                # 外提后：ApproveOps 调 TicketDeriveOps.levelSlaDays / TicketStore.loanDays
+                self.assertTrue(
+                    "plusDays(levelSlaDays(m, loanDays()))" in blob
+                    or "plusDays(TicketDeriveOps.levelSlaDays(m, TicketStore.loanDays()))" in blob,
+                    f"{copy}: 缺等级 SLA plusDays 接线",
+                )
+                self.assertIn("levelSlaCsv()", blob)
+                self.assertIn("notifyDutyOnNewReport(id, username, t)", blob)
+                self.assertIn("StaffRosterStore.onDutyUsernames(", blob)
+                self.assertIn("import java.time.LocalDate;", blob)
 
     def test_binder_wires_event_and_objection(self) -> None:
         for copy in COPIES:

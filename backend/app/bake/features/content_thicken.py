@@ -20,6 +20,11 @@ C-09：扫尾对照地图「本组待补」清零。
 硬约束
 ------
 - 只挂 CONTENT_DOMAINS = MEDIA / MUSIC / FORUM / BLOG / DOCLIB。
+- 挂载三档（与交易族同口径，见 docs/trade-thicken-batch.md §0.3）：
+  A 壳底：域本来就该有，空开题也开。
+  B 扫词开：本组无 thicken 自扫词键（cap 扫词在各 feature；禁止第二套词典）。
+  C 能力加深：已挂对应 cap 才叠（C-08 + 治理叠）；禁止域默认硬塞 points/wallet。
+- 改词只改各 cap 的 TERMS / scan_*；门禁与 bake 共用，禁止第二套词典。
 - 不碰 §1.6 交易、§1.7 预约、§1.9 互动；婚恋举报等归邻组。
 - Store 主战场 ArchiveStore；论坛跟帖辅 TicketStore；辅 Message / Favorites /
   ItemComment / DemoScheduleJobs。
@@ -33,6 +38,7 @@ C-09：扫尾对照地图「本组待补」清零。
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 CONTENT_DOMAINS = frozenset(
@@ -1246,3 +1252,183 @@ def _apply_c09_sweep(
         labels.setdefault("draftAutoSavedLabel", "草稿已自动保存")
         thicken["draftAutoSave"] = True
         _add_feature(spec, "帖子草稿自动保存")
+
+
+# —— 开题对齐登记：B 扫词 / A 壳底 / C 能力加深（bake 与门禁共用；禁止第二套词典）——
+
+ContentScanFn = Callable[[dict[str, Any], str], bool]
+
+# 本组无 thicken 自扫词键：cap 由各 feature 扫词挂上，再由 C-08 / 治理叠加深
+CONTENT_B_ALIGN_RULES: list[tuple[str, frozenset[str], ContentScanFn]] = []
+
+CONTENT_A_SHELL_WHITELIST: frozenset[str] = frozenset(
+    {
+        "core",
+        "viewCount",
+        "hotRank",
+        "hotByDownload",
+        "browseHistory",
+        "titleSearch",
+        "pinTop",
+        "essence",
+        "locked",
+        "draftBox",
+        "moveCategory",
+        "dailyPostLimit",
+        "publishReview",
+        "sectionNotice",
+        "nestedReply",
+        "mentionNotify",
+        "commentLike",
+        "sensitiveWords",
+        "moderatorAppoint",
+        "commentFold",
+        "pinEssenceAudit",
+        "categoryFollow",
+        "categoryFollowNotify",
+        "categoryFollowerCount",
+        "scheduledPublish",
+        "scheduledUnpublish",
+        "archiveYearMonth",
+        "seriesNav",
+        "originKind",
+        "authorPage",
+        "commentAuthorNotify",
+        "accessPassword",
+        "friendLinks",
+        "playProgress",
+        "episodeCompleted",
+        "episodeList",
+        "episodeUpdateNotify",
+        "posterWall",
+        "gallery",
+        "hotByPlay",
+        "offShelfReason",
+        "shareCode",
+        "favoriteGroup",
+        "playlistVisibility",
+        "artistAlbumFilter",
+        "lyrics",
+        "coverMark",
+        "audioQualitySwitch",
+        "docPreview",
+        "trialRead",
+        "downloadRoles",
+        "watermark",
+        "downloadQuota",
+        "downloadAudit",
+        "docChapter",
+        "docVersion",
+        "docTagCloud",
+        "docFeedback",
+        "downloadLog",
+        "draftAutoSave",
+    }
+)
+
+# need: cap 名 | 多 cap 任一 | 特殊 "__userPublish__"（档案 userPublish 或 caps）
+CONTENT_C_ALIGN_RULES: list[tuple[str, frozenset[str], str | frozenset[str]]] = [
+    ("muteExpire", frozenset({"DOM-FORUM"}), "post_mute"),
+    ("reportResultNotify", frozenset({"DOM-FORUM"}), "content_report"),
+    ("reportDeadline", frozenset({"DOM-FORUM"}), "content_report"),
+    ("reportReasonDict", CONTENT_DOMAINS, "content_report"),
+    ("commentReport", frozenset({"DOM-FORUM", "DOM-BLOG"}), "content_report"),
+    ("followersOnlyComment", frozenset({"DOM-FORUM", "DOM-BLOG"}), "item_comment"),
+    ("essencePointsReward", frozenset({"DOM-FORUM"}), "points"),
+    ("pointsCheckIn", frozenset({"DOM-FORUM"}), "points"),
+    ("pointsRulesPage", frozenset({"DOM-FORUM"}), "points"),
+    ("docPointsDownload", frozenset({"DOM-DOCLIB"}), frozenset({"points", "wallet"})),
+    ("docPaidDownload", frozenset({"DOM-DOCLIB"}), frozenset({"points", "wallet"})),
+    (
+        "publishApproveNotify",
+        frozenset({"DOM-BLOG", "DOM-MEDIA", "DOM-FORUM"}),
+        "__userPublish__",
+    ),
+]
+
+
+def _content_c_want(
+    need: str | frozenset[str], caps: set[str], spec: dict[str, Any]
+) -> bool:
+    if need == "__userPublish__":
+        schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+        ents = schema.get("entities") if isinstance(schema.get("entities"), dict) else {}
+        archive = ents.get("archive") if isinstance(ents.get("archive"), dict) else {}
+        return bool(archive.get("userPublish")) or "userPublish" in caps
+    if isinstance(need, frozenset):
+        return bool(caps & need)
+    return need in caps
+
+
+def expected_content_b_flags(
+    domain: str, spec: dict[str, Any], proposal_text: str = ""
+) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for flag, domains, scan in CONTENT_B_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = bool(scan(spec, proposal_text))
+    return out
+
+
+def expected_content_c_flags(domain: str, spec: dict[str, Any]) -> dict[str, bool]:
+    caps = {str(c) for c in (spec.get("capabilities") or []) if c}
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    if isinstance(schema.get("capabilities"), list):
+        caps |= {str(c) for c in schema["capabilities"] if c}
+    out: dict[str, bool] = {}
+    for flag, domains, need in CONTENT_C_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = _content_c_want(need, caps, spec)
+    return out
+
+
+def _diff_content_flags(
+    thicken: dict[str, Any], expected: dict[str, bool]
+) -> tuple[list[str], list[str]]:
+    over: list[str] = []
+    under: list[str] = []
+    for flag, want in expected.items():
+        got = bool(thicken.get(flag))
+        if got and not want:
+            over.append(flag)
+        elif want and not got:
+            under.append(flag)
+    return over, under
+
+
+def diff_content_b_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in CONTENT_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("contentThicken") if isinstance(schema.get("contentThicken"), dict) else {}
+    )
+    return _diff_content_flags(
+        thicken, expected_content_b_flags(domain, spec, proposal_text)
+    )
+
+
+def diff_content_c_align(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in CONTENT_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("contentThicken") if isinstance(schema.get("contentThicken"), dict) else {}
+    )
+    return _diff_content_flags(thicken, expected_content_c_flags(domain, spec))
+
+
+def diff_content_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    bo, bu = diff_content_b_align(spec, proposal_text)
+    co, cu = diff_content_c_align(spec)
+    over = list(dict.fromkeys([*bo, *co]))
+    under = list(dict.fromkeys([*bu, *cu]))
+    return over, under

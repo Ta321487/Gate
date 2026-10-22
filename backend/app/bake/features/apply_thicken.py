@@ -7,12 +7,17 @@
 - 学分上限 / 退选上限 / 取消时限 / 认领冷却 = 浅规则，≠ 完整教务引擎 / 公平抽签平台。
 - 活动问卷联动 = 扫词挂 survey + 档案绑卷，≠ 独立问卷域；办结相册 ≠ 管理端海报图集。
 - 学分认定回写提示 = 勾选写库提示，≠ 自动回写第二课堂学分。
-- 域默认：四域通识必开；域皮字段与规则按 ACTIVITY / LOST / COURSE / TOUR 分流。
+- 挂载三档（与交易族同口径，见 docs/trade-thicken-batch.md §0.3）：
+  A 壳底：域本来就该有，空开题也开。
+  B 扫词开：开题命中本组登记词才挂；空开题关；禁止全文自由匹配。
+  C 能力加深：已挂对应 cap 才叠；禁止域默认硬塞。
+- 改词只改本组 TERMS / scan_*；门禁与 bake 共用，禁止第二套词典。
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 APPLY_DOMAINS = frozenset({"DOM-ACTIVITY", "DOM-LOST", "DOM-COURSE", "DOM-TOUR"})
@@ -127,14 +132,18 @@ def _force_gallery(spec: dict[str, Any], schema: dict[str, Any]) -> None:
     attach_ux_schema(schema, caps)
 
 
-def _activity_survey_wanted(proposal_text: str) -> bool:
+def scan_activity_survey_link(text: str) -> bool:
     """活动满意度卷 / 问卷联动：复用 survey 扫词，并补活动侧别名。"""
     from app.bake.features.survey import scan_survey
 
-    text = proposal_text or ""
-    if scan_survey(text):
+    raw = text or ""
+    if scan_survey(raw):
         return True
-    return bool(_ACTIVITY_SURVEY_LINK.search(text))
+    return bool(_ACTIVITY_SURVEY_LINK.search(raw))
+
+
+def _activity_survey_wanted(proposal_text: str) -> bool:
+    return scan_activity_survey_link(proposal_text or "")
 
 
 def _force_survey(spec: dict[str, Any], schema: dict[str, Any]) -> None:
@@ -863,7 +872,6 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         )
         ticket["allowEmergencyContact"] = True
         ticket["requireInsuranceAck"] = True
-        ticket["allowWaitlist"] = True
         ticket["allowDeposit"] = True
         ticket["ageConstraint"] = True
         labels.setdefault("emergencyContactLabel", "紧急联系人")
@@ -874,10 +882,6 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
             "未达成团最低人数时线路可能调整，以计调通知为准（不强制关团）。",
         )
         labels.setdefault("depositLabel", "线路费用（演示登记，非商户支付）")
-        labels.setdefault(
-            "waitlistPromoteHint",
-            "名额空出后，候补将按提交顺序自动转为待审并站内通知。",
-        )
         labels.setdefault(
             "ageConstraintNeedMessage",
             "请先在个人资料填写年龄后再报名本线路。",
@@ -907,7 +911,6 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         thicken["singleRoomNote"] = True
         thicken["groupPriceNote"] = True
         thicken["feeDemo"] = True
-        thicken["tourWaitlist"] = True
         thicken["tourRosterExport"] = True
         thicken["priceNoteAck"] = True
         thicken["ageLimit"] = True
@@ -935,6 +938,16 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         thicken["companions"] = True
         _enable_apply_blacklist(spec, schema)
         thicken["applyBlacklist"] = True
+        # C：线路候补仅在已挂 waitlist 时叠（禁止空开题假域默认；TOUR 候补扫词开）
+        caps_now = {str(c) for c in (spec.get("capabilities") or []) if c}
+        if "waitlist" in caps_now:
+            ticket["allowWaitlist"] = True
+            labels.setdefault(
+                "waitlistPromoteHint",
+                "名额空出后，候补将按提交顺序自动转为待审并站内通知。",
+            )
+            thicken["tourWaitlist"] = True
+            _add_feature(spec, "线路余位紧张候补开关")
         _add_feature(spec, "线路行程日明细")
         _add_feature(spec, "出团领队联系方式字段")
         _add_feature(spec, "出团集合点字段")
@@ -944,7 +957,6 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "线路单房差说明")
         _add_feature(spec, "团体票价说明")
         _add_feature(spec, "报名费演示登记")
-        _add_feature(spec, "线路余位紧张候补开关")
         _add_feature(spec, "出团名单打印导出")
         _add_feature(spec, "线路报名年龄限制")
         _add_feature(spec, "出团前资料清单")
@@ -954,4 +966,185 @@ def apply_apply_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "集体报名同行人")
         _add_feature(spec, "报名黑名单禁止报名")
 
+    schema["applyThicken"] = thicken
+    ents["archive"] = archive
+    ents["ticket"] = ticket
+    schema["entities"] = ents
+    schema["labels"] = labels
+    caps = list(spec.get("capabilities") or schema.get("capabilities") or [])
+    schema["capabilities"] = caps
+    spec["capabilities"] = caps
+    spec["schema"] = schema
     return spec
+
+
+# —— 开题对齐登记：B 扫词 / A 壳底 / C 能力加深（bake 与门禁共用；禁止第二套词典）——
+
+ApplyScanFn = Callable[[dict[str, Any], str], bool]
+
+
+def _text_scan(fn: Callable[[str], bool]) -> ApplyScanFn:
+    def _fn(_spec: dict[str, Any], proposal_text: str) -> bool:
+        return bool(fn(proposal_text or ""))
+
+    return _fn
+
+
+APPLY_B_ALIGN_RULES: list[tuple[str, frozenset[str], ApplyScanFn]] = [
+    ("surveyLink", frozenset({"DOM-ACTIVITY"}), _text_scan(scan_activity_survey_link)),
+]
+
+APPLY_A_SHELL_WHITELIST: frozenset[str] = frozenset(
+    {
+        "core",
+        "noticeAck",
+        "rejectReasonRequired",
+        "applySuccessInbox",
+        "stockTight",
+        "batchApprove",
+        "waitlistPromote",
+        "checkinPlace",
+        "cancelBeforeHours",
+        "safetyAck",
+        "sessionGroup",
+        "applyInvite",
+        "feeDemo",
+        "gradeLimit",
+        "sponsorNote",
+        "groupPriceNote",
+        "priceNoteAck",
+        "sponsorAck",
+        "lateMinutes",
+        "gallery",
+        "volunteerRole",
+        "adminCheckin",
+        "oversellGuard",
+        "checkinQr",
+        "applyProof",
+        "companions",
+        "absentExport",
+        "applyBlacklist",
+        "lottery",
+        "seatZones",
+        "ticketTransfer",
+        "ticketWallet",
+        "postGallery",
+        "creditWriteback",
+        "claimAutoOff",
+        "expireOff",
+        "bountyNote",
+        "meetingPlace",
+        "claimCooldown",
+        "lostCategory",
+        "viewCount",
+        "meetingAck",
+        "claimDeposit",
+        "claimMaterial",
+        "itemComment",
+        "claimRating",
+        "lostCredit",
+        "pinTop",
+        "textbook",
+        "creditCap",
+        "maxDrop",
+        "prereqHint",
+        "courseKind",
+        "college",
+        "planUrl",
+        "planAck",
+        "prereqHard",
+        "courseStage",
+        "wishOrder",
+        "lotteryResult",
+        "scheduleChangeNotify",
+        "conflictHighlight",
+        "dayItinerary",
+        "leaderContact",
+        "meetingPoint",
+        "emergencyContact",
+        "insuranceAck",
+        "minGroupSize",
+        "singleRoomNote",
+        "tourRosterExport",
+        "ageLimit",
+        "tourMaterial",
+        "insuranceExport",
+        "visaMaterial",
+        "tourNotice",
+        "creditFromActivityHint",
+    }
+)
+
+
+# (thicken 键, 适用域, 依赖 cap)
+APPLY_C_ALIGN_RULES: list[tuple[str, frozenset[str], str]] = [
+    ("tourWaitlist", frozenset({"DOM-TOUR"}), "waitlist"),
+]
+
+
+def expected_apply_b_flags(
+    domain: str, spec: dict[str, Any], proposal_text: str = ""
+) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for flag, domains, scan in APPLY_B_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = bool(scan(spec, proposal_text))
+    return out
+
+
+def expected_apply_c_flags(domain: str, spec: dict[str, Any]) -> dict[str, bool]:
+    caps = {str(c) for c in (spec.get("capabilities") or []) if c}
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    if isinstance(schema.get("capabilities"), list):
+        caps |= {str(c) for c in schema["capabilities"] if c}
+    out: dict[str, bool] = {}
+    for flag, domains, cap in APPLY_C_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = cap in caps
+    return out
+
+
+def _diff_apply_flags(
+    thicken: dict[str, Any], expected: dict[str, bool]
+) -> tuple[list[str], list[str]]:
+    over: list[str] = []
+    under: list[str] = []
+    for flag, want in expected.items():
+        got = bool(thicken.get(flag))
+        if got and not want:
+            over.append(flag)
+        elif want and not got:
+            under.append(flag)
+    return over, under
+
+
+def diff_apply_b_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in APPLY_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = schema.get("applyThicken") if isinstance(schema.get("applyThicken"), dict) else {}
+    return _diff_apply_flags(thicken, expected_apply_b_flags(domain, spec, proposal_text))
+
+
+def diff_apply_c_align(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in APPLY_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = schema.get("applyThicken") if isinstance(schema.get("applyThicken"), dict) else {}
+    return _diff_apply_flags(thicken, expected_apply_c_flags(domain, spec))
+
+
+def diff_apply_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    bo, bu = diff_apply_b_align(spec, proposal_text)
+    co, cu = diff_apply_c_align(spec)
+    over = list(dict.fromkeys([*bo, *co]))
+    under = list(dict.fromkeys([*bu, *cu]))
+    return over, under

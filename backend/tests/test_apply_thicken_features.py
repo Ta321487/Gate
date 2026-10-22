@@ -318,9 +318,11 @@ class ApplyThickenFeatureTests(unittest.TestCase):
         self.assertIn("emergencyContactLabel", labels)
         self.assertIn("insuranceAckLabel", labels)
         self.assertIn("minGroupHint", labels)
-        self.assertTrue(ticket.get("allowWaitlist"))
+        # 线路候补改能力加深：空开题无 waitlist → 关
+        self.assertFalse(ticket.get("allowWaitlist"))
+        self.assertFalse(thicken.get("tourWaitlist"))
+        self.assertNotIn("waitlist", out.get("capabilities") or [])
         self.assertTrue(ticket.get("allowDeposit"))
-        self.assertTrue(thicken.get("tourWaitlist"))
         self.assertTrue(thicken.get("feeDemo"))
         self.assertTrue(thicken.get("singleRoomNote"))
         self.assertTrue(thicken.get("tourRosterExport"))
@@ -334,7 +336,6 @@ class ApplyThickenFeatureTests(unittest.TestCase):
         self.assertTrue(ticket.get("requireMaterialChecklist"))
         self.assertIn("depositLabel", labels)
         self.assertIn("priceNoteAckLabel", labels)
-        self.assertIn("waitlistPromoteHint", labels)
         keys = {f.get("key") for f in (archive.get("fields") or []) if isinstance(f, dict)}
         self.assertIn("dayItinerary", keys)
         self.assertIn("leaderContact", keys)
@@ -357,7 +358,7 @@ class ApplyThickenFeatureTests(unittest.TestCase):
         yml = policy_preview("DOM-TOUR", out)
         self.assertIn("ticket-allow-emergency-contact: true", yml)
         self.assertIn("ticket-require-insurance-ack: true", yml)
-        self.assertIn("ticket-allow-waitlist: true", yml)
+        self.assertNotIn("ticket-allow-waitlist: true", yml)
         self.assertIn("ticket-allow-deposit: true", yml)
         self.assertIn("ticket-require-price-note-ack: true", yml)
         self.assertIn("ticket-age-constraint: true", yml)
@@ -369,6 +370,16 @@ class ApplyThickenFeatureTests(unittest.TestCase):
         self.assertTrue(schema.get("applyBlacklist"))
         self.assertIn("applyBlacklistTitle", labels)
         self.assertIn("ticket-allow-apply-blacklist: true", yml)
+
+    def test_tour_waitlist_on_scan(self) -> None:
+        out = _spec("DOM-TOUR", "旅行社线路报名", "研学满员可候补，名额空出后转正。")
+        schema = out.get("schema") or {}
+        ticket = (schema.get("entities") or {}).get("ticket") or {}
+        thicken = schema.get("applyThicken") or {}
+        self.assertIn("waitlist", out.get("capabilities") or [])
+        self.assertTrue(ticket.get("allowWaitlist"))
+        self.assertTrue(thicken.get("tourWaitlist"))
+        self.assertIn("waitlistPromoteHint", schema.get("labels") or {})
 
     def test_non_apply_domain_skips(self) -> None:
         out = _spec("DOM-LIBRARY", "图书借阅", "")

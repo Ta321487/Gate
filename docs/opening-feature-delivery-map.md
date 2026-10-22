@@ -269,7 +269,7 @@
 | 每日签到涨积分 | points 窄扫 | **扫词开** | 材料写签到才挂；≠活动口令 `checkin` |
 | 定时任务只读台（关单/过期券等） | 基线调度 | **已实现** | XD-02；ScheduleJobsAdmin 只读；≠ XXL-JOB |
 | 广告位 Banner 多槽 | content | **已实现** | XM-02；sys_banner + BannersAdmin + PortalCarousel |
-| 自习室 / 图书馆座位预约 | MEETING 皮或 X-BORROW-RESERVE | 已实现 | 见 domains 组 H；勿新 DOM |
+| 自习室 / 图书馆座位预约 | MEETING 皮或 X-BORROW-RESERVE | 已实现 | 见 domains 组 G；勿新 DOM |
 | 心理咨询预约 | slot_reserve 深皮 | 已实现（换皮） | 勿新 DOM；挂号/美业/会议皮顶 |
 | 校友录 / 通讯录 | CRM 或 archive 深皮 | 已实现（换皮） | 勿新 DOM |
 | 体质健康测试登记 | GRADE / SURVEY / EVENT 深皮 | 已实现（换皮） | 勿新 DOM |
@@ -304,7 +304,7 @@
 
 ### 1.1 借用 / 占用
 
-组口径：档案 + 单据 + 名额/库存；图书/设备带到期催办与续借。借阅+座位真交叉可降 GENERIC（见 domains 组 H）。  
+组口径：档案 + 单据 + 名额/库存；图书/设备带到期催办与续借。借阅+座位真交叉可降 GENERIC（见 domains 组 G）。  
 **复盘档案**：[`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) §1（`borrow_thicken`；待补已清）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
@@ -451,13 +451,13 @@
 | 招聘面试间预约叠会议室 | interviewPlace 用户写库；管理审核投递 | **域默认** RECRUIT |
 | 成绩补考后覆盖规则说明 | makeupOverlayHint + allowMakeupApply 写库 | **域默认** GRADE |
 | 下次跟进日到期站内信提醒 | followThicken.followRemindDays → next_follow_at | **域默认** CRM/LISTING |
-| 客户/线索查重提示 | phoneDupCheck：Store 按 contact_phone 拦重号（applyStandalone 拒重）+ labels.phoneDupHint | **开题扫** CRM |
-| 未跟进 N 天列表 | ticket.staleFollowDays → ticket-stale-follow-days 配置 + 列表 status=stale 筛（无下次跟进或逾期 N 天）+ labels.stalePoolHint | **开题扫** CRM |
+| 客户/线索查重提示 | phoneDupCheck：Store 按 contact_phone 拦重号（applyStandalone 拒重）+ labels.phoneDupHint | **扫词开** CRM（客户查重/同手机号…；空开题关） |
+| 未跟进 N 天列表 | ticket.staleFollowDays → ticket-stale-follow-days 配置 + 列表 status=stale 筛（无下次跟进或逾期 N 天）+ labels.stalePoolHint | **扫词开** CRM |
 | 周报退回修改次数限制 | returnForRevise/resubmit + revise_count 记库，超 maxReviseTimes 拒绝 + labels.maxReviseHint | **域默认** INTERN |
-| 奖学金公示异议登记窗口 | ticket.allowObjectionWindow → 申请单 objection_due_at/objection_note/objection_at 落库；用户端 POST `/api/fund-publicity/{id}/objection`（超期拒）+ labels.objectionWindowHint | **开题扫** FUND |
-| 成绩异议申请时限 | ticket.objectionDays → 成绩登记时间 + N 天算截止日；用户端入口按时限关（GradeScoresMine）+ 服务端 `GradeScoreStore.assertObjectionOpen` + labels.objectionWindowHint | **开题扫** GRADE |
-| 事件等级影响处理时限 | ticket.levelAffectsDeadline → ticket-level-sla-高/中/低-days 配置 + Store 按 level 取 due_at/response_due_at + labels.levelSlaHint | **开题扫** EVENT |
-| 事件上报一键通知值班表 | ticket.notifyDutyOnReport → StaffRosterStore.onDutyUsernames + MessageStore 群发（响应回显 dutyNotified）+ labels.notifyDutyHint | **开题扫** EVENT |
+| 奖学金公示异议登记窗口 | ticket.allowObjectionWindow → 申请单 objection_due_at/objection_note/objection_at 落库；用户端 POST `/api/fund-publicity/{id}/objection`（超期拒）+ labels.objectionWindowHint | **扫词开** FUND |
+| 成绩异议申请时限 | ticket.objectionDays → 成绩登记时间 + N 天算截止日；用户端入口按时限关（GradeScoresMine）+ 服务端 `GradeScoreStore.assertObjectionOpen` + labels.objectionWindowHint | **扫词开** GRADE |
+| 事件等级影响处理时限 | ticket.levelAffectsDeadline → ticket-level-sla-高/中/低-days 配置 + Store 按 level 取 due_at/response_due_at + labels.levelSlaHint | **扫词开** EVENT |
+| 事件上报一键通知值班表 | ticket.notifyDutyOnReport → StaffRosterStore.onDutyUsernames + MessageStore 群发（响应回显 dutyNotified）+ labels.notifyDutyHint | **扫词开** EVENT |
 | 客户/房源标签多选筛选 | archive.tags | **域默认** CRM/LISTING |
 | 年假/调休余额扣减 | balance_ledger（ATTEND 域默认）+ leave_days 扣减 | **域默认** ATTEND |
 | 请假销假后余额回补 | balanceLedger.creditOnReturn | **域默认** ATTEND |
@@ -469,50 +469,50 @@
 | 事件结案报告附件必传 | ticket.requireCloseAttach | **域默认** EVENT |
 | 长期未跟进标「搁置」 | archive.stage 含搁置 | **域默认** CRM |
 | 跟进方式统计饼图 | contact_channel → 工作台 channelSeries 饼图 | **域默认** CRM |
-| 家访/谈话记录模板字段套 | ticket.homeVisitTemplate | **开题扫** |
+| 家访/谈话记录模板字段套 | ticket.homeVisitTemplate | **扫词开** |
 | 请假附件按假种必传 | ticket.attachByLeaveType | **域默认** ATTEND |
 | 销假确认（返岗日期） | ticket.requireReturnDate | **域默认** ATTEND |
 | 资助答辩/评议结果登记 | ticket.allowDefenseResult | **域默认** FUND |
-| 岗位收藏 / 投递进度时间轴 | favorites 扫词 + progressTimelineHint | **开题扫** 收藏；时间轴域默认 |
+| 岗位收藏 / 投递进度时间轴 | favorites 扫词 + progressTimelineHint | **扫词开** 收藏；时间轴域默认 |
 | 补考报名入口 | ticket.allowMakeupApply | **域默认** GRADE |
-| 实习周报优秀标记 + 汇总导出 | ticket.allowExcellentMark | **开题扫** |
-| 房源收藏与对比 | favorites + 导出/复制清单（listingCompareHint） | **开题扫** |
+| 实习周报优秀标记 + 汇总导出 | ticket.allowExcellentMark | **扫词开** |
+| 房源收藏与对比 | favorites + 导出/复制清单（listingCompareHint） | **扫词开** |
 | 成交漏斗简图 | rent_stage/stage → 工作台 listingFunnelSeries | **域默认** LISTING |
 | 招聘岗位有效期自动下架 | archive.expireOn → 列表入口 expirePastExpireOn | **域默认** RECRUIT |
 | 房源价格变更留痕 | archive.priceHistory | **域默认** LISTING |
-| 线索来源统计饼图 | lead_source → 工作台 leadSourceSeries | **开题扫** |
+| 线索来源统计饼图 | lead_source → 工作台 leadSourceSeries | **扫词开** |
 | 客户阶段漏斗简图 | archive.stage → 工作台 stageSeries | **域默认** CRM |
-| 面试评价表（维度打分） | rating_dims 叠 | **开题扫** |
+| 面试评价表（维度打分） | rating_dims 叠 | **扫词开** |
 | 实习单位对实习生评价 | ticket.allowCompanyEval | **域默认** INTERN |
-| 请假审批时限超时提醒 | deadline 扫词叠 | **开题扫** |
-| 带看预约时段冲突提示 | time_conflict 扫词 | **开题扫** |
-| 招聘笔试/机试成绩登记 | ticket.allowWrittenScore | **开题扫** |
+| 请假审批时限超时提醒 | deadline 扫词叠 | **扫词开** |
+| 带看预约时段冲突提示 | time_conflict 扫词 | **扫词开** |
+| 招聘笔试/机试成绩登记 | ticket.allowWrittenScore | **扫词开** |
 | 事件上报手填位置描述 | archive.locationDesc | **域默认** EVENT |
 | 资助银行卡号脱敏展示 | ticket.maskBankAccount | **域默认** FUND |
-| 客户跟进下次行动待办勾选 | ticket.allowNextAction | **开题扫** |
-| 家访照片附件槽 | requireAttach 扫词 | **开题扫** |
+| 客户跟进下次行动待办勾选 | ticket.allowNextAction | **扫词开** |
+| 家访照片附件槽 | requireAttach 扫词 | **扫词开** |
 | 房源VR外链字段 | archive.vrUrl | **域默认** LISTING |
-| 招聘用人部门筛选 | archive.hireDept | **开题扫** |
+| 招聘用人部门筛选 | archive.hireDept | **扫词开** |
 | 实习周报字数下限 | ticket.minRemarkWords | **域默认** INTERN |
-| 分配负责人 | archive.ownerUsername | **开题扫** |
-| 事件上报保密标记 | ticket.allowConfidential | **开题扫** |
-| 请假代理人登记 | ticket.allowLeaveProxy | **开题扫** |
+| 分配负责人 | archive.ownerUsername | **扫词开** |
+| 事件上报保密标记 | ticket.allowConfidential | **扫词开** |
+| 请假代理人登记 | ticket.allowLeaveProxy | **扫词开** |
 | 带看反馈必填项套 | ticket.requireFeedbackSet | **域默认** LISTING |
-| 招聘简历解析字段手填套 | ticket.resumeFieldSet | **开题扫** |
+| 招聘简历解析字段手填套 | ticket.resumeFieldSet | **扫词开** |
 | 客户成交金额登记 | ticket.allowDealAmount | **域默认** CRM |
-| 事件上报分拨科室 | ticket.allowAssignDept | **开题扫** |
-| 招聘录用通知站内信模板 | message_template 扫词叠 | **开题扫** |
+| 事件上报分拨科室 | ticket.allowAssignDept | **扫词开** |
+| 招聘录用通知站内信模板 | message_template 扫词叠 | **扫词开** |
 | 资助发放批次号 | ticket.allowDisburseBatch | **域默认** FUND |
-| 招聘岗位收藏夹分享 | favorites + 导出清单/复制清单（favShareHint） | **开题扫** |
-| 带看录音外链字段 | ticket.allowRecordUrl | **开题扫** |
-| 成绩排名隐私开关 | schema.rankPrivacy | **开题扫** |
+| 招聘岗位收藏夹分享 | favorites + 导出清单/复制清单（favShareHint） | **扫词开** |
+| 带看录音外链字段 | ticket.allowRecordUrl | **扫词开** |
+| 成绩排名隐私开关 | schema.rankPrivacy | **扫词开** |
 | 资助形式枚举 | archive.fundForm | **域默认** FUND |
-| 实习单位评价匿名开关 | schema.companyEvalAnonymous | **开题扫** |
-| 招聘入职材料清单 | material_check 扫词 | **开题扫** |
-| 事件值班排班叠 staff_roster | staff_roster 扫词 | **开题扫** |
-| 请假销假二维码确认 | code_qr 扫词 | **开题扫** |
-| 招聘背调备注字段 | ticket.allowBgCheckNote | **开题扫** |
-| 客户合同回款计划 | archive.paymentPlan | **开题扫** |
+| 实习单位评价匿名开关 | schema.companyEvalAnonymous | **扫词开** |
+| 招聘入职材料清单 | material_check 扫词 | **扫词开** |
+| 事件值班排班叠 staff_roster | staff_roster 扫词 | **扫词开** |
+| 请假销假二维码确认 | code_qr 扫词 | **扫词开** |
+| 招聘背调备注字段 | ticket.allowBgCheckNote | **扫词开** |
+| 客户合同回款计划 | archive.paymentPlan | **扫词开** |
 | 房源意向跟进下次提醒 | followRemindDays（LISTING） | **域默认** LISTING |
 
 不支持：公海抢客、外呼中心、真视频面试 SDK、银企发奖、教务正方对接；客户跟进语音转写（无 ASR）；成绩 analytics 看板独立产品。
@@ -585,15 +585,15 @@
 | 物业公共区域 / 宿舍公区报修 | ticket.allowPublicArea + address_type | **域默认** DORM/PROPERTY |
 | 同楼栋未结工单热力简表 | chartStats.locationHeatSeries | **域默认** DORM |
 | 派单按地点/楼栋关键词过滤维修员 | dispatchFilterHint + 派单下拉筛 | **域默认** DORM/PROPERTY |
-| 资产编号扫码录入（手输码） | ticket.allowAssetCode | **域默认** IT |
-| 知识库式常见问题 / 自助排查文案 | labels.faqPageHint + content 菜单 | **域默认** IT/PROPERTY；DORM 扫词 |
-| 备件/耗材出库记一笔 + 结单警告 | ticket.allowPartsNote + parts_note | **域默认** PROPERTY/IT；DORM 扫词 |
-| 备件序列号登记 | ticket.allowSerialNo | **域默认** PROPERTY/IT |
-| 维修报价 / 材料费用户确认 | ticket.allowQuote（扫词） | **开题扫** |
-| 结单知识沉淀勾选 | ticket.allowKnowledgeDeposit（扫词） | **开题扫** IT/PROPERTY |
-| IT 远程协助备注 | ticket.allowRemoteUrl | **域默认** IT；亦可扫词 |
-| 重复工单合并 | ticket.allowTicketMerge（扫词） | **开题扫** |
-| 值班表冲突与报修派单提示 | labels.rosterConflictHint（扫词） | **开题扫** |
+| 资产编号扫码录入（手输码） | ticket.allowAssetCode | **域默认** IT；DORM/PROPERTY **扫词开** |
+| 知识库式常见问题 / 自助排查文案 | labels.faqPageHint + content 菜单 | **域默认** IT/PROPERTY；DORM **扫词开** |
+| 备件/耗材出库记一笔 + 结单警告 | ticket.allowPartsNote + parts_note | **域默认** PROPERTY/IT；DORM **扫词开** |
+| 备件序列号登记 | ticket.allowSerialNo | **域默认** PROPERTY/IT；DORM **扫词开** |
+| 维修报价 / 材料费用户确认 | ticket.allowQuote（扫词） | **扫词开** |
+| 结单知识沉淀勾选 | ticket.allowKnowledgeDeposit（扫词） | **扫词开** IT/PROPERTY |
+| IT 远程协助备注 | ticket.allowRemoteUrl | **域默认** IT；DORM/PROPERTY **扫词开** |
+| 重复工单合并 | ticket.allowTicketMerge（扫词） | **扫词开** |
+| 值班表冲突与报修派单提示 | labels.rosterConflictHint（扫词） | **扫词开** |
 | 维修员技能标签过滤派单 | ticket.allowSkillTag + skill_tag | **域默认** 三域 |
 
 不支持：智能派单算法引擎、短信/电话外呼网关、物联网报修采集、物业费收费系统（缴费另域）。
@@ -663,7 +663,7 @@
 | 认领面交双方确认勾选 | ticket.requireMeetingAck；meeting_ack + owner_meeting_ack；labels.meetingAckLabel/ownerMeetingAckLabel | **域默认** LOST |
 | 选课开课学院筛选 | archive.college + ArchiveBrowse collegeFilter；labels.collegeFilterHint | **域默认** COURSE |
 | 选课培养方案外链 | archive.planUrl + ticket.requirePlanAck→plan_ack；labels.planAckLabel/planUrlHint | **域默认** COURSE |
-| 线路余位紧张候补开关 | ticket.allowWaitlist 域默认 TOUR；labels.waitlistPromoteHint | **域默认** TOUR |
+| 线路余位紧张候补开关 | ticket.allowWaitlist；labels.waitlistPromoteHint | **能力加深** waitlist（TOUR 扫词才挂 cap；空开题关） |
 | 线路单房差说明 | archive.singleRoomNote + requirePriceNoteAck 同勾选写库 | **域默认** TOUR |
 | 出团名单打印/导出（含联系方式列） | TicketRecordsAdmin 紧急联系人列+CSV | **域默认** TOUR |
 | 活动签到迟到分钟数登记 | ticket.allowLateMinutes→late_minutes；labels.lateMinutesLabel；签到写库 | **域默认** ACTIVITY |
@@ -752,7 +752,7 @@
 | 审批委托（请假期间代审） | approve_delegate 表 + `/api/tickets/approve-delegate`；labels.approveDelegateLabel / approveDelegateHint | **域默认** 审批 23 域 |
 | 审批意见附件（审时上传） | approve_attach_url + labels.approveRemarkAttachLabel / approveRemarkAttachHint；审框上传 | **域默认** 审批 23 域 |
 | 审批抄送人可追加评论 | allowApproveCcComment + `/api/tickets/{id}/cc-comment`；labels.approveCcCommentLabel / approveCcCommentHint | **域默认** 审批 23 域 |
-| 审批限时自动通过（默认关） | allowApproveAutoPass + approveAutoPassHours；labels.approveAutoPassHint；DemoScheduleJobs 扫待审（扫词才开） | **扫词** 审批域 |
+| 审批限时自动通过（默认关） | allowApproveAutoPass + approveAutoPassHours；labels.approveAutoPassHint；DemoScheduleJobs 扫待审（扫词才开） | **扫词开** 审批 23 域 |
 | 证明领取方式（自取/邮寄地址） | allowCertPickup + pickup_method/mail_address；邮寄办结前必填 express_no；labels.certPickupLabel / mailAddressLabel / expressNoLabel；MyTickets + 办结框 + 记录表 | **域默认** CERT |
 | 证明加急件标记 | allowCertUrgent + cert_urgent；列表 `cert_urgent DESC` 优先；可写 priority=紧急；labels.certUrgentLabel / certUrgentHint | **域默认** CERT |
 | 用印文件份数与装订说明 | allowSealCopies + seal_copies/bind_note；办结必填 seal_copy_nos + seal_witness_ack；labels.sealCopiesLabel / sealCopyNosLabel / sealWitnessAckLabel | **域默认** SEAL |
@@ -824,7 +824,7 @@
 | 合同续签（拟续签日期与说明） | allowContractRenew + renew_on/renew_note 申请必填；labels.renewOnLabel / renewNoteLabel / contractRenewHint；不改到期提醒/金额/签署方/意见可见 | **域默认** CONTRACT |
 | 合同续签提醒（到期前） | allowContractExpireRemind + notifyArchiveExpireDays（默认 7）加深 expire_on 站内信；申请人 approved/returned 同步提醒；标题 labels.contractExpireRemindTitle；labels.contractExpireRemindHint；不改 renew_on | **域默认** CONTRACT |
 | 证明领取核销码 | allowCertPickupRedeem + pickup_redeem_code（PK+10 位）审过签发 + pickup_redeemed；POST `/api/tickets/{id}/redeem-pickup`；labels.pickupRedeemCodeLabel / pickupRedeemedLabel / pickupRedeemHint；≠ verify_code / 流水号 / PDF | **域默认** CERT |
-| 实验室准入考试成绩门槛 | allowExamPassMin + 档案 exam_pass_min；申请对照 ExamStore 已交卷；labels.examPassMinLabel / examPassMinHint；不改学时累计 | **域默认** LABSAFE |
+| 实验室准入考试成绩门槛 | allowExamPassMin + 档案 exam_pass_min；申请对照 ExamStore 已交卷；labels.examPassMinLabel / examPassMinHint；不改学时累计 | **能力加深** exam（LABSAFE；空开题关） |
 | 查寝抽查任务生成 | allowCheckinSpot + 子表 checkin_spot_task / checkin_spot_member；POST/GET `/api/tickets/spot-check` 随机抽 N 人；用户仍走查寝登记；labels.checkinSpotLabel / checkinSpotSampleLabel / checkinSpotOnLabel / checkinSpotHint；不叠代登记/连续未归 | **域默认** CHECKIN |
 | 评教强制顺序（先评后查分） | allowEvalBeforeGrade；GET `/api/grade-scores/mine` 未评齐拒读；labels.evalBeforeGradeHint；不改 GRADE 写库 | **域默认** EVAL |
 | 审批统计（人均耗时）简表 | allowApproveDurationStats + GET `/api/tickets/approve-duration-stats` AVG(apply_at→approve_at) 按办理人；labels.approveDurationStatsLabel / approveDurationStatsHint；只读 | **域默认** 审批 23 域 |
@@ -1063,19 +1063,19 @@
 | 仪器耗材领用关联登记 | consumable_note + patchInstrument；labels.instrumentConsumableLabel / Hint；ReservationsAdmin | **域默认** INSTRUMENT |
 | 仪器预约须导师同意 | requireConfirm 轻审；labels.instrumentMentorConfirmHint；SlotBook / MyReservations | **域默认** INSTRUMENT |
 | 仪器机时费结算导出 | CSV exportInstrumentFeeCsv；labels.instrumentFeeExportLabel / Hint；ReservationsAdmin | **域默认** INSTRUMENT |
-| 医生/诊室排班展示（只读） | staff_roster + labels.hospitalRosterLabel / Hint；SlotBook 当班列表 | **扫词挂** staff_roster |
-| 美业会员卡余次（对齐课时包） | lesson_pack + labels.salonLessonRemain*；SlotBook 读 /api/lessons/mine | **扫词挂** lesson_pack |
-| 美业卡项过期提醒 | LessonStore.expireSoonNotify + DemoScheduleJobs；labels.salonLessonExpire* | **扫词挂** lesson_pack |
-| 美业储值卡余额 | wallet + labels.salonWallet*；SlotBook 读 /api/loyalty/me | **扫词挂** wallet |
-| 作品集展示（技师档案多图） | gallery + labels.salonGallery*；ArchiveBrowse 既有图集 | **扫词挂** gallery |
-| 美业技师请假挡班 | staff_roster 班次「请假/休息」+ StaffRosterStore.assertNotOnLeave；labels.salonLeaveBlock* | **扫词挂** staff_roster |
-| 会议录制设备借用勾选 | equip_borrow + labels.meetingEquipBorrow*；SlotBook / MyReservations | **扫词挂** room_equipment |
+| 医生/诊室排班展示（只读） | staff_roster + labels.hospitalRosterLabel / Hint；SlotBook 当班列表 | **能力加深** staff_roster（HOSPITAL；空开题关） |
+| 美业会员卡余次（对齐课时包） | lesson_pack + labels.salonLessonRemain*；SlotBook 读 /api/lessons/mine | **能力加深** lesson_pack（SALON；空开题关） |
+| 美业卡项过期提醒 | LessonStore.expireSoonNotify + DemoScheduleJobs；labels.salonLessonExpire* | **能力加深** lesson_pack（SALON；空开题关） |
+| 美业储值卡余额 | wallet + labels.salonWallet*；SlotBook 读 /api/loyalty/me | **能力加深** wallet（SALON；空开题关） |
+| 作品集展示（技师档案多图） | gallery + labels.salonGallery*；ArchiveBrowse 既有图集 | **能力加深** gallery（SALON；空开题关） |
+| 美业技师请假挡班 | staff_roster 班次「请假/休息」+ StaffRosterStore.assertNotOnLeave；labels.salonLeaveBlock* | **能力加深** staff_roster（SALON；空开题关） |
+| 会议录制设备借用勾选 | equip_borrow + labels.meetingEquipBorrow*；SlotBook / MyReservations | **能力加深** room_equipment（MEETING；空开题关） |
 
 不支持：医保、道闸、OTA 渠道、智能门锁、高并发锁座引擎、HIS 对接、会议室开门密码真短信、酒店入住公安网上传、保司对接、ETC 硬件回传、实验室门禁硬件。
 
 ### 1.8 内容 / 媒资 / 社区
 
-组口径：archive 浏览为主；论坛跟帖走 ticket。留言默认（论坛除外）。条下评论/投稿/点赞等扫词见 §0。
+组口径：archive 浏览为主；论坛跟帖走 ticket。留言默认（论坛除外）。条下评论/投稿/点赞等扫词见 §0。对应 [`domains.md`](./domains.md) **组 F**（具名内容域；勿与旧字母「G=内容」混淆）。
 **清待补批次**：[`content-thicken-batch.md`](./content-thicken-batch.md)（C-00～C-09；一组一包 `content_thicken`；三绿才迁行）。
 
 | 域 | 开题密功能枚举 | 状态要点 |
@@ -1111,14 +1111,14 @@
 | 版块公告（分类级须知） | category.section_notice；CategoriesAdmin 编辑；ArchiveBrowse 选版展示 | **域默认** FORUM |
 | 二级回复（楼中楼，一层） | ticket.parent_ticket_id + allowNestedReply；TicketPatchOps 一层闸；ArchiveBrowse 楼中楼 | **域默认** FORUM；BLOG 有 item_comment 时叠 |
 | @提醒站内信（跟帖提到某人） | MentionNotify + MessageStore；labels.mentionNotifyHint | **域默认** FORUM |
-| 禁言到期自动解除 | UserStore.clearExpiredPostMutes + assertNotPostMuted 清列；DemoScheduleJobs | 有 post_mute |
-| 举报处理结果通知举报人 | FavoriteStore.resolveReport → MessageStore | 有 content_report |
+| 禁言到期自动解除 | UserStore.clearExpiredPostMutes + assertNotPostMuted 清列；DemoScheduleJobs | **能力加深** post_mute（FORUM 域默认可叠） |
+| 举报处理结果通知举报人 | FavoriteStore.resolveReport → MessageStore | **能力加深** content_report（FORUM 域默认可叠） |
 | 评论点赞计数 | item_comment.like_count + toggleLike；ticket.like_count 列 | **域默认** FORUM/BLOG（有评论时） |
 | 敏感词拦截提示（本地词表） | SensitiveWordGate + schema.sensitiveWords；发帖/跟帖/评论闸 | **域默认** FORUM/BLOG |
 | 论坛版主任命 | staff_post=moderator；labels.moderatorAppointLabel | **域默认** FORUM |
 | 评论折叠（楼中楼过长） | schema.commentFoldAfter + ArchiveBrowse 展开 | **域默认** FORUM/BLOG |
 | 帖子精华/置顶操作日志 | ArchiveController archive_pin_essence → AuditLogStore | **域默认** FORUM |
-| 论坛举报表处理时效 | content_report.handle_deadline_at + reportHandleDays；overdue 标记 | **域默认** FORUM |
+| 论坛举报表处理时效 | content_report.handle_deadline_at + reportHandleDays；overdue 标记 | **能力加深** content_report（FORUM 域默认可叠） |
 | 专栏/分类订阅（收藏分类） | category_follow + CategoryFollowStore.toggle；labels.categoryFollowLabel / categoryUnfollowLabel / categoryFollowHint；ArchiveBrowse 订阅钮 | **域默认** BLOG；**域默认** MEDIA（C-05） |
 | 专栏订阅更新站内信 | CategoryFollowStore.notifyFollowers + 发文/上架/新分集触发 | **域默认** BLOG；MEDIA 分集叠 |
 | 博客专栏订阅数展示 | GET /api/category-follow/count|status；labels.categoryFollowerCountLabel；CategoriesAdmin 订阅数列 | **域默认** BLOG；MEDIA 同机制 |
@@ -1157,15 +1157,15 @@
 | 文库章节试读前 N 页说明 | trial_read_note；labels.trialReadLabel / trialReadEmpty | **域默认** DOCLIB |
 | 文库纠错反馈单 | doc_feedback(kind=correction)；DocBrowse 提交 + DocLogsAdmin 处理 | **域默认** DOCLIB |
 | 文库侵权投诉单 | doc_feedback(kind=infringement)；同上 | **域默认** DOCLIB |
-| 文库积分下载（扣点后下） | download_cost_points + DoclibStore.spendPoints；labels.downloadCostPointsLabel / downloadPointsShortage / downloadPointsDebited；DocBrowse / DocFilesAdmin | 扫词挂 points/wallet（C-08） |
-| 文库付费下载（系统内点券） | 同上 downloadCostPoints；≠商户支付 | 扫词挂 points/wallet（C-08） |
-| 精华帖奖励积分登记 | ArchiveStore.configureContentIslands + LoyaltyStore.awardPoints；labels.essencePointsRewardLabel | 扫词挂 points（C-08） |
-| 论坛每日签到涨积分 | LoyaltyStore.checkInOnLogin + POINTS_CHECK_IN_*；labels.pointsCheckInLabel | 扫词挂 points（C-08） |
-| 论坛用户等级积分规则页 | PointsRules.vue + menus.points_rules；labels.pointsRulesPageTitle / pointsRulesBody | 扫词挂 points（C-08） |
-| 内容举报原因字典 | schema.reportReasons + ArchiveBrowse el-select；labels.reportReasonLabel / reportReasonRequired | 有 content_report（C-08） |
-| 评论举报 | FavoriteStore.configureCommentReport(target_type=comment)；labels.commentReportLabel | 有 content_report（C-08） |
-| 评论仅粉丝可见（互关） | user_follow + ItemCommentStore.followers_only；labels.followersOnlyCommentLabel；ArchiveBrowse | 有 item_comment（C-08） |
-| 投稿审过自动上架通知 | approveMarketplaceItem → MessageStore；labels.publishApproveNotifyTitle | 有 userPublish（C-08） |
+| 文库积分下载（扣点后下） | download_cost_points + DoclibStore.spendPoints；labels.downloadCostPointsLabel / downloadPointsShortage / downloadPointsDebited；DocBrowse / DocFilesAdmin | **能力加深** points/wallet（DOCLIB；空开题关） |
+| 文库付费下载（系统内点券） | 同上 downloadCostPoints；≠商户支付 | **能力加深** points/wallet（DOCLIB；空开题关） |
+| 精华帖奖励积分登记 | ArchiveStore.configureContentIslands + LoyaltyStore.awardPoints；labels.essencePointsRewardLabel | **能力加深** points（FORUM；空开题关） |
+| 论坛每日签到涨积分 | LoyaltyStore.checkInOnLogin + POINTS_CHECK_IN_*；labels.pointsCheckInLabel | **能力加深** points（FORUM；空开题关） |
+| 论坛用户等级积分规则页 | PointsRules.vue + menus.points_rules；labels.pointsRulesPageTitle / pointsRulesBody | **能力加深** points（FORUM；空开题关） |
+| 内容举报原因字典 | schema.reportReasons + ArchiveBrowse el-select；labels.reportReasonLabel / reportReasonRequired | **能力加深** content_report（五域；FORUM 域默认可叠） |
+| 评论举报 | FavoriteStore.configureCommentReport(target_type=comment)；labels.commentReportLabel | **能力加深** content_report（FORUM/BLOG） |
+| 评论仅粉丝可见（互关） | user_follow + ItemCommentStore.followers_only；labels.followersOnlyCommentLabel；ArchiveBrowse | **能力加深** item_comment（FORUM/BLOG；空开题关） |
+| 投稿审过自动上架通知 | approveMarketplaceItem → MessageStore；labels.publishApproveNotifyTitle | **能力加深** userPublish（BLOG 壳默认可叠；MEDIA/FORUM 扫词） |
 | 作者主页（论坛侧叠） | contentThicken.authorPage + GET /api/archive/by-author；labels.authorPageTitle / authorPageEntryLabel；ArchiveBrowse | **域默认** FORUM（叠 C-04 API） |
 | 帖子草稿自动保存 | updateUserDraft + publish id；labels.draftAutoSaveHint / draftAutoSavedLabel；ArchiveBrowse 防抖写库 | **域默认** FORUM/BLOG（有草稿箱时） |
 
@@ -1207,7 +1207,7 @@
 | 婚恋资料完整度提示 | interactThicken.datingProfileCompleteness；labels.profileCompletenessLabel · labels.datingCompletenessHint · labels.datingCompletenessMissingLead；Profile 进度条（计城市/学历/年龄段） | **域默认** DATING |
 | 婚恋互相关注/取消 | UserFollowStore + user_follow；CONTENT_FOLLOWERS_ONLY_COMMENT 启表；labels.followUserLabel · labels.unfollowUserLabel · labels.datingFollowDone · labels.datingUnfollowDone；interactThicken.datingUserFollow；ArchiveBrowse 关注钮 | **域默认** DATING |
 | 婚恋见面意向登记（非支付） | match_apply.meet_intent；TicketPatchOps.meetIntent；labels.meetIntentLabel · labels.meetIntentPlaceholder · labels.meetIntentRequired；ArchiveBrowse 牵线表单 + MyTickets 展示 | **域默认** DATING |
-| 婚恋举报处理时限提醒 | schema.reportHandleDays + labels.reportDeadlineLabel · labels.reportOverdueLabel · labels.datingReportDeadlineHint；interactThicken.datingReportDeadline；ContentReportsAdmin 时限列 | 扫词挂 content_report |
+| 婚恋举报处理时限提醒 | schema.reportHandleDays + labels.reportDeadlineLabel · labels.reportOverdueLabel · labels.datingReportDeadlineHint；interactThicken.datingReportDeadline；ContentReportsAdmin 时限列 | **能力加深** content_report（DATING；空开题关） |
 | 婚恋资料审核驳回理由 | publishReview + reject_reason；ArchiveStore.rejectPublishItem(reason)；labels.rejectReasonLabel · labels.rejectReasonPlaceholder · labels.rejectReasonRequired · labels.datingRejectReasonLead；ArchiveAdmin 驳回填写 + MyArchive 回读 | **域默认** DATING |
 | 婚恋理想对象条件筛选加深 | age_years / ideal_* 列；labels.datingFilterCityPlaceholder · labels.datingFilterAgeMinPlaceholder · labels.datingFilterAgeMaxPlaceholder；ArchiveBrowse 城市/年龄筛 + ArchiveAdmin 扩展字段 | **域默认** DATING |
 | 婚恋黑名单 | schema.applyBlacklist + ApplyBlacklistStore；labels.applyBlacklistTitle · labels.applyBlacklistLead · labels.applyBlacklistDenyMessage；牵线提交拦截 | **域默认** DATING |
@@ -1299,18 +1299,18 @@
 | 投票禁刷：实名后可投 | require_real_name；labels.voteRequireRealNameLabel · labels.voteRealNameWarn；interactThicken.voteRequireRealName | **域默认** VOTE |
 | 投票弃权选项 | allow_abstain + abstain 票；labels.voteAbstainLabel · labels.voteAllowAbstainLabel；interactThicken.voteAbstain | **域默认** VOTE |
 | 投票实时榜置顶前三 | VoteCast/VotePoster top3；labels.voteTop3Hint；interactThicken.voteTop3 | **域默认** VOTE |
-| 收藏岛加深（菜单 + 导出/分享提示） | attach_favorites_menus + labels.favShareHint；interactThicken.favoritesIsland；MyFavorites 导出清单；≠收藏备注子功能 | **已挂 favorites** |
-| 私信岛加深（站内短轮询文案） | labels.dmPageLead · dmEmptyPeers；interactThicken.dmIsland；Dm.vue；禁止第三方 IM SDK | **已挂 dm** |
-| 单据评价岛加深（管理端可见） | labels.ratingAdminLead · ratingFilterRatedLabel；interactThicken.ratingIsland；TicketRecordsAdmin 筛「仅已评分」 | **已开 allowRating** |
-| 举报处理时限提醒（能力岛） | reportHandleDays + labels.datingReportDeadlineHint / reportDeadlineHint；interactThicken.datingReportDeadline · reportDeadlineIsland；ContentReportsAdmin | **已挂 content_report** |
+| 收藏岛加深（菜单 + 导出/分享提示） | attach_favorites_menus + labels.favShareHint；interactThicken.favoritesIsland；MyFavorites 导出清单；≠收藏备注子功能 | **能力加深** favorites（DATING 壳默认可叠） |
+| 私信岛加深（站内短轮询文案） | labels.dmPageLead · dmEmptyPeers；interactThicken.dmIsland；Dm.vue；禁止第三方 IM SDK | **能力加深** dm（DATING 域默认可叠） |
+| 单据评价岛加深（管理端可见） | labels.ratingAdminLead · ratingFilterRatedLabel；interactThicken.ratingIsland；TicketRecordsAdmin 筛「仅已评分」 | **能力加深** allowRating（CARPOOL/TIMEBANK/MUTUAL-TUTOR 壳默认可叠） |
+| 举报处理时限提醒（能力岛） | reportHandleDays + labels.datingReportDeadlineHint / reportDeadlineHint；interactThicken.datingReportDeadline · reportDeadlineIsland；ContentReportsAdmin | **能力加深** content_report（空开题关） |
 
 ### 1.10 兜底
 
 | 域 | 开题密功能枚举 | 状态要点 |
 |----|----------------|----------|
-| `DOM-GENERIC` | 仅真交叉或无贴切行业皮时的 ARCH 绑壳（CRUD/FLOW/TRADE/RESERVE） | 能具名 DOM 勿落这；交叉白名单见 domains 组 H |
+| `DOM-GENERIC` | 仅真交叉或无贴切行业皮时的 ARCH 绑壳（CRUD/FLOW/TRADE/RESERVE） | 能具名 DOM 勿落这；交叉白名单见 domains **组 G**；本兜底 = domains **组 H**（排具名之后） |
 
-组口径：导引/文档向浅清；**不开** `generic_thicken`。落点见 [`domains.md`](./domains.md) §F/H · `backend/app/bake/cross_path_guide.py`。
+组口径：导引/文档向浅清；**不开** `generic_thicken`。落点见 [`domains.md`](./domains.md) §G（真交叉）/ §H（兜底）· `backend/app/bake/cross_path_guide.py`。
 
 #### 本组待补
 
@@ -1321,11 +1321,11 @@
 | 功能 | 落点 | 挂载 |
 |------|------|------|
 | 交叉壳双主路径答辩导引页（只读） | README `${CROSS_PATH_GUIDE}` + `labels.portalHomeLead`；`cross_path_guide` | GENERIC 真交叉多路径 |
-| 通用壳行业词浅替换开关说明 | `labels.industrySkinHint` + domains §F；题名→`domain_label` 浅替换≠改 Dom | GENERIC |
+| 通用壳行业词浅替换开关说明 | `labels.industrySkinHint` + domains §H；题名→`domain_label` 浅替换≠改 Dom | GENERIC |
 | 真交叉时双菜单分区标签 | 菜单 `navSection`（申请办理/购物下单/时段预约）；Admin 分组 · 门户前缀 | GENERIC 真交叉 |
-| 交叉白名单题答辩话术模板段 | README 固定段（分路径演示要点）；domains 组 H | GENERIC 真交叉 |
-| 通用壳禁止静默改 Dom 标签的门禁说明 | 工厂 MatchTab 提示 + domains §F；`factory_generic_match_tip` | GENERIC |
-| ARCH 绑壳与 DOM 具名优先级说明 | domains §F（具名优先；盖不住才降 GENERIC 保留 ARCH 并集） | 文档口径 |
+| 交叉白名单题答辩话术模板段 | README 固定段（分路径演示要点）；domains 组 G | GENERIC 真交叉 |
+| 通用壳禁止静默改 Dom 标签的门禁说明 | 工厂 MatchTab 提示 + domains §H；`factory_generic_match_tip` | GENERIC |
+| ARCH 绑壳与 DOM 具名优先级说明 | domains §H（具名优先；盖不住才降 GENERIC 保留 ARCH 并集） | 文档口径 |
 
 ---
 
@@ -1483,3 +1483,11 @@
 | 2026-10-16 | **基线体验常开**：打印本页、灯箱、Toast、页脚版本、离开未保存、单号复制（开题几乎不写→不扫词）；地图改「基线体验」 |
 | 2026-10-16 | **档案 Excel**：导入模板、批量导入（按行回错）、同页导出均为 xlsx，Apache POI；其它名单导出仍为 CSV |
 | 2026-10-17 | **§1.1 挂载收口**：双方确认、保养到期日、超期次数限制再借改 **扫词开**；荐购预算改 **能力加深** book_suggest；信誉分值列空开题关 |
+| 2026-10-22 | **§1.2 挂载收口**：客户查重改 **扫词开**（空开题关）；本组「开题扫」统一为「扫词开」；`FOLLOW_*_ALIGN_RULES` 门禁已齐 |
+| 2026-10-22 | **§1.3 挂载收口**：报修「开题扫」统一为「扫词开」；分域双档（备件/FAQ/远程等）钉清；`REPAIR_*_ALIGN_RULES` 门禁已齐 |
+| 2026-10-22 | **§1.4 挂载收口**：线路候补改 **能力加深** waitlist（TOUR 默认域摘掉）；问卷联动仍扫词；`APPLY_*_ALIGN_RULES` 门禁已齐 |
+| 2026-10-22 | **§1.5 挂载收口**：LABSAFE 考试成绩门槛改 **能力加深** exam（空开题关）；限时自动通过仍扫词；`APPROVE_*_ALIGN_RULES` 门禁已齐 |
+| 2026-10-22 | **§1.7 挂载收口**：R-09 岛文案统一 **能力加深**（staff_roster/lesson_pack/wallet/gallery/room_equipment）；bake 本已按 cap 叠；`RESERVE_*_ALIGN_RULES` 门禁已齐 |
+| 2026-10-22 | **§1.8 挂载收口**：C-08/治理叠统一 **能力加深**（points/wallet/content_report/item_comment/userPublish/post_mute）；bake 本已按 cap 叠；`CONTENT_*_ALIGN_RULES` 门禁已齐 |
+| 2026-10-22 | **§1.9 挂载收口**：I-11 岛统一 **能力加深**（favorites/dm/allowRating/content_report）；bake 本已按 cap 叠；`INTERACT_*_ALIGN_RULES` 门禁已齐；**#3+#4 全族收口** |
+| 2026-10-22 | **domains 组序纠正**：具名 A～F（内容=**F**）→ 真交叉 **G** → 兜底 **H**；旧「F=兜底 / G=内容 / H=真交叉」作废；§1.8/§1.10 与交叉引用已跟 |

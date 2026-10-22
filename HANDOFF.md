@@ -10,27 +10,37 @@
 
 ## 当前主线
 
-> **最新批次（2026-10-22）：Vue 大文件拆分收口。**
-> - 真源 [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)：≥1000 行九页 + ArchiveBrowse 范式均已外提 `.setup.js` + `.css`；只搬家。
-> - 合读护栏：`tests._vue_src.vue_src`；一轮一页已推送。
+> **下一刀（建议 · 换对话接着干）：大线 #1 余项（布局闸/控件/诊断）或 #2 X 系列碎债；#3+#4 已全族收口。**
 >
-> **上一批（2026-10-22）：全域 UI 诊断表立册 + 起包前布局闸 D0（文档）。**
-> - 诊断 / 布局闸口径已立；**代码未开**。
+> **这是啥（人话）**  
+> 每个域组的「加戏开关」要分三档挂，而且挂完能反向验：  
+> - **A 壳底**：这域天生该有，开题不用写（白名单）。  
+> - **B 扫词开**：开题命中登记词才挂（禁止假域默认乱开）。  
+> - **C 能力加深**：只有挂了某 cap 才叠配套开关。  
+> **#3** = 改地图挂载列 + bake 真挂法（迁档）。  
+> **#4** = 登记表双向门禁（B↔同一套 `scan_*`，C↔依赖 cap；多挂/漏挂红灯）。  
+> **已齐（全族）**：交易族、借用、跟进、报修、报名、审批、预约、内容、**互动**。  
+> 真源：[`docs/parked-work.md`](./docs/parked-work.md) #3/#4 · [`docs/opening-align-gate.md`](./docs/opening-align-gate.md) · 范本 [`docs/trade-thicken-batch.md`](./docs/trade-thicken-batch.md) §0.3 · 测 `test_opening_align_gate.py`。
 >
-> **上一批（2026-10-22）：软皮短签再磨收口。**
+> **本会话（2026-10-22 · 未提交）：跟进～互动 #3+#4 收口（全族）。**  
+> 互动：I-11 统一能力加深；`INTERACT_*`。旁路架构图补齐仍未提交。
+>
+> **上一批（已收口）：Vue 大文件拆分** · [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)  
+> **再上一批**：软皮短签再磨；布局闸/控件/诊断 **口径已立·代码未开**。
 
-1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～G / GENERIC 已可 bake。  
-2. **Path B** 三条真交叉可 `full`（借用+下单 / 借用+预约 / 下单+预约）；三合一与智慧校园仍 `reject`。  
-3. LLM **只填 schema JSON**（不生成业务 Java/Vue）；接 LLM 后「代码无误」靠运行时固定。  
-4. **Path B 口径**：开题写进「拟实现」的必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力，禁止 `degraded` 交半成品装全文。  
-5. **UI 观感**：九组首刀 + 软皮短签再磨已齐；见观感批次册。  
-6. **Vue 大文件拆分**：已收口，见 [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)。  
-7. **起包前布局闸**：口径 D0 已立；代码从 D1 起，见 [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md)。  
-8. **全域 UI 诊断**：68 域 L×C 台账已立、尚未勾选，见 [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)。
+1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～F / 真交叉 G / 兜底 H（GENERIC）已可 bake。  
+2. **Path B** 三条真交叉可 `full`；三合一与智慧校园仍 `reject`。  
+3. LLM **只填 schema JSON**；「代码无误」靠运行时固定。  
+4. **Path B 口径**：拟实现必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力。  
+5. **UI 观感 / Vue 拆分**：已收口。  
+6. **#3+#4 挂载/对齐**：**全族已齐**（含互动）。  
+7. **起包前布局闸 / 控件闸**：口径已立；代码未开。  
+8. **全域 UI 诊断**：台账已立、尚未勾选。
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
 开题密功能 / 待补 → [`docs/opening-feature-delivery-map.md`](./docs/opening-feature-delivery-map.md)。  
+挂载/对齐门禁 → [`docs/opening-align-gate.md`](./docs/opening-align-gate.md) · 搁置 [`docs/parked-work.md`](./docs/parked-work.md)。  
 UI 观感加厚 → [`docs/ui-look-thicken-batch.md`](./docs/ui-look-thicken-batch.md)。  
 Vue 大文件拆分 → [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)。  
 起包前布局闸 → [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md)。  
@@ -76,7 +86,7 @@ Vue 大文件拆分 → [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)�
 | 要查 | 文档 |
 |------|------|
 | 能力 cap / 挂载口径 | [`docs/capabilities.md`](./docs/capabilities.md) |
-| 领域组 A–H / Path B 交叉 | [`docs/domains.md`](./docs/domains.md) |
+| 领域组 A–H（A～F 具名 → G 真交叉 → H 兜底） | [`docs/domains.md`](./docs/domains.md) |
 | L0–L3 / 加价边界 | [`docs/difficulty-tiers.md`](./docs/difficulty-tiers.md) |
 | 库表预算 / 角色不变式 | [`docs/invariants.md`](./docs/invariants.md) |
 | **参数该落哪（yml ≠ 唯一去处）** | 规则 `.cursor/rules/param-placement.mdc` · `.trae/rules/param-placement.md`（口径同 [`docs/capabilities.md`](./docs/capabilities.md)） |
@@ -102,10 +112,13 @@ Vue 大文件拆分 → [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)�
 
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md；能力/领域长表见 docs/。
-按规则 ai-handoff 接手：读 HANDOFF → 跑测试（红=中断点）→ git log 顺脉络。
-主线：Vue 大文件拆分已收口（docs/vue-split-batch.md）；观感已收口；起包前布局闸 D0 见 docs/ui-layout-prebake-gate.md。卡片主信号/短签/价区间、域脸壳色、账户中心、瘦包已落地。
+按规则 ai-handoff 接手：读 HANDOFF → 跑相关测试（红=中断点）→ git log 顺脉络。
+主线：搁置大线 #3+#4 — 挂载收口 + 开题对齐门禁推全族（少错挂、少跟单）。
+已齐：交易族、借用、跟进、报修、报名。未推：审批/预约/内容/互动（一轮一组，先 #3 迁档再 #4 门禁）。
+下一组默认审批；禁止另起平行词典/第二套扫词。
+范本：docs/trade-thicken-batch.md §0.3 + docs/opening-align-gate.md；测 test_opening_align_gate.py。
 超壳 / 三合一 / 智慧校园必须 reject；硕博与真实业务全流程不接。
-薄壳架构保留（不要新开厚 DOM 包）；薄壳≠功能稀薄。领域清单以 docs/domains.md 为准。
+薄壳架构保留（不要新开厚 DOM 包）。旁路：ARCHITECTURE.md / architecture.html 有未提交补齐可另提。
 ```
 
 ## 新对话开场（某个具名域）

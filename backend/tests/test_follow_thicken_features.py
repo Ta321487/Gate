@@ -39,7 +39,9 @@ class FollowThickenFeatureTests(unittest.TestCase):
         thicken = schema.get("followThicken") or {}
         self.assertEqual(int(ticket.get("followRemindDays") or 0), 1)
         self.assertTrue(thicken.get("followRemind"))
-        self.assertTrue(ticket.get("phoneDupCheck"))
+        # 查重改扫词开：空开题关
+        self.assertFalse(ticket.get("phoneDupCheck"))
+        self.assertFalse(thicken.get("phoneDupCheck"))
         self.assertTrue(ticket.get("allowDealAmount"))
         keys = {
             f.get("key")
@@ -49,6 +51,15 @@ class FollowThickenFeatureTests(unittest.TestCase):
         self.assertIn("tags", keys)
         yml = _patch_thesis_yml("thesis:\n  title: x\n", "DOM-CRM", out) + policy_preview("DOM-CRM", out)
         self.assertIn("ticket-follow-remind-days: 1", yml)
+        self.assertNotIn("ticket-phone-dup-check: true", yml)
+
+    def test_crm_phone_dup_scan(self) -> None:
+        out = _spec("DOM-CRM", "客户跟进管理系统", "支持客户查重与同手机号提示")
+        ticket = ((out.get("schema") or {}).get("entities") or {}).get("ticket") or {}
+        thicken = ((out.get("schema") or {}).get("followThicken") or {})
+        self.assertTrue(ticket.get("phoneDupCheck"))
+        self.assertTrue(thicken.get("phoneDupCheck"))
+        yml = policy_preview("DOM-CRM", out)
         self.assertIn("ticket-phone-dup-check: true", yml)
 
     def test_crm_home_visit_scan(self) -> None:

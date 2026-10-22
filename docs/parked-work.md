@@ -13,8 +13,8 @@
 |---|----|--------|-------------------|------|
 | 1 | **UI 包** | 观感加厚；Vue 大文件拆分；起包前布局闸；可交互控件；全域 UI 诊断表 | 观感 [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)；拆分 [`vue-split-batch.md`](./vue-split-batch.md)；布局 [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md)；控件 [`form-controls.md`](./form-controls.md)；诊断 [`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md) | 观感已齐；**拆分已收口**；布局/控件口径已立·代码未开；诊断表未诊 |
 | 2 | **X 系列** | §0 通识横切剩余簇（一轮一簇） | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) | X-AUTH～X-UX 已齐；打印/灯箱/Toast/页脚版本/离开提示/复制单号为**基线体验**；档案 Excel 导入导出已是 xlsx |
-| 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **交易族 + 借用组已收口**；跟进/报修/报名/审批/预约/内容/互动 **未推** |
-| 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；`TRADE_*` / `BORROW_*_ALIGN_RULES` + `test_opening_align_gate.py` | **交易族 + 借用组 A 白名单 + B + C 门禁已齐**；其余域组登记表/测 **未开** |
+| 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **全族已收口**（交易+借用+跟进+报修+报名+审批+预约+内容+互动） |
+| 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；各组 `*_ALIGN_RULES` + `test_opening_align_gate.py` | **全族 A/B/C 门禁已齐** |
 
 ### #3 / #4 与 ABC（要扩展到全族）
 
@@ -76,6 +76,13 @@
 | 2026-10-16 | 基线体验常开：打印本页/灯箱/Toast/页脚版本/离开未保存/单号复制；地图改「基线体验」 |
 | 2026-10-16 | 档案导入模板、导入、导出改为 xlsx（Apache POI），按行回错；其它名单导出仍为 CSV |
 | 2026-10-17 | #3/#4 **借用组**收口：双方确认/保养到期日/超期次数改扫词；荐购预算随 book_suggest；`BORROW_*_ALIGN_RULES` + gate 测 |
+| 2026-10-22 | #3/#4 **跟进组**收口：客户查重改扫词；`FOLLOW_*_ALIGN_RULES` + gate 测；下一刀报修组 |
+| 2026-10-22 | #3/#4 **报修组**收口：分域双档钉清；`REPAIR_*_ALIGN_RULES` + gate 测；下一刀报名组 |
+| 2026-10-22 | #3/#4 **报名组**收口：TOUR 候补改能力加深 waitlist；`APPLY_*_ALIGN_RULES` + gate 测；下一刀审批组 |
+| 2026-10-22 | #3/#4 **审批组**收口：LABSAFE 考试门槛改能力加深 exam；`APPROVE_*_ALIGN_RULES` + gate 测；下一刀预约组 |
+| 2026-10-22 | #3/#4 **预约组**收口：R-09 统一能力加深口径；`RESERVE_*_ALIGN_RULES` + gate 测；下一刀内容组 |
+| 2026-10-22 | #3/#4 **内容组**收口：C-08/治理叠统一能力加深；`CONTENT_*_ALIGN_RULES` + gate 测；下一刀互动组 |
+| 2026-10-22 | #3/#4 **互动组**收口：I-11 统一能力加深；`INTERACT_*_ALIGN_RULES` + gate 测；**#3+#4 全族收口** |
 | 2026-10-17 | 碎另案 **j**：本届题名库 → 域/皮/功能判断入 [`cohort-opening-title-map.md`](./cohort-opening-title-map.md)；补皮与新域候选未开工 |
 | 2026-10-17 | **j** 口径：只有超新有开题正文；其余题名是工作猜测，不再等正文 |
 | 2026-10-17 | **j** 再改：多实现题不猜一条。将来一讲法一份开题再喂工厂；现在不出开题 |

@@ -43,8 +43,8 @@ _WAITLIST_TERMS = (
     "人数已满",
 )
 
-# 活动/选课行默认候补（开题常只写名额报名、漏写候补）
-_WAITLIST_DEFAULT_DOMAINS = frozenset({"DOM-ACTIVITY", "DOM-COURSE", "DOM-TOUR"})
+# 活动/选课行默认候补（开题常只写名额报名、漏写候补）；TOUR/LOST 仍须扫词（见地图 §1.4）
+_WAITLIST_DEFAULT_DOMAINS = frozenset({"DOM-ACTIVITY", "DOM-COURSE"})
 
 # —— 扫词（正向提及才算）——
 

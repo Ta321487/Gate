@@ -33,6 +33,11 @@ R-09：能力岛加深——仅当已挂对应 cap：
 硬约束
 ------
 - 只挂 RESERVE_DOMAINS；不写 SHOP/FOOD/CINEMA（§1.6）。
+- 挂载三档（与交易族同口径，见 docs/trade-thicken-batch.md §0.3）：
+  A 壳底：域本来就该有，空开题也开。
+  B 扫词开：本组无 thicken 自扫词键（cap 扫词在各 feature；禁止第二套词典）。
+  C 能力加深：已挂对应 cap 才叠（R-09）；禁止域默认硬塞。
+- 改词只改各 cap 的 TERMS / scan_*；门禁与 bake 共用，禁止第二套词典。
 - Store 主战场 SlotStore；禁止第二套预约状态机。
 - 提醒走同一 DemoScheduleJobs，禁止第二套调度框架。
 - 黑名单为轻名单表 + 申诉，≠风控引擎。
@@ -48,6 +53,7 @@ R-09：能力岛加深——仅当已挂对应 cap：
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 RESERVE_DOMAINS = frozenset(
@@ -1477,4 +1483,185 @@ def _apply_r09_cap_islands(
         )
         thicken["meetingEquipBorrow"] = True
         _add_feature(spec, "会议录制设备借用勾选")
+
+
+# —— 开题对齐登记：B 扫词 / A 壳底 / C 能力加深（bake 与门禁共用；禁止第二套词典）——
+
+ReserveScanFn = Callable[[dict[str, Any], str], bool]
+
+# 本组无 thicken 自扫词键：cap 由各 feature 扫词挂上，再由 R-09 加深
+RESERVE_B_ALIGN_RULES: list[tuple[str, frozenset[str], ReserveScanFn]] = []
+
+RESERVE_A_SHELL_WHITELIST: frozenset[str] = frozenset(
+    {
+        "core",
+        "cancelFreeHours",
+        "rescheduleMax",
+        "remindAhead",
+        "noShowLimit",
+        "successMessage",
+        "lateCheckIn",
+        "maintainBlock",
+        "waitlistPromote",
+        "calendarTone",
+        "adminNote",
+        "blacklist",
+        "blacklistAppeal",
+        "hospitalCheckinCode",
+        "hospitalPeriodRemain",
+        "hospitalPatientProfile",
+        "hospitalQueueNo",
+        "hospitalWaitlist",
+        "hospitalCancelCutoff",
+        "hospitalVisitType",
+        "hospitalDeptIntro",
+        "hospitalStopNotify",
+        "hospitalStopCalendar",
+        "hospitalQueueEstimate",
+        "hospitalIdLimit",
+        "hospitalRevisitPriority",
+        "hospitalSlotKind",
+        "parkingOvertime",
+        "parkingPass",
+        "parkingCarpassHint",
+        "parkingDurationFee",
+        "parkingCancelPenalty",
+        "parkingShareSlot",
+        "parkingOverlap",
+        "meetingRequireConfirm",
+        "meetingMinutes",
+        "meetingCheckinExport",
+        "meetingConflict",
+        "meetingRecording",
+        "meetingVideo",
+        "meetingWeeklyRepeat",
+        "meetingService",
+        "meetingBlacklist",
+        "meetingDoorCode",
+        "meetingCheckinCode",
+        "meetingMinDuration",
+        "meetingStage",
+        "salonCheckinCode",
+        "salonServiceMinutes",
+        "salonQueueNo",
+        "salonRescheduleFee",
+        "salonLateGrace",
+        "salonTaboo",
+        "salonCheckinScan",
+        "salonVisitCount",
+        "hotelExtendStay",
+        "hotelLateCheckout",
+        "hotelIdNo",
+        "hotelDepositBalance",
+        "hotelStayMultiNight",
+        "hotelBreakfast",
+        "hotelNoticeAck",
+        "hotelExtraBed",
+        "hotelRoomKind",
+        "hotelHourlyToFull",
+        "hotelRoommate",
+        "hotelCheckoutChecklist",
+        "carrentViolationHold",
+        "carrentInspectAck",
+        "carrentMileageOver",
+        "carrentNav",
+        "carrentInsurance",
+        "carrentLicenseExpire",
+        "carrentViolationAttach",
+        "carrentEtcFee",
+        "instrumentOvertime",
+        "instrumentTraining",
+        "instrumentConflict",
+        "instrumentPurpose",
+        "instrumentConsumable",
+        "instrumentMentor",
+        "instrumentFeeExport",
+    }
+)
+
+
+# (thicken 键, 适用域, 依赖 cap) — R-09
+RESERVE_C_ALIGN_RULES: list[tuple[str, frozenset[str], str]] = [
+    ("hospitalRoster", frozenset({"DOM-HOSPITAL"}), "staff_roster"),
+    ("salonLeaveBlock", frozenset({"DOM-SALON"}), "staff_roster"),
+    ("salonLessonRemain", frozenset({"DOM-SALON"}), "lesson_pack"),
+    ("salonLessonExpire", frozenset({"DOM-SALON"}), "lesson_pack"),
+    ("salonWallet", frozenset({"DOM-SALON"}), "wallet"),
+    ("salonGallery", frozenset({"DOM-SALON"}), "gallery"),
+    ("meetingEquipBorrow", frozenset({"DOM-MEETING"}), "room_equipment"),
+]
+
+
+def expected_reserve_b_flags(
+    domain: str, spec: dict[str, Any], proposal_text: str = ""
+) -> dict[str, bool]:
+    out: dict[str, bool] = {}
+    for flag, domains, scan in RESERVE_B_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = bool(scan(spec, proposal_text))
+    return out
+
+
+def expected_reserve_c_flags(domain: str, spec: dict[str, Any]) -> dict[str, bool]:
+    caps = {str(c) for c in (spec.get("capabilities") or []) if c}
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    if isinstance(schema.get("capabilities"), list):
+        caps |= {str(c) for c in schema["capabilities"] if c}
+    out: dict[str, bool] = {}
+    for flag, domains, cap in RESERVE_C_ALIGN_RULES:
+        if domain not in domains:
+            continue
+        out[flag] = cap in caps
+    return out
+
+
+def _diff_reserve_flags(
+    thicken: dict[str, Any], expected: dict[str, bool]
+) -> tuple[list[str], list[str]]:
+    over: list[str] = []
+    under: list[str] = []
+    for flag, want in expected.items():
+        got = bool(thicken.get(flag))
+        if got and not want:
+            over.append(flag)
+        elif want and not got:
+            under.append(flag)
+    return over, under
+
+
+def diff_reserve_b_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in RESERVE_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("reserveThicken") if isinstance(schema.get("reserveThicken"), dict) else {}
+    )
+    return _diff_reserve_flags(
+        thicken, expected_reserve_b_flags(domain, spec, proposal_text)
+    )
+
+
+def diff_reserve_c_align(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
+    domain = str(spec.get("domain") or "")
+    if domain not in RESERVE_DOMAINS:
+        return [], []
+    schema = spec.get("schema") if isinstance(spec.get("schema"), dict) else {}
+    thicken = (
+        schema.get("reserveThicken") if isinstance(schema.get("reserveThicken"), dict) else {}
+    )
+    return _diff_reserve_flags(thicken, expected_reserve_c_flags(domain, spec))
+
+
+def diff_reserve_align(
+    spec: dict[str, Any], proposal_text: str = ""
+) -> tuple[list[str], list[str]]:
+    bo, bu = diff_reserve_b_align(spec, proposal_text)
+    co, cu = diff_reserve_c_align(spec)
+    over = list(dict.fromkeys([*bo, *co]))
+    under = list(dict.fromkeys([*bu, *cu]))
+    return over, under
 
