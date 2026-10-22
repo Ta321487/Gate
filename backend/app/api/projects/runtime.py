@@ -57,10 +57,10 @@ async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    be_st, fe_st, dirty = project_svc.sync_project_runtime(p)
-    if dirty:
-        await db.commit()
-        await db.refresh(p)
+    # 先放读事务再探活，避免持池连接打 HTTP（碎另案 f）
+    be_st, fe_st = await project_svc.refresh_project_projection(
+        db, p, checklist=False, probe_http=True
+    )
     s = get_settings()
     be_url = s.public_url(p.backend_port) if p.backend_port else None
     fe_url = s.public_url(p.frontend_port) if p.frontend_port else None

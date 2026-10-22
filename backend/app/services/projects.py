@@ -59,10 +59,12 @@ from app.services.project_projection import (  # noqa: F401
     reclaim_idle_ports,
     reconcile_list_items,
     reconcile_lock,
+    refresh_project_projection,
     release_read_transaction,
     reset_checklist_list_cache,
     sync_checklist_for_list,
     sync_checklist_from_workspace,
+    sync_detail_projection,
     sync_project_runtime,
     workspace_signature,
 )
@@ -96,6 +98,7 @@ __all__ = [
     "reclaim_idle_ports",
     "reconcile_list_items",
     "reconcile_lock",
+    "refresh_project_projection",
     "release_read_transaction",
     "remove_project_logs",
     "remove_project_source_if_owned",
@@ -108,6 +111,7 @@ __all__ = [
     "stats",
     "sync_checklist_for_list",
     "sync_checklist_from_workspace",
+    "sync_detail_projection",
     "sync_project_runtime",
     "touch_json_fields",
     "update_match",
@@ -120,7 +124,16 @@ async def stats(db: AsyncSession) -> dict:
     # 只读库计数 + 只读投影缓存，不扫工作区。zip_ready / delivery_mark 由 /projects 列表收敛；
     # 同页并行时两边都扫盘会堵事件循环（每个项目要遍历约 1.4 万文件），
     # 且曾占着 SQLite 读锁互相 busy 数秒。过期判定由后台对账线程投影。
-    result = await db.execute(select(Project))
+    from sqlalchemy.orm import defer
+
+    # pending_review 要读 gates；不拖 spec/checklist/delivery_review
+    result = await db.execute(
+        select(Project).options(
+            defer(Project.spec),
+            defer(Project.checklist),
+            defer(Project.delivery_review),
+        )
+    )
     items = list(result.scalars().all())
 
     total = len(items)

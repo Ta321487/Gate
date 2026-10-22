@@ -13,6 +13,7 @@ from fastapi import Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -125,7 +126,12 @@ async def list_projects(
     select_ms = -1.0
     try:
         t_sel = time.perf_counter()
-        result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
+        # 摘要不需 spec/checklist；gates/delivery_review 过滤与 download_blocked_reason 仍要
+        result = await db.execute(
+            select(Project)
+            .options(defer(Project.spec), defer(Project.checklist))
+            .order_by(Project.updated_at.desc())
+        )
         items = list(result.scalars().all())
         select_ms = (time.perf_counter() - t_sel) * 1000.0
         if q:
@@ -483,13 +489,8 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if project_svc.sync_checklist_from_workspace(p):
-        await db.commit()
-        await db.refresh(p)
-    _, _, dirty = project_svc.sync_project_runtime(p)
-    if dirty:
-        await db.commit()
-        await db.refresh(p)
+    # 先放读事务再扫盘/探活，避免持池连接做非 DB 重活（碎另案 f）
+    await project_svc.refresh_project_projection(db, p)
     return _detail(p)
 
 
@@ -626,9 +627,10 @@ async def download_zip(project_id: str, db: AsyncSession = Depends(get_db)):
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
-    if project_svc.sync_checklist_from_workspace(p):
-        await db.commit()
-        await db.refresh(p)
+    # 只收敛 checklist，不探预览（与旧 download 口径一致）
+    await project_svc.refresh_project_projection(
+        db, p, checklist=True, runtime=False
+    )
     blocked = project_svc.delivery_block_reason(p)
     if blocked:
         raise HTTPException(403, blocked)

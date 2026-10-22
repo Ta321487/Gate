@@ -28,6 +28,8 @@ _task: asyncio.Task[None] | None = None
 async def reconcile_projects_projection(db: AsyncSession) -> bool:
     """全表廉价对账并在 dirty 时 commit。持 reconcile_lock。"""
     async with project_svc.reconcile_lock:
+        # 写投影需要 checklist/gates；签名要 spec + delivery_review —— 四列都保留。
+        # 不在此 defer：release 后再 lazy 会变成按项目 N+1。
         result = await db.execute(select(Project))
         items = list(result.scalars().all())
         # 放开读事务，再扫盘 / netstat（与旧列表路径同口径）

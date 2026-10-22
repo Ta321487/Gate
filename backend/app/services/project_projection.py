@@ -312,6 +312,50 @@ async def release_read_transaction(db: AsyncSession) -> None:
     """结束当前只读事务，避免随后的磁盘扫描占着 SQLite 读锁。"""
     await db.commit()
 
+
+def sync_detail_projection(
+    project: Project,
+    *,
+    checklist: bool = True,
+    runtime: bool = True,
+    probe_http: bool = True,
+) -> tuple[str, str, bool]:
+    """详情/下载/runtime 写路径：在工作线程扫盘与探活（调用前须已 release_read_transaction）。
+
+    返回 (backend_status, frontend_status, dirty)。runtime=False 时状态串为空。
+    """
+    dirty = False
+    if checklist and sync_checklist_from_workspace(project):
+        dirty = True
+    if not runtime:
+        return "", "", dirty
+    be_st, fe_st, rt_dirty = sync_project_runtime(project, probe_http=probe_http)
+    return be_st, fe_st, dirty or rt_dirty
+
+
+async def refresh_project_projection(
+    db: AsyncSession,
+    project: Project,
+    *,
+    checklist: bool = True,
+    runtime: bool = True,
+    probe_http: bool = True,
+) -> tuple[str, str]:
+    """先放读事务，再 to_thread 扫盘/探活；dirty 时 commit+refresh。返回运行态字符串。"""
+    await release_read_transaction(db)
+    be_st, fe_st, dirty = await asyncio.to_thread(
+        sync_detail_projection,
+        project,
+        checklist=checklist,
+        runtime=runtime,
+        probe_http=probe_http,
+    )
+    if dirty:
+        await db.commit()
+        await db.refresh(project)
+    return be_st, fe_st
+
+
 def _sync_checklist_for_list(
     project: Project, *, allow_scan: bool
 ) -> tuple[bool, bool]:

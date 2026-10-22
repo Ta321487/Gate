@@ -48,6 +48,9 @@ _engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
 if _is_sqlite:
     # 默认 busy 等待仅约 5s；生成 Job 与列表轮询同写 projects 时易 database is locked
     _engine_kwargs["connect_args"] = {"timeout": 60}
+else:
+    # MySQL/aiomysql：定期回收，降低坏连复用导致的 Packet sequence 乱序（碎另案 f）
+    _engine_kwargs["pool_recycle"] = 1800
 
 engine = create_async_engine(url, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
