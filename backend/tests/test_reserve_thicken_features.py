@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 
 from app.bake.domain_schema import attach_accept
@@ -828,7 +830,7 @@ class ReserveThickenFeatureTests(unittest.TestCase):
         self.assertIn("equip_borrow", sql)
 
         fe = Path(__file__).resolve().parents[2] / "skeletons" / "baseline" / "frontend" / "src"
-        slot_book = (fe / "views" / "user" / "SlotBook.vue").read_text(encoding="utf-8")
+        slot_book = vue_src((fe / "views" / "user" / "SlotBook.vue"))
         self.assertIn("hospitalRosterHint", slot_book)
         self.assertIn("salonLessonRemain", slot_book)
         self.assertIn("meetingEquipBorrow", slot_book)

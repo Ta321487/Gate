@@ -124,9 +124,7 @@ class StaffRosterE09Tests(unittest.TestCase):
         self.assertIn("/api/staff-roster/on-duty", text)
         fe = BASELINE / "frontend/src/views/admin/StaffRosterAdmin.vue"
         self.assertTrue(fe.is_file())
-        slot = (BASELINE / "frontend/src/views/user/SlotBook.vue").read_text(
-            encoding="utf-8"
-        )
+        slot = vue_src((BASELINE / "frontend/src/views/user/SlotBook.vue"))
         self.assertIn("staff_roster", slot)
         self.assertIn("onDuty", slot)
         tickets = vue_src((

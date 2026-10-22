@@ -139,9 +139,9 @@ class RoomEquipmentE10Tests(unittest.TestCase):
             BASELINE / "frontend/src/views/user/ArchiveBrowse.vue"
         ).read_text(encoding="utf-8")
         self.assertIn("room_equipment", fe_browse)
-        fe_slot = (
+        fe_slot = vue_src((
             BASELINE / "frontend/src/views/user/SlotBook.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("room_equipment", fe_slot)
         fe_admin = vue_src((
             BASELINE / "frontend/src/views/admin/ArchiveAdmin.vue"

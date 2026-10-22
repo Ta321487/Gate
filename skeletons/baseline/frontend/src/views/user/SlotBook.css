@@ -1,0 +1,278 @@
+.hero { margin-bottom: 16px; }
+.hero h1 { margin: 0 0 6px; font-size: 22px; }
+.hero p { margin: 0 0 10px; color: var(--portal-muted, #64748b); font-size: 13px; }
+.hero p.warn { color: #b45309; }
+.rule-hint { margin: 0 0 6px; font-size: 12px; color: var(--portal-muted, #64748b); }
+.equip-line { margin: 0 0 10px !important; font-size: 13px; color: #0f766e; }
+.duty-hint { margin: 8px 0 0; font-size: 13px; color: var(--portal-muted, #64748b); }
+.duty-list { margin: 0 0 8px; font-size: 12px; color: var(--el-text-color-secondary); }
+.day-wrap { position: relative; display: inline-flex; align-items: center; }
+.duty-dot {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--portal-accent, #0b6e75);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--portal-accent, #0b6e75) 25%, transparent);
+  pointer-events: none;
+}
+.tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cal-legend { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 8px; font-size: 12px; color: var(--portal-muted, #64748b); }
+.cal-legend .leg::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.cal-legend .tone-ok::before { background: var(--portal-accent, #0b6e75); }
+.cal-legend .tone-warn::before { background: #d97706; }
+.cal-legend .tone-full::before { background: var(--portal-muted, #94a3b8); }
+.day-fill { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.day-chip {
+  min-width: 36px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--portal-line, #e2e8f0);
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+.day-chip.tone-ok {
+  border-color: var(--portal-accent, #0b6e75);
+  color: color-mix(in srgb, var(--portal-accent, #0b6e75) 85%, #14532d);
+}
+.day-chip.tone-warn { border-color: #d97706; color: #b45309; }
+.day-chip.tone-full { opacity: 0.45; cursor: not-allowed; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.slot {
+  text-align: left;
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+  border-radius: var(--portal-radius, 10px);
+  box-shadow: var(--portal-shadow, none);
+  padding: var(--portal-pad, 12px);
+  background: var(--portal-surface, #fff);
+  cursor: pointer;
+}
+.slot.tone-ok { border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, var(--portal-line, #e2e8f0)); }
+.slot.tone-warn { border-color: color-mix(in srgb, #d97706 55%, var(--portal-line, #e2e8f0)); }
+.slot.tone-full { border-color: #cbd5e1; }
+.slot:disabled { opacity: 0.45; cursor: not-allowed; }
+.t { font-weight: 600; font-size: 14px; }
+.e, .r { margin-top: 4px; font-size: 12px; color: var(--portal-muted, #64748b); }
+.empty { text-align: center; color: var(--portal-muted, #94a3b8); padding: 40px 0; }
+.tip { margin: 0 0 8px; font-size: 13px; }
+.tip.price { color: var(--el-color-primary); font-weight: 600; }
+.kind-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.kind-lab { color: var(--portal-muted, #64748b); }
+.period-block { margin-bottom: 16px; }
+.period-hd {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.period-remain { font-size: 12px; font-weight: 400; color: var(--portal-muted, #64748b); }
+
+/* —— 号源条：微医式时段芯片（时间主信号 + 余号徽标） —— */
+.reserve-slotstrip .hero h1 {
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+}
+.reserve-slotstrip .day-fill {
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 6%, var(--portal-bg, #f2f8f8));
+  border: 1px solid color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, transparent);
+}
+.reserve-slotstrip .day-chip {
+  min-width: 40px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.reserve-slotstrip .day-chip.tone-ok {
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, #fff);
+}
+.reserve-slotstrip .day-chip.tone-warn {
+  background: color-mix(in srgb, #d97706 12%, #fff);
+}
+.reserve-slotstrip .period-hd {
+  padding-left: 10px;
+  border-left: 3px solid var(--portal-accent, #0b6e75);
+}
+.reserve-slotstrip .grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.reserve-slotstrip .slot {
+  min-width: 108px;
+  flex: 0 1 118px;
+  padding: 12px 14px 10px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.reserve-slotstrip .slot:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--portal-accent, #0b6e75) 16%, transparent);
+}
+.reserve-slotstrip .slot .t {
+  font-size: 1.05rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--portal-ink, #15202b);
+}
+.reserve-slotstrip .slot .e {
+  display: none;
+}
+.reserve-slotstrip .slot .r {
+  margin-top: 6px;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  color: #fff;
+  background: var(--portal-accent, #0b6e75);
+}
+.reserve-slotstrip .slot.tone-warn .r { background: #d97706; }
+.reserve-slotstrip .slot.tone-full .r,
+.reserve-slotstrip .slot:disabled .r {
+  background: var(--portal-muted, #94a3b8);
+}
+.reserve-slotstrip .slot.tone-ok {
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 7%, #fff);
+  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 32%, var(--portal-line, #e2e8f0));
+}
+.reserve-slotstrip .slot.tone-warn {
+  background: color-mix(in srgb, #d97706 8%, #fff);
+}
+.reserve-slotstrip .slot.tone-full {
+  background: color-mix(in srgb, var(--portal-ink, #15202b) 4%, #fff);
+}
+
+/* —— 房态格：酒店 PMS 色块墙（满/空/紧张整格填色，非号源芯片） —— */
+.reserve-roomstate .hero h1 { font-size: 1.3rem; }
+.reserve-roomstate .cal-legend {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--portal-ink, #15202b) 3%, var(--portal-bg, #f4f6f8));
+}
+.reserve-roomstate .day-chip {
+  min-width: 42px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+.reserve-roomstate .grid {
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+}
+.reserve-roomstate .slot {
+  min-height: 96px;
+  text-align: center;
+  padding: 14px 8px 12px;
+  border-radius: 10px;
+  border-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--portal-ink, #15202b) 8%, transparent);
+}
+.reserve-roomstate .slot .e { display: none; }
+.reserve-roomstate .slot .t {
+  font-size: 13px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.reserve-roomstate .slot .r {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.reserve-roomstate .slot.tone-ok {
+  background: color-mix(in srgb, #16a34a 22%, #fff);
+  color: #14532d;
+}
+.reserve-roomstate .slot.tone-warn {
+  background: color-mix(in srgb, #f59e0b 24%, #fff);
+  color: #78350f;
+}
+.reserve-roomstate .slot.tone-full {
+  background: color-mix(in srgb, var(--portal-ink, #1e293b) 72%, #334155);
+  color: #e2e8f0;
+  opacity: 1;
+}
+.reserve-roomstate .slot.tone-full .r { color: #cbd5e1; }
+.reserve-roomstate .slot:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* —— 车型档期：租车列表卡（宽卡 + 左边强调条 + 余量次信号） —— */
+.reserve-vehiclecard .hero h1 { font-size: 1.35rem; }
+.reserve-vehiclecard .grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.reserve-vehiclecard .slot {
+  min-height: 118px;
+  padding: 16px 18px 14px 16px;
+  border-radius: 12px;
+  border-left: 4px solid var(--portal-accent, #0b6e75);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--portal-ink, #15202b) 7%, transparent);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.reserve-vehiclecard .slot:not(:disabled):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--portal-ink, #15202b) 12%, transparent);
+}
+.reserve-vehiclecard .slot.tone-warn {
+  border-left-color: #d97706;
+}
+.reserve-vehiclecard .slot.tone-full {
+  border-left-color: #94a3b8;
+}
+.reserve-vehiclecard .slot .t {
+  font-size: 1rem;
+  font-weight: 750;
+}
+.reserve-vehiclecard .slot .e {
+  margin-top: 2px;
+  font-size: 12px;
+}
+.reserve-vehiclecard .slot .r {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--portal-accent, #0b6e75);
+}
+.reserve-vehiclecard .slot.tone-full .r {
+  color: var(--portal-muted, #94a3b8);
+}
