@@ -31,16 +31,16 @@
 | [reserve-thicken-batch.md](./reserve-thicken-batch.md) | **§1.7 预约组加厚** | 已收口档案 |
 | [content-thicken-batch.md](./content-thicken-batch.md) | **§1.8 内容组加厚** | 已收口档案 |
 | [interact-thicken-batch.md](./interact-thicken-batch.md) | **§1.9 互动/匹配组加厚** | 已收口档案 |
-| [crosscut-delivery-batch.md](./crosscut-delivery-batch.md) | **§0 通识横切**清待补（一轮一簇；非域组 thicken） | 批次册 · X-AUTH/MSG/DASH 已齐 · 下波 **X-ORG** |
+| [crosscut-delivery-batch.md](./crosscut-delivery-batch.md) | **§0 通识横切**清待补（一轮一簇；非域组 thicken） | 批次册 · X-AUTH～X-UX 已齐；打印/灯箱等为基线体验；档案 Excel 已是 xlsx |
 | [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（ASCII / 对标 / §0.0 闸） | 选型册 · 九组已接线 |
 | [ui-look-thicken-batch.md](./ui-look-thicken-batch.md) | **UI 观感加厚**（公共壳 + 各组主表面；**68 域台账**） | 再磨已收口 |
 | [vue-split-batch.md](./vue-split-batch.md) | **Vue 大文件拆分**（`.setup.js` + `.css`；合读护栏） | 已收口 |
 | [ui-layout-prebake-gate.md](./ui-layout-prebake-gate.md) | **布局一眼病规则与闸**（几何；起包前全表） | 口径已立 · 代码未开 |
 | [form-controls.md](./form-controls.md) | **可交互控件规则**（选型；下拉禁手填） | 口径册 · 代码未开 |
 | [ui-domain-diagnosis.md](./ui-domain-diagnosis.md) | **诊断结果台账**（68 域 L/C 勾选；不写细则） | 台账已立 · 全域未诊 |
-| [parked-work.md](./parked-work.md) | **搁置工作**台账（大线 + 碎另案） | 活表 · 大线 4 · 碎项另表 |
+| [parked-work.md](./parked-work.md) | **搁置工作**台账（大线 + 碎另案） | 活表 · 大线 4（#3+#4 全族已收口）· 碎另案 f 已修 |
 | [cohort-opening-title-map.md](./cohort-opening-title-map.md) | 今年选题 → 成品域/皮；只代表今年，按册一点点长 | 方向册 · 工厂未改（见搁置 j） |
-| [opening-align-gate.md](./opening-align-gate.md) | **开题对齐门禁**：A 白名单 + B 扫词 + C cap（登记表双向） | 交易族已齐 · 待扩全族 |
+| [opening-align-gate.md](./opening-align-gate.md) | **开题对齐门禁**：A 白名单 + B 扫词 + C cap（登记表双向） | **全族 A/B/C 已齐**（见搁置 #3/#4） |
 | [ai-opening-delivery-map.md](./ai-opening-delivery-map.md) | 开题 AI 表述 → 助手岛产出 | 活表 |
 | [capability-expansion-batch.md](./capability-expansion-batch.md) | E-01～E-14 扩岛批次 | 已收口档案（勿当当前主线） |
 | [soft-fail-scan.md](./soft-fail-scan.md) | 静默失败 /「不对接＝免做」扫描 | 已收口清单 |

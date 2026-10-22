@@ -11,10 +11,20 @@
 
 | # | 项 | 一句话 | 真源 / 下次从哪开 | 现状 |
 |---|----|--------|-------------------|------|
-| 1 | **UI 包** | 观感加厚；Vue 大文件拆分；起包前布局闸；可交互控件；全域 UI 诊断表 | 观感 [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)；拆分 [`vue-split-batch.md`](./vue-split-batch.md)；布局 [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md)；控件 [`form-controls.md`](./form-controls.md)；诊断 [`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md) | 观感已齐；**拆分已收口**；布局/控件口径已立·代码未开；诊断表未诊 |
+| 1 | **UI 包** | 观感 / Vue 拆分 / 布局闸 / 可交互控件 / 全域诊断（见下子表） | 选型另见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) | **余项**：布局闸·控件（口径已立·代码未开）+ 诊断（台账已立·未诊） |
 | 2 | **X 系列** | §0 通识横切剩余簇（一轮一簇） | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) | X-AUTH～X-UX 已齐；打印/灯箱/Toast/页脚版本/离开提示/复制单号为**基线体验**；档案 Excel 导入导出已是 xlsx |
 | 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **全族已收口**（交易+借用+跟进+报修+报名+审批+预约+内容+互动） |
 | 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；各组 `*_ALIGN_RULES` + `test_opening_align_gate.py` | **全族 A/B/C 门禁已齐** |
+
+### #1 UI 包子项（一文一事，勿混）
+
+| 子项 | 一句话 | 真源 | 现状 |
+|------|--------|------|------|
+| **观感加厚** | 公共壳 + 九组主表面 + 软皮短签，不像模板后台 | [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md) | **再磨已收口** |
+| **Vue 大文件拆分** | 大页拆 `.setup.js` + `.css`；合读护栏 | [`vue-split-batch.md`](./vue-split-batch.md) | **已收口** |
+| **起包前布局闸** | 一眼病（错位/挤破/叠穿/溢出）；页+壳+组件全表；起包前挡住 | [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md) | **口径已立 · 代码未开**（D0；须批准再动代码） |
+| **可交互控件** | 全包可交互控件选型；下拉只选不填；无免检区 | [`form-controls.md`](./form-controls.md) | **口径已立 · 代码未开**（须批准再动代码） |
+| **全域 UI 诊断** | 68 域 × `L`布局/`C`控件 勾选台账；不写细则正文 | [`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md) | **台账已立 · 全域未诊** |
 
 ### #3 / #4 与 ABC（要扩展到全族）
 
@@ -37,7 +47,7 @@
 | c | **订单小票打印** | 浏览器打印壳已挂；打印≠已齐 | 地图 §1.6 待补；[`trade-thicken-batch.md`](./trade-thicken-batch.md) T-11 | 仍待补（发票下载占位已齐） |
 | d | **行为式验证码** | 真行为式后置；图形文案先顶 | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) XA-02 | XA 已齐口径下留待补 |
 | e | **Surface Lexicon 尾债** | C2 种子公告迁移 · C3 前端空状态映射 · 库内旧 `gate_e2e` 重 bake | [`surface-lexicon-design.md`](./surface-lexicon-design.md)；[`../HANDOFF.md`](../HANDOFF.md) 话术专项 | 批 A/B/C 已落地；运维/迁移步未清 |
-| f | **工厂 API MySQL 池抖** | 控制台刷 `projects` 时 `slow_sql` 飙到数秒～数十秒，偶发 500：`Packet sequence number wrong - got 1 expected 2`（aiomysql） | `GET /api/projects/{id}` → `crud.get_project`；池 / `projects` 宽列 SELECT；可对照 [`preview-capacity-and-batch-ops.md`](./preview-capacity-and-batch-ops.md) | **未修**。先像连接池耗尽/坏连回收或同连并发乱序，不是业务 SQL 写错 |
+| f | **工厂 API MySQL 池抖** | 控制台刷 `projects` 时 `slow_sql` 飙到数秒～数十秒，偶发 500：`Packet sequence number wrong - got 1 expected 2`（aiomysql） | `GET /api/projects/{id}` → `crud.get_project`；池 / `projects` 宽列 SELECT；可对照 [`preview-capacity-and-batch-ops.md`](./preview-capacity-and-batch-ops.md) | **已修**（2026-10-23）：详情/runtime/download 先 `release_read_transaction` 再 `to_thread` 扫盘；列表/stats defer `spec`/`checklist`；MySQL `pool_recycle=1800` |
 | g | **资料页角色分栏** | 买家/商家/超管资料像同一模板；`profileFields` 缺 `forRoles` | bake 钉 shop*=staff、收货=user；农产包重写 profileFields | **已修**（2026-10-14） |
 | h | **门户顶栏换行一团** | 曾抬到 12 全直出，商城 8～11 项长标签换行挤成两排 | §3：软皮分岔 marketplace 右侧栏 / storefront 头像菜单；禁表情与叠两份 | **已修**（2026-10-20） |
 | k | **学生包工厂注记** | 骨架可写开题/§3 注释；bake 须抹掉且裁未挂壳件 | `pack_prune.scrub_factory_notes` + 非 marketplace 裁 SideRail | **已接**（2026-10-20） |
@@ -107,3 +117,5 @@
 | 2026-10-22 | 大线 #1：软皮短签再磨收口（预约→内容→报名→跟进/互动→报修/审批轻磨）；下一抽检回归 |
 | 2026-10-22 | 大线 #1：开 Vue 大文件拆分批次（vue-split-batch）；范式 ArchiveBrowse；排队 MyTickets 起 |
 | 2026-10-22 | 大线 #1：Vue 大文件拆分收口（MyTickets→MyOrders 九页 + ArchiveBrowse 范式）；合读 `vue_src` |
+| 2026-10-23 | 碎另案 **f**：详情持连改放事务+to_thread；列表/stats defer 宽列；MySQL `pool_recycle=1800` |
+| 2026-10-23 | 大线 #1：补 **UI 包子项表**——布局闸 / 可交互控件 / 全域诊断三册从「一句话里」拆出单列记账（此前只埋在 #1 现状栏） |
