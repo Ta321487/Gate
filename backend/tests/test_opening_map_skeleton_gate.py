@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import re
 import unittest
 from pathlib import Path
@@ -56,6 +58,8 @@ OV_JPA = (
 
 
 def _read(p: Path) -> str:
+    if p.suffix == ".vue":
+        return vue_src(p)
     return p.read_text(encoding="utf-8")
 
 
@@ -262,7 +266,7 @@ class OpeningMapSkeletonGateTests(unittest.TestCase):
 
     def test_shared_apply_and_finish_slots_fall_back_to_schema(self) -> None:
         """提交附件 / 办结弹窗 / 档案占位 / 报修对比图：域皮只覆盖，禁止某域中文当全页默认。"""
-        my = _read(FE_SRC / "views" / "user" / "MyTickets.vue")
+        my = vue_src(FE_SRC / "views" / "user" / "MyTickets.vue")
         repair = _read(FE_SRC / "components" / "RepairFinishDialog.vue")
 
         self.assertNotIn("劳动时长证明", my)

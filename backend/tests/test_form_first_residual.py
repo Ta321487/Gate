@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -120,7 +122,7 @@ class FormFirstResidualTests(unittest.TestCase):
     def test_parcel_claim_filter_documented_in_frontend(self) -> None:
         if not _MY_TICKETS.is_file():
             self.skipTest("baseline MyTickets.vue not present")
-        src = _MY_TICKETS.read_text(encoding="utf-8")
+        src = vue_src(_MY_TICKETS)
         self.assertIn("requireClaimCode", src)
         self.assertIn("claimFilteredArchiveItems", src)
         self.assertIn("filterByOwnerToken", src)

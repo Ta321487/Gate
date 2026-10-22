@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -118,7 +120,7 @@ class MultiApproveC16Tests(unittest.TestCase):
         self.assertIn("threeLevelApprove", at)
         self.assertIn("pending_mid", at)
         my = BASELINE / "frontend/src/views/user/MyTickets.vue"
-        self.assertIn("pending_mid", my.read_text(encoding="utf-8"))
+        self.assertIn("pending_mid", vue_src(my))
 
     def test_sample_file(self) -> None:
         samples = list(SAMPLES.glob("C-16*.txt"))

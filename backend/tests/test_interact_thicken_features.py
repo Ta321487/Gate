@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -178,7 +180,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         dash = (FE / "views" / "admin" / "TicketDashboard.vue").read_text(encoding="utf-8")
         self.assertIn("avgRatingLabel", dash)
         self.assertIn("timebankStarReputation", dash)
-        mine = (FE / "views" / "user" / "MyTickets.vue").read_text(encoding="utf-8")
+        mine = vue_src(FE / "views" / "user" / "MyTickets.vue")
         self.assertIn("rateInviteHint", mine)
         self.assertIn("allowRating", mine)
 
@@ -209,7 +211,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         browse = _browse_src()
         self.assertIn("mutualDeadlineCountdown", browse)
         self.assertIn("mutualDeadlineText", browse)
-        mine = (FE / "views" / "user" / "MyTickets.vue").read_text(encoding="utf-8")
+        mine = vue_src(FE / "views" / "user" / "MyTickets.vue")
         self.assertIn("mutualDeadlineCountdownOn", mine)
         self.assertIn("mutualDeadlineText", mine)
 
@@ -359,7 +361,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("reportDeadlineOn", reports)
-        tickets = (FE / "views" / "user" / "MyTickets.vue").read_text(encoding="utf-8")
+        tickets = vue_src(FE / "views" / "user" / "MyTickets.vue")
         self.assertIn("meetIntentLabel", tickets)
 
         for label, root in (
@@ -469,7 +471,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
             "mutualInterviewEntryHint",
         ):
             self.assertIn(needle, browse, needle)
-        mine = (FE / "views" / "user" / "MyTickets.vue").read_text(encoding="utf-8")
+        mine = vue_src(FE / "views" / "user" / "MyTickets.vue")
         for needle in (
             "mutualEditBeforeDeadlineOn",
             "canEditWish",
@@ -651,7 +653,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
             "team-invite",
         ):
             self.assertIn(needle, browse, needle)
-        mine = (FE / "views" / "user" / "MyTickets.vue").read_text(encoding="utf-8")
+        mine = vue_src(FE / "views" / "user" / "MyTickets.vue")
         self.assertIn("canRequestTeamExit", mine)
         self.assertIn("request-exit", mine)
         peer = (FE / "views" / "user" / "PeerTickets.vue").read_text(encoding="utf-8")
@@ -795,7 +797,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
             "carpoolDupTripDeny",
         ):
             self.assertIn(needle, browse, needle)
-        mine = (FE / "views" / "user" / "MyTickets.vue").read_text(encoding="utf-8")
+        mine = vue_src(FE / "views" / "user" / "MyTickets.vue")
         for needle in (
             "canCancelLockedSeat",
             "carpoolSeatLockOn",

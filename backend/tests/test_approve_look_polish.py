@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -20,7 +22,7 @@ MY = (
 
 class ApproveLookPolishTests(unittest.TestCase):
     def test_matter_type_on_both_faces(self) -> None:
-        text = MY.read_text(encoding="utf-8")
+        text = vue_src(MY)
         for needle in (
             "(approveSurface === 'typelist' || approveSurface === 'inboxsteps') && row.typeName",
             'class="matter-type"',

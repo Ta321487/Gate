@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import re
 import unittest
 from pathlib import Path
@@ -105,7 +107,7 @@ class FollowGapsDeliveryTests(unittest.TestCase):
         self.assertIn('@PostMapping("/{id}/resubmit")', text)
 
     def test_frontend_wired(self) -> None:
-        mine = (FE / "user" / "MyTickets.vue").read_text(encoding="utf-8")
+        mine = vue_src(FE / "user" / "MyTickets.vue")
         for needle in ("stalePoolHint", "phoneDupHint", "maxReviseHint", "resubmitTicket", "stalePoolLabel"):
             self.assertIn(needle, mine, f"MyTickets 缺 {needle}")
         admin = (FE / "admin" / "TicketsAdmin.vue").read_text(encoding="utf-8")
@@ -236,7 +238,7 @@ class EventGapsDeliveryTests(unittest.TestCase):
         self.assertIn("GradeScoreStore.assertObjectionOpen(uid, itemId);", ticket_ctrl)
 
     def test_frontend_wired_for_event_and_objection(self) -> None:
-        mine = (FE / "user" / "MyTickets.vue").read_text(encoding="utf-8")
+        mine = vue_src(FE / "user" / "MyTickets.vue")
         for needle in ("levelSlaHint", "levelSlaDays", "notifyDutyHint", "objectionWindowHint", "dutyNotified"):
             self.assertIn(needle, mine, f"MyTickets 缺 {needle}")
         admin = (FE / "admin" / "TicketsAdmin.vue").read_text(encoding="utf-8")

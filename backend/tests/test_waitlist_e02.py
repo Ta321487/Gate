@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -127,11 +129,11 @@ class WaitlistE02Tests(unittest.TestCase):
         self.assertIn("configureWaitlist", store)
         self.assertIn("tryPromoteWaitlist", store)
         self.assertIn("waitlisted", store)
-        fe = (BASELINE / "frontend/src/views/user/ArchiveBrowse.vue").read_text(encoding="utf-8")
+        fe = vue_src(BASELINE / "frontend/src/views/user/ArchiveBrowse.vue")
         self.assertIn("allowWaitlist", fe)
         self.assertIn("waitlisted", fe)
         self.assertNotIn("演示", fe)
-        my = (BASELINE / "frontend/src/views/user/MyTickets.vue").read_text(encoding="utf-8")
+        my = vue_src(BASELINE / "frontend/src/views/user/MyTickets.vue")
         self.assertIn("waitlisted", my)
 
     def test_accept_full_with_waitlist(self) -> None:

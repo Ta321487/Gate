@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import json
 import unittest
 from pathlib import Path
@@ -75,7 +77,7 @@ class CodeQrE07Tests(unittest.TestCase):
         my = BASELINE / "frontend/src/views/user/MyTickets.vue"
         self.assertTrue(util.is_file())
         self.assertTrue(comp.is_file())
-        text = my.read_text(encoding="utf-8")
+        text = vue_src(my)
         self.assertIn("CodeQrBlock", text)
         self.assertIn("code_qr", text)
         # 载体口径：学生可见面只描述本系统动作，不写硬件否定句（划界语留给工厂侧）
@@ -86,7 +88,7 @@ class CodeQrE07Tests(unittest.TestCase):
         from tests.test_copy_carrier_contract import visible_copy_text
 
         hero = visible_copy_text(
-            (BASELINE / "frontend/src/views/user/MyTickets.vue").read_text(encoding="utf-8")
+            vue_src(BASELINE / "frontend/src/views/user/MyTickets.vue")
         )
         block = visible_copy_text(
             (BASELINE / "frontend/src/components/CodeQrBlock.vue").read_text(encoding="utf-8")

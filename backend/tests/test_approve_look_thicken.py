@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -19,7 +21,7 @@ ADMIN = FE / "admin" / "TicketsAdmin.vue"
 
 class ApproveLookThickenTests(unittest.TestCase):
     def test_mytickets_approve_faces(self) -> None:
-        text = MY.read_text(encoding="utf-8")
+        text = vue_src(MY)
         for needle in (
             "'surface-typelist': approveSurface === 'typelist'",
             "'surface-inboxsteps': approveSurface === 'inboxsteps'",

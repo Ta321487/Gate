@@ -35,6 +35,12 @@ class SequenceThickenButtonTests(unittest.TestCase):
             dest = td / "frontend" / "src" / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(SK_FE / rel, dest)
+            stem = Path(rel).stem
+            parent = (SK_FE / rel).parent
+            for ext in (f"{stem}.setup.js", f"{stem}.css"):
+                side = parent / ext
+                if side.is_file():
+                    shutil.copy2(side, dest.parent / ext)
         for name in ("TicketController.java", "AuthController.java"):
             shutil.copy2(SK_BE / name, td / "backend/src/main/java/com/thesis/controller" / name)
         (td / "domain.schema.json").write_text(

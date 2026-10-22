@@ -24,7 +24,7 @@
 | 序 | 文件 | 状态 |
 |----|------|------|
 | — | `views/user/ArchiveBrowse.vue` | **已齐**（范式） |
-| 1 | `views/user/MyTickets.vue` | 待拆 |
+| 1 | `views/user/MyTickets.vue` | **已齐** |
 | 2 | `views/admin/TicketsAdmin.vue` | 待拆 |
 | 3 | `views/admin/ArchiveAdmin.vue` | 待拆 |
 | 4 | `views/admin/TicketRecordsAdmin.vue` | 待拆 |

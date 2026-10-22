@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -36,7 +38,7 @@ TONE = (
 
 class RepairLookThickenTests(unittest.TestCase):
     def test_mytickets_surface_bindings(self) -> None:
-        text = MY.read_text(encoding="utf-8")
+        text = vue_src(MY)
         for needle in (
             "'surface-ticketfeed': repairSurface === 'ticketfeed'",
             "'surface-faultboard': repairSurface === 'faultboard'",
@@ -54,14 +56,14 @@ class RepairLookThickenTests(unittest.TestCase):
     def test_ticket_tone_shared(self) -> None:
         tone = TONE.read_text(encoding="utf-8")
         self.assertIn("export function ticketTone(status)", tone)
-        text = MY.read_text(encoding="utf-8")
+        text = vue_src(MY)
         self.assertIn(
             "import { multiApproveSteps, ticketTagType, ticketTone } from '../../utils/statusTone.js'",
             text,
         )
 
     def test_css_thicken_two_faces(self) -> None:
-        text = MY.read_text(encoding="utf-8")
+        text = vue_src(MY)
         for needle in (
             ".list.surface-ticketfeed .card[data-ticket-tone='pending']",
             ".list.surface-ticketfeed .card[data-ticket-tone='ok']",

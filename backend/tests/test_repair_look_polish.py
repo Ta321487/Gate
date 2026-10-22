@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -20,7 +22,7 @@ MY = (
 
 class RepairLookPolishTests(unittest.TestCase):
     def test_ticket_short_chips(self) -> None:
-        text = MY.read_text(encoding="utf-8")
+        text = vue_src(MY)
         for needle in (
             'class="fault-cat"',
             'class="ticket-chip"',

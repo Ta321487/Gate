@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -134,7 +136,7 @@ class CrossDomainGateTests(unittest.TestCase):
         self.assertEqual(render_guard_findings({"frontend/src/views/user/MyTickets.vue": raw}), [])
 
     def test_baseline_my_tickets_has_no_unguarded_field(self):
-        body = MY_TICKETS.read_text(encoding="utf-8")  # 整份文件（含 <script> 取值）
+        body = vue_src(MY_TICKETS)  # 整份文件（含 <script> 取值）
         self.assertEqual(render_guard_findings({"frontend/src/views/user/MyTickets.vue": body}), [])
 
     def test_form_input_and_value_guard_are_not_a_render(self):

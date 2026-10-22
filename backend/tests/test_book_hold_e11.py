@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -125,14 +127,10 @@ class BookHoldE11Tests(unittest.TestCase):
             / "backend/src/main/java/com/thesis/controller/TicketController.java"
         ).read_text(encoding="utf-8")
         self.assertIn("claim-hold", ctrl)
-        browse = (
-            BASELINE / "frontend/src/views/user/ArchiveBrowse.vue"
-        ).read_text(encoding="utf-8")
+        browse = vue_src(BASELINE / "frontend/src/views/user/ArchiveBrowse.vue")
         self.assertIn("book_hold", browse)
         self.assertIn("allowBookHold", browse)
-        mine = (BASELINE / "frontend/src/views/user/MyTickets.vue").read_text(
-            encoding="utf-8"
-        )
+        mine = vue_src(BASELINE / "frontend/src/views/user/MyTickets.vue")
         self.assertIn("claim-hold", mine)
         self.assertIn("canClaimHold", mine)
         self.assertIn("allowBookHold && row.holdExpireAt", mine)
