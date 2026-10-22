@@ -181,9 +181,7 @@ class FlashPriceE05Tests(unittest.TestCase):
             / "backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java"
         ).read_text(encoding="utf-8")
         self.assertIn("flash-price-enabled", binder)
-        fe = (
-            BASELINE / "frontend/src/views/user/ArchiveBrowse.vue"
-        ).read_text(encoding="utf-8")
+        fe = vue_src(BASELINE / "frontend/src/views/user/ArchiveBrowse.vue")
         self.assertIn("flash_price", fe)
         self.assertIn("promoActive", fe)
         self.assertIn("flashBadge", fe)

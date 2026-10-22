@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -86,9 +88,7 @@ class CinemaC15Tests(unittest.TestCase):
         self.assertNotIn("DOM-CINEMA", groups.get("borrow", set()))
 
     def test_runtime_archive_browse_seat_cta(self) -> None:
-        src = (BASELINE / "frontend/src/views/user/ArchiveBrowse.vue").read_text(
-            encoding="utf-8"
-        )
+        src = vue_src(BASELINE / "frontend/src/views/user/ArchiveBrowse.vue")
         self.assertIn("isSeatSelectMode", src)
         self.assertIn("/seats/map/", src)
         self.assertIn("seat_select", src)

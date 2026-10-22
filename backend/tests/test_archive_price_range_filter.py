@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -38,9 +40,7 @@ class ArchivePriceRangeFilterTests(unittest.TestCase):
         self.assertIn("BigDecimal priceMax", ctrl)
         self.assertIn("priceMin,", ctrl)
 
-        fe = (BASELINE / "frontend/src/views/user/ArchiveBrowse.vue").read_text(
-            encoding="utf-8"
-        )
+        fe = vue_src(BASELINE / "frontend/src/views/user/ArchiveBrowse.vue")
         self.assertIn("priceRangeFilterOn", fe)
         self.assertIn("priceMinFilter", fe)
         self.assertIn("priceMaxFilter", fe)

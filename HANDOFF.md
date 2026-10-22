@@ -10,21 +10,21 @@
 
 ## 当前主线
 
-> **最新批次（2026-10-22）：Vue 大文件拆分批次开刀。**
-> - 真源 [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)：≥1000 行页外提 `.setup.js` + `.css`；只搬家；断言合读。
-> - 范式：`ArchiveBrowse` 已齐；排队 MyTickets → TicketsAdmin → … → MyOrders。
+> **最新批次（2026-10-22）：Vue 大文件拆分收口。**
+> - 真源 [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)：≥1000 行九页 + ArchiveBrowse 范式均已外提 `.setup.js` + `.css`；只搬家。
+> - 合读护栏：`tests._vue_src.vue_src`；一轮一页已推送。
 >
-> **上一批（2026-10-22）：全域 UI 诊断表立册（文档）。**
-> - [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)：68 域 L×C；开表全 `—`；**代码未开**。
+> **上一批（2026-10-22）：全域 UI 诊断表立册 + 起包前布局闸 D0（文档）。**
+> - 诊断 / 布局闸口径已立；**代码未开**。
 >
-> **上一批（2026-10-22）：起包前 UI 布局闸 · 文档先行（D0）+ 软皮短签再磨收口。**
+> **上一批（2026-10-22）：软皮短签再磨收口。**
 
 1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～G / GENERIC 已可 bake。  
 2. **Path B** 三条真交叉可 `full`（借用+下单 / 借用+预约 / 下单+预约）；三合一与智慧校园仍 `reject`。  
 3. LLM **只填 schema JSON**（不生成业务 Java/Vue）；接 LLM 后「代码无误」靠运行时固定。  
 4. **Path B 口径**：开题写进「拟实现」的必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力，禁止 `degraded` 交半成品装全文。  
 5. **UI 观感**：九组首刀 + 软皮短签再磨已齐；见观感批次册。  
-6. **Vue 大文件拆分**：进行中，见 [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)。  
+6. **Vue 大文件拆分**：已收口，见 [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)。  
 7. **起包前布局闸**：口径 D0 已立；代码从 D1 起，见 [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md)。  
 8. **全域 UI 诊断**：68 域 L×C 台账已立、尚未勾选，见 [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)。
 
@@ -103,7 +103,7 @@ Vue 大文件拆分 → [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)�
 ```
 继续 graduate_factory_v3。先读 HANDOFF.md；能力/领域长表见 docs/。
 按规则 ai-handoff 接手：读 HANDOFF → 跑测试（红=中断点）→ git log 顺脉络。
-主线：Vue 大文件拆分进行中（docs/vue-split-batch.md）；观感已收口；起包前布局闸 D0 见 docs/ui-layout-prebake-gate.md。卡片主信号/短签/价区间、域脸壳色、账户中心、瘦包已落地。
+主线：Vue 大文件拆分已收口（docs/vue-split-batch.md）；观感已收口；起包前布局闸 D0 见 docs/ui-layout-prebake-gate.md。卡片主信号/短签/价区间、域脸壳色、账户中心、瘦包已落地。
 超壳 / 三合一 / 智慧校园必须 reject；硕博与真实业务全流程不接。
 薄壳架构保留（不要新开厚 DOM 包）；薄壳≠功能稀薄。领域清单以 docs/domains.md 为准。
 ```

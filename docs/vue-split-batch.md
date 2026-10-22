@@ -2,7 +2,7 @@
 
 > **本文只负责**：骨架超大 `.vue` 外提同名 `.setup.js` + `.css` 的进度与护栏口径。  
 > **不负责**：观感加厚、布局闸、控件选型（各见专题册）。  
-> **状态**：**进行中** · 范式 `ArchiveBrowse` 已齐；按行数 ≥1000 排队，一轮一页。  
+> **状态**：**已收口** · ≥1000 行排队页外提完毕；合读护栏 `tests._vue_src.vue_src`。  
 > **硬闸**：只搬家不改行为；断言须 **合读** `.vue` + `.setup.js`（必要时 + `.css`），禁止假绿。  
 > **索引**：[README.md](./README.md) · 交接 [`../HANDOFF.md`](../HANDOFF.md) · 搁置 [`parked-work.md`](./parked-work.md)
 

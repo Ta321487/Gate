@@ -116,7 +116,7 @@ class MultiApproveC16Tests(unittest.TestCase):
         mapper_xml = MYBATIS / "backend/src/main/resources/mapper/TicketMapper.xml"
         self.assertIn("updateApproveStage", mapper_xml.read_text(encoding="utf-8"))
         admin = BASELINE / "frontend/src/views/admin/TicketsAdmin.vue"
-        at = admin.read_text(encoding="utf-8")
+        at = vue_src(admin)
         self.assertIn("threeLevelApprove", at)
         self.assertIn("pending_mid", at)
         my = BASELINE / "frontend/src/views/user/MyTickets.vue"

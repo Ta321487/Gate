@@ -225,9 +225,7 @@ class MultiCategoryProductTagsTests(unittest.TestCase):
         self.assertIn("archive-item-category-table", binder)
         self.assertIn("configureMultiCategory", binder)
 
-        browse = (BASELINE / "frontend/src/views/user/ArchiveBrowse.vue").read_text(
-            encoding="utf-8"
-        )
+        browse = vue_src(BASELINE / "frontend/src/views/user/ArchiveBrowse.vue")
         self.assertIn("multiCategory", browse)
         self.assertIn("categoryIds", browse)
         self.assertIn("tagNames", browse)

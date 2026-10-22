@@ -11,7 +11,7 @@
 
 | # | 项 | 一句话 | 真源 / 下次从哪开 | 现状 |
 |---|----|--------|-------------------|------|
-| 1 | **UI 包** | 观感加厚；**Vue 大文件拆分**；起包前布局闸；可交互控件；全域 UI 诊断表 | 观感 [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)；拆分 [`vue-split-batch.md`](./vue-split-batch.md)；布局 [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md)；控件 [`form-controls.md`](./form-controls.md)；诊断 [`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md) | 观感已齐；**拆分进行中**；布局/控件口径已立·代码未开；诊断表未诊 |
+| 1 | **UI 包** | 观感加厚；Vue 大文件拆分；起包前布局闸；可交互控件；全域 UI 诊断表 | 观感 [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)；拆分 [`vue-split-batch.md`](./vue-split-batch.md)；布局 [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md)；控件 [`form-controls.md`](./form-controls.md)；诊断 [`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md) | 观感已齐；**拆分已收口**；布局/控件口径已立·代码未开；诊断表未诊 |
 | 2 | **X 系列** | §0 通识横切剩余簇（一轮一簇） | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) | X-AUTH～X-UX 已齐；打印/灯箱/Toast/页脚版本/离开提示/复制单号为**基线体验**；档案 Excel 导入导出已是 xlsx |
 | 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **交易族 + 借用组已收口**；跟进/报修/报名/审批/预约/内容/互动 **未推** |
 | 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；`TRADE_*` / `BORROW_*_ALIGN_RULES` + `test_opening_align_gate.py` | **交易族 + 借用组 A 白名单 + B + C 门禁已齐**；其余域组登记表/测 **未开** |
@@ -99,3 +99,4 @@
 | 2026-10-22 | 大线 #1：借用再磨——详情借阅/床位/取件文案按 surface 分脸；下一软皮短签分批 |
 | 2026-10-22 | 大线 #1：软皮短签再磨收口（预约→内容→报名→跟进/互动→报修/审批轻磨）；下一抽检回归 |
 | 2026-10-22 | 大线 #1：开 Vue 大文件拆分批次（vue-split-batch）；范式 ArchiveBrowse；排队 MyTickets 起 |
+| 2026-10-22 | 大线 #1：Vue 大文件拆分收口（MyTickets→MyOrders 九页 + ArchiveBrowse 范式）；合读 `vue_src` |

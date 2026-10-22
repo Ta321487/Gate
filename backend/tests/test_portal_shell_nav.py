@@ -396,19 +396,19 @@ class PortalShellNavTests(unittest.TestCase):
         self.assertIn(".short-tag", voice)
         self.assertIn(".promo-bar", voice)
         self.assertIn(".main-signal.price", voice)
-        browse = (_FRONT / "views" / "user" / "ArchiveBrowse.vue").read_text(encoding="utf-8")
+        browse = vue_src(_FRONT / "views" / "user" / "ArchiveBrowse.vue")
         self.assertIn("storyLeadOf", browse)
         self.assertIn("boardToneOf", browse)
         self.assertIn("cardShortTags", browse)
         self.assertIn('class="short-tags"', browse)
-        self.assertIn('class="promo-bar"', browse)
+        self.assertIn('class="promo promo-bar"', browse)
         self.assertIn('class="more-hint"', browse)
         # catalog 不再把 cardPreviewFields 整表打成灰墙行
         self.assertIn("cardVoice === 'story' ? cardPreviewFields : []", browse)
-        # 卡底：状态条与操作条拆开，禁止 tag/按钮同一 flex-wrap
-        self.assertIn('class="card-foot"', browse)
-        self.assertIn('class="card-meta"', browse)
-        self.assertIn('class="card-acts"', browse)
+        # 卡底：ArchiveBrowse 口径在外提 CSS（合读）；列表页模板另见下循环
+        self.assertIn(".card-foot", browse)
+        self.assertIn(".card-meta", browse)
+        self.assertIn(".card-acts", browse)
         self.assertIn("act-primary", browse)
         self.assertIn(
             "surface-shelfgrid .card-acts",
@@ -426,13 +426,13 @@ class PortalShellNavTests(unittest.TestCase):
             "PeerTickets.vue",
             "MyFavorites.vue",
         ):
-            page = (_FRONT / "views" / "user" / name).read_text(encoding="utf-8")
+            page = vue_src(_FRONT / "views" / "user" / name)
             self.assertIn('class="card-foot"', page, name)
             self.assertIn('class="card-acts"', page, name)
             self.assertNotIn('class="row"', page, name)
             self.assertNotIn('class="acts"', page, name)
         for name in ("MyTickets.vue", "PeerTickets.vue"):
-            page = (_FRONT / "views" / "user" / name).read_text(encoding="utf-8")
+            page = vue_src(_FRONT / "views" / "user" / name)
             self.assertIn('class="card-meta"', page, name)
         tone = (_FRONT / "utils" / "statusTone.js").read_text(encoding="utf-8")
         self.assertIn("reserveTone", tone)
