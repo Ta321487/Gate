@@ -22,21 +22,19 @@ _PROBE_DATA.mkdir(parents=True, exist_ok=True)
 os.environ["GF_DATA_DIR"] = str(_PROBE_DATA)
 
 from app.bake.catalog import _DOMAIN_DEFAULT_ARCH, build_spec  # noqa: E402
-from app.bake.domains import DOMAIN_GROUPS, DOMAINS  # noqa: E402
+from app.bake.domains import AUDIT_GROUP_CANARIES, DOMAIN_GROUPS, DOMAINS  # noqa: E402
 from app.bake.engine import bake_project  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
 
-# 各族代表（--canary）
+# 各族代表（--canary）：与交付审计 AUDIT_GROUP_CANARIES 同表
 FAMILY_CANARIES: list[tuple[str, str, str, str]] = [
-    ("borrow", "DOM-LIBRARY", "图书借阅管理系统", "ARCH-FLOW"),
-    ("follow", "DOM-ATTEND", "学生请假销假管理系统", "ARCH-FLOW"),
-    ("ticket", "DOM-DORM", "宿舍报修管理系统", "ARCH-FLOW"),
-    ("apply", "DOM-ACTIVITY", "校园活动报名管理系统", "ARCH-FLOW"),
-    ("approve", "DOM-SEAL", "印章使用审批管理系统", "ARCH-FLOW"),
-    ("trade", "DOM-SHOP", "校园二手商城管理系统", "ARCH-TRADE"),
-    ("reserve", "DOM-HOSPITAL", "校医院挂号预约管理系统", "ARCH-RESERVE"),
-    ("content", "DOM-FORUM", "校园论坛社区管理系统", "ARCH-CONTENT"),
-    ("interact", "DOM-SURVEY", "校园问卷调查管理系统", "ARCH-CRUD"),
+    (
+        gid,
+        dom,
+        title,
+        _DOMAIN_DEFAULT_ARCH.get(dom, "ARCH-CRUD"),
+    )
+    for gid, dom, title in AUDIT_GROUP_CANARIES
 ]
 
 

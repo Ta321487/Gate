@@ -218,6 +218,27 @@ DOMAIN_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     ("fallback", "兜底", ("DOM-GENERIC",)),
 )
 
+# 交付审计「旧题回归」组代表（docs/delivery-audit-rules.md §3.1 #2）。
+# 每 DOMAIN_GROUPS 一组一条；含经典图书/宿舍/实习。探针 --canary 与
+# test_audit_group_canaries 同读此表。人工小卡另加本轮邻域与触点域。
+AUDIT_GROUP_CANARIES: tuple[tuple[str, str, str], ...] = (
+    ("borrow", "DOM-LIBRARY", "图书借阅管理系统"),
+    ("follow", "DOM-INTERN", "顶岗实习岗位建档与每周周报导师审阅"),
+    ("ticket", "DOM-DORM", "学生宿舍报修管理系统"),
+    ("apply", "DOM-ACTIVITY", "校园活动报名管理系统"),
+    ("approve", "DOM-SEAL", "学校行政印章使用申请审批系统"),
+    ("trade", "DOM-SHOP", "校园二手商城管理系统"),
+    ("reserve", "DOM-MEETING", "会议室分时预约管理系统"),
+    ("content", "DOM-FORUM", "校园论坛发帖回帖管理系统"),
+    ("interact", "DOM-SURVEY", "校园问卷调查管理系统"),
+    ("fallback", "DOM-GENERIC", "实验室试剂基础信息台账系统"),
+)
+
+# 早期金丝雀；必须是 AUDIT_GROUP_CANARIES 的子集（借用/报修/跟进代表）。
+CLASSIC_AUDIT_CANARIES: frozenset[str] = frozenset(
+    {"DOM-LIBRARY", "DOM-DORM", "DOM-INTERN"}
+)
+
 
 def is_borrow_family_domain(domain: str | None) -> bool:
     d = (domain or "").strip()
@@ -233,6 +254,11 @@ def domain_group_of(domain: str | None) -> str:
     """``DOMAIN_GROUPS`` 组 id；未知域回落 ``fallback``。"""
     d = (domain or "").strip()
     return _DOMAIN_TO_GROUP.get(d) or "fallback"
+
+
+def audit_group_canary_domains() -> tuple[str, ...]:
+    """交付审计组代表域 id 列表（顺序与 ``AUDIT_GROUP_CANARIES`` 一致）。"""
+    return tuple(dom for _gid, dom, _title in AUDIT_GROUP_CANARIES)
 
 
 # domain → 默认所需能力（题目无关的积木组合）

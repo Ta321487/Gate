@@ -22,8 +22,8 @@
 > **已齐（全族）**：交易族、借用、跟进、报修、报名、审批、预约、内容、**互动**。  
 > 真源：[`docs/parked-work.md`](./docs/parked-work.md) #3/#4 · [`docs/opening-align-gate.md`](./docs/opening-align-gate.md) · 范本 [`docs/trade-thicken-batch.md`](./docs/trade-thicken-batch.md) §0.3 · 测 `test_opening_align_gate.py`。
 >
-> **本会话（2026-10-22 · 未提交）：跟进～互动 #3+#4 收口（全族）。**  
-> 互动：I-11 统一能力加深；`INTERACT_*`。旁路架构图补齐仍未提交。
+> **本会话（2026-10-22 · 已提交）：交付审计旧题回归升组代表 + §5 皮对照扩层。**  
+> `AUDIT_GROUP_CANARIES` + `test_audit_group_canaries`（4 绿）；delivery-audit v5.6 §5.1 覆盖 A/B/C 软皮、各族结构皮、话术、视觉、旁路（不止申请/跟进）。旁路：#3+#4/架构图另案。
 >
 > **上一批（已收口）：Vue 大文件拆分** · [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)  
 > **再上一批**：软皮短签再磨；布局闸/控件/诊断 **口径已立·代码未开**。

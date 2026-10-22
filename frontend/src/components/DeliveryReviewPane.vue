@@ -339,7 +339,7 @@ const showDoneNotes = ref(false)
 
 const BOSS_ITEMS = [
   { key: 'shell', label: '1. 有没有空壳（缺表/API/状态机/写库）？已齐是否「管理能管+用户可产生数据」？' },
-  { key: 'regress', label: '2. 旧题回归红了吗？图书/宿舍/实习 + 本轮邻域' },
+  { key: 'regress', label: '2. 旧题回归红了吗？每业务组代表（含图书/宿舍/实习）+ 本轮邻域/触点' },
   { key: 'fsm', label: '3. 状态机对且准吗（集合/转移/角色/文案）？' },
   { key: 'fields', label: '4. 字段可见含义像本题吗（有无壳字段穿帮）？' },
   { key: 'flow', label: '5. 会不会看错主流程（「我的」/种子/按钮诱导，或交易/内容串味）？' },

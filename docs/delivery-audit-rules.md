@@ -2,7 +2,7 @@
 
 > **本文只负责**：怎么审交付（主链路、红灯、老板小卡）。  
 > **不负责**：换皮 ID 进度（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；密功能是否待补（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）。  
-> **版本**：v5.4（2026-10-10）。指导只保留主链路；细则坑点追加到文末「红灯表」，不另起长文。老板小卡与工厂 `DeliveryReviewPane` 同步。  
+> **版本**：v5.6（2026-10-22）。指导只保留主链路；细则坑点追加到文末「红灯表」，不另起长文。老板小卡与工厂 `DeliveryReviewPane` 同步。旧题回归 = 组代表（`AUDIT_GROUP_CANARIES`）；§5 皮对照扩为各族分层（不止申请/跟进）。  
 > **索引**：[README.md](./README.md)。  
 > **清单册**（待办 ID / 状态列）：[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)。  
 > **开题密功能对照**：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
@@ -68,7 +68,7 @@
 | # | 问题 |
 |---|------|
 | 1 | 有没有**空壳**？宣称有却缺表/API/状态机/写库；已齐是否满足「**管理能管 + 用户可产生数据**」？ |
-| 2 | **旧题回归**红了吗？至少图书 / 宿舍 / 实习，**另加本轮邻域**（如动交易则抽 SHOP，动预约则抽 MEETING） |
+| 2 | **旧题回归**红了吗？**`DOMAIN_GROUPS` 每组至少抽 1 代表**（真源 `AUDIT_GROUP_CANARIES`，含图书/宿舍/实习）+ **本轮邻域**（动交易抽 SHOP 等）+ **本轮触点域**；自动化见 `test_audit_group_canaries`（禁止只审三题） |
 | 3 | **状态机**对且准吗（集合/转移/角色/文案）？ |
 | 4 | **字段**用户可见含义像本题吗（有没有壳字段穿帮）？ |
 | 5 | 客户会不会**看错主流程**（「我的」/种子/按钮诱导成借用、报修，或交易/内容串味）？ |
@@ -94,7 +94,8 @@
 
 1. **总表**：域/ID → 四级 → 一句话  
 2. **红灯**：空壳 / 状态机 / 字段 / 匹配互抢 /「演示」命中（路径+原文）  
-3. **旧题回归**：图书、宿舍、实习（+本轮邻域）  
+3. **旧题回归**：组代表全覆盖（`AUDIT_GROUP_CANARIES`）+ 本轮邻域/触点；测红即红  
+
 4. **老板小卡** 12 条主项 + 理解偏差，逐条是/否  
 5. 本轮是否改代码（默认否）
 
@@ -159,16 +160,33 @@
 
 ## 5. 改代码时对照
 
+皮 **不只** 申请/跟进；各族换皮纪律见 [`domains.md`](./domains.md) A/B/C。审字段穿帮 / 换皮进度时按下表扫全层，禁止只改一个 builder。
+
+### 5.1 皮与可见面（按层）
+
+| 层 | 覆盖 | 常见落点 |
+|----|------|----------|
+| **匹配 / 域认领** | 题落到哪个 `DOM-*` | `domains_catalog/*.py`；长尾 `match_recommend`（勿另开域专扫） |
+| **A 软货架** | 商城等同壳换分类/文案/SKU | `shop_retail_niches.py`（加 pack+测）；**禁止**在 `builders_slot` 写 niche 分支 |
+| **B 同壳标签** | 预约/内容/医院等换眉标·角色名 | `schema/kind_label_packs.py`；CRM 深皮走 `deep_skin_overrides.py`；扫词仍 `scene_scan.*_KIND_RULES` |
+| **C 换表/种子** | 种子形态随场景变 | `sql/domain_scene_seed.py`、`event_scene_seed.py`、`content_scene_overlays` / `reserve_scene_overlays`；各域 seed blob |
+| **跟进/审批/报名结构皮** | 档案字段、菜单、banner 覆盖包 | `schema/*_followup_presets.py`、`oa`/`tail`/`stuwork`/`mutual`/`bed`/`checkin`/… 分组 presets、`deep_skin_overrides.py`、`builders_archive.py` / `builders_ticket.py`；辅 `form_first_entry.py`、`shells.py` |
+| **交易/预约/槽位结构皮** | 商城·点餐·影院·预约槽 | `builders_slot.py`（读 niche / kind pack，不散落 if）；预约/医院等 label 仍回 B |
+| **内容/媒资结构皮** | 论坛·影视·文库等 | `builders_content.py`；内容 thicken 内 `_apply_*_skin`（`features/content_thicken.py`） |
+| **互动/考试同域换皮** | 题库党建/安全等 | `features/exam.py`（`exam_skin` 文案+种子）；互动 presets 见 `mutual_*` 等 |
+| **页面话术** | 分类轴/单据名词/空状态 | `ticket_copy_text.py` + `followup_presets.followup_domain_schema()`（全域 choke）；新皮只用 `{category_axis}` / `{ticket_noun}` |
+| **跨域词门禁** | 专属名词串味 | `domain_vocab.py`（error 拦） |
+| **场景身份** | 登录氛围、资料字段、岗位名 | `scene_scan.py`、`profile_fields`、岗位种子（与壳同一 scene） |
+| **视觉轴 / 组表面** | theme·chrome·layout·typeface·门户；组列表构图 | bake 视觉轴键；`{组}_surface_style` / 观感见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md)、[`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md) |
+| **皮穿帮旁路（易漏）** | 开题样例、种子公告、前端兜底与结构皮分叉 | `proposal_packs_data/*.json`、上述 seed/overlays、`skeletons/baseline/frontend` 空态硬编码 |
+
+### 5.2 能力与台账
+
 | 要改 | 常见落点 |
 |------|----------|
-| 域 / 关键词 / hint | `domains_catalog/*.py` |
-| 申请/跟进皮 | `schema/*_presets.py`、builders |
-| 页面话术（分类轴/单据名词/空状态） | `bake/ticket_copy_text.py`（槽位解析）+ `schema/followup_presets.py`（全域 choke point）；新皮只用 `{category_axis}` / `{ticket_noun}` 占位符，勿写死域词 |
-| 跨域词 / 口径门禁 | `bake/domain_vocab.py`（专属名词表 + 三条 error 规则） |
-| 场景身份 | `scene_scan.py`、`profile_fields`、种子 SQL |
-| 匹配长尾 | `match_recommend`（勿另开域专扫） |
-| 能力 / 门禁 | `capabilities.py`、基线 Store、gate；文档同步 [`capabilities.md`](./capabilities.md) |
-| 清单状态 | `domain-skin-gap-analysis.md` |
+| 能力 / 门禁 / 写库 | `capabilities.py`、`features/<cap>.py`、`ensure_*`、基线/三套 Store、gate；文档 [`capabilities.md`](./capabilities.md) |
+| 清单状态（换皮 ID） | [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md) |
+| 密功能 / 加厚 | 地图 + 各组 `*_thicken.py`（维护既有，不新开 thicken） |
 
 伤旧或落不准 → **不得**标已齐。
 

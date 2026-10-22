@@ -332,11 +332,15 @@
 
 ## 10. 改哪里 / 回写
 
-| 要补 | 位置 |
-|------|------|
-| 域 / 关键词 / hint | `domains_catalog/*.py` |
-| 申请皮 | `schema/*_presets.py` |
-| 场景身份 | `scene_scan.py`、种子 SQL |
+皮 **不止** 申请/跟进。完整分层（A 软货架 / B 同壳标签 / C 种子 / 跟进·交易·预约·内容·互动结构皮 / 话术 / 视觉轴 / 旁路）以 [`delivery-audit-rules.md`](./delivery-audit-rules.md) **§5.1** 为准，勿只改 `*_presets` 或单个 builder。
+
+| 要补 | 位置（摘要） |
+|------|----------|
+| 域 / 关键词 / hint | `domains_catalog/*.py`；长尾 `match_recommend` |
+| 软皮 A/B/C | `shop_retail_niches` / `kind_label_packs` / `domain_scene_seed` 等（见 domains 换皮纪律） |
+| 结构皮（各族） | followup presets + `builders_archive`/`ticket`/`slot`/`content`；交易勿在 slot 写 niche 分支 |
+| 话术 / 串味门禁 | `ticket_copy_text`、`domain_vocab` |
+| 场景身份 / 视觉 | `scene_scan`、表面键 / 观感册 |
 | 能力 | capabilities、基线 Store、gate |
 | 状态列 | 本文对应行 + §9 计数 |
 
