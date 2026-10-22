@@ -127,6 +127,56 @@
     function domainCode(domValue) {
       return String(domValue || "").split(" · ")[0];
     }
+
+    // 九组列表构图：与现网 GenerateTab / themes.py 域集合对齐；非本组隐藏
+    const SURFACE_GROUP_DOMAINS = {
+      content: new Set(["DOM-MEDIA", "DOM-MUSIC", "DOM-FORUM", "DOM-BLOG", "DOM-DOCLIB"]),
+      trade: new Set(["DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"]),
+      reserve: new Set([
+        "DOM-HOSPITAL", "DOM-PARKING", "DOM-MEETING", "DOM-SALON",
+        "DOM-HOTEL", "DOM-CARRENT", "DOM-INSTRUMENT",
+      ]),
+      borrow: new Set([
+        "DOM-LIBRARY", "DOM-EQUIP", "DOM-ASSET", "DOM-PARCEL", "DOM-BED", "DOM-PROCURE",
+      ]),
+      apply: new Set(["DOM-ACTIVITY", "DOM-COURSE", "DOM-LOST", "DOM-TOUR"]),
+      interact: new Set([
+        "DOM-DATING", "DOM-MUTUAL-TUTOR", "DOM-MUTUAL-TOPIC", "DOM-MUTUAL-TEAM",
+        "DOM-CARPOOL", "DOM-TIMEBANK",
+      ]),
+      follow: new Set([
+        "DOM-CRM", "DOM-EVENT", "DOM-ATTEND", "DOM-FUND", "DOM-RECRUIT",
+        "DOM-GRADE", "DOM-INTERN", "DOM-LISTING",
+      ]),
+      repair: new Set(["DOM-DORM", "DOM-PROPERTY", "DOM-IT"]),
+      approve: new Set([
+        "DOM-LABSAFE", "DOM-SEAL", "DOM-FLEET", "DOM-CERT", "DOM-PROMO", "DOM-FITOUT",
+        "DOM-ACAD", "DOM-TRIP", "DOM-EXPENSE", "DOM-CREDIT", "DOM-LABOR", "DOM-EVAL",
+        "DOM-MORAL", "DOM-AWARD", "DOM-PROCURE", "DOM-CLUB", "DOM-PROJ", "DOM-ETHIC",
+        "DOM-PARTY", "DOM-CONTRACT", "DOM-CARPASS", "DOM-VISITOR", "DOM-CHECKIN",
+      ]),
+    };
+    const SURFACE_SELECT_IDS = [
+      "sel-content-surface",
+      "sel-trade-surface",
+      "sel-reserve-surface",
+      "sel-borrow-surface",
+      "sel-apply-surface",
+      "sel-interact-surface",
+      "sel-follow-surface",
+      "sel-repair-surface",
+      "sel-approve-surface",
+    ];
+
+    function syncSurfaceFields(domValue) {
+      const code = domainCode(domValue || document.getElementById("sel-dom")?.value);
+      document.querySelectorAll("[data-surface-group]").forEach((el) => {
+        const g = el.dataset.surfaceGroup;
+        const show = !!(SURFACE_GROUP_DOMAINS[g] && SURFACE_GROUP_DOMAINS[g].has(code));
+        el.hidden = !show;
+      });
+    }
+
     function entryOptionsForDom(domValue) {
       return ENTRY_OPTIONS_BY_DOMAIN[domainCode(domValue)] || [];
     }
@@ -264,9 +314,12 @@
       const tb = document.getElementById("project-tbody");
       const map = {
         all: () => true,
+        needs_confirm: (p) =>
+          p.status === "needs_confirm" || p.statusLabel?.includes("待确认匹配"),
         active: (p) => p.running || p.status === "running",
         generating: (p) => p.status === "generating",
-        done: (p) => ["generated", "running"].includes(p.status),
+        done: (p) =>
+          ["generated", "running"].includes(p.status) && p.zipOk,
         fail: (p) => p.status === "failed",
         pending: (p) => p.zipOk && p.deliveryMark === "none",
         ready: (p) => p.deliveryMark === "ready",
@@ -1178,6 +1231,7 @@
       document.getElementById("sel-ai").value = RECOMMENDED.ai;
       document.getElementById("sel-scene").value = RECOMMENDED.scene;
       syncEntrySelect(RECOMMENDED.entry || undefined);
+      syncSurfaceFields(RECOMMENDED.dom);
     }
 
     function openProject(id, demoOverride) {
@@ -1241,6 +1295,7 @@
         }
         showView("project");
         syncMatchFields(false);
+        syncSurfaceFields();
         return;
       }
 
@@ -1256,6 +1311,7 @@
       setRuntime(state === "running");
       showView("project");
       syncMatchFields(false);
+      syncSurfaceFields();
       if (matchConfirmed) {
         document.getElementById("match-ack").checked = true;
         setDisabled("btn-confirm", true);
@@ -2104,6 +2160,7 @@
         // 手改领域时入口以选项首项为当前值，不改 RECOMMENDED（偏离由 isDeviated 判定）
       }
       syncMatchFields(true);
+      syncSurfaceFields(document.getElementById("sel-dom").value);
       toast(isDeviated() ? "已偏离推荐 · 请确认你知道后果" : "领域已改回推荐值");
     });
     function bindLockedMatchSelect(id, recommendedKey, lockedMsg, okMsg) {
@@ -2127,6 +2184,9 @@
     document.getElementById("sel-llm")?.addEventListener("change", () => toast("LLM 开关已自动保存"));
     document.getElementById("sel-password")?.addEventListener("change", () => toast("密码策略已自动保存"));
     document.getElementById("sel-portal-home")?.addEventListener("change", () => toast("门户首页已自动保存"));
+    SURFACE_SELECT_IDS.forEach((id) => {
+      document.getElementById(id)?.addEventListener("change", () => toast("列表构图已自动保存"));
+    });
     document.getElementById("usage-presence")?.addEventListener("change", (e) => {
       applyUsagePresence(e.target.value || "alive");
     });
@@ -2423,6 +2483,7 @@
     showLog("job");
     syncRuntimeUI();
     syncMatchFields(false);
+    syncSurfaceFields();
     renderGates(false);
     applyPptPhase("none");
     setArtifactView("db");

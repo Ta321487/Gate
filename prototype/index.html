@@ -106,9 +106,13 @@
               <div class="toolbar">
                 <div class="tabs-mini" id="list-filter">
                   <button class="active" data-f="all">全部</button>
+                  <button data-f="needs_confirm">待匹配</button>
                   <button data-f="active">运行中</button>
                   <button data-f="generating">生成中</button>
                   <button data-f="done">可下载</button>
+                  <button data-f="pending">待审</button>
+                  <button data-f="ready">已审待发</button>
+                  <button data-f="delivered">已发出</button>
                   <button data-f="fail">质检未过</button>
                 </div>
                 <div class="tools">
@@ -235,9 +239,12 @@
                         <option>DOM-ACTIVITY · 活动报名</option>
                         <option>DOM-SHOP · 商城</option>
                         <option>DOM-FOOD · 点餐</option>
+                        <option>DOM-CINEMA · 影院</option>
                         <option>DOM-HOSPITAL · 挂号</option>
                         <option>DOM-PARKING · 车位</option>
                         <option>DOM-MEDIA · 影视</option>
+                        <option>DOM-DATING · 婚恋</option>
+                        <option>DOM-SEAL · 用章</option>
                         <option>DOM-GENERIC · 通用兜底</option>
                       </select>
                     </div>
@@ -433,7 +440,7 @@
                         <option value="mall">mall · 商城货架首页（零售域）</option>
                       </select>
                     </div>
-                    <div class="field">
+                    <div class="field" data-surface-group="content" hidden>
                       <label>内容列表构图</label>
                       <select id="sel-content-surface">
                         <option value="folio" selected>folio · 刊头阅读流</option>
@@ -441,16 +448,79 @@
                         <option value="ledger">ledger · 条目清单</option>
                         <option value="splitdesk">splitdesk · 双栏阅读台</option>
                       </select>
-                      <div class="small muted">演示：内容域题才出现；只改列表排法，不改菜单</div>
+                      <div class="small muted">内容域才出现；只改列表排法，不改菜单</div>
                     </div>
-                    <div class="field">
+                    <div class="field" data-surface-group="trade" hidden>
                       <label>商品列表构图</label>
                       <select id="sel-trade-surface">
                         <option value="shelfgrid" selected>shelfgrid · 货架密铺</option>
                         <option value="menuboard">menuboard · 档口菜单板（餐饮）</option>
                         <option value="showtime">showtime · 排片选座行（影院）</option>
                       </select>
-                      <div class="small muted">演示：商城 / 餐饮 / 影院才出现</div>
+                      <div class="small muted">商城 / 餐饮 / 影院才出现</div>
+                    </div>
+                    <div class="field" data-surface-group="reserve" hidden>
+                      <label>预约列表构图</label>
+                      <select id="sel-reserve-surface">
+                        <option value="slotstrip" selected>slotstrip · 时段条/号源行</option>
+                        <option value="roomstate">roomstate · 房态格（酒店）</option>
+                        <option value="vehiclecard">vehiclecard · 车型档期卡（租车/停车）</option>
+                      </select>
+                      <div class="small muted">预约域才出现；隐喻档绑域</div>
+                    </div>
+                    <div class="field" data-surface-group="borrow" hidden>
+                      <label>借用列表构图</label>
+                      <select id="sel-borrow-surface">
+                        <option value="bookshelf" selected>bookshelf · 书架脊列</option>
+                        <option value="stockrow">stockrow · 库存台账行</option>
+                        <option value="bedblocks">bedblocks · 床位色块墙</option>
+                        <option value="parcelshelf">parcelshelf · 驿站货架格</option>
+                      </select>
+                      <div class="small muted">借用域才出现；书架/床位/驿站绑域</div>
+                    </div>
+                    <div class="field" data-surface-group="apply" hidden>
+                      <label>报名列表构图</label>
+                      <select id="sel-apply-surface">
+                        <option value="eventposter" selected>eventposter · 活动海报墙</option>
+                        <option value="coursetable">coursetable · 课表网</option>
+                        <option value="noticeboard">noticeboard · 启事板</option>
+                        <option value="tourcard">tourcard · 线路行程卡</option>
+                      </select>
+                      <div class="small muted">报名域才出现</div>
+                    </div>
+                    <div class="field" data-surface-group="interact" hidden>
+                      <label>互动列表构图</label>
+                      <select id="sel-interact-surface">
+                        <option value="profilegrid" selected>profilegrid · 资料卡片墙</option>
+                        <option value="mutualpick">mutualpick · 双选志愿卡</option>
+                        <option value="triprow">triprow · 行程同行行</option>
+                      </select>
+                      <div class="small muted">婚恋/双选/拼车等；考试问卷投票不走这项</div>
+                    </div>
+                    <div class="field" data-surface-group="follow" hidden>
+                      <label>跟进列表构图</label>
+                      <select id="sel-follow-surface">
+                        <option value="pipeline" selected>pipeline · 阶段看板（CRM）</option>
+                        <option value="dossier">dossier · 档案行+下次跟进</option>
+                        <option value="listing">listing · 挂牌价签卡（房源）</option>
+                      </select>
+                      <div class="small muted">跟进域才出现</div>
+                    </div>
+                    <div class="field" data-surface-group="repair" hidden>
+                      <label>报修列表构图</label>
+                      <select id="sel-repair-surface">
+                        <option value="ticketfeed" selected>ticketfeed · 我的工单进度流</option>
+                        <option value="faultboard">faultboard · 分类故障看板</option>
+                      </select>
+                      <div class="small muted">宿舍 / 物业 / IT 才出现</div>
+                    </div>
+                    <div class="field" data-surface-group="approve" hidden>
+                      <label>审批列表构图</label>
+                      <select id="sel-approve-surface">
+                        <option value="typelist" selected>typelist · 事项类型清单+申请</option>
+                        <option value="inboxsteps">inboxsteps · 待审收件箱+步骤条</option>
+                      </select>
+                      <div class="small muted">审批类域才出现</div>
                     </div>
                     <div class="field">
                       <label>智能业务填充</label>
@@ -1857,7 +1927,7 @@
             <article class="help-card panel wide">
               <div class="panel-hd"><h3>列表构图</h3><span class="pill pill-teal">视觉</span></div>
               <div class="panel-bd help-body">
-                <p>「一键生成」视觉区里，门户首页之外还有按业务组出现的列表构图。只改列表页怎么排、信息密不密，不删菜单、不改主路径。当前领域不属于该组时，这项不出现。</p>
+                <p>「一键生成」视觉区里，门户首页之外有<strong>九组</strong>列表构图（内容 / 商品 / 预约 / 借用 / 报名 / 互动 / 跟进 / 报修 / 审批），控件齐全；只显示当前领域所属那一组，其它组隐藏。只改列表页怎么排、信息密不密，不删菜单、不改主路径。</p>
                 <div class="help-table-wrap">
                   <table class="help-table">
                     <thead>
