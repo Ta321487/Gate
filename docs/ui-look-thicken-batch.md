@@ -238,7 +238,7 @@
 | `DOM-SURVEY` | interact | 互动/匹配 | `—` | catalog | `#2A3840` | 问卷标题 | 全厂已齐 | 首刀已齐 |
 | `DOM-TIMEBANK` | interact | 互动/匹配 | `triprow` | board | `#2F4A42` | 服务事项 | 全厂已齐 | 首刀已齐 |
 | `DOM-VOTE` | interact | 互动/匹配 | `—` | story | `#3A3848` | 候选人 / 选项 | 全厂已齐 | 首刀已齐 |
-| `DOM-GENERIC` | fallback | 兜底 | `—` | catalog | `#2A3540` | 关键词 | 全厂已齐 | 吃公共壳 |
+| `DOM-GENERIC` | fallback | 兜底（domains **H**） | `—` | catalog | `#2A3540` | 关键词 | 全厂已齐 | 吃公共壳 |
 
 **行数**：68（须 = `len(DOMAIN_CAPABILITIES)` = 68）。
 
