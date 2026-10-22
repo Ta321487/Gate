@@ -38,7 +38,7 @@ class ApproveLookThickenTests(unittest.TestCase):
             self.assertNotIn(dead, text, f"MyTickets 审批 CSS 仍留死色 {dead}")
 
     def test_tickets_admin_inbox_bar(self) -> None:
-        text = ADMIN.read_text(encoding="utf-8")
+        text = vue_src(ADMIN)
         for needle in (
             "'surface-typelist': approveSurface === 'typelist'",
             "'surface-inboxsteps': approveSurface === 'inboxsteps'",

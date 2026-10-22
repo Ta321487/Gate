@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import unittest
 from pathlib import Path
 
@@ -127,9 +129,9 @@ class StaffRosterE09Tests(unittest.TestCase):
         )
         self.assertIn("staff_roster", slot)
         self.assertIn("onDuty", slot)
-        tickets = (
+        tickets = vue_src((
             BASELINE / "frontend/src/views/admin/TicketsAdmin.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("onDutyToday", tickets)
         ticket_ctrl = (
             BASELINE

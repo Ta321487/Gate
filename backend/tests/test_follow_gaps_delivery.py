@@ -110,7 +110,7 @@ class FollowGapsDeliveryTests(unittest.TestCase):
         mine = vue_src(FE / "user" / "MyTickets.vue")
         for needle in ("stalePoolHint", "phoneDupHint", "maxReviseHint", "resubmitTicket", "stalePoolLabel"):
             self.assertIn(needle, mine, f"MyTickets 缺 {needle}")
-        admin = (FE / "admin" / "TicketsAdmin.vue").read_text(encoding="utf-8")
+        admin = vue_src((FE / "admin" / "TicketsAdmin.vue"))
         for needle in ("returnRevise", "return-revise"):
             self.assertIn(needle, admin, f"TicketsAdmin 缺 {needle}")
 
@@ -241,7 +241,7 @@ class EventGapsDeliveryTests(unittest.TestCase):
         mine = vue_src(FE / "user" / "MyTickets.vue")
         for needle in ("levelSlaHint", "levelSlaDays", "notifyDutyHint", "objectionWindowHint", "dutyNotified"):
             self.assertIn(needle, mine, f"MyTickets 缺 {needle}")
-        admin = (FE / "admin" / "TicketsAdmin.vue").read_text(encoding="utf-8")
+        admin = vue_src((FE / "admin" / "TicketsAdmin.vue"))
         for needle in ("levelSlaHint", "levelSlaText", "dutyNotifyOn", "notifyDutyHint"):
             self.assertIn(needle, admin, f"TicketsAdmin 缺 {needle}")
         fund_mine = (FE / "user" / "FundPublicity.vue").read_text(encoding="utf-8")

@@ -25,7 +25,7 @@
 |----|------|------|
 | — | `views/user/ArchiveBrowse.vue` | **已齐**（范式） |
 | 1 | `views/user/MyTickets.vue` | **已齐** |
-| 2 | `views/admin/TicketsAdmin.vue` | 待拆 |
+| 2 | `views/admin/TicketsAdmin.vue` | **已齐** |
 | 3 | `views/admin/ArchiveAdmin.vue` | 待拆 |
 | 4 | `views/admin/TicketRecordsAdmin.vue` | 待拆 |
 | 5 | `views/user/SlotBook.vue` | 待拆 |

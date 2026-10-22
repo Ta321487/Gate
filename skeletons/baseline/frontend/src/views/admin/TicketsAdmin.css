@@ -1,0 +1,97 @@
+/* —— 审批管理台：事项清单脸 —— */
+.approve-desk.surface-typelist {
+  --approve-desk-accent: var(--portal-accent, #0b6e75);
+}
+.approve-desk.surface-typelist :deep(.el-table) {
+  font-size: 14px;
+  --el-table-header-bg-color: color-mix(in srgb, var(--approve-desk-accent) 8%, #fff);
+}
+.approve-desk.surface-typelist :deep(.el-table th.el-table__cell) {
+  font-weight: 650;
+  color: var(--portal-ink, #15202b);
+}
+
+/* —— 审批管理台：待审收件箱脸 —— */
+.approve-desk.surface-inboxsteps {
+  --approve-desk-accent: var(--portal-accent, #0b6e75);
+}
+.approve-desk.surface-inboxsteps :deep(.el-table) {
+  font-size: 13px;
+}
+.approve-desk.surface-inboxsteps :deep(.el-table__row) {
+  cursor: pointer;
+}
+.approve-inbox-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--portal-line, #e2e8f0);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 6%, var(--portal-surface, #fff));
+}
+.approve-inbox-bar .inbox-stat {
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--portal-ink, #15202b);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--portal-surface, #fff);
+  border: 1px solid var(--portal-line, #e2e8f0);
+}
+.approve-inbox-bar .inbox-stat[data-stat='total'] {
+  border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, transparent);
+  color: var(--portal-accent, #0b6e75);
+}
+.toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.sub { margin: 0 0 8px; font-size: 13px; color: var(--el-text-color-secondary); }
+.pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.audit-tip {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+  line-height: 1.5;
+}
+.audit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+}
+.lab { font-weight: 500; }
+.audit-body {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--portal-radius-sm, 8px);
+  background: color-mix(in srgb, var(--portal-bg, #f8fafc) 72%, var(--portal-surface, #fff));
+  border: var(--portal-border-width, 1px) solid var(--portal-line, #e2e8f0);
+}
+.audit-body .lab { margin-bottom: 6px; font-size: 13px; color: var(--portal-muted, #64748b); }
+.audit-body a { color: var(--portal-accent, #0369a1); font-size: 13px; }
+.audit-meta {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--portal-ink, #334155);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.audit-meta:last-child { margin-bottom: 0; }
+.req {
+  color: var(--el-color-danger, #f56c6c);
+  margin-left: 2px;
+  font-style: normal;
+  font-weight: 600;
+}
+.muted { color: var(--portal-muted, #94a3b8); }
+.type-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
