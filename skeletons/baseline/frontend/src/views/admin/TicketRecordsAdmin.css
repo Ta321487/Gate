@@ -1,0 +1,14 @@
+.toolbar { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.board-hint { margin: 0 0 10px; color: #64748b; font-size: 13px; }
+.pager { margin-top: 16px; display: flex; justify-content: flex-end; }
+.rating { color: #b45309; font-weight: 600; }
+.rating-lead { font-size: 13px; margin-left: 4px; }
+.muted { color: var(--portal-muted, #94a3b8); }
+.type-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}

@@ -486,9 +486,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         results = (FE / "views" / "user" / "MutualResults.vue").read_text(encoding="utf-8")
         self.assertIn("mutual-match-result", results)
         self.assertIn("mutualResultTitle", results)
-        records = (FE / "views" / "admin" / "TicketRecordsAdmin.vue").read_text(
-            encoding="utf-8"
-        )
+        records = vue_src((FE / "views" / "admin" / "TicketRecordsAdmin.vue"))
         for needle in (
             "mutualAdjustLogOn",
             "adjust-log",
@@ -1674,9 +1672,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
         self.assertIn("exportList", fav)
         dm = (FE / "views" / "user" / "Dm.vue").read_text(encoding="utf-8")
         self.assertIn("dmPageLead", dm)
-        records = (FE / "views" / "admin" / "TicketRecordsAdmin.vue").read_text(
-            encoding="utf-8"
-        )
+        records = vue_src((FE / "views" / "admin" / "TicketRecordsAdmin.vue"))
         self.assertIn("ratingFilterRatedLabel", records)
         self.assertIn("ratingAdminLead", records)
         reports = (FE / "views" / "admin" / "ContentReportsAdmin.vue").read_text(
