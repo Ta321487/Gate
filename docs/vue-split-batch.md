@@ -31,7 +31,7 @@
 | 5 | `views/user/SlotBook.vue` | **已齐** |
 | 6 | `views/user/PortalHome.vue` | **已齐** |
 | 7 | `views/user/Cart.vue` | **已齐** |
-| 8 | `views/Profile.vue` | 待拆 |
+| 8 | `views/Profile.vue` | **已齐** |
 | 9 | `views/user/MyOrders.vue` | 待拆 |
 
 ## 2. 单页工序

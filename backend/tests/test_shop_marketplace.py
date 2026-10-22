@@ -372,7 +372,7 @@ class ShopMarketplaceContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("ops-empty", admin_orders)
         self.assertIn("hasOrderOps", admin_orders)
-        profile = (root / "frontend/src/views/Profile.vue").read_text(encoding="utf-8")
+        profile = vue_src((root / "frontend/src/views/Profile.vue"))
         self.assertIn("bizSectionTitle", profile)
         self.assertIn("店铺资料", profile)
         self.assertIn("showBuyerLoyalty", profile)

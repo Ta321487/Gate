@@ -349,7 +349,7 @@ class InteractThickenFeatureTests(unittest.TestCase):
             "datingCityFilter",
         ):
             self.assertIn(needle, browse, needle)
-        profile = (FE / "views" / "Profile.vue").read_text(encoding="utf-8")
+        profile = vue_src((FE / "views" / "Profile.vue"))
         self.assertIn("datingCompletenessOn", profile)
         self.assertIn("datingCompletenessHint", profile)
         admin = vue_src((FE / "views" / "admin" / "ArchiveAdmin.vue"))

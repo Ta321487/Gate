@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import json
 import subprocess
 import unittest
@@ -361,7 +363,7 @@ class PortalShellNavTests(unittest.TestCase):
         self.assertIn("teleported", rail)
         self.assertNotIn("translateY(-50%)", rail)
         self.assertIn("portal-side-rail-edit", rail)
-        profile = (_FRONT / "views" / "Profile.vue").read_text(encoding="utf-8")
+        profile = vue_src((_FRONT / "views" / "Profile.vue"))
         self.assertIn("profilePageCopy", profile)
         self.assertIn("profileCopy.title", profile)
         self.assertNotIn("faceCopy.title", profile)
@@ -443,7 +445,7 @@ class PortalShellNavTests(unittest.TestCase):
         # 会员/票夹深底须压过 scoped `.card` 白底，否则完善度近白字落白卡
         self.assertIn("[data-account-face='member'] .card.af-identity", faces)
         self.assertIn("[data-account-face='showcard'] .card.af-identity", faces)
-        profile_css = (_FRONT / "views" / "Profile.vue").read_text(encoding="utf-8")
+        profile_css = vue_src((_FRONT / "views" / "Profile.vue"))
         self.assertIn("complete-row strong", profile_css)
 
 

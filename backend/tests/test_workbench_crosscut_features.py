@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests._vue_src import vue_src
+
 import re
 import unittest
 from pathlib import Path
@@ -144,9 +146,9 @@ class WorkbenchCrosscutFeatureTests(unittest.TestCase):
         self.assertIn("pvToday", dash)
 
     def test_fe_xd02_surfaces(self) -> None:
-        profile = (
+        profile = vue_src((
             REPO / "skeletons/baseline/frontend/src/views/Profile.vue"
-        ).read_text(encoding="utf-8")
+        ))
         self.assertIn("myDocLinks", profile)
         self.assertIn("myDocsTitle", profile)
         # 管理/商家岗不得展示买家「我的单据」浅链
