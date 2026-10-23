@@ -35,7 +35,7 @@
 | [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（ASCII / 对标 / §0.0 闸） | 选型册 · 九组已接线 |
 | [ui-look-thicken-batch.md](./ui-look-thicken-batch.md) | **UI 观感加厚**（公共壳 + 各组主表面；**68 域台账**） | 再磨已收口 |
 | [vue-split-batch.md](./vue-split-batch.md) | **Vue 大文件拆分**（`.setup.js` + `.css`；合读护栏） | 已收口 |
-| [ui-layout-prebake-gate.md](./ui-layout-prebake-gate.md) | **布局一眼病规则与闸**（几何；起包前全表） | 口径已立 · 代码未开 |
+| [ui-layout-prebake-gate.md](./ui-layout-prebake-gate.md) | **布局一眼病规则与闸**（几何；起包前全表） | D1～D5 已齐（助手+工厂反应） |
 | [form-controls.md](./form-controls.md) | **可交互控件规则**（选型；下拉禁手填） | 口径册 · 代码未开 |
 | [ui-domain-diagnosis.md](./ui-domain-diagnosis.md) | **诊断结果台账**（68 域 L/C 勾选；不写细则） | 台账已立 · 全域未诊 |
 | [parked-work.md](./parked-work.md) | **搁置工作**台账（大线 + 碎另案） | 活表 · 大线 4（#3+#4 全族已收口）· 碎另案 f 已修 |

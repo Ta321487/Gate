@@ -10,23 +10,14 @@
 
 ## 当前主线
 
-> **下一刀（建议 · 换对话接着干）：大线 #1 余项（布局闸/控件/诊断）或 #2 X 系列碎债；#3+#4 已全族收口。**
->
-> **这是啥（人话）**  
-> 每个域组的「加戏开关」要分三档挂，而且挂完能反向验：  
-> - **A 壳底**：这域天生该有，开题不用写（白名单）。  
-> - **B 扫词开**：开题命中登记词才挂（禁止假域默认乱开）。  
-> - **C 能力加深**：只有挂了某 cap 才叠配套开关。  
-> **#3** = 改地图挂载列 + bake 真挂法（迁档）。  
-> **#4** = 登记表双向门禁（B↔同一套 `scan_*`，C↔依赖 cap；多挂/漏挂红灯）。  
-> **已齐（全族）**：交易族、借用、跟进、报修、报名、审批、预约、内容、**互动**。  
-> 真源：[`docs/parked-work.md`](./docs/parked-work.md) #3/#4 · [`docs/opening-align-gate.md`](./docs/opening-align-gate.md) · 范本 [`docs/trade-thicken-batch.md`](./docs/trade-thicken-batch.md) §0.3 · 测 `test_opening_align_gate.py`。
->
-> **本会话（2026-10-22 · 已提交）：交付审计旧题回归升组代表 + §5 皮对照扩层。**  
-> `AUDIT_GROUP_CANARIES` + `test_audit_group_canaries`（4 绿）；delivery-audit v5.6 §5.1 覆盖 A/B/C 软皮、各族结构皮、话术、视觉、旁路（不止申请/跟进）。旁路：#3+#4/架构图另案。
->
-> **上一批（已收口）：Vue 大文件拆分** · [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)  
-> **再上一批**：软皮短签再磨；布局闸/控件/诊断 **口径已立·代码未开**。
+> **下一刀：大线 #1 · 可交互控件映射闸（实现 `docs/form-controls.md`）。**  
+> 真源：[`docs/form-controls.md`](./docs/form-controls.md) · 规则摘要 `.cursor/rules/form-controls.mdc`。  
+> **布局闸已齐**（D1～D5 + 出包 `p3layout`）：册 [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md)；已知债另刀，本刀勿回抢布局。  
+> 站队：**修工厂**；控件闸进共享映射/门禁/测试；禁止「档案合规、筛选例外」；禁止只擦单包。  
+> 现状：口径册已立 · **代码/门禁未开**（本刀开干）。  
+> **覆盖顺序**：① 布局（已齐）→ ② **控件映射（本刀）** → ③ 诊断跟账（勿抢）。  
+> **禁止**：开诊 68 域；改布局已知债充数；下拉 creatable / 写死业务选项。  
+> **#3+#4** 全族已齐，旁路勿抢刀。
 
 1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～F / 真交叉 G / 兜底 H（GENERIC）已可 bake。  
 2. **Path B** 三条真交叉可 `full`；三合一与智慧校园仍 `reject`。  
@@ -34,8 +25,8 @@
 4. **Path B 口径**：拟实现必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力。  
 5. **UI 观感 / Vue 拆分**：已收口。  
 6. **#3+#4 挂载/对齐**：**全族已齐**（含互动）。  
-7. **起包前布局闸 / 控件闸**：口径已立；代码未开。  
-8. **全域 UI 诊断**：台账已立、尚未勾选。
+7. **起包前布局闸**：**D1～D5 已齐**（含工厂反应）；基线结构/视觉债/孤儿先记账不改页。  
+8. **可交互控件 / 全域诊断**：口径/台账已立；**下一刀控件映射**（勿开诊断抢刀）。
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
@@ -111,14 +102,15 @@ Vue 大文件拆分 → [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)�
 ## 新对话开场（当前主线）
 
 ```
-继续 graduate_factory_v3。先读 HANDOFF.md；能力/领域长表见 docs/。
-按规则 ai-handoff 接手：读 HANDOFF → 跑相关测试（红=中断点）→ git log 顺脉络。
-主线：搁置大线 #3+#4 — 挂载收口 + 开题对齐门禁推全族（少错挂、少跟单）。
-已齐：交易族、借用、跟进、报修、报名。未推：审批/预约/内容/互动（一轮一组，先 #3 迁档再 #4 门禁）。
-下一组默认审批；禁止另起平行词典/第二套扫词。
-范本：docs/trade-thicken-batch.md §0.3 + docs/opening-align-gate.md；测 test_opening_align_gate.py。
-超壳 / 三合一 / 智慧校园必须 reject；硕博与真实业务全流程不接。
-薄壳架构保留（不要新开厚 DOM 包）。旁路：ARCHITECTURE.md / architecture.html 有未提交补齐可另提。
+继续 graduate_factory_v3。先读 HANDOFF.md 与 docs/form-controls.md（全文）。
+按规则 ai-handoff 接手：读交接 → git status/log 顺脉络 → 搜已有 archiveFieldWidget / ArchiveFieldControl / 相关测。
+主线：大线 #1 · 实现可交互控件映射闸（form-controls.md）；布局闸已齐勿回抢。
+站队：修工厂；先立共享映射+门禁+测试，再扫同类面；不为消红只擦单包。
+已有家：skeletons/.../archiveFieldWidget.js、ArchiveFieldControl.vue；工厂侧须补闸（对齐布局闸「台账/契约/出包」思路，细则跟控件册）。
+验收：日期/数字/开关/有限选项全包一致；下拉只选不填；筛选/对话框/行内无免检；测能绿/红。
+禁止：开诊 68 域；布局已知债本刀不动；creatable 分类下拉；写死业务选项表。
+UI 覆盖：①布局已齐 → ②控件本刀 → ③诊断排后。
+#3+#4 全族已齐，旁路勿抢刀。
 ```
 
 ## 新对话开场（某个具名域）

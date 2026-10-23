@@ -11,7 +11,7 @@
 
 | # | 项 | 一句话 | 真源 / 下次从哪开 | 现状 |
 |---|----|--------|-------------------|------|
-| 1 | **UI 包** | 观感 / Vue 拆分 / 布局闸 / 可交互控件 / 全域诊断（见下子表） | 选型另见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) | **余项**：布局闸·控件（口径已立·代码未开）+ 诊断（台账已立·未诊） |
+| 1 | **UI 包** | 观感 / Vue 拆分 / 布局闸 / 可交互控件 / 全域诊断（见下子表） | 选型另见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) | **下一刀**：可交互控件映射；布局闸 D1～D5 已齐；诊断排后 |
 | 2 | **X 系列** | §0 通识横切剩余簇（一轮一簇） | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) | X-AUTH～X-UX 已齐；打印/灯箱/Toast/页脚版本/离开提示/复制单号为**基线体验**；档案 Excel 导入导出已是 xlsx |
 | 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **全族已收口**（交易+借用+跟进+报修+报名+审批+预约+内容+互动） |
 | 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；各组 `*_ALIGN_RULES` + `test_opening_align_gate.py` | **全族 A/B/C 门禁已齐** |
@@ -22,8 +22,8 @@
 |------|--------|------|------|
 | **观感加厚** | 公共壳 + 九组主表面 + 软皮短签，不像模板后台 | [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md) | **再磨已收口** |
 | **Vue 大文件拆分** | 大页拆 `.setup.js` + `.css`；合读护栏 | [`vue-split-batch.md`](./vue-split-batch.md) | **已收口** |
-| **起包前布局闸** | 一眼病（错位/挤破/叠穿/溢出）；页+壳+组件全表；起包前挡住 | [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md) | **口径已立 · 代码未开**（D0；须批准再动代码） |
-| **可交互控件** | 全包可交互控件选型；下拉只选不填；无免检区 | [`form-controls.md`](./form-controls.md) | **口径已立 · 代码未开**（须批准再动代码） |
+| **起包前布局闸** | 一眼病（错位/挤破/叠穿/溢出）；页+壳+组件全表；起包前挡住 | [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md) | **D1～D5 已齐**（含助手规则+工厂摘要）；孤儿/结构/视觉债记账不改页 |
+| **可交互控件** | 全包可交互控件选型；下拉只选不填；无免检区 | [`form-controls.md`](./form-controls.md) | **下一刀开干**（口径已立；实现/门禁待立） |
 | **全域 UI 诊断** | 68 域 × `L`布局/`C`控件 勾选台账；不写细则正文 | [`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md) | **台账已立 · 全域未诊** |
 
 ### #3 / #4 与 ABC（要扩展到全族）
@@ -53,6 +53,7 @@
 | k | **学生包工厂注记** | 骨架可写开题/§3 注释；bake 须抹掉且裁未挂壳件 | `pack_prune.scrub_factory_notes` + 非 marketplace 裁 SideRail | **已接**（2026-10-20） |
 | i | **工作台空图空表** | 超管/商家仪表盘空（种子少；商家缺 `owner_username`） | `_SHOP_FARM` 补成交单+商品归属店员 | **已修种子**（2026-10-14）；**已有库要重导/补种子**才看得见图 |
 | j | **今年题名库** | 只代表今年的选题，不预测明年。工厂按册一点点长，不等全文开题 | [`cohort-opening-title-map.md`](./cohort-opening-title-map.md) | **方向已写** · 工厂未改（2026-10-17） |
+| l | **开题未扫中勿硬落 SQL 列** | 界面已多靠扫词开，但 `shared_columns` / trade 宽表仍常把延保、发票、预售、积分会员等列打进 ZIP；老师看 SQL / 写论文易穿帮。口径：开题有的必须有，没有的别硬带 | `shared_columns.py` · `trade_thicken` · 农产等 SHOP 皮 | **记账**；不抢 UI 包下一刀；论文材料可先按开题裁字段表 |
 
 ---
 
@@ -68,6 +69,7 @@
 
 | 日期 | 说明 |
 |------|------|
+| 2026-10-23 | 碎另案 **l**：开题未扫中勿硬落 SQL 列（论文/老师看库） |
 | 2026-10-14 | 立册：大线 UI 包 · X 系列 · 挂载收口到全族 |
 | 2026-10-14 | 加「碎另案」表：收藏备注 / 报修 Hint / 小票打印 / 行为验证码 / Lexicon 尾债 |
 | 2026-10-14 | 大线补 **#4 开题对齐门禁**（对照表 + 多挂/漏挂 gate；≠ 既有 opening_align） |
@@ -119,3 +121,4 @@
 | 2026-10-22 | 大线 #1：Vue 大文件拆分收口（MyTickets→MyOrders 九页 + ArchiveBrowse 范式）；合读 `vue_src` |
 | 2026-10-23 | 碎另案 **f**：详情持连改放事务+to_thread；列表/stats defer 宽列；MySQL `pool_recycle=1800` |
 | 2026-10-23 | 大线 #1：补 **UI 包子项表**——布局闸 / 可交互控件 / 全域诊断三册从「一句话里」拆出单列记账（此前只埋在 #1 现状栏） |
+| 2026-10-23 | 交接：下一刀定为布局闸 **D1·共享基线**（覆盖序 ①布局→②控件→③诊断）；控件/诊断暂不开 |

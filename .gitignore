@@ -24,6 +24,8 @@ data/samples/_generated/*.txt
 data/title_check.txt
 **/target/
 skeletons/**/node_modules/
+# 布局冒烟 Vite 缓存（工厂夹具，不进仓）
+skeletons/**/.vite-layout-smoke/
 
 # launcher-owned backend pid
 backend/.gate_backend.pid

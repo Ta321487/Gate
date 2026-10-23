@@ -3,7 +3,7 @@
 > **本文只负责一件事**：**布局一眼病**——错位/挤破/叠穿/溢出等几何硬伤，如何在 bake 起包前用全表台账 + 门禁挡住（页 / 壳 / 组件）。  
 > **不负责**：可交互控件「用哪种、下拉能不能手填」（[`form-controls.md`](./form-controls.md)）；68 域勾选结果台账（[`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md)）；观感精美/换皮（观感批次 / 选型册）；出包预览容量；业务能力四件套。  
 > **一句话**：本册定「乱不乱」的**规则与闸**；诊没诊过写在诊断表；控件对不对写在控件册。  
-> **状态**：口径已立 · 代码未开。  
+> **状态**：口径已立 · **D1～D5 已开**（台账/对账 + 结构 + 冒烟 + 全表视觉 + 助手规则/工厂摘要）。  
 > **索引**：[README.md](./README.md) · [`../HANDOFF.md`](../HANDOFF.md)。
 
 ---
@@ -294,7 +294,10 @@
 3. 无活页（基线冒烟未起、无 fixture）→ 不得宣称观感/布局已齐；  
 4. 只改 `components/`、不看宿主页画面 → **视为未验**。
 
-落地形态：本册 +（后续）`.cursor/rules` / skill 补一句「改 UI 必对台账行（含组件）」；**不**替代 3.2/3.3 机器闸。
+落地形态（**双轨，缺一不算 D5 齐**）：
+
+1. **助手**：`.cursor/rules` / skill 写明「改 UI 必对台账行（含组件 hosts）」；闭眼改 = 违规。  
+2. **工厂进程**：控制台 / 起包前路径须**有反应**——至少能看见布局闸状态（D1 对账 + D2 结构；视觉全表可慢测/手动），红则不得装看不见；**不**替代 3.2/3.3 机器断言本身。
 
 ### 3.2 结构契约闸（便宜，挡重复坑）
 
@@ -304,10 +307,10 @@
 |---------|--------|----------------------------------|
 | `no_status_acts_same_wrap` | `wrap_mess` | 状态标签与操作按钮禁止挤在同一 `flex-wrap` 行 |
 | `toolbar_layers` | `gap_chaos` / `wrap_mess` | 多段 `.toolbar` 须可区分间距/分区，禁止无间隔三坨堆叠 |
-| `primary_cta_in_slot` | `misaligned` / `clip_hide` | 主 CTA 落在约定容器 class，禁止裸 `position:absolute` 漂出卡片 |
+| `primary_cta_in_slot` | `misaligned` / `clip_hide` | 主 CTA 落在约定容器 class；禁止 inline **或** CSS class（SFC `<style>` / 同页 `.css`）`position:absolute|fixed` 漂出卡片 |
 | `row_actions_column` | `column_blow` / `overlap` | 行内操作在独立列/actions 槽，不与状态 chip 同 flex 子树根 |
 | `actions_may_wrap_or_menu` | `crushed` / `overflow` | 一排操作超过 N 个须允许换行分区或收进「更多」，禁止单行硬塞挤破 |
-| `no_orphan_absolute_btn` | `misaligned` / `overlap` | 业务按钮禁止脱离文档流且无定位包含块 |
+| `no_orphan_absolute_btn` | `misaligned` / `overlap` | 业务按钮禁止脱离文档流（同：inline + CSS class）；装饰点/轨道等非 `el-button` 挂载不误杀 |
 | `dialog_body_scroll` | `overflow` | 对话框超高走 body 滚动，禁止整页被 dialog 撑出横向滚动 |
 
 新骂过的一眼病 → **先补 §0.0a `defect_class`（若新）+ 本表模式 id，再写测**；禁止只修当面页/组件。病在共享件 → 断言钉 `components/` 并扫全部 `hosts`。
@@ -339,7 +342,7 @@
 | **D2 结构契约** | §0.0a 模式表 → pytest；扫 views/layouts/components | 已知一眼病模式再犯必红（含挤破/叠穿相关结构） |
 | **D3 冒烟管道** | fixture + 起基线 + Playwright；至少 1 个 page + 1 个 component 行 | 管道能绿/红；**不**算全表已齐 |
 | **D4 全表视觉** | 按台账遍历（页+壳+组件）；覆盖率门禁 | **100%** 须视觉行 `visual_ok`；才允许「布局闸已齐」 |
-| **D5 助手默认** | skill/规则：改 UI 必须跑受影响行（改组件含 hosts） | 与 D4 一致；闭眼改回退为违规 |
+| **D5 助手默认 + 工厂反应** | ① skill/规则：改 UI 必跑受影响行（含 hosts）；② 工厂控制台/起包前路径露出布局闸状态（对账+结构必显；全表视觉可挂慢测） | 助手闭眼改 = 违规；工厂对红灯无反应 = 未齐 |
 
 **禁止**：跳过 D1 直接「抽几页/抽几个组件截图」当主线；禁止 D3 试点未升 D4 就改 HANDOFF 称收口；禁止「页面齐了组件下期再说」。
 
@@ -350,23 +353,27 @@
 | 时机 | 职责 |
 |------|------|
 | 改基线（起包前） | D1–D4：§0.0a 一眼病（错位/挤破/叠穿/溢出等） |
-| bake / 匹配后 | 菜单是否挂上、列是否空、主路径写库——既有门禁 |
+| bake / 出包后 | **`p3layout`**：对本包 `frontend/src` 跑台账对账 + 结构契约（跳过工厂全量菜单表，免剪枝误红）；红则禁 ZIP。全表 Playwright **不**挡每次出包 |
+| bake / 匹配后（其它） | 菜单是否挂上、列是否空、主路径写库——既有门禁 |
 | 人偶发起包或浏览器验收 | 发现**新**一眼病 → 24h 内补 §0.0a + 模式 + 台账断言；不把起包当日常全表 QA |
 
 预览容量问题见 [`preview-capacity-and-batch-ops.md`](./preview-capacity-and-batch-ops.md)；本闸优先 **基线 fixture 冒烟**，避免为布局去堆多项目预览。
 
 ---
 
-## 6. 家在哪（实现落点预告；本期不写代码）
+## 6. 家在哪
 
-| 件 | 预期落点 |
-|----|----------|
-| 台账生成 / 对账测 | `backend/tests/` +（若需）`scripts/`；扫描 `views`/`layouts`/`components` + router + menu_routes；组件 `hosts` 来自 import 图 |
-| 结构契约 | `backend/tests/test_*_layout_contract.py` 或扩 polish；读基线三目录 |
-| Fixture / 冒烟 | 工厂测夹具目录（待 D3 定名）；组件可在宿主夹具中挂载；**不**改学生 ZIP 当夹具真源 |
-| 工序 | `.cursor/skills` / rules 补引用本册（改组件必带 hosts） |
+| 件 | 落点 |
+|----|------|
+| 台账生成 / 对账 | `backend/app/bake/layout_inventory.py` |
+| D1 测 | `backend/tests/test_layout_inventory.py` |
+| 结构契约 | `backend/app/bake/layout_contract.py` + `backend/tests/test_layout_contract.py`（§3.2 七模式；反例必红；基线真阳性记账） |
+| Fixture / 冒烟 | `backend/app/bake/layout_smoke.py` + `backend/tests/layout_smoke/`（Vite 垫片内联 `script setup src` + `APP_DELIVERED` 皮 Proxy；Playwright 全表 visit + 挤破探针；覆盖率门禁）；**不**改学生 ZIP 当夹具真源 |
+| 出包保险丝 | `backend/app/bake/gates/layout_workspace.py` → 门禁键 **`p3layout`**（`evaluate_domain_gates`）；失败码 `BAKE_LAYOUT` |
+| 工序（助手） | D5：`.cursor/rules/ui-layout-gate.mdc` + `.cursor/skills/ui-layout-gate` |
+| 工序（工厂） | D5：`GET /api/system/layout-gate`（基线摘要）· 运行环境/开工台；出包另挂 `p3layout` |
 
-遵守 `capability-home`：逻辑进工厂进程侧；学生包只被**读取**验收，不在此闸里「跟单改包」。
+遵守 `capability-home`：逻辑进工厂进程侧；学生包只被**读取**验收。发现的孤儿/结构病**先红灯记账**，消红另刀，禁止为对齐闸改页面。
 
 ---
 
@@ -380,3 +387,13 @@
 | 2026-10-22 | **§0.0b**：十类缺陷 ASCII 病/好对照草图，便于人与 AI 对形 |
 | 2026-10-22 | **§0.0b 纪律**：「好」侧必须一眼整齐（同缘/同隙/盒内），禁止歪草图当执行样板；overflow 等重画 |
 | 2026-10-22 | **一文一事**：头栏写清只管布局闸；控件/诊断表外链，不混细则 |
+| 2026-10-23 | **D1 开闸**：`layout_inventory` 全表台账 + 对账红灯；测绿；基线 `EntityDetailLayout` 孤儿记账、不改页消红；D2 未开 |
+| 2026-10-23 | **判准收紧**：多脸皮记 `axis:id`、只认模板 `data-*-surface`（setup 读 Style 不算本页脸）；豁免表不收菜单 path；禁硬编码补路由洞 |
+| 2026-10-23 | **D1 终核**：补 `el-drawer` 入 dialog 行、`cardVoice` 入 surfaces；基线仅余 `EntityDetailLayout` 孤儿记账 |
+| 2026-10-23 | **D2 开闸**：`layout_contract` §3.2 七模式；反例必红；基线 12 条结构真阳性记账不改页；下一刀 D3 |
+| 2026-10-23 | **D2 收紧**：`primary_cta_in_slot` / `no_orphan_absolute_btn` 兼扫 CSS class（`<style>` + companion `.css`）`absolute|fixed`；装饰非按钮不误杀；基线无新债 |
+| 2026-10-23 | **D3 开闸**：冒烟管道试点 `page:auth:/login` + `component:components/AuthShell.vue`；几何反例必红；宽屏+窄屏挤破探针；工厂 Vite 垫片消化 vue-split 的 `script setup src`；下一刀 D4 |
+| 2026-10-23 | **D4 开闸**：台账全表 visit（页/壳/组件/dialog）+ 多脸皮覆盖 + 挤破探针；`visual_ok` 覆盖率 100%（含已知债/孤儿不可访记账）；不为消红改学生页；下一刀 D5 |
+| 2026-10-23 | **D5 口径加厚**：助手规则之外，工厂进程须对布局闸红灯有反应（控制台/起包前路径露状态）；只写 skill 不算齐 |
+| 2026-10-23 | **D5 开闸**：规则+skill；`layout_gate_status` + `/api/system/layout-gate`；运行环境/开工台露红绿；已知债收进 bake 模块真源 |
+| 2026-10-23 | **出包保险丝**：`p3layout` 对本包 `frontend/src` 跑对账+结构（剪枝包跳过全厂菜单对账）；红禁 ZIP；补任意开题覆盖缺口 |
