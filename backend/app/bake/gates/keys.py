@@ -14,6 +14,7 @@ GATE_MONOTONE_KEYS = (
     "p3ac",
     "p3q",
     "p3lean",
+    "p3layout",
 )
 
 GATE_CORE_KEYS = GATE_MONOTONE_KEYS

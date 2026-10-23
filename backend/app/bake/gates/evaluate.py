@@ -891,6 +891,20 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
         results["zip_allowed"] = False
         results["overall"] = False
 
+    from app.bake.gates.layout_workspace import evaluate_workspace_layout_gate
+
+    # 出包侧布局检查：对本包 frontend 台账对账与结构契约（全表视觉检测不在此执行）
+    layout_g = evaluate_workspace_layout_gate(workspace)
+    results["p3layout"] = {
+        "ok": bool(layout_g.get("ok")),
+        "label": layout_g.get("label") or "布局检查",
+        "desc": layout_g.get("desc") or "",
+        "detail": layout_g.get("detail"),
+    }
+    if not layout_g.get("ok"):
+        results["zip_allowed"] = False
+        results["overall"] = False
+
     sg = _schema_gate(workspace, spec)
     results["p3c"] = {
         "ok": sg["ok"],
