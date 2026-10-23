@@ -959,11 +959,13 @@ const gateRows = computed(() => {
   const g = p.value?.gates || {}
   // 含 p3c/p3d/p3copy/accept：否则 overall 被这些项卡住时 UI 看不见原因
   const keys = [
-    'p0a', 'p0b', 'p1', 'p2', 'p3a', 'p3b', 'p3t', 'p3s', 'p3q', 'p3copy', 'p3c', 'p3d', 'accept',
+    'p0a', 'p0b', 'p1', 'p2', 'p3a', 'p3b', 'p3t', 'p3s', 'p3n', 'p3ac', 'p3lean', 'p3layout',
+    'p3q', 'p3copy', 'p3c', 'p3d', 'accept',
   ]
   const levels = {
     p0a: 'P0', p0b: 'P0', p1: 'P1', p2: 'P2',
-    p3a: 'P3', p3b: 'P3', p3t: 'P3', p3s: 'P3', p3q: 'P3', p3copy: 'P3', p3c: 'P3', p3d: 'P3', accept: 'P3',
+    p3a: 'P3', p3b: 'P3', p3t: 'P3', p3s: 'P3', p3n: 'P3', p3ac: 'P3', p3lean: 'P3', p3layout: 'P3',
+    p3q: 'P3', p3copy: 'P3', p3c: 'P3', p3d: 'P3', accept: 'P3',
   }
   return keys
     .filter((k) => g[k] != null)

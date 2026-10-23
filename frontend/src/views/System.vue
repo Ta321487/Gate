@@ -69,6 +69,54 @@
       </div>
       <div class="panel mt-16">
         <div class="panel-hd">
+          <h3>起包前布局检查</h3>
+          <n-button size="small" :loading="layoutLoading" @click="loadLayoutGate">刷新</n-button>
+        </div>
+        <div class="panel-bd">
+          <p class="small muted mb-12">
+            检查共享基线的界面台账对账与结构契约。全表视觉校验由自动化测试执行，本页刷新不触发。
+            未通过时须修复工厂基线或检查规则，禁止仅修补单个学生交付包。
+          </p>
+          <template v-if="layoutGate">
+            <div class="small mb-8">
+              <span :class="layoutGate.ok ? 'ok' : 'bad'">{{ layoutGate.ok ? '通过' : '未通过' }}</span>
+              <span class="muted"> · </span>
+              <span>{{ layoutGate.summary }}</span>
+            </div>
+            <div class="small mb-8">
+              <span class="muted">台账对账</span>
+              {{ layoutGate.inventory?.ok ? '通过' : '未通过' }}
+              · 行数 {{ layoutGate.inventory?.row_count ?? '—' }}
+              · 未登记问题 {{ layoutGate.inventory?.issue_count ?? 0 }}
+              · 已登记例外 {{ layoutGate.inventory?.known_debt_count ?? 0 }}
+            </div>
+            <div class="small mb-8">
+              <span class="muted">结构契约</span>
+              {{ layoutGate.contract?.ok ? '通过' : '未通过' }}
+              · 未登记问题 {{ layoutGate.contract?.finding_count ?? 0 }}
+              · 已登记例外 {{ layoutGate.contract?.known_debt_count ?? 0 }}
+            </div>
+            <div class="small mb-8">
+              <span class="muted">视觉全表</span>
+              {{ layoutGate.smoke?.summary || '未执行' }}
+            </div>
+            <ul
+              v-if="layoutGate.inventory?.issues?.length || layoutGate.contract?.findings?.length"
+              class="cache-list small mb-8"
+            >
+              <li v-for="(it, idx) in (layoutGate.inventory?.issues || []).slice(0, 8)" :key="'i'+idx">
+                <span class="mono">[{{ it.code }}] {{ it.detail || it.message }}</span>
+              </li>
+              <li v-for="(f, idx) in (layoutGate.contract?.findings || []).slice(0, 8)" :key="'c'+idx">
+                <span class="mono">[{{ f.pattern_id }}] {{ f.vue }} · {{ f.detail || f.message }}</span>
+              </li>
+            </ul>
+          </template>
+          <p v-else-if="!layoutLoading" class="small muted mb-8">尚未加载布局检查结果</p>
+        </div>
+      </div>
+      <div class="panel mt-16">
+        <div class="panel-hd">
           <h3>共享缓存</h3>
           <n-button size="small" :loading="cacheLoading" @click="loadCache">刷新占用</n-button>
         </div>
@@ -130,6 +178,8 @@ const booted = ref(false)
 const cacheInfo = ref(null)
 const cacheLoading = ref(false)
 const purging = ref(false)
+const layoutGate = ref(null)
+const layoutLoading = ref(false)
 
 function formatPorts(ports) {
   return (ports && ports.length) ? ports.join(', ') : '无'
@@ -152,11 +202,23 @@ async function loadCache() {
   }
 }
 
+async function loadLayoutGate() {
+  layoutLoading.value = true
+  try {
+    const res = await api.layoutGate()
+    layoutGate.value = res?.data || null
+  } catch {
+    layoutGate.value = null
+  } finally {
+    layoutLoading.value = false
+  }
+}
+
 async function load() {
   loading.value = true
   try {
     info.value = await api.system()
-    await loadCache()
+    await Promise.all([loadCache(), loadLayoutGate()])
   } catch {
     info.value = null
   } finally {
@@ -218,4 +280,6 @@ onMounted(load)
   gap: 12px;
   padding: 2px 0;
 }
+.ok { color: var(--success, #18a058); font-weight: 600; }
+.bad { color: var(--error, #d03050); font-weight: 600; }
 </style>

@@ -178,6 +178,15 @@ async def system_info(db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.get("/system/layout-gate", response_model=ApiOk, tags=["系统"], summary="起包前布局检查摘要")
+async def system_layout_gate():
+    """基线台账对账与结构契约摘要。全表视觉检测不在本接口执行，见返回字段 smoke。"""
+    from app.bake.layout_gate_status import layout_gate_snapshot
+
+    data = await asyncio.to_thread(layout_gate_snapshot)
+    return ApiOk(ok=bool(data.get("ok")), message=str(data.get("summary") or ""), data=data)
+
+
 @router.get("/system/cache", response_model=ApiOk, tags=["系统"], summary="共享缓存占用")
 async def system_cache_status():
     """data/cache 与工作区 .runtime-tmp 占用；有预览在跑时 can_purge=false。"""

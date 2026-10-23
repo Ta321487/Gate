@@ -215,6 +215,8 @@ export const api = {
   freePorts: () => http.post('/system/free-ports'),
   systemCache: () => http.get('/system/cache'),
   purgeSystemCache: () => http.post('/system/cache/purge', null, HEAVY_OPTS),
+  /** 起包前布局检查摘要（台账对账 + 结构契约；全表视觉不在此接口执行） */
+  layoutGate: () => http.get('/system/layout-gate', { timeout: 120000 }),
   catalog: () => http.get('/catalog'),
   sampleProposalPacks: () => http.get('/tools/sample-proposal/packs'),
   sampleProposal: (body) =>

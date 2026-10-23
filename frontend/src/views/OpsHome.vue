@@ -68,6 +68,12 @@
                 <span :class="healthOk ? 'ok' : 'bad'">{{ healthOk ? '正常' : '异常' }}</span>
               </div>
               <div class="ops-env-line">
+                <span class="muted">布局检查</span>
+                <span :class="layoutGateOk === true ? 'ok' : layoutGateOk === false ? 'bad' : ''">
+                  {{ layoutGateLabel }}
+                </span>
+              </div>
+              <div class="ops-env-line">
                 <span class="muted">JDK / Maven / Node</span>
                 <span class="small">{{ envBrief }}</span>
               </div>
@@ -179,6 +185,8 @@ const jobs = ref([])
 const fail = ref(null)
 const system = ref(null)
 const healthOk = ref(false)
+const layoutGateOk = ref(null)
+const layoutGateSummary = ref('')
 
 const failTotals = computed(() => fail.value?.totals || {})
 const priorities = computed(() => fail.value?.priorities || [])
@@ -221,6 +229,15 @@ const envBrief = computed(() => {
   return `${short(s.jdk)} · ${short(s.maven)} · ${short(s.node)}`
 })
 
+const layoutGateLabel = computed(() => {
+  if (layoutGateOk.value === true) return '通过'
+  if (layoutGateOk.value === false) {
+    const s = String(layoutGateSummary.value || '').trim()
+    return s ? (s.length > 36 ? `${s.slice(0, 36)}…` : s) : '未通过'
+  }
+  return '未加载'
+})
+
 function formatK(n) {
   const x = Number(n) || 0
   if (x >= 1000) return `${(x / 1000).toFixed(x >= 10000 ? 0 : 1)}k`
@@ -248,13 +265,14 @@ function todoTagClass(p) {
 async function load() {
   loading.value = true
   try {
-    const [st, plist, jlist, fa, sys, health] = await Promise.all([
+    const [st, plist, jlist, fa, sys, health, lg] = await Promise.all([
       api.stats().catch(() => ({})),
       api.listProjects().catch(() => []),
       api.listJobs().catch(() => []),
       api.failAnalysis({}).catch(() => null),
       api.system().catch(() => null),
       api.health().catch(() => null),
+      api.layoutGate().catch(() => null),
     ])
     stats.value = st || {}
     projects.value = Array.isArray(plist) ? plist : []
@@ -262,6 +280,13 @@ async function load() {
     fail.value = fa
     system.value = sys
     healthOk.value = !!(health && (health.ok === true || health.status === 'ok'))
+    if (lg?.data) {
+      layoutGateOk.value = lg.data.ok === true
+      layoutGateSummary.value = lg.data.summary || lg.message || ''
+    } else {
+      layoutGateOk.value = null
+      layoutGateSummary.value = ''
+    }
   } catch (e) {
     message.error(e?.message || '开工台加载失败')
   } finally {
