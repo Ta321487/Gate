@@ -21,11 +21,12 @@ class FormControlsGateStatusTests(unittest.TestCase):
         self.assertEqual(set(snap["patterns"]), set(PATTERN_IDS))
         self.assertEqual(snap["bake"]["gate_key"], "p3controls")
 
-    def test_known_debt_surfaced(self) -> None:
+    def test_known_debt_cleared(self) -> None:
         snap = form_controls_gate_snapshot()
-        # C1 allow-create + C2/C3 记账须仍被扫到
-        self.assertGreaterEqual(snap["contract"]["known_debt_count"], 18)
-        self.assertGreaterEqual(snap["contract"]["hit_count"], 18)
+        # 基线 C1～C3 已知债已消红；新债先入 BASELINE_KNOWN_CONTROLS
+        self.assertEqual(snap["contract"]["known_debt_count"], 0)
+        self.assertEqual(snap["contract"]["hit_count"], 0)
+        self.assertEqual(snap["contract"]["known_debt"], [])
 
 
 if __name__ == "__main__":

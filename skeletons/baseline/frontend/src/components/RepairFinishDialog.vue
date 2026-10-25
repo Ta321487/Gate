@@ -25,7 +25,7 @@
     </div>
     <el-form label-width="120px">
       <el-form-item v-if="requireFaultReason" :label="faultReasonLabel" required>
-        <el-select v-model="form.faultReason" filterable allow-create default-first-option style="width:100%">
+        <el-select v-model="form.faultReason" filterable clearable placeholder="请选择原因" style="width:100%">
           <el-option v-for="opt in faultReasons" :key="opt" :label="opt" :value="opt" />
         </el-select>
       </el-form-item>

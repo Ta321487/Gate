@@ -27,9 +27,7 @@
         <el-select
           v-model="form.ticketId"
           filterable
-          allow-create
-          default-first-option
-          placeholder="选已通过的申请单（或直接填单号）"
+          placeholder="请选择已通过的申请单"
           style="width: 100%"
         >
           <el-option

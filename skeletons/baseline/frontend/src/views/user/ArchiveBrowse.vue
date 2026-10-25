@@ -105,8 +105,6 @@
           v-model="collegeFilter"
           clearable
           filterable
-          allow-create
-          default-first-option
           :placeholder="fieldLabel('college', '开课学院')"
           class="search-cat"
           @change="load"
@@ -979,13 +977,10 @@
               :key="f.key"
               :label="f.label || f.key"
             >
-              <el-input
-                v-if="f.type === 'textarea'"
+              <ArchiveFieldControl
+                :field="f"
                 v-model="logForm.payload[f.key]"
-                type="textarea"
-                :rows="2"
               />
-              <el-input v-else v-model="logForm.payload[f.key]" />
             </el-form-item>
             <el-form-item label="异常">
               <el-switch v-model="logForm.abnormal" />

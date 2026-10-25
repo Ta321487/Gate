@@ -1,7 +1,7 @@
 """出包侧控件检查 p3controls：对本包 frontend/src 跑 C1～C3 契约。
 
 真源：docs/form-controls.md §5 C4。
-已登记例外与基线共用 BASELINE_KNOWN_CONTROLS；不为消红改当面页。
+已登记例外与基线共用 BASELINE_KNOWN_CONTROLS；禁止只擦当面学生包消红。
 """
 
 from __future__ import annotations

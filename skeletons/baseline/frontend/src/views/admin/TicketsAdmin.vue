@@ -310,9 +310,7 @@
           v-model="audit.skillFilter"
           clearable
           filterable
-          allow-create
-          default-first-option
-          :placeholder="skillFilterHint"
+          :placeholder="skillFilterHint || '按技能筛选'"
           style="width: 100%; margin-bottom: 8px"
         >
           <el-option v-for="s in skillOptions" :key="s" :label="s" :value="s" />
@@ -435,9 +433,7 @@
         v-model="reassign.skillFilter"
         clearable
         filterable
-        allow-create
-        default-first-option
-        :placeholder="skillFilterHint"
+        :placeholder="skillFilterHint || '按技能筛选'"
         style="width:100%;margin-bottom:8px"
       >
         <el-option v-for="s in skillOptions" :key="s" :label="s" :value="s" />

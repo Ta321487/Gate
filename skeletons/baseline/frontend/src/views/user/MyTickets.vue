@@ -583,7 +583,7 @@
       </p>
       <el-form label-position="top">
         <el-form-item v-if="requireFaultReason" :label="faultReasonLabel" required>
-          <el-select v-model="returnDlg.faultReason" filterable allow-create default-first-option style="width:100%">
+          <el-select v-model="returnDlg.faultReason" filterable clearable placeholder="请选择原因" style="width:100%">
             <el-option v-for="opt in faultReasons" :key="opt" :label="opt" :value="opt" />
           </el-select>
         </el-form-item>
@@ -706,9 +706,8 @@
                 v-if="remarkOptions.length"
                 v-model="form.remark"
                 filterable
-                allow-create
-                default-first-option
-                :placeholder="`请选择或填写${remarkLabel}`"
+                clearable
+                :placeholder="`请选择${remarkLabel}`"
                 style="width:100%"
               >
                 <el-option v-for="opt in remarkOptions" :key="opt" :label="opt" :value="opt" />
@@ -1374,8 +1373,6 @@
               v-model="form.location"
               clearable
               filterable
-              allow-create
-              default-first-option
               placeholder="从地址簿点选"
               style="width:100%;margin-top:8px"
             >

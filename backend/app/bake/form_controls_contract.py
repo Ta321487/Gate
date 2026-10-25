@@ -318,39 +318,8 @@ def scan_form_controls(
     return out
 
 
-# 基线真阳性记账（不改页消红）。(pattern_id, vue, detail)
-BASELINE_KNOWN_CONTROLS: frozenset[tuple[str, str, str]] = frozenset(
-    {
-        # C1 allow-create
-        ("no_select_allow_create", "views/user/Addresses.vue", "form.tag"),
-        ("no_select_allow_create", "views/admin/FundDisburseAdmin.vue", "form.ticketId"),
-        ("no_select_allow_create", "views/admin/FundPublicityAdmin.vue", "form.ticketId"),
-        ("no_select_allow_create", "views/admin/ListingDealAdmin.vue", "form.ticketId"),
-        ("no_select_allow_create", "views/admin/TicketsAdmin.vue", "audit.skillFilter"),
-        ("no_select_allow_create", "views/admin/TicketsAdmin.vue", "reassign.skillFilter"),
-        ("no_select_allow_create", "views/admin/ArchiveAdmin.vue", "form.startCampus"),
-        ("no_select_allow_create", "views/admin/ArchiveAdmin.vue", "form.endCampus"),
-        ("no_select_allow_create", "views/admin/StaffRosterAdmin.vue", "form.username"),
-        ("no_select_allow_create", "components/RepairFinishDialog.vue", "form.faultReason"),
-        ("no_select_allow_create", "views/user/Cart.vue", "form.tag"),
-        ("no_select_allow_create", "views/user/Cart.vue", "form.couponCode"),
-        ("no_select_allow_create", "views/user/ArchiveBrowse.vue", "collegeFilter"),
-        ("no_select_allow_create", "views/user/MyTickets.vue", "returnDlg.faultReason"),
-        ("no_select_allow_create", "views/user/MyTickets.vue", "form.remark"),
-        ("no_select_allow_create", "views/user/MyTickets.vue", "form.location"),
-        ("no_select_allow_create", "views/user/SlotBook.vue", "extra.patientName"),
-        ("no_select_allow_create", "views/user/SlotBook.vue", "extra.preferredStylist"),
-        # C2 手填：优惠券过期（v-model + 标签各一条）
-        ("no_input_handfill_temporal", "views/admin/CouponsAdmin.vue", "form.expireAt"),
-        ("no_input_handfill_temporal", "views/admin/CouponsAdmin.vue", "label:过期时间"),
-        # C3：日志字段循环一律文本框，未走 ArchiveFieldControl
-        (
-            "archive_field_loop_uses_control",
-            "views/user/ArchiveBrowse.vue",
-            "logFields",
-        ),
-    }
-)
+# 基线真阳性记账（消红后应为空；新一眼病先入册再改页）。(pattern_id, vue, detail)
+BASELINE_KNOWN_CONTROLS: frozenset[tuple[str, str, str]] = frozenset()
 
 
 def assert_form_controls_ok(

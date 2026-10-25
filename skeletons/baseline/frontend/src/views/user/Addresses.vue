@@ -46,9 +46,7 @@
           <el-select
             v-model="form.tag"
             filterable
-            allow-create
-            default-first-option
-            placeholder="家 / 学校 / 公司…"
+            placeholder="请选择标签"
             style="width: 100%"
           >
             <el-option v-for="t in tagOptions" :key="t" :label="t" :value="t" />

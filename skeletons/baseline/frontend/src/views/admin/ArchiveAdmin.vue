@@ -411,10 +411,8 @@
             <el-select
               v-model="form.startCampus"
               filterable
-              allow-create
-              default-first-option
               clearable
-              :placeholder="carpoolCampusPlaceholder"
+              :placeholder="carpoolCampusPlaceholder || '请选择校区'"
               style="width:100%"
             >
               <el-option v-for="c in carpoolCampusOptions" :key="'cs' + c" :label="c" :value="c" />
@@ -424,10 +422,8 @@
             <el-select
               v-model="form.endCampus"
               filterable
-              allow-create
-              default-first-option
               clearable
-              :placeholder="carpoolCampusPlaceholder"
+              :placeholder="carpoolCampusPlaceholder || '请选择校区'"
               style="width:100%"
             >
               <el-option v-for="c in carpoolCampusOptions" :key="'ce' + c" :label="c" :value="c" />

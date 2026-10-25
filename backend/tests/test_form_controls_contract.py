@@ -253,7 +253,7 @@ class FormControlsContractTests(unittest.TestCase):
         self.assertEqual(
             unexpected,
             [],
-            "非预期控件红灯（本刀不改页；真阳性请记入 BASELINE_KNOWN_CONTROLS）:\n"
+            "控件契约红灯（真阳性先记 BASELINE_KNOWN_CONTROLS 再消红）:\n"
             + "\n".join(str(f) for f in unexpected[:30]),
         )
         hit = {f.key() for f in findings}
@@ -262,6 +262,8 @@ class FormControlsContractTests(unittest.TestCase):
             missing,
             f"已知债未再报（若已修基线请清空对应记账）: {missing}",
         )
+        if not BASELINE_KNOWN_CONTROLS:
+            self.assertEqual(findings, [], "已知债已空则基线扫描应无红灯")
 
     def test_assert_ok_with_known(self) -> None:
         assert_form_controls_ok()

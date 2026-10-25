@@ -60,9 +60,7 @@
           <el-select
             v-model="form.username"
             filterable
-            allow-create
-            default-first-option
-            placeholder="选择或输入子管用户名"
+            placeholder="请选择员工账号"
             style="width: 100%"
           >
             <el-option

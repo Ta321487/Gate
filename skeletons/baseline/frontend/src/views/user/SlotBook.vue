@@ -212,10 +212,8 @@
               v-if="patientProfileOn && patientProfiles.length"
               v-model="extra.patientName"
               filterable
-              allow-create
-              default-first-option
               style="width:100%"
-              :placeholder="`选择或填写${patientLabel}`"
+              :placeholder="`请选择${patientLabel}`"
             >
               <el-option
                 v-for="p in patientProfiles"
@@ -332,8 +330,6 @@
             v-model="extra.preferredStylist"
             clearable
             filterable
-            allow-create
-            default-first-option
             placeholder="可选当日当班技师"
             style="width: 100%"
           >

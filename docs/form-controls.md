@@ -3,7 +3,7 @@
 > **本文只负责一件事**：**可交互控件选型与取值纪律**——全学生包里该用哪种控件、下拉选项从哪来、禁止手填造值（含筛选/对话框/行内，不限 el-form）。  
 > **不负责**：布局一眼病/几何挤破（[`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md)）；68 域勾选结果（[`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md)）；观感精美/换皮；学生可见文案腔；能力四件套。  
 > **一句话**：本册定「控件对不对」的**规则**；诊没诊过写在诊断表；摆齐不齐写在布局闸。  
-> **状态**：**C0～C5 已齐**（契约扫 + 映射钉死 + 出包 `p3controls` + 助手规则/Skill + 工厂摘要）；已知债消红另刀。  
+> **状态**：**C0～C5 已齐**；**C1～C3 基线已知债已消红**（`BASELINE_KNOWN_CONTROLS` 空）；新一眼病先入册再改页。  
 > **索引**：[README.md](./README.md) · `.cursor/rules/form-controls.mdc`。  
 > **文件名**历史为 `form-controls.md`；范围仍是全包可交互控件。
 
@@ -188,13 +188,9 @@
 
 ### 5.2 已知债
 
-| 批 | 记账 | 消红原则 |
-|----|------|----------|
-| **C1** | `allow-create` 约 18 处（地址标签、拼车校区、故障原因、优惠券码、技能筛选等） | 有限名单 → 去 creatable；自由叙述 → 改文本框 |
-| **C2** | `CouponsAdmin` 过期时间用 `el-input` 手填（`form.expireAt` + 标签） | 改 `el-date-picker` type=datetime |
-| **C3** | `ArchiveBrowse` `logFields` 循环一律 `el-input` | 改挂 `ArchiveFieldControl`（按字段 type 出控件） |
+**已清**（2026-10-25）：C1 去 `allow-create`（有限名单只选；无选项处 remark 仍走 textarea）；C2 `CouponsAdmin` 过期 → `el-date-picker` datetime；C3 `ArchiveBrowse` `logFields` → `ArchiveFieldControl`。`BASELINE_KNOWN_CONTROLS` 为空。
 
-禁止只擦单包。资料页 `visibleFields` / `ProfileFieldInputs` **不**走本模式（非档案 schema 循环）。
+新一眼病：先补契约/反例 + 记账，再改基线；禁止只擦当面学生包。资料页 `visibleFields` / `ProfileFieldInputs` **不**走本模式。
 
 ---
 
@@ -210,3 +206,4 @@
 | 2026-10-24 | **C3 开闸**：`form_controls_widget` 钉语义表；`archive_field_loop_uses_control` 扫 log/extra 循环；`ArchiveBrowse.logFields` 记账；资料页豁免 |
 | 2026-10-25 | **C4 开闸**：出包 `p3controls` 对本包 frontend 跑 C1～C3；红禁 ZIP；`BAKE_FORM_CONTROLS`；下一刀 C5 |
 | 2026-10-25 | **C5 开闸**：规则+skill；`form_controls_gate_status` + `/api/system/form-controls-gate`；运行环境/开工台露红绿；**C0～C5 收口** |
+| 2026-10-25 | **已知债消红**：基线去 creatable / 券过期 date-picker / logFields 挂控件；`BASELINE_KNOWN_CONTROLS` 清空 |

@@ -27,9 +27,7 @@
         <el-select
           v-model="form.ticketId"
           filterable
-          allow-create
-          default-first-option
-          placeholder="选已办结的带看跟进（或直接填单号）"
+          placeholder="请选择已办结的带看跟进"
           style="width: 100%"
         >
           <el-option

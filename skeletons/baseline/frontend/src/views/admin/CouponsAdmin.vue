@@ -61,7 +61,13 @@
           <span class="hint">0 表示不限</span>
         </el-form-item>
         <el-form-item label="过期时间">
-          <el-input v-model="form.expireAt" placeholder="yyyy-MM-dd HH:mm:ss" />
+          <el-date-picker
+            v-model="form.expireAt"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="选择过期时间"
+            style="width: 100%"
+          />
         </el-form-item>
         <el-form-item v-if="form.id" label="状态">
           <el-select v-model="form.status" style="width: 140px">
