@@ -10,12 +10,12 @@
 
 ## 当前主线
 
-> **下一刀：大线 #1 · 全域 UI 诊断台账开诊（或控件已知债消红另刀）。**  
-> **控件闸 C0～C5 已齐**：契约 + 映射 + 出包 `p3controls` + 规则/Skill + 工厂摘要；真源 [`docs/form-controls.md`](./docs/form-controls.md)。  
-> **布局闸已齐**；勿回抢布局。  
-> 站队：**修工厂**；已知债消红另批（禁止只擦单包）；诊断见 [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)。  
-> **覆盖顺序**：① 布局已齐 → ② 控件已齐 → **③ 诊断（本刀候选）** / 控件消红另刀。  
-> **禁止**：开诊时改布局/控件细则正文；混消红进诊断勾选。  
+> **本刀：大线 #1 · 全域 UI 诊断台账开诊**（[`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)）。  
+> **控件闸 C0～C5 + 基线已知债消红已齐**（工作区已改；**若未 commit 先提交再开诊**）：`BASELINE_KNOWN_CONTROLS` 空；`test_form_controls_*` 27 passed。  
+> **布局闸已齐**；勿回抢布局/控件细则。  
+> 站队：**修工厂**；只勾台账、记红灯短码；细则外链布局闸/控件册。  
+> **开诊顺序**：先 §2 共享基线 → 再 §3 域行 68；`L`/`C` 皆 OK 才算该行过。  
+> **禁止**：开诊时改布局/控件细则正文；把消红混进诊断勾选；只擦单包。  
 > **#3+#4** 全族已齐，旁路勿抢刀。
 
 1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～F / 真交叉 G / 兜底 H（GENERIC）已可 bake。  
@@ -25,8 +25,8 @@
 5. **UI 观感 / Vue 拆分**：已收口。  
 6. **#3+#4 挂载/对齐**：**全族已齐**（含互动）。  
 7. **起包前布局闸**：**D1～D5 已齐**（含工厂反应）；基线结构/视觉债/孤儿先记账不改页。  
-8. **可交互控件**：**C0～C5 已齐**（含 `p3controls` + 工厂摘要）；已知债消红另刀。  
-9. **全域 UI 诊断**：台账已立；**下一刀候选开诊**（`docs/ui-domain-diagnosis.md`）。
+8. **可交互控件**：**C0～C5 已齐**；**C1～C3 基线已知债已消红**（含 `p3controls` + 工厂摘要）。  
+9. **全域 UI 诊断**：台账已立；**下一刀开诊**（`docs/ui-domain-diagnosis.md`）。
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
@@ -102,11 +102,11 @@ Vue 大文件拆分 → [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)�
 ## 新对话开场（当前主线）
 
 ```
-继续 graduate_factory_v3。先读 HANDOFF.md。
-控件闸 C0～C5 已齐（form-controls.md）；布局闸已齐。
-下一刀候选：① 全域 UI 诊断开诊（docs/ui-domain-diagnosis.md）；或 ② 控件已知债消红另刀（BASELINE_KNOWN_CONTROLS）。
-站队：修工厂；禁止只擦单包；诊断与消红勿混刀。
-#3+#4 全族已齐，旁路勿抢刀。
+继续 graduate_factory_v3。先读 HANDOFF.md 与 docs/ui-domain-diagnosis.md。
+本刀：全域 UI 诊断开诊（台账勾 L/C；先 §2 共享再 §3 域行 68）。
+前置：控件消红工作区已齐（BASELINE_KNOWN 空；test_form_controls_* 27 passed）——若 git 仍脏，先提交消红再开诊。
+站队：修工厂；只记账不改布局/控件细则正文；禁止只擦单包。
+布局闸/控件闸已齐，勿回抢。#3+#4 全族已齐。
 ```
 
 ## 新对话开场（某个具名域）

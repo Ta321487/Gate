@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-09-18T20:39:11Z",
-  "updated_at": "2026-10-25T01:23:00Z",
+  "updated_at": "2026-10-25T11:02:44Z",
   "files": {
     ".cursor/rules/00-factory-core.mdc": {
       "role": "index",
@@ -254,9 +254,9 @@
       "normalized_sha256": "f342c402ebcdee342d3acbb4c4563859f570e7c36ec52b8752e5164979709338"
     },
     "HANDOFF.md": {
-      "sha256": "6f86949c23374c60dbe02ba06c059ca0b597f509241c4c82d6858c9125493270",
-      "size": 35308,
-      "normalized_sha256": "6f86949c23374c60dbe02ba06c059ca0b597f509241c4c82d6858c9125493270"
+      "sha256": "53650ad8056bde3ce41b3f92edb2f0b1a27024306e824e8407ee8117b015b92b",
+      "size": 35286,
+      "normalized_sha256": "53650ad8056bde3ce41b3f92edb2f0b1a27024306e824e8407ee8117b015b92b"
     },
     "README.md": {
       "sha256": "dda247689d2a7baf9e3faee269874993f08042b872d7c0b95363a88503835121",
@@ -269,9 +269,9 @@
       "normalized_sha256": "f04bad11f0edd2d24da4e5c885f891cd4262b7bb65f6a34784385219428d532d"
     },
     "aoci.code.txt": {
-      "sha256": "e402f9ea21499cc3ea2bab423d8e6fa5114ec937ccb6ef0a661a7328398c5efb",
-      "size": 364849,
-      "normalized_sha256": "e402f9ea21499cc3ea2bab423d8e6fa5114ec937ccb6ef0a661a7328398c5efb"
+      "sha256": "16200276bbc712fcb911e8d17db9e843713f792a6120457a7d8a9321bc689c1d",
+      "size": 365643,
+      "normalized_sha256": "16200276bbc712fcb911e8d17db9e843713f792a6120457a7d8a9321bc689c1d"
     },
     "aoci.database.txt": {
       "sha256": "9d9fedc69e4a91c5bc5d3c170bf18d50b11855a73ca317eecc4a9b035fcd4188",
@@ -1066,9 +1066,9 @@
       "normalized_sha256": "a46a563dd57878e55be7f4d8b637f80149c39d11ed69eb0772dcfb2618de0530"
     },
     "backend/app/bake/form_controls_contract.py": {
-      "sha256": "7c2c7e7eb9f6a8a2e4e67646ab278231c89321473546595dadc5a12f44a147c2",
-      "size": 13730,
-      "normalized_sha256": "7c2c7e7eb9f6a8a2e4e67646ab278231c89321473546595dadc5a12f44a147c2"
+      "sha256": "06858d91c7543607de4b3b9b9c3678296b63975e98ba7c40b7af5ccfbc2c6bda",
+      "size": 11721,
+      "normalized_sha256": "06858d91c7543607de4b3b9b9c3678296b63975e98ba7c40b7af5ccfbc2c6bda"
     },
     "backend/app/bake/form_controls_gate_status.py": {
       "sha256": "64c811f9509c276047ea189fa0438c0eb97760f56fc04a2dff10973f0cbfd551",
@@ -1102,9 +1102,9 @@
       "normalized_sha256": "3542658f45674e9a2504c63b622e5c96e10de5852e7e06bfae8bea755c5b8335"
     },
     "backend/app/bake/gates/form_controls_workspace.py": {
-      "sha256": "d9c91a2931f290cc7d5ed2f40efb6978a76d886466cdfd1e1c74d54bf9936026",
-      "size": 1687,
-      "normalized_sha256": "d9c91a2931f290cc7d5ed2f40efb6978a76d886466cdfd1e1c74d54bf9936026"
+      "sha256": "558620e093c1d6418f24df94d0732d6f63629411a9ff79901415d495c765391d",
+      "size": 1696,
+      "normalized_sha256": "558620e093c1d6418f24df94d0732d6f63629411a9ff79901415d495c765391d"
     },
     "backend/app/bake/gates/keys.py": {
       "sha256": "2791f1c73f3fc21cee7a49dfff029deeb3a687d978cd1d56299dae2c1262b08e",
@@ -3558,15 +3558,15 @@
     },
     "backend/tests/test_form_controls_contract.py": {
       "role": "observe",
-      "sha256": "6b0586a721e5612565bc23c841d570e50daa94c21bdb673895d55b9b6199be1d",
-      "size": 8286,
-      "normalized_sha256": "6b0586a721e5612565bc23c841d570e50daa94c21bdb673895d55b9b6199be1d"
+      "sha256": "6e82d13b6a69f2515b899f861da0dc5af175013c5526031048771c9876e6114e",
+      "size": 8401,
+      "normalized_sha256": "6e82d13b6a69f2515b899f861da0dc5af175013c5526031048771c9876e6114e"
     },
     "backend/tests/test_form_controls_gate_status.py": {
       "role": "observe",
-      "sha256": "1250ac66a5226535b6c3e8dbd00b8bf1802b46d3d3bb59e20423314655706f3a",
-      "size": 1193,
-      "normalized_sha256": "1250ac66a5226535b6c3e8dbd00b8bf1802b46d3d3bb59e20423314655706f3a"
+      "sha256": "903ac249549fd09bcba22fc20f49658b7c57bd6e7da45c5175e2510f6143e895",
+      "size": 1264,
+      "normalized_sha256": "903ac249549fd09bcba22fc20f49658b7c57bd6e7da45c5175e2510f6143e895"
     },
     "backend/tests/test_form_controls_widget.py": {
       "role": "observe",
@@ -6006,9 +6006,9 @@
       "normalized_sha256": "6eac29a8f2d759a7a96bb2603b487395684e7d7ee6ddf7ed686f5d58a3ef00c2"
     },
     "docs/form-controls.md": {
-      "sha256": "112b98fb8cc347cf121dffe0107e7a7bed555876edd0fca918ef4b0e869b3402",
-      "size": 12960,
-      "normalized_sha256": "112b98fb8cc347cf121dffe0107e7a7bed555876edd0fca918ef4b0e869b3402"
+      "sha256": "8f451c8101cbaf66e5cec19a29a33ab797a72b73f5facd914e3eb8da3c5ff718",
+      "size": 12906,
+      "normalized_sha256": "8f451c8101cbaf66e5cec19a29a33ab797a72b73f5facd914e3eb8da3c5ff718"
     },
     "docs/group-thicken-archives-1-1-to-1-5.md": {
       "sha256": "46a21df657851106929891c845fca07ef644525db9667af595f4d3ab6c931e90",
@@ -7989,9 +7989,9 @@
       "normalized_sha256": "b9fbe769d5b25a1d4cec4756e6cffb401fef51bece9da12c3c623212f2300d9b"
     },
     "skeletons/baseline/frontend/src/components/RepairFinishDialog.vue": {
-      "sha256": "6b3c8f3a934968ec4f2e5edc0900c301f2abb8e6893a5eae681bdbee58de528e",
-      "size": 19558,
-      "normalized_sha256": "6b3c8f3a934968ec4f2e5edc0900c301f2abb8e6893a5eae681bdbee58de528e"
+      "sha256": "814f4e517f417e976a6e097a63b91c930983490f53b49bec17e0dd379e4334c3",
+      "size": 19564,
+      "normalized_sha256": "814f4e517f417e976a6e097a63b91c930983490f53b49bec17e0dd379e4334c3"
     },
     "skeletons/baseline/frontend/src/components/RichTextEditor.vue": {
       "sha256": "688b82c93c792fc2b09c56a44ae57e2cf40fbb6b5cef82ebef3b68d9ce5e2b7f",
@@ -8962,9 +8962,9 @@
       "normalized_sha256": "7a14acd666b6e740313dc7c9da0e0aaec740e1527f42fc48303b4428a393a60f"
     },
     "skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.vue": {
-      "sha256": "771e81a40828b729b33c076d6da2e43e7a49768d59d2ab98ac12b8f6e7669822",
-      "size": 26306,
-      "normalized_sha256": "771e81a40828b729b33c076d6da2e43e7a49768d59d2ab98ac12b8f6e7669822"
+      "sha256": "334b6c44a229deebe556c5ab05ad30cc917b7582fedbecbebe80ed388e5048df",
+      "size": 26224,
+      "normalized_sha256": "334b6c44a229deebe556c5ab05ad30cc917b7582fedbecbebe80ed388e5048df"
     },
     "skeletons/baseline/frontend/src/views/admin/ArchiveLogsAdmin.vue": {
       "role": "index",
@@ -9051,10 +9051,9 @@
       "normalized_sha256": "9f4ed7f755116771daf31910a24be5992539563f12b67dec18390e4360700ab0"
     },
     "skeletons/baseline/frontend/src/views/admin/CouponsAdmin.vue": {
-      "role": "index",
-      "sha256": "8223bef72fb0f7b2fa4c9ad629b7d4cca4ecc2578f60312066cbb969904b4fb3",
-      "size": 5387,
-      "normalized_sha256": "1603b1d84c9c0695b58de8390a60beec7599b62eae69504f7c352b492706bc11"
+      "sha256": "5ceb0ef32d1f6e52975a642884e4c2830884800be7391af1a7c0ca9a1bcfe7c5",
+      "size": 5539,
+      "normalized_sha256": "edbd668ddb8acc17d3a31f8b6b6d986449028788de537b183eb43dfa61d23cb0"
     },
     "skeletons/baseline/frontend/src/views/admin/DeliverySlotsAdmin.vue": {
       "sha256": "2651c815894293253d8bdb73283e64af59754053994146c8022c3353c6b20ee3",
@@ -9122,14 +9121,14 @@
       "normalized_sha256": "c16b0dfa3d9e8af42a764eb4aac0b24e057ae7b902c8a4a548ddb823b1047b82"
     },
     "skeletons/baseline/frontend/src/views/admin/FundDisburseAdmin.vue": {
-      "sha256": "2192841f4541215e7d1e718a7c6614047aeb48c00209fef02fe57c327bb95c07",
-      "size": 5781,
-      "normalized_sha256": "0093a570599cc3e6cd0949cff4a0b9e78612db0545083ee42a816c331982399c"
+      "sha256": "0e9da1fd154f675bc5feeab9f61ef5548b6a117e7ca17e5dc6d9816a54ba79cc",
+      "size": 5707,
+      "normalized_sha256": "5c3cae948bc53f3e5a7a36e4d8a2e8042c0be74d02eb42b6032eb51d0b3d74fa"
     },
     "skeletons/baseline/frontend/src/views/admin/FundPublicityAdmin.vue": {
-      "sha256": "b0cb0ca5afe68f664229acfd1695b5649bc7ece79eacbdef955bdaa157cd33a6",
-      "size": 6714,
-      "normalized_sha256": "b0cb0ca5afe68f664229acfd1695b5649bc7ece79eacbdef955bdaa157cd33a6"
+      "sha256": "bd94dd76cfd01b3ef3f88c59bc279859dc0285df652fa4187df8ae4fba4ac677",
+      "size": 6642,
+      "normalized_sha256": "bd94dd76cfd01b3ef3f88c59bc279859dc0285df652fa4187df8ae4fba4ac677"
     },
     "skeletons/baseline/frontend/src/views/admin/GradeScoresAdmin.vue": {
       "sha256": "0882c0a135a5092d7fbfc16643d31d882dc2ff4c5bd1834f4bb04a71dc88d210",
@@ -9177,9 +9176,9 @@
       "normalized_sha256": "805f98cb44a7a0271340c052d1bf329896be15c83141d1e6d307b8cc620544e0"
     },
     "skeletons/baseline/frontend/src/views/admin/ListingDealAdmin.vue": {
-      "sha256": "62185cc8802a0c09b4c8aa0cfbac0941be57f74410e86407753a8a83635c1876",
-      "size": 5690,
-      "normalized_sha256": "ee3e3bacd67f95224cb1c34fbe7feb1d15a8bcf99a35a4143830988ececbd337"
+      "sha256": "9967e14c6034cf0bd3ba0b40d5bc55c800d31e59073f68f4314b19e974bccd45",
+      "size": 5616,
+      "normalized_sha256": "322ae876c4116a163c2493ae3f16dac99d53f2fa0e6f7a7cad65009d0edf2377"
     },
     "skeletons/baseline/frontend/src/views/admin/LookupSitesAdmin.vue": {
       "role": "index",
@@ -9324,9 +9323,9 @@
       "normalized_sha256": "d06d2819884dc2315f09c4ae768b12649b644b9f72276701d175971177fab3e5"
     },
     "skeletons/baseline/frontend/src/views/admin/StaffRosterAdmin.vue": {
-      "sha256": "27603a5e07d74707c45faf036bc21f4322877bd0330487a7bfac593f1a8aff3b",
-      "size": 7368,
-      "normalized_sha256": "27603a5e07d74707c45faf036bc21f4322877bd0330487a7bfac593f1a8aff3b"
+      "sha256": "887cc61ea8a9c7423e9d95301479adba491842cf820c003fd376b84edee9140d",
+      "size": 7301,
+      "normalized_sha256": "887cc61ea8a9c7423e9d95301479adba491842cf820c003fd376b84edee9140d"
     },
     "skeletons/baseline/frontend/src/views/admin/StayLogsAdmin.vue": {
       "sha256": "55d82762f3815fc9710d30e357c81b0ab106ee001741ad6543351b2a5decfb71",
@@ -9385,9 +9384,9 @@
       "normalized_sha256": "485c0f38a91bb1f08db337ca2ced170b41e7d5f91db216266a6cb31ca06c774a"
     },
     "skeletons/baseline/frontend/src/views/admin/TicketsAdmin.vue": {
-      "sha256": "2d954dec636cab67333f402cb5f58820508f177b16bcc6159a13cd390ad94add",
-      "size": 33227,
-      "normalized_sha256": "2d954dec636cab67333f402cb5f58820508f177b16bcc6159a13cd390ad94add"
+      "sha256": "ee70e1543365d4a84846bfc62b5d5c6b1bb818cba2406199786e374e315c8a94",
+      "size": 33165,
+      "normalized_sha256": "ee70e1543365d4a84846bfc62b5d5c6b1bb818cba2406199786e374e315c8a94"
     },
     "skeletons/baseline/frontend/src/views/admin/TimebankAccountsAdmin.vue": {
       "sha256": "d8aab47e603815954233b7e41c07108976abc762d5c7d30352c1bf4ac015c401",
@@ -9455,9 +9454,9 @@
       "normalized_sha256": "465912113cd5a1bb7bb51918a93d920eff6c2427e3b02b6fe19cc7f7b631244b"
     },
     "skeletons/baseline/frontend/src/views/user/Addresses.vue": {
-      "sha256": "ddea372329408ea5f8673ef181898bf152425a83fb7539422cf8b8ac804985e6",
-      "size": 7435,
-      "normalized_sha256": "ce4f14c8f8e100df50536d21e3c8f31af8b50ffbaab3e5d3ce470381a7674881"
+      "sha256": "0d83ed78190ace08ca7d006bb288d20a5dd728ef1be28c39917b32085477ab9e",
+      "size": 7366,
+      "normalized_sha256": "34df192403be5b36a5788be85d56d3d8a2a9fddb15a87334efb3964da987d384"
     },
     "skeletons/baseline/frontend/src/views/user/ArchiveBrowse.css": {
       "sha256": "548170026a25b126f17627433c9a05cbd5e2d4979120743d47ed5bd43d994ce9",
@@ -9465,14 +9464,14 @@
       "normalized_sha256": "548170026a25b126f17627433c9a05cbd5e2d4979120743d47ed5bd43d994ce9"
     },
     "skeletons/baseline/frontend/src/views/user/ArchiveBrowse.setup.js": {
-      "sha256": "0096b93bf5896d490a4bee28550428ebf795d6b271ec88c829eae09ebd3495e0",
-      "size": 119574,
-      "normalized_sha256": "0096b93bf5896d490a4bee28550428ebf795d6b271ec88c829eae09ebd3495e0"
+      "sha256": "338fc5936faf8640e853d1a8fdb787a96d874882aa5a9ec216e91aead33662ec",
+      "size": 119649,
+      "normalized_sha256": "338fc5936faf8640e853d1a8fdb787a96d874882aa5a9ec216e91aead33662ec"
     },
     "skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue": {
-      "sha256": "fc48e9d37f2194ee01b6cc8e4f4fd3faa4d70f37e2c7ebad32fa234c14f03bf6",
-      "size": 66321,
-      "normalized_sha256": "fc48e9d37f2194ee01b6cc8e4f4fd3faa4d70f37e2c7ebad32fa234c14f03bf6"
+      "sha256": "17af0ecd8331838bad22e0f9d1a21f4864ee95752301ff8a581addbfc23f64c1",
+      "size": 66135,
+      "normalized_sha256": "17af0ecd8331838bad22e0f9d1a21f4864ee95752301ff8a581addbfc23f64c1"
     },
     "skeletons/baseline/frontend/src/views/user/ArchiveItemDetail.vue": {
       "sha256": "eadcef69ca626aaeae90ead7485d376c7c6dd667e4b57d555b2482f4bd625cbd",
@@ -9501,9 +9500,9 @@
       "normalized_sha256": "7d3a3e14a2c3f9b87e501bfb70e76b73e9870b6aaef94cbca825ca8ca6436901"
     },
     "skeletons/baseline/frontend/src/views/user/Cart.vue": {
-      "sha256": "d12df3e44535db613ade4b33284487f5ce9487bff5965557a93c1cfad4bd5e3e",
-      "size": 20746,
-      "normalized_sha256": "d12df3e44535db613ade4b33284487f5ce9487bff5965557a93c1cfad4bd5e3e"
+      "sha256": "b6c1f81d0bda87e18c90c149ecf095481d2af8a174abef9d6410b254aeefce62",
+      "size": 20608,
+      "normalized_sha256": "b6c1f81d0bda87e18c90c149ecf095481d2af8a174abef9d6410b254aeefce62"
     },
     "skeletons/baseline/frontend/src/views/user/Dm.vue": {
       "sha256": "ffb02c2baf92b9181a42b45dd8632f349f8b5207a381a229654374518f5fa1da",
@@ -9621,9 +9620,9 @@
       "normalized_sha256": "93620981563d339cdde199d59b6b4b74b220b0ea19f75e4132659bd85f97831e"
     },
     "skeletons/baseline/frontend/src/views/user/MyTickets.vue": {
-      "sha256": "c00301aa7569e4b293b4f4a87ed2072233748bc26a524e90b2fe5d8933cd81f5",
-      "size": 86610,
-      "normalized_sha256": "c00301aa7569e4b293b4f4a87ed2072233748bc26a524e90b2fe5d8933cd81f5"
+      "sha256": "fd9dad1c5a3c8d730139486ea7d1b32179ecf5a6c6d154d5b7835601e3b9d50a",
+      "size": 86505,
+      "normalized_sha256": "fd9dad1c5a3c8d730139486ea7d1b32179ecf5a6c6d154d5b7835601e3b9d50a"
     },
     "skeletons/baseline/frontend/src/views/user/ParcelShip.vue": {
       "sha256": "d060949b3ad024d0a19a45711d22e5916c0c40edea9db29056cf5a98405afc47",
@@ -9686,9 +9685,9 @@
       "normalized_sha256": "9014894357d0c813f4ffb534ae1b64b1be8a0c848ef6ed384e6839cabaeb202a"
     },
     "skeletons/baseline/frontend/src/views/user/SlotBook.vue": {
-      "sha256": "6beaf610a2befe26e6046c9c37b12ad9952fc81484dea616a102974dbb05440e",
-      "size": 19308,
-      "normalized_sha256": "6beaf610a2befe26e6046c9c37b12ad9952fc81484dea616a102974dbb05440e"
+      "sha256": "c1167307f3896f5c22bb897c68026070eec7c196c0a7605f8b18481697f6526d",
+      "size": 19182,
+      "normalized_sha256": "c1167307f3896f5c22bb897c68026070eec7c196c0a7605f8b18481697f6526d"
     },
     "skeletons/baseline/frontend/src/views/user/WeekCalendar.vue": {
       "sha256": "fcc8b646f45bbb72f7e8dba583d70934b681ef6e001700ba66b51f88ff55a5b3",

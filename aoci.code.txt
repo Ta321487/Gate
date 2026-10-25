@@ -4,7 +4,7 @@
 .gitattributes[FC5T]: F:强制文本检出为 LF，避免 Windows autocrlf 把整树标成与 AOCI baseline 不一致 | R:- | A:- | S:AOCI baseline 按原始字节比对，换行被改写会整树变 stale
 .gitignore[FC4T]: F:排除本地环境、缓存、数据库、上传工作区与临时产物，含布局冒烟 Vite 缓存与 probe_run，避免进 Git | R:- | A:- | S:skeletons/**/.vite-layout-smoke/ 为冒烟本机缓存不入库
 AGENTS.md[SG8T]: F: 声明 Agent 在本仓库的 AOCI 认知合同：成本红线、最小入口、认知纪律、收尾维护纪律、边界、配置通道与成本参数 | R: code:HANDOFF.md | A: - | S: 整仓 overview 一次即数十万 token，仅用户明确要求完整认知时可用，须跟随 next_cursor 到 completed 并回绑 Challenge 三哈希；Entry 语义只能来自真实证据，禁按路径/扩展名等推导；纯只读任务不调 maintain；cognition_budget 不在 config set 白名单，须走 scope budget set + Scope Change Apply，手改 .aoci/config.json 无效
-HANDOFF.md[SG8M]: F:新对话交接：当前主线、硬边界、开场白与专题入口 | R:code:README.md,code:docs/parked-work.md,code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:docs/ui-domain-diagnosis.md,code:.cursor/rules/ai-handoff.mdc | A:- | S:禁止参考/迁移 graduate_factory 与 v2；布局闸与控件闸 C0～C5 已齐；下一刀候选诊断或控件消红
+HANDOFF.md[SG8M]: F:新对话交接：当前主线、硬边界、开场白与专题入口 | R:code:README.md,code:docs/parked-work.md,code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:docs/ui-domain-diagnosis.md,code:.cursor/rules/ai-handoff.mdc | A:- | S:禁止参考/迁移 graduate_factory 与 v2；布局闸与控件闸 C0～C5 及基线已知债消红已齐；下一刀全域 UI 诊断开诊
 README.md[SG8S]: F:˵�����ΰѿ����ӹ��ɿɴ��� Web ϵͳ���Լ���Ӫ����ô���� | R:code:scripts/README.md,code:docs/tech-stack-delivery.md,code:HANDOFF.md,code:ARCHITECTURE.md | A:GET /api/health | S:Ĭ�� jdbc��mybatis��jpa��Security ������д������ bake �Ž��������� PPT �Ƕ��� Job������ ZIP
 docker-compose.yml[EC5T]: F:运行配置 docker-compose | R:- | A:- | S:-
 ARCHITECTURE.md[SG7M]: F:分层图说明运营台与 bake 流水线边界，以及薄壳域与学生包材料；领域 A～F/G/H | R:code:README.md,code:HANDOFF.md,code:architecture.html,code:docs/README.md | A:- | S:只画工厂架构与学生包边界，不画 bake/schema 细节；禁止 LLM 手写业务 Java/Vue
@@ -123,7 +123,7 @@ layout_contract.py[AQ7L]: F:布局闸 D2：对 views/layouts/components 按 §3.
 layout_inventory.py[AQ7L]: F:布局闸 D1：扫 frontend 生成 page/shell/component/dialog 台账并校验漏页/漏组件/漏壳 | R:code:docs/ui-layout-prebake-gate.md,code:backend/app/bake/layout_contract.py,code:backend/app/bake/menu_routes.py,code:backend/tests/test_layout_inventory.py | A:- | S:可对任意 frontend/src；基线默认 skeletons/baseline；hosts 暴露组件宿主页给视觉冒烟
 layout_gate_status.py[AQ6M]: F:布局闸 D5：工厂可读廉价摘要（台账对账+结构契约，视觉标 not_run） | R:code:backend/app/bake/layout_inventory.py,code:backend/app/bake/layout_contract.py,code:backend/app/api/system_info.py,code:docs/ui-layout-prebake-gate.md | A:- | S:不触发 Playwright 全表；文案用通过/未通过/已登记例外，忌口语
 layout_smoke.py[AQ8L]: F:布局闸 D3/D4：Vite+Playwright 几何冒烟与全表覆盖率（已知债允许） | R:code:backend/app/bake/layout_inventory.py,code:backend/tests/layout_smoke/collect_full_metrics.mjs,code:docs/ui-layout-prebake-gate.md,code:backend/tests/test_layout_smoke.py | A:- | S:不为消红改学生页；覆盖率须 100% 含 known_debt；强制改密页与 me mock 防踢登
-form_controls_contract.py[DQ8M]: F:基线前端控件契约扫：禁 allow-create、禁日期数字手填、档案循环须 ArchiveFieldControl | R:code:docs/form-controls.md,code:backend/app/bake/layout_inventory.py,code:backend/app/bake/form_controls_widget.py,code:backend/tests/test_form_controls_contract.py | A:- | S:真阳性记 BASELINE_KNOWN_CONTROLS；不为消红改学生页
+form_controls_contract.py[DQ8M]: F:基线前端控件契约扫：禁 allow-create、禁日期数字手填、档案循环须 ArchiveFieldControl | R:code:docs/form-controls.md,code:backend/app/bake/layout_inventory.py,code:backend/app/bake/form_controls_widget.py,code:backend/tests/test_form_controls_contract.py | A:- | S:BASELINE_KNOWN_CONTROLS 现为空；新一眼病先记账再改基线，禁止只擦单包
 form_controls_gate_status.py[DQ7S]: F:控件闸工厂摘要：扫契约并汇总已登记例外与未预期红灯 | R:code:backend/app/bake/form_controls_contract.py,code:backend/app/api/system_info.py,code:backend/tests/test_form_controls_gate_status.py | A:- | S:摘要不替代出包 p3controls
 form_controls_widget.py[DQ7S]: F:档案字段→控件映射 Python 对齐 archiveFieldWidget.js，含 WIDGET_CASES | R:code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js,code:backend/tests/test_form_controls_widget.py,code:docs/form-controls.md | A:- | S:改 JS 映射须同步本表与测
 
@@ -238,7 +238,7 @@ keys.py[DQ6T]: F:门禁键字典与核心/单调键集合，含 p3layout 与 p3c
 semantic.py[DQ7S]: F:检查学生可见面与场景身份等交付语义门禁，并调用 schema_nf 工作区扫描 | R:code:backend/app/bake/gates/schema_nf.py | A:- | S:补 checklist 启发式盲区；库表范式不过则语义门禁不过
 schema_nf.py[DQ8T]: F:扫 schema.sql 的 CREATE/ADD COLUMN，拦非白名单 JSON 业务列与逗号串 1:N 列 | R:code:backend/app/bake/schema/er_model.py,code:backend/app/bake/engine_bake.py,code:backend/app/bake/gates/evaluate.py,code:backend/app/bake/gates/semantic.py | A:- | S:仅白名单 archive_log.payload_json/sys_user.profile_json 与 gallery_json 族放行；companion_names 等逗号集合列一律失败
 layout_workspace.py[DQ7M]: F:出包门禁 p3layout：对学生包 frontend/src 跑台账对账与结构契约 | R:code:backend/app/bake/layout_inventory.py,code:backend/app/bake/layout_contract.py,code:backend/app/bake/gates/evaluate.py,code:docs/ui-layout-prebake-gate.md | A:- | S:已剪枝包 skip_menu_route_reconcile；共用 BASELINE_KNOWN_*；不做全表视觉
-form_controls_workspace.py[DQ7S]: F:出包侧 p3controls：对本包 frontend/src 跑 C1～C3 控件契约 | R:code:backend/app/bake/form_controls_contract.py,code:backend/app/bake/gates/evaluate.py,code:backend/tests/test_form_controls_workspace_gate.py | A:- | S:例外与基线共用 BASELINE_KNOWN_CONTROLS
+form_controls_workspace.py[DQ7S]: F:出包侧 p3controls：对本包 frontend/src 跑 C1～C3 控件契约 | R:code:backend/app/bake/form_controls_contract.py,code:backend/app/bake/gates/evaluate.py,code:backend/tests/test_form_controls_workspace_gate.py | A:- | S:例外与基线共用 BASELINE_KNOWN_CONTROLS；禁止只擦当面学生包消红
 
 ===D:/graduate_factory_v3/backend/app/bake/proposal_packs_data/===
 _order.json[FC5T]: F:声明选题包 JSON 加载顺序 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
@@ -818,7 +818,7 @@ opening-align-gate.md[SC6S]: F:�Ǽǿ���˫�������Ž���
 parked-work.md[SC6T]: F:搁置工作台账：大线与碎另案只记账不写规格 | R:code:docs/opening-align-gate.md,code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:docs/ui-domain-diagnosis.md,code:HANDOFF.md | A:- | S:布局/控件闸已齐；下一刀候选诊断或控件消红
 bake-fail-analysis.md[SG7T]: F:bake 失败分析码表：归桶规则、A 档权威落点与 B 档建议工作流 | R:code:backend/app/services/bake_fail_classify.py;code:frontend/src/views/FailAnalysis.vue;code:docs/README.md | A:- | S:机器真源在 classify 常量；DeepSeek 草稿不得自动升格进本表
 ui-look-thicken-batch.md[SG8S]: F:UI �۸мӺ��������������ȡ�������/�������桢��Դ��������ҳ���׿ھ� | R:code:docs/domain-group-ui-styles.md,code:backend/app/bake/shell_face.py,code:skeletons/baseline/frontend/src/styles/cardVoice.css | A:- | S:���ߡٺÿ��������� card-foot/card-meta/card-acts��������д�� /goods
-form-controls.md[SG8M]: F:学生包可交互控件真源：选型、下拉禁手填、C0～C5 分期与家在哪 | R:code:.cursor/rules/form-controls.mdc,code:backend/app/bake/form_controls_contract.py,code:backend/app/bake/gates/form_controls_workspace.py,code:docs/ui-layout-prebake-gate.md | A:- | S:C0～C5 已齐；已知债消红另刀；漏筛/对话框=未尽责
+form-controls.md[SG8M]: F:学生包可交互控件真源：选型、下拉禁手填、C0～C5 分期与家在哪 | R:code:.cursor/rules/form-controls.mdc,code:backend/app/bake/form_controls_contract.py,code:backend/app/bake/gates/form_controls_workspace.py,code:docs/ui-layout-prebake-gate.md | A:- | S:C0～C5 已齐且 C1～C3 基线已知债已消红；漏筛/对话框=未尽责
 ui-domain-diagnosis.md[SG6M]: F:ȫ�� UI ����̨�ˣ��� 68 ����ѡ���� L ���ؼ� C��ֻ����û�в�дϸ�� | R:code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:backend/app/bake/domains.py | A:- | S:̨������ȫ��δ����ϸ��ָֻ�򲼾�բ���ؼ���
 ui-layout-prebake-gate.md[SG8M]: F:起包前 UI 布局闸真源：一眼病、台账、结构模式、D3–D4 冒烟与出包 p3layout | R:code:backend/app/bake/layout_inventory.py,code:backend/app/bake/layout_contract.py,code:backend/app/bake/layout_smoke.py,code:backend/app/bake/gates/layout_workspace.py,code:docs/form-controls.md | A:- | S:闸只管结构/几何；禁只改当面 ZIP 消红；基线绿≠每题 ZIP 已过 p3layout
 vue-split-batch.md[SG6S]: F:Vue ���ļ��������Σ���ҳ��ͬĿ¼ setup.js+css��Ӳբ��ʮҳ�嵥���տ� | R:code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue,code:backend/tests/_vue_src.py,code:docs/parked-work.md | A:- | S:ֻ�᲻����Ϊ���϶��� .vue+.setup.js��Լǧ�г�ҳ����
@@ -1229,7 +1229,7 @@ SpecialMotif.vue[FB5S]: F:前端组件 SpecialMotif | R:- | A:- | S:-
 StatusChip.vue[FB5T]: F:状态圆点芯片：tone 映射语义色，progress/ok 跟 --portal-accent | R:code:skeletons/baseline/frontend/src/styles/immersion.css | A:- | S:warn/danger/pending 保留语义色，不跟壳 accent 改掉告警语义
 TicketProgressDialog.vue[FB5T]: F:处理进度弹窗：拉 /api/tickets/{id}/progress 以时间线展示节点、操作人与备注，并带 labels 时间线顶提示 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js,code:skeletons/baseline/frontend/src/utils/statusTone.js | A:/api/tickets/{id}/progress | S:备注与状态文案或 states 文案重复时不重复展示；关闭或换单即清列表，取数失败按空列表
 TicketRateDialog.vue[FB5S]: F:单据评分/追评弹窗：读 labels.ratingLabel；多维或单值、标签、短评与匿名 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java | A:/api/tickets/{id}/rate | S:ratingDims 有维度时走 dims；requireLowRatingRemark 低分未填原因前端先拦
-RepairFinishDialog.vue[FB6L]: F:办结弹窗：报修/完工图对照，按开关收集故障原因、结单摘要、附件、里程油耗、核定小时、回场油量与投放反馈照片 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java,code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:/api/tickets/{id}/complete | S:requireFaultReason/requireCloseSummary/requireCloseAttach 前端先校验；allowReturnFuel 须填 0–100；allowPromoFeedback 时附件文案改投放反馈；开关关掉时不得提交该空字段
+RepairFinishDialog.vue[FB6L]: F:办结弹窗：报修/完工图对照，按开关收集故障原因、结单摘要、附件、里程油耗、核定小时、回场油量与投放反馈照片 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java,code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:/api/tickets/{id}/complete | S:faultReason 下拉只选不填；requireFaultReason/requireCloseSummary/requireCloseAttach 前端先校验；allowReturnFuel 须填 0–100；开关关掉时不得提交该空字段
 SchemaLabelHints.vue[FB5T]: F:按传入键名从 schemaLabels 取页首提示文案并逐条渲染，供开题纯 Hint 真读挂载 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js,code:skeletons/baseline/frontend/src/utils/labelHintMount.js | A:- | S:禁止空壳占位：取不到文案的键一律过滤不渲染
 CopyableId.vue[FB5T]: F:单号旁的复制按钮 | R:code:skeletons/baseline/frontend/src/utils/copyText.js | A:- | S:画面只显示原值，复制内容带 prefix
 ForceNoticeGate.vue[FB5S]: F:登录后强制公告弹窗，确认前不可关 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:遮罩、Esc 与关闭钮都关掉；html 正文去掉 script
@@ -1412,7 +1412,7 @@ Profile.setup.js[AU6L]: F:个人中心逻辑：资料校验、改绑、注销申
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/admin/===
 AiKnowledgeAdmin.vue[FB6S]: F:管理端页面 AiKnowledgeAdmin | R:- | A:- | S:-
-ArchiveAdmin.vue[FB7S]: F:管理端档案模板层：逻辑拆 ArchiveAdmin.setup.js、样式拆 ArchiveAdmin.css | R:code:skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.setup.js,code:skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.css | A:- | S:合读须三件套
+ArchiveAdmin.vue[FB7L]: F:管理端档案模板层：逻辑拆 ArchiveAdmin.setup.js、样式拆 ArchiveAdmin.css | R:code:skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.setup.js,code:skeletons/baseline/frontend/src/views/admin/ArchiveAdmin.css | A:- | S:合读须三件套；拼车起终校区下拉只选不填
 ArchiveLogsAdmin.vue[FB6S]: F:管理端页面 ArchiveLogsAdmin | R:- | A:- | S:-
 AuditLogsAdmin.vue[FB6S]: F:总管只读查询操作审计 | R:- | A:- | S:本页不提供改删
 BalanceAccountsAdmin.vue[FB6T]: F:管理端页面 BalanceAccountsAdmin | R:- | A:- | S:-
@@ -1420,7 +1420,7 @@ BalanceLedgerAdmin.vue[FB6T]: F:管理端页面 BalanceLedgerAdmin | R:- | A:- |
 BookSuggestAdmin.vue[FB6S]: F:管理端页面 BookSuggestAdmin | R:- | A:- | S:-
 CategoriesAdmin.vue[FB6S]: F:管理端分类维护；开岛时可编维度/必选、版块公告与订阅数 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:sectionNotice/categoryFollowerCount 随 contentThicken；计数读 /api/category-follow/count
 ContentReportsAdmin.vue[FB6S]: F:举报处理：忽略或下架 | R:- | A:- | S:-
-CouponsAdmin.vue[FB6S]: F:管理端页面 CouponsAdmin | R:- | A:- | S:-
+CouponsAdmin.vue[FB6S]: F:管理端优惠券：列表与编辑表单（额度、门槛、配额、过期、上下架） | R:code:docs/form-controls.md | A:- | S:过期时间须 el-date-picker datetime，禁止 el-input 手填
 DocFilesAdmin.vue[FB7M]: F:管理端附件权限与文库加厚字段；含 downloadCostPoints 数字框 | R:code:skeletons/baseline/frontend/src/views/DocBrowse.vue,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/DoclibController.java | A:- | S:仅 docPointsDownload/docPaidDownload 旗显示积分价
 DocLogsAdmin.vue[FB7S]: F:管理端下载台账，并按旗显示下载审核与纠错投诉处理页签 | R:code:skeletons/baseline/frontend/src/views/admin/DocFilesAdmin.vue,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/DoclibController.java | A:- | S:审核/反馈页签仅 downloadAudit/docFeedback 开启时出现；处理写回 status
 ESignAdmin.vue[FB6T]: F:管理端查看签署记录 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/ESignStore.java | A:- | S:非 CA
@@ -1442,14 +1442,14 @@ OrderReviewsAdmin.vue[FB6S]: F:管理端页面 OrderReviewsAdmin | R:- | A:- | S
 OrdersAdmin.vue[FB7L]: F:管理端订单推进、售后、物流、核销、延保、发票开具下载与小票打印、影院手续费 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderController.java,code:skeletons/baseline/frontend/src/utils/orderReceiptPrint.js,code:skeletons/baseline/frontend/src/utils/orderInvoicePrint.js | A:/api/orders/{id}/ship-nodes,/api/orders/{id}/verify-receive,/api/orders/{id}/warranty,/api/orders/{id}/refund-fee,/api/orders/{id}/invoice | S:发票与小票随 tradeThicken 开关；学生可见文案无工厂腔；手续费走 refund-fee
 OverdueAdmin.vue[FB6S]: F:管理端页面 OverdueAdmin | R:- | A:- | S:-
 ReservationsAdmin.vue[FB6M]: F:管理端预约单列表：确认/取消、管理员备注与爽约相关操作 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/SlotController.java,code:backend/app/bake/features/reserve_thicken.py | A:/api/slots | S:文案读 labels；禁工厂腔；备注真写库
-StaffRosterAdmin.vue[FB6M]: F:总管按员工与日期维护周排班班次 | R:- | A:/api/admin/staff-roster | S:-
+StaffRosterAdmin.vue[FB6M]: F:总管按员工与日期维护周排班班次 | R:- | A:/api/admin/staff-roster | S:员工用户名下拉只选子管账号，禁止 creatable 手填
 StockLedgerAdmin.vue[FB6T]: F:管理端页面 StockLedgerAdmin | R:- | A:- | S:-
 StockMovesAdmin.vue[FB6M]: F:管理端入出库页：登记入库出库（可选报废、盘点）并分页看流水，报废单可审批或驳回 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/StockIoController.java | A:- | S:报废与盘点选项按 hasCap('stock_scrap') 与 ('stock_count') 显隐；驳回须填原因
 SurveyFormsAdmin.vue[FB6S]: F:管理端页面 SurveyFormsAdmin | R:- | A:- | S:-
 SurveyStatsAdmin.vue[FB6S]: F:管理端页面 SurveyStatsAdmin | R:- | A:- | S:-
 TicketDashboard.vue[FB6L]: F:管理端工作台；评价均分读 avgRatingLabel，时银叠星级信誉文案 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketDashboardController.java,code:skeletons/baseline/frontend/src/components/DashboardCharts.vue | A:/api/admin/dashboard | S:星级信誉仅 interactThicken.timebankStarReputation；待办按 caps 互斥
 TicketRecordsAdmin.vue[FB6S]: F:管理端单据记录模板层：逻辑/样式已拆 setup.js+css | R:code:skeletons/baseline/frontend/src/views/admin/TicketRecordsAdmin.setup.js,code:skeletons/baseline/frontend/src/views/admin/TicketRecordsAdmin.css | A:- | S:合读须三件套
-TicketsAdmin.vue[FB6S]: F:管理端待办审单模板层：逻辑/样式已拆 setup.js+css | R:code:skeletons/baseline/frontend/src/views/admin/TicketsAdmin.setup.js,code:skeletons/baseline/frontend/src/views/admin/TicketsAdmin.css | A:- | S:合读须三件套
+TicketsAdmin.vue[FB6L]: F:管理端待办审单模板层：逻辑/样式已拆 setup.js+css | R:code:skeletons/baseline/frontend/src/views/admin/TicketsAdmin.setup.js,code:skeletons/baseline/frontend/src/views/admin/TicketsAdmin.css | A:- | S:合读须三件套；派单/改派技能筛选下拉只选不填
 TimebankAccountsAdmin.vue[FB6T]: F:管理端页面 TimebankAccountsAdmin | R:- | A:- | S:-
 TimebankLedgerAdmin.vue[FB6T]: F:管理端页面 TimebankLedgerAdmin | R:- | A:- | S:-
 UsersAdmin.vue[EI6L]: F:用户管理启停改档与重置密码；停用联动会话互踢 | R:code:skeletons/baseline/frontend/src/api/http.js | A:/api/admin/users | S:enabled=false 后端踢全会话；文案无工厂腔
@@ -1479,9 +1479,9 @@ FrontCheckoutAdmin.vue[AU6T]: F:前台办理退房结算并可挂账消费 | R:c
 RoomBoardAdmin.vue[AU6S]: F:房态板查看与改房间五态 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/HotelPmsController.java | A:- | S:调 /rooms 与 status；文案跟 schema labels；主色禁 #409eff
 ParcelShelfAdmin.vue[FB6S]: F:管理端维护驿站货架/柜格编码 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ParcelShelfController.java | A:- | S:仅 parcel_shelf 开时挂载
 ParcelShipAdmin.vue[FB6S]: F:管理端受理寄件登记并标记已寄出 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ParcelShipController.java | A:- | S:仅 parcel_ship 开时挂载
-FundDisburseAdmin.vue[FB6S]: F:资助发放登记页：台账列表、登记表单（申请单+发放金额+发放日+备注）、单笔已发合计与删除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/FundDisburseController.java | A:- | S:金额用 number 控件；导语读 schema.labels.fundDisburseLead
-FundPublicityAdmin.vue[FB6S]: F:资助公示登记页：台账列表、登记表单（选已通过申请单+标题+起止）、结束公示与删除，并回显异议截止与说明 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/FundPublicityController.java | A:/api/fund-publicity/admin | S:标题与导语读 schema.labels；异议两列 label 取 objectionWindowLabel/objectionNoteLabel，页面不得写死域名文案
-ListingDealAdmin.vue[FB6S]: F:房源成交登记页：台账列表、登记表单（选已办结跟进单+成交价+成交日）、成交总额与删除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ListingDealController.java | A:- | S:下拉只列已办结跟进单（pending/rejected 不出现）；导语读 schema.labels.listingDealLead
+FundDisburseAdmin.vue[FB6S]: F:资助发放登记页：台账列表、登记表单（申请单+发放金额+发放日+备注）、单笔已发合计与删除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/FundDisburseController.java | A:- | S:申请单下拉只选不填；金额用 number；导语读 schema.labels.fundDisburseLead
+FundPublicityAdmin.vue[FB6S]: F:资助公示登记页：台账列表、登记表单（选已通过申请单+标题+起止）、结束公示与删除，并回显异议截止与说明 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/FundPublicityController.java | A:/api/fund-publicity/admin | S:申请单下拉只选不填；标题与导语读 schema.labels；异议列 label 取 objection*，页面不得写死域名文案
+ListingDealAdmin.vue[FB6S]: F:房源成交登记页：台账列表、登记表单（选已办结跟进单+成交价+成交日）、成交总额与删除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ListingDealController.java | A:- | S:跟进单下拉只选已办结且禁 creatable；导语读 schema.labels.listingDealLead
 ApplyBlacklistAdmin.vue[FB6T]: F:总管维护报名黑名单：加入账号与原因、列出、移除 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ApplyBlacklistController.java,code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:/api/apply/blacklist | S:文案走 applyBlacklistTitle/Lead；名单内提交报名由后端拒绝
 ReserveBlacklistAdmin.vue[FB6S]: F:管理端预约黑名单：维护名单并处理申诉 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ReserveBlacklistController.java | A:/api/reserve/blacklist,/api/reserve/blacklist/appeals | S:文案读 labels；禁工厂腔；≠风控引擎表述
 ParkingPassAdmin.vue[DZ5T]: F:受管源码对象，职责见源文件 | R:- | A:- | S:-
@@ -1516,11 +1516,11 @@ StaffTickets.vue[FB6T]: F:门户维修/派件作业台：复用 TicketsAdmin 与
 StaffClean.vue[AU5T]: F:店员清洁岗作业页，复用管理端清洁任务组件 | R:code:skeletons/baseline/frontend/src/views/admin/CleanTasksAdmin.vue | A:- | S:不另写清洁逻辑，内嵌 CleanTasksAdmin
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/views/user/===
-Addresses.vue[FB6M]: F:用户地址簿：增删改与默认地址一键 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderController.java,code:skeletons/baseline/frontend/src/views/user/Cart.vue | A:- | S:labels.defaultAddress* 须真读；默认地址供下单优先选用
-ArchiveBrowse.vue[FB8L]: F:档案浏览页模板层：逻辑拆 ArchiveBrowse.setup.js、样式拆 ArchiveBrowse.css，渲染货架/列表与详情入口 | R:code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.setup.js,code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.css | A:- | S:逻辑/样式已外置勿回灌；card_voice 三档改字阶/主信号；详情走 /archive/item/:id；禁工厂腔
+Addresses.vue[FB6M]: F:用户地址簿：增删改与默认地址一键 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderController.java,code:skeletons/baseline/frontend/src/views/user/Cart.vue | A:- | S:地址标签下拉只选不填；labels.defaultAddress* 须真读；默认地址供下单优先选用
+ArchiveBrowse.vue[FB8L]: F:档案浏览页模板层：逻辑拆 ArchiveBrowse.setup.js、样式拆 ArchiveBrowse.css，渲染货架/列表与详情入口 | R:code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.setup.js,code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.css,code:skeletons/baseline/frontend/src/components/ArchiveFieldControl.vue | A:- | S:logFields 循环须挂 ArchiveFieldControl；学院筛选下拉只选不填；禁工厂腔
 BookSuggest.vue[FB6S]: F:图书荐购页：登录用户提交荐购（书名/ISBN/作者/理由）并分页查看本人荐购状态与审核说明 | R:code:skeletons/baseline/frontend/src/components/SchemaLabelHints.vue,code:skeletons/baseline/frontend/src/utils/statusTone.js | A:/api/book-suggest | S:页面挂 suggestBudgetHint 提示预算约束；未登录只给登录引导不拉列表；标题导语读 labels
 BrowseHistory.vue[FB6S]: F:门户页面 BrowseHistory | R:- | A:- | S:-
-Cart.vue[EU6S]: F:买家购物车模板层：逻辑/样式已拆 setup.js+css；挂 data-trade-surface | R:code:skeletons/baseline/frontend/src/views/user/Cart.setup.js,code:skeletons/baseline/frontend/src/views/user/Cart.css | A:- | S:合读须三件套
+Cart.vue[EU6L]: F:买家购物车模板层：逻辑/样式已拆 setup.js+css；挂 data-trade-surface | R:code:skeletons/baseline/frontend/src/views/user/Cart.setup.js,code:skeletons/baseline/frontend/src/views/user/Cart.css | A:- | S:合读须三件套；地址标签与优惠券码下拉只选（券来自已领列表）
 Dm.vue[FB6L]: F:一对一私信；商家/平台/用户三套话术 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:总管不当成商家台
 Messages.vue[FB6M]: F:用户站内消息列表，分页已读全部已读并按 refType 跳转关联页 | R:code:skeletons/baseline/frontend/src/utils/messages.js | A:- | S:-
 MyArchive.vue[FB6S]: F:我的发布：草稿筛与 publish-draft 入口 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:草稿筛随 contentThicken.draftBox；禁工厂腔
@@ -1529,10 +1529,10 @@ MyFavorites.vue[FB6M]: F:用户收藏/心动列表：空态与取消钮读 favor
 MyOrderReviews.vue[FB6S]: F:我的评价：晒图预览、一次追评提交，开关读 tradeThicken.reviewFollow | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/OrderReviewController.java | A:/api/order-reviews,/api/order-reviews/{id}/follow | S:无 followBody 才显示追评；文案走 labels.reviewFollow*
 MyOrders.vue[FB7S]: F:用户订单模板层：逻辑/样式已拆；卡底走 card-foot/card-meta/card-acts | R:code:skeletons/baseline/frontend/src/views/user/MyOrders.setup.js,code:skeletons/baseline/frontend/src/views/user/MyOrders.css | A:- | S:合读须三件套
 MyReservations.vue[FB7M]: F:用户我的预约：取消/改约/签到与预约侧加厚提示；卡底走 card-foot/card-meta/card-acts | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/SlotController.java | A:/api/slots/reservations | S:提示文案走 labels；缺列不崩
-MyTickets.vue[FB6S]: F:用户单据模板层：逻辑/样式已拆；挂 repair/approve surface | R:code:skeletons/baseline/frontend/src/views/user/MyTickets.setup.js,code:skeletons/baseline/frontend/src/views/user/MyTickets.css | A:- | S:合读须三件套
+MyTickets.vue[FB6L]: F:用户单据模板层：逻辑/样式已拆；挂 repair/approve surface | R:code:skeletons/baseline/frontend/src/views/user/MyTickets.setup.js,code:skeletons/baseline/frontend/src/views/user/MyTickets.css | A:- | S:合读须三件套；故障原因/有选项备注/地址簿点选下拉只选；无选项备注仍 textarea
 PeerTickets.vue[FB6S]: F:用户端同伴确认页：收件箱列表与响应／确认提交；卡底按 ArchiveBrowse 口径走 card-foot、card-meta、card-acts | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/TicketController.java,code:skeletons/baseline/frontend/src/styles/cardVoice.css,code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:requirePeerConfirm 且未开 peerAccept 时走 peer-confirm-inbox 与 peer-confirm，否则 peer-inbox 与 peer-respond；标题取 labels.peerInbox*
 PortalHome.vue[EU6S]: F:门户首页模板层：逻辑/样式已拆；壳色跟 portal-brand | R:code:skeletons/baseline/frontend/src/views/user/PortalHome.setup.js,code:skeletons/baseline/frontend/src/views/user/PortalHome.css | A:- | S:合读须三件套
-SlotBook.vue[FB7S]: F:预约选时段模板层：逻辑/样式已拆；挂 data-reserve-surface | R:code:skeletons/baseline/frontend/src/views/user/SlotBook.setup.js,code:skeletons/baseline/frontend/src/views/user/SlotBook.css | A:- | S:合读须三件套
+SlotBook.vue[FB7M]: F:预约选时段模板层：逻辑/样式已拆；挂 data-reserve-surface | R:code:skeletons/baseline/frontend/src/views/user/SlotBook.setup.js,code:skeletons/baseline/frontend/src/views/user/SlotBook.css | A:- | S:合读须三件套；有档案时就诊人/技师下拉只选；无档案就诊人仍 input
 WeekCalendar.vue[FB6M]: F:只读周视图：点格子看单据详情，可选冲突高亮 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js | A:- | S:不支持拖拽改期；文案走 ticket 名词与 labels
 MyBuybacks.vue[FB6T]: F:用户提交旧书回收并查看进度 | R:- | A:- | S:-
 MyConsigns.vue[FB6S]: F:用户提交寄卖并查看提现 | R:- | A:- | S:-
@@ -1553,7 +1553,7 @@ PointsRules.vue[FB5T]: F:积分规则说明页：登录奖分/精华奖分/文�
 MutualResults.vue[AU5S]: F:学生包页面 MutualResults：互动加厚双端入口 | R:- | A:- | S:-
 AccountCenter.vue[AU7S]: F:用户账户中心枢纽：按脸文案与分组展示账户入口瓷砖 | R:code:skeletons/baseline/frontend/src/styles/accountFace.css,code:skeletons/baseline/frontend/src/utils/portalShellNav.js,code:skeletons/baseline/frontend/src/appDelivered.js | A:- | S:无分组时空态；入口来自 collectAccountHubItems 非写死菜单
 ArchiveBrowse.css[FU8L]: F:档案浏览列表构图样式：多组 surface-* 脸（书架/台账/色块/驿站格）与货架 auto-fit | R:code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.setup.js,code:skeletons/baseline/frontend/src/styles/cardVoice.css | A:- | S:只随 data-*-surface 切换构图；禁写死 /goods/:id；禁工厂腔
-ArchiveBrowse.setup.js[AU8L]: F:档案浏览页逻辑：价筛与货架分组、data-*-surface 与 data-card-voice 计算、收藏与详情跳转 | R:code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.css,code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ArchiveController.java | A:- | S:card_voice 三档改字阶/主信号/短签条数；datingFavorites 时 favOn 不因 ticket_flow 关；详情跳 /archive/item/:id
+ArchiveBrowse.setup.js[AU8L]: F:档案浏览页逻辑：价筛与货架分组、data-*-surface 与 data-card-voice 计算、收藏与详情跳转；导出 ArchiveFieldControl | R:code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.css,code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue,code:skeletons/baseline/frontend/src/components/ArchiveFieldControl.vue,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ArchiveController.java | A:- | S:card_voice 三档改字阶/主信号/短签条数；datingFavorites 时 favOn 不因 ticket_flow 关；详情跳 /archive/item/:id
 ArchiveItemDetail.vue[FB7L]: F:独立档案/商品详情页：加购、收藏、评价与选时段等按域能力渲染 | R:code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.css,code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ArchiveController.java | A:- | S:路由 /archive/item/:id 非写死 /goods/:id；缺列不崩；禁工厂腔
 Cart.css[FU5S]: F:买家购物车页拆出样式 | R:code:skeletons/baseline/frontend/src/views/user/Cart.vue,code:skeletons/baseline/frontend/src/views/user/Cart.setup.js | A:- | S:仅样式；合读须三件套
 Cart.setup.js[AU6L]: F:买家购物车逻辑：改数量结算、地址标签与 tradeSurface | R:code:skeletons/baseline/frontend/src/views/user/Cart.vue,code:skeletons/baseline/frontend/src/appDelivered.js | A:- | S:Vue 拆分产物；禁改行为
