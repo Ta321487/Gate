@@ -108,6 +108,7 @@ def _gate_fail_summary(gates: dict[str, Any] | None) -> str:
         "p3s",
         "p3lean",
         "p3layout",
+        "p3controls",
         "p3n",
         "p3ac",
         "p3a",

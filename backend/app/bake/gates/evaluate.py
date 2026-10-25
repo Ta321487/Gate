@@ -905,6 +905,22 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
         results["zip_allowed"] = False
         results["overall"] = False
 
+    from app.bake.gates.form_controls_workspace import (
+        evaluate_workspace_form_controls_gate,
+    )
+
+    # 出包侧控件检查：对本包 frontend 跑 C1～C3 契约（creatable / 手填 / 档案循环）
+    controls_g = evaluate_workspace_form_controls_gate(workspace)
+    results["p3controls"] = {
+        "ok": bool(controls_g.get("ok")),
+        "label": controls_g.get("label") or "控件检查",
+        "desc": controls_g.get("desc") or "",
+        "detail": controls_g.get("detail"),
+    }
+    if not controls_g.get("ok"):
+        results["zip_allowed"] = False
+        results["overall"] = False
+
     sg = _schema_gate(workspace, spec)
     results["p3c"] = {
         "ok": sg["ok"],

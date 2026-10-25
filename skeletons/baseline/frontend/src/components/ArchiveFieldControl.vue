@@ -7,10 +7,12 @@
     inactive-text="关"
     @update:model-value="onSwitch"
   />
+  <!-- 下拉只选不填：禁止 creatable（见 docs/form-controls.md §2） -->
   <el-select
     v-else-if="widget === 'select'"
     :model-value="modelValue"
     clearable
+    filterable
     :placeholder="placeholder || `请选择${label}`"
     style="width:100%"
     @update:model-value="emit('update:modelValue', $event)"
