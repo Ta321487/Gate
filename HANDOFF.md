@@ -10,13 +10,12 @@
 
 ## 当前主线
 
-> **下一刀：大线 #1 · 可交互控件映射闸（实现 `docs/form-controls.md`）。**  
-> 真源：[`docs/form-controls.md`](./docs/form-controls.md) · 规则摘要 `.cursor/rules/form-controls.mdc`。  
-> **布局闸已齐**（D1～D5 + 出包 `p3layout`）：册 [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md)；已知债另刀，本刀勿回抢布局。  
-> 站队：**修工厂**；控件闸进共享映射/门禁/测试；禁止「档案合规、筛选例外」；禁止只擦单包。  
-> 现状：口径册已立 · **代码/门禁未开**（本刀开干）。  
-> **覆盖顺序**：① 布局（已齐）→ ② **控件映射（本刀）** → ③ 诊断跟账（勿抢）。  
-> **禁止**：开诊 68 域；改布局已知债充数；下拉 creatable / 写死业务选项。  
+> **下一刀：大线 #1 · 全域 UI 诊断台账开诊（或控件已知债消红另刀）。**  
+> **控件闸 C0～C5 已齐**：契约 + 映射 + 出包 `p3controls` + 规则/Skill + 工厂摘要；真源 [`docs/form-controls.md`](./docs/form-controls.md)。  
+> **布局闸已齐**；勿回抢布局。  
+> 站队：**修工厂**；已知债消红另批（禁止只擦单包）；诊断见 [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)。  
+> **覆盖顺序**：① 布局已齐 → ② 控件已齐 → **③ 诊断（本刀候选）** / 控件消红另刀。  
+> **禁止**：开诊时改布局/控件细则正文；混消红进诊断勾选。  
 > **#3+#4** 全族已齐，旁路勿抢刀。
 
 1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～F / 真交叉 G / 兜底 H（GENERIC）已可 bake。  
@@ -26,7 +25,8 @@
 5. **UI 观感 / Vue 拆分**：已收口。  
 6. **#3+#4 挂载/对齐**：**全族已齐**（含互动）。  
 7. **起包前布局闸**：**D1～D5 已齐**（含工厂反应）；基线结构/视觉债/孤儿先记账不改页。  
-8. **可交互控件 / 全域诊断**：口径/台账已立；**下一刀控件映射**（勿开诊断抢刀）。
+8. **可交互控件**：**C0～C5 已齐**（含 `p3controls` + 工厂摘要）；已知债消红另刀。  
+9. **全域 UI 诊断**：台账已立；**下一刀候选开诊**（`docs/ui-domain-diagnosis.md`）。
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
@@ -102,14 +102,10 @@ Vue 大文件拆分 → [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)�
 ## 新对话开场（当前主线）
 
 ```
-继续 graduate_factory_v3。先读 HANDOFF.md 与 docs/form-controls.md（全文）。
-按规则 ai-handoff 接手：读交接 → git status/log 顺脉络 → 搜已有 archiveFieldWidget / ArchiveFieldControl / 相关测。
-主线：大线 #1 · 实现可交互控件映射闸（form-controls.md）；布局闸已齐勿回抢。
-站队：修工厂；先立共享映射+门禁+测试，再扫同类面；不为消红只擦单包。
-已有家：skeletons/.../archiveFieldWidget.js、ArchiveFieldControl.vue；工厂侧须补闸（对齐布局闸「台账/契约/出包」思路，细则跟控件册）。
-验收：日期/数字/开关/有限选项全包一致；下拉只选不填；筛选/对话框/行内无免检；测能绿/红。
-禁止：开诊 68 域；布局已知债本刀不动；creatable 分类下拉；写死业务选项表。
-UI 覆盖：①布局已齐 → ②控件本刀 → ③诊断排后。
+继续 graduate_factory_v3。先读 HANDOFF.md。
+控件闸 C0～C5 已齐（form-controls.md）；布局闸已齐。
+下一刀候选：① 全域 UI 诊断开诊（docs/ui-domain-diagnosis.md）；或 ② 控件已知债消红另刀（BASELINE_KNOWN_CONTROLS）。
+站队：修工厂；禁止只擦单包；诊断与消红勿混刀。
 #3+#4 全族已齐，旁路勿抢刀。
 ```
 

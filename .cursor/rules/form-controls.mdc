@@ -1,5 +1,5 @@
 ---
-description: 
+description: 可交互控件闸（改基线表单/筛选必跑契约；工厂须露红绿）
 alwaysApply: true
 ---
 
@@ -18,6 +18,8 @@ alwaysApply: true
 4. 管理端维护的名单，各端从接口选，不在页面写死选项。
 5. **下拉只选不填**（表单/筛选/对话框/行内同一条）：选项来自学生可配数据（分类、lookup 等）。
 6. 同一语义全包一致（如分类：编辑与筛选都不得一处下拉一处手填）。
+7. 改基线交互收工前跑 `test_form_controls_contract`（+ 动映射则 `test_form_controls_widget`）。
+8. 工厂反应：基线看运行环境「可交互控件检查」或 `GET /api/system/form-controls-gate`；**出包**看门禁 **`p3controls`**（红则禁 ZIP）。
 
 ## DON'T
 
@@ -26,3 +28,5 @@ alwaysApply: true
 - 「档案合规、别处例外」。
 - 刻字、备注、原因等自由文本改成无数据源选择器。
 - 手写页面绕开已有控件映射。
+- 为消红只擦当面学生包 / 跳过 `p3controls`。
+- 以为「基线摘要绿」就等于「每题 ZIP 已过控件」——出包另有 `p3controls`。

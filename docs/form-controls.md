@@ -3,7 +3,7 @@
 > **本文只负责一件事**：**可交互控件选型与取值纪律**——全学生包里该用哪种控件、下拉选项从哪来、禁止手填造值（含筛选/对话框/行内，不限 el-form）。  
 > **不负责**：布局一眼病/几何挤破（[`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md)）；68 域勾选结果（[`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md)）；观感精美/换皮；学生可见文案腔；能力四件套。  
 > **一句话**：本册定「控件对不对」的**规则**；诊没诊过写在诊断表；摆齐不齐写在布局闸。  
-> **状态**：口径册 · 文档先行；实现/门禁须批准后再动代码。  
+> **状态**：**C0～C5 已齐**（契约扫 + 映射钉死 + 出包 `p3controls` + 助手规则/Skill + 工厂摘要）；已知债消红另刀。  
 > **索引**：[README.md](./README.md) · `.cursor/rules/form-controls.mdc`。  
 > **文件名**历史为 `form-controls.md`；范围仍是全包可交互控件。
 
@@ -160,15 +160,41 @@
 
 ---
 
-## 5. 实现与门禁（未批准 · 勿动代码）
+## 5. 分期（按序；禁止跳批宣称已齐）
 
-批准后再考虑例如：
+对齐布局闸「先闸后消红」：本刀先机器红灯记账，**不为消红改当面页**。
 
-- `ArchiveFieldControl` / 映射对 `select` 禁 creatable  
-- 分类等字段绑 API 的门禁；**扫全包** `views`/`components`/`layouts` 的手写 `el-select` / 日期手填  
-- 筛选条与对话框纳入同一批契约测  
+| 期 | 交付物 | 完成定义 |
+|----|--------|----------|
+| **C0 本文** | 口径 + 语义表 + 下拉硬规则 | ✅ 已齐 |
+| **C1 禁 creatable** | 扫 `views`/`layouts`/`components`：`el-select` 带 `allow-create` 必红；`ArchiveFieldControl` 无 creatable；基线真阳性记账 | ✅；消红另刀 |
+| **C2 语义手填扫** | `el-input` 冒充日期/时刻/数字（type / v-model 后缀 / placeholder / 表单项标签）必红；`el-input-number`/选择器不误杀 | ✅；消红另刀 |
+| **C3 映射护栏** | Python 对齐 `archiveFieldWidget` 语义表；`logFields`/`extraFields` 循环须 `ArchiveFieldControl`；反例必红 | ✅；消红另刀 |
+| **C4 出包保险丝** | 对本包 `frontend/src` 跑 C1～C3；门禁键 **`p3controls`**；红则禁 ZIP（失败码 `BAKE_FORM_CONTROLS`） | ✅ |
+| **C5 助手 + 工厂反应** | 规则+skill；`form_controls_gate_status` + `GET /api/system/form-controls-gate`；运行环境/开工台露红绿 | ✅ |
 
-**未批准前禁止改骨架与工厂代码。**
+### 5.1 家在哪（已落地）
+
+| 件 | 落点 |
+|----|------|
+| C1～C3 契约 | `backend/app/bake/form_controls_contract.py` |
+| 映射对齐 | `backend/app/bake/form_controls_widget.py`（钉死语义表） |
+| 出包保险丝 | `backend/app/bake/gates/form_controls_workspace.py` → 门禁键 **`p3controls`** |
+| 工厂摘要 | `backend/app/bake/form_controls_gate_status.py` · `GET /api/system/form-controls-gate` |
+| 工序（助手） | `.cursor/rules/form-controls.mdc` + `.cursor/skills/form-controls-gate` |
+| 工序（工厂） | 运行环境「可交互控件检查」· 开工台「控件检查」· 出包 `p3controls` |
+| 测 | `test_form_controls_contract` · `test_form_controls_widget` · `test_form_controls_workspace_gate` · `test_form_controls_gate_status` |
+| 档案映射 | `skeletons/.../archiveFieldWidget.js` + `ArchiveFieldControl.vue` |
+
+### 5.2 已知债
+
+| 批 | 记账 | 消红原则 |
+|----|------|----------|
+| **C1** | `allow-create` 约 18 处（地址标签、拼车校区、故障原因、优惠券码、技能筛选等） | 有限名单 → 去 creatable；自由叙述 → 改文本框 |
+| **C2** | `CouponsAdmin` 过期时间用 `el-input` 手填（`form.expireAt` + 标签） | 改 `el-date-picker` type=datetime |
+| **C3** | `ArchiveBrowse` `logFields` 循环一律 `el-input` | 改挂 `ArchiveFieldControl`（按字段 type 出控件） |
+
+禁止只擦单包。资料页 `visibleFields` / `ProfileFieldInputs` **不**走本模式（非档案 schema 循环）。
 
 ---
 
@@ -179,3 +205,8 @@
 | 2026-10-22 | 立册：下拉禁手填；习惯补全；代码未开 |
 | 2026-10-22 | **扩范围**：标题改为可交互控件；§0 覆盖全学生包任意位置；筛选项/行内/对话框与表单同纪律；补动作型按钮习惯 |
 | 2026-10-22 | **一文一事**：头栏写清只管控件纪律；布局/诊断外链 |
+| 2026-10-24 | **C1 开闸**：`form_controls_contract` 禁 `allow-create`；反例必红；基线 18 条记账不改页；分期 C0–C5 |
+| 2026-10-24 | **C2 开闸**：禁日期/数字 `el-input` 手填（type/v-model/placeholder/标签）；反例必红；优惠券过期 2 条记账；不误杀 `el-input-number` |
+| 2026-10-24 | **C3 开闸**：`form_controls_widget` 钉语义表；`archive_field_loop_uses_control` 扫 log/extra 循环；`ArchiveBrowse.logFields` 记账；资料页豁免 |
+| 2026-10-25 | **C4 开闸**：出包 `p3controls` 对本包 frontend 跑 C1～C3；红禁 ZIP；`BAKE_FORM_CONTROLS`；下一刀 C5 |
+| 2026-10-25 | **C5 开闸**：规则+skill；`form_controls_gate_status` + `/api/system/form-controls-gate`；运行环境/开工台露红绿；**C0～C5 收口** |
