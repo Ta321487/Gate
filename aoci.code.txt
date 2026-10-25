@@ -4,7 +4,7 @@
 .gitattributes[FC5T]: F:强制文本检出为 LF，避免 Windows autocrlf 把整树标成与 AOCI baseline 不一致 | R:- | A:- | S:AOCI baseline 按原始字节比对，换行被改写会整树变 stale
 .gitignore[FC4T]: F:排除本地环境、缓存、数据库、上传工作区与临时产物，含布局冒烟 Vite 缓存与 probe_run，避免进 Git | R:- | A:- | S:skeletons/**/.vite-layout-smoke/ 为冒烟本机缓存不入库
 AGENTS.md[SG8T]: F: 声明 Agent 在本仓库的 AOCI 认知合同：成本红线、最小入口、认知纪律、收尾维护纪律、边界、配置通道与成本参数 | R: code:HANDOFF.md | A: - | S: 整仓 overview 一次即数十万 token，仅用户明确要求完整认知时可用，须跟随 next_cursor 到 completed 并回绑 Challenge 三哈希；Entry 语义只能来自真实证据，禁按路径/扩展名等推导；纯只读任务不调 maintain；cognition_budget 不在 config set 白名单，须走 scope budget set + Scope Change Apply，手改 .aoci/config.json 无效
-HANDOFF.md[SG8M]: F:新对话交接：当前主线、硬边界、开场白与专题入口 | R:code:README.md,code:docs/parked-work.md,code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:.cursor/rules/ai-handoff.mdc | A:- | S:禁止参考/迁移 graduate_factory 与 v2；布局闸 D0–D5+p3layout 已落地；下一刀实现 form-controls.md；禁止为消红改学生页
+HANDOFF.md[SG8M]: F:新对话交接：当前主线、硬边界、开场白与专题入口 | R:code:README.md,code:docs/parked-work.md,code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:docs/ui-domain-diagnosis.md,code:.cursor/rules/ai-handoff.mdc | A:- | S:禁止参考/迁移 graduate_factory 与 v2；布局闸与控件闸 C0～C5 已齐；下一刀候选诊断或控件消红
 README.md[SG8S]: F:˵�����ΰѿ����ӹ��ɿɴ��� Web ϵͳ���Լ���Ӫ����ô���� | R:code:scripts/README.md,code:docs/tech-stack-delivery.md,code:HANDOFF.md,code:ARCHITECTURE.md | A:GET /api/health | S:Ĭ�� jdbc��mybatis��jpa��Security ������д������ bake �Ž��������� PPT �Ƕ��� Job������ ZIP
 docker-compose.yml[EC5T]: F:运行配置 docker-compose | R:- | A:- | S:-
 ARCHITECTURE.md[SG7M]: F:分层图说明运营台与 bake 流水线边界，以及薄壳域与学生包材料；领域 A～F/G/H | R:code:README.md,code:HANDOFF.md,code:architecture.html,code:docs/README.md | A:- | S:只画工厂架构与学生包边界，不画 bake/schema 细节；禁止 LLM 手写业务 Java/Vue
@@ -20,7 +20,7 @@ opening-scene.mdc[SG7T]: F:规定壳文案、资料字段和岗位名只扫题�
 tech-stack-delivery.mdc[SV7T]: F:规定出包默认 Boot、Vue3、Element、MySQL 与 jdbc，开题写了 mybatis、jpa 或 Security 才跟 | R:- | A:- | S:-
 capability-home.mdc[SG8T]: F:规定工厂进程重构只搬 backend 与 frontend，能力正文归 features 家 | R:- | A:- | S:不动 skeletons；半截搬家不算完成；未钉行为禁止动手搬
 commit-messages.mdc[SG6T]: F:规定本仓库提交说明与 PR 标题正文一律用中文 | R:- | A:- | S:代码标识与路径保留原文；禁止英文祈使句当标题
-form-controls.mdc[SU7T]: F:�涨ѧ����ȫ���ɽ����ؼ�������ѡ�ͣ���Դ docs/form-controls.md������ӳ���� archiveFieldWidget | R:code:docs/form-controls.md,code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js | A:- | S:��ͼ/ɸѡ/�Ի���/����ͬһ���ɣ���ֹ el-input ��������ʱ������ö��
+form-controls.mdc[SU8T]: F:Cursor 常驻规则：学生包可交互控件选型与闸摘要，真源 docs/form-controls.md | R:code:docs/form-controls.md,code:.cursor/skills/form-controls-gate/SKILL.md,code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js | A:- | S:改基线交互须跑 test_form_controls_*；出包看 p3controls；禁只擦单包
 student-copy.mdc[SU7T]: F:规定学生可见文案按店员买家口吻书写并禁工厂腔 | R:- | A:- | S:空态不指挥买家去后台；缺列硬失败不写进界面
 aoci-post-delivery.mdc[SG6T]: F:业务收尾流水线：有新文件先 scope acknowledge 再 maintain；MCP 不可用则停手提醒重启 | R:code:AGENTS.md | A:- | S:MCP 超时/断开勿连打、勿改用 CLI 硬填；禁止未 acknowledge 就因 code_missing 停住
 param-placement.mdc[SG8T]: F:规定业务参数落点三分法——单据参数与单据开关进 bake 生成的 config/TicketPolicy.java，非单据业务参数与能力开关进 AppPolicy.java，身份/门户/门禁/共享尺留 application.yml | R:code:backend/app/bake/ticket_policy.py,code:backend/app/bake/runtime_policy.py,code:backend/app/bake/engine_bake.py,code:skeletons/baseline/backend/src/main/java/com/thesis/config/DomainRuntimeBinder.java,code:docs/capabilities.md | A:- | S:write_policy 须在 java 包名 remap 之前且 engine_bake 与 engine_islands 两条路径都接；三份骨架策略类与 bake 产物须逐字一致；放宽 use-quota 发射守卫即重复发键；子开关暂留 yml，要下沉须一并扩 FLAG_KEYS 与三份 binder 常量
@@ -50,7 +50,7 @@ jobs.py[EB7S]: F:bake 任务列表/清理/取消/重试，并提供失败分析�
 system.py[EB7S]: F:聚合系统配置、LLM 用量、运行环境与样例开题工具的运营 API | R:code:backend/app/api/system_router.py | A:/api | S:-
 system_deepseek.py[EC6T]: F:把 DeepSeek 端点、token 预算和填岛并发数水合进系统配置 | R:code:backend/app/api/system.py | A:- | S:-
 system_gemini.py[EC6T]: F:把 Gemini 端点配置水合进系统设置，与 DeepSeek 并存 | R:code:backend/app/api/system.py | A:- | S:-
-system_info.py[ER6M]: F:探测 JDK、工具版本、可用端口与学生 MySQL，并暴露运行环境 catalog 含布局检查摘要与 *_surface_styles | R:code:backend/app/api/system_router.py,code:backend/app/bake/layout_gate_status.py,code:backend/app/services/runtime.py,code:backend/app/bake/themes.py | A:- | S:布局检查走 layout_gate_snapshot 廉价摘要，不触发 Playwright 全表；工具版本探测 60 秒并后台线程
+system_info.py[ER7M]: F:探测 JDK/工具/端口/学生 MySQL，并暴露布局与控件检查摘要及 surface_styles catalog | R:code:backend/app/api/system_router.py,code:backend/app/bake/layout_gate_status.py,code:backend/app/bake/form_controls_gate_status.py,code:backend/app/services/runtime.py,code:backend/app/bake/themes.py | A:- | S:layout-gate 与 form-controls-gate 均廉价 to_thread；不触发 Playwright
 system_router.py[EG5T]: F:提供系统子模块共享的 APIRouter，避免循环导入 | R:code:backend/app/api/system.py | A:/api | S:-
 system_tools.py[EB5T]: F:承担系统工具类接口，由 system 聚合挂载 | R:code:backend/app/api/system.py | A:- | S:-
 system_unsplash.py[EI5T]: F:承担 Unsplash 氛围图相关系统接口，由 system 聚合挂载 | R:code:backend/app/api/system.py | A:- | S:-
@@ -123,6 +123,9 @@ layout_contract.py[AQ7L]: F:布局闸 D2：对 views/layouts/components 按 §3.
 layout_inventory.py[AQ7L]: F:布局闸 D1：扫 frontend 生成 page/shell/component/dialog 台账并校验漏页/漏组件/漏壳 | R:code:docs/ui-layout-prebake-gate.md,code:backend/app/bake/layout_contract.py,code:backend/app/bake/menu_routes.py,code:backend/tests/test_layout_inventory.py | A:- | S:可对任意 frontend/src；基线默认 skeletons/baseline；hosts 暴露组件宿主页给视觉冒烟
 layout_gate_status.py[AQ6M]: F:布局闸 D5：工厂可读廉价摘要（台账对账+结构契约，视觉标 not_run） | R:code:backend/app/bake/layout_inventory.py,code:backend/app/bake/layout_contract.py,code:backend/app/api/system_info.py,code:docs/ui-layout-prebake-gate.md | A:- | S:不触发 Playwright 全表；文案用通过/未通过/已登记例外，忌口语
 layout_smoke.py[AQ8L]: F:布局闸 D3/D4：Vite+Playwright 几何冒烟与全表覆盖率（已知债允许） | R:code:backend/app/bake/layout_inventory.py,code:backend/tests/layout_smoke/collect_full_metrics.mjs,code:docs/ui-layout-prebake-gate.md,code:backend/tests/test_layout_smoke.py | A:- | S:不为消红改学生页；覆盖率须 100% 含 known_debt；强制改密页与 me mock 防踢登
+form_controls_contract.py[DQ8M]: F:基线前端控件契约扫：禁 allow-create、禁日期数字手填、档案循环须 ArchiveFieldControl | R:code:docs/form-controls.md,code:backend/app/bake/layout_inventory.py,code:backend/app/bake/form_controls_widget.py,code:backend/tests/test_form_controls_contract.py | A:- | S:真阳性记 BASELINE_KNOWN_CONTROLS；不为消红改学生页
+form_controls_gate_status.py[DQ7S]: F:控件闸工厂摘要：扫契约并汇总已登记例外与未预期红灯 | R:code:backend/app/bake/form_controls_contract.py,code:backend/app/api/system_info.py,code:backend/tests/test_form_controls_gate_status.py | A:- | S:摘要不替代出包 p3controls
+form_controls_widget.py[DQ7S]: F:档案字段→控件映射 Python 对齐 archiveFieldWidget.js，含 WIDGET_CASES | R:code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js,code:backend/tests/test_form_controls_widget.py,code:docs/form-controls.md | A:- | S:改 JS 映射须同步本表与测
 
 ===D:/graduate_factory_v3/backend/app/bake/domains_catalog/===
 __init__.py[DB7T]: F:合并各域目录包为统一 DOMAINS 目录 | R:code:backend/app/bake/domains.py | A:- | S:-
@@ -229,12 +232,13 @@ ux_crosscut.py[DB7S]: F:§0 X-UX 扫词横切：使用说明、文件库、省�
 
 ===D:/graduate_factory_v3/backend/app/bake/gates/===
 __init__.py[DQ6T]: F:导出领域门禁评测入口 evaluate_domain_gates | R:code:backend/app/bake/gates/evaluate.py | A:- | S:-
-evaluate.py[DQ8L]: F:按 Spec.gate 评测学生包相对基线：菜单路由、字段预算、结构校验、schema_nf、p3lean 与出包 p3layout | R:code:backend/app/bake/gates/layout_workspace.py,code:backend/app/bake/gates/feature_keywords.py,code:backend/app/bake/gates/schema_nf.py,code:backend/app/bake/menu_routes.py,code:backend/app/bake/pack_prune.py | A:- | S:p3layout 对本包 frontend 静态对账+结构；剪枝包跳过全量菜单路由对账；门禁键与 feature_hints 同源
+evaluate.py[DQ8L]: F:按 Spec.gate 评测学生包：菜单路由、预算、结构、schema_nf、p3lean、p3layout 与 p3controls | R:code:backend/app/bake/gates/layout_workspace.py,code:backend/app/bake/gates/form_controls_workspace.py,code:backend/app/bake/gates/feature_keywords.py,code:backend/app/bake/gates/schema_nf.py,code:backend/app/bake/menu_routes.py,code:backend/app/bake/pack_prune.py | A:- | S:p3layout/p3controls 红则 zip_allowed=false；剪枝包跳过全量菜单对账
 feature_keywords.py[DQ7L]: F: 提供开题措辞核对与包后门禁共享的能力触发词表与 feature_hints 分词 | R: code:backend/app/bake/gates/evaluate.py | A: - | S: 文本层与实装层词表必须同源防漂移；新增能力须同时补 GATE_NAME_TRIGGERS 与 feature_hints 分支（近期补报废/盘点/出入库/申购转领用）
-keys.py[DQ6T]: F:门禁键字典与核心/单调键集合，含 p3layout 出包布局检查键 | R:code:backend/app/bake/gates/evaluate.py,code:backend/app/bake/gates/layout_workspace.py | A:- | S:GATE_CORE_KEYS 与 GATE_MONOTONE_KEYS 须双表同步增删
+keys.py[DQ6T]: F:门禁键字典与核心/单调键集合，含 p3layout 与 p3controls | R:code:backend/app/bake/gates/evaluate.py,code:backend/app/bake/gates/layout_workspace.py,code:backend/app/bake/gates/form_controls_workspace.py | A:- | S:GATE_CORE_KEYS 与 GATE_MONOTONE_KEYS 须双表同步增删
 semantic.py[DQ7S]: F:检查学生可见面与场景身份等交付语义门禁，并调用 schema_nf 工作区扫描 | R:code:backend/app/bake/gates/schema_nf.py | A:- | S:补 checklist 启发式盲区；库表范式不过则语义门禁不过
 schema_nf.py[DQ8T]: F:扫 schema.sql 的 CREATE/ADD COLUMN，拦非白名单 JSON 业务列与逗号串 1:N 列 | R:code:backend/app/bake/schema/er_model.py,code:backend/app/bake/engine_bake.py,code:backend/app/bake/gates/evaluate.py,code:backend/app/bake/gates/semantic.py | A:- | S:仅白名单 archive_log.payload_json/sys_user.profile_json 与 gallery_json 族放行；companion_names 等逗号集合列一律失败
 layout_workspace.py[DQ7M]: F:出包门禁 p3layout：对学生包 frontend/src 跑台账对账与结构契约 | R:code:backend/app/bake/layout_inventory.py,code:backend/app/bake/layout_contract.py,code:backend/app/bake/gates/evaluate.py,code:docs/ui-layout-prebake-gate.md | A:- | S:已剪枝包 skip_menu_route_reconcile；共用 BASELINE_KNOWN_*；不做全表视觉
+form_controls_workspace.py[DQ7S]: F:出包侧 p3controls：对本包 frontend/src 跑 C1～C3 控件契约 | R:code:backend/app/bake/form_controls_contract.py,code:backend/app/bake/gates/evaluate.py,code:backend/tests/test_form_controls_workspace_gate.py | A:- | S:例外与基线共用 BASELINE_KNOWN_CONTROLS
 
 ===D:/graduate_factory_v3/backend/app/bake/proposal_packs_data/===
 _order.json[FC5T]: F:声明选题包 JSON 加载顺序 | R:code:backend/app/bake/proposal_packs.py | A:- | S:-
@@ -492,7 +496,7 @@ __init__.py[DB6L]: F:定义工厂 API 的 Pydantic 请求与响应模型（含 J
 __init__.py[DB4T]: F:ռλ services ����ʼ�� | R:- | A:- | S:-
 delivery_review.py[DB7L]: F:做交付验收闭环：门槛、可用性、漂移与运营附件；提供 is_zip_stale 现场核验与 TTL 投影缓存 | R:code:backend/app/services/projects.py,code:backend/app/api/projects.py | A:- | S:TTL 缓存仅命中可信；冷缓存按未过期返回；下载/详情挡过期包；合卷后 prime；不进学生 ZIP
 fill_events.py[DB6M]: F:推送填岛进度 SSE 事件，答辩 PPT 复用同 hub | R:- | A:- | S:-
-jobs.py[DB8L]: F:调度 bake Job：门禁评测与失败写库，含 p3layout 红则禁 ZIP | R:code:backend/app/bake/engine.py,code:backend/app/bake/gates/evaluate.py,code:backend/app/services/bake_fail_classify.py,code:backend/app/services/delivery_review.py | A:- | S:from_step=0 禁止任意 copy_bake；写 job.error 经 _apply_job_error；顶层 error 同时带 code
+jobs.py[DB8L]: F:调度 bake Job：门禁评测与失败写库，含 p3layout/p3controls 红则禁 ZIP | R:code:backend/app/bake/engine.py,code:backend/app/bake/gates/evaluate.py,code:backend/app/services/bake_fail_classify.py,code:backend/app/services/delivery_review.py | A:- | S:from_step=0 禁止任意 copy_bake；_gate_fail_summary 含 p3controls
 projects.py[DG6S]: F:作为项目服务薄门面再导出交付/磁盘/投影/匹配与 stats | R:code:backend/app/services/project_delivery.py,code:backend/app/services/project_disk.py,code:backend/app/services/project_projection.py,code:backend/app/services/project_match.py,code:backend/app/core/key_mask.py,code:backend/app/api/projects/__init__.py | A:- | S:新逻辑禁止再堆进本文件；stats defer spec/checklist/delivery_review；保留旧测试 patch 再导出
 proposal.py[DB7L]: F:解析与合并开题文本供匹配与 bake 使用 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
 proposal_diff.py[DB6M]: F:对照开题功能清单与 Spec checklist，确定性不调 LLM | R:code:backend/app/services/proposal_match.py | A:- | S:-
@@ -510,7 +514,7 @@ project_match.py[DB8L]: F:承接上传建项、匹配确认与开题摘要补洞
 project_projection.py[DR7L]: F:提供运行态同步、checklist/gates 投影与列表对账原语 | R:code:backend/app/services/runtime.py,code:backend/app/services/runtime_reconcile.py,code:backend/app/services/project_delivery.py,code:backend/app/bake/gates.py,code:backend/app/services/delivery_review.py | A:- | S:refresh_project_projection 须先 release_read_transaction 再 to_thread；reconcile_list_items 只可后台调用且签名未变跳过重算
 factory_cache_purge.py[OR6M]: F:清理工厂共享缓存 data/cache 与各工作区 .runtime-tmp，并回报占用与释放量 | R:code:backend/app/services/runtime.py,code:backend/app/api/system_info.py,code:backend/tests/test_factory_cache_purge.py | A:- | S:有预览进程在跑时默认拒绝清理；不动开题上传、工程正文、骨架与本机 ~/.m2
 bake_fail_analysis.py[AG7L]: F:聚合 bake failed 分布与周优先，并按需调用大模型助归码与未核对修法草稿 | R:code:backend/app/services/bake_fail_classify.py;code:backend/app/llm/client.py;code:backend/app/models/__init__.py;code:backend/app/api/jobs.py | A:- | S:priorities 的 fix_locus 只读 FIX_LOCUS；draft 进程内缓存可丢弃且不写 Job/码表；无 Key 抛 RuntimeError；默认近七日
-bake_fail_classify.py[AG8M]: F:bake 失败稳定分类器：A 类权码与常量表 CODES/FIX_LOCUS/LABELS，含布局门禁失败归类 | R:code:docs/bake-fail-analysis.md,code:backend/app/services/jobs.py,code:backend/app/bake/gates/keys.py,code:backend/tests/test_bake_fail_classify.py | A:- | S:与文档表同源禁手改半截；UNKNOWN 的 fix_locus 固定；gates 失败走 _gate_fail_summary
+bake_fail_classify.py[AG8M]: F:bake 失败稳定分类器：权码与 CODES/FIX_LOCUS/LABELS，含布局与控件门禁归类 | R:code:docs/bake-fail-analysis.md,code:backend/app/services/jobs.py,code:backend/app/bake/gates/keys.py,code:backend/tests/test_bake_fail_classify.py | A:- | S:p3controls→BAKE_FORM_CONTROLS；与文档表同源禁半截改
 
 ===D:/graduate_factory_v3/backend/app/services/defense_ppt/===
 __init__.py[DB4T]: F:�������� PPT ����Ŀ¼���� | R:- | A:- | S:-
@@ -811,10 +815,10 @@ interact-thicken-batch.md[SC6M]: F:§1.9 互动加厚批次册：I-00～I-12 挂
 crosscut-delivery-batch.md[SC6M]: F:§0 通识横切清待补批次册：分簇 X-AUTH～X-UX、四件套验收；X-AUTH XA-00～XA-02 已齐，下簇建议 X-MSG | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/features/auth_crosscut.py,code:.cursor/rules/opening-group-delivery.mdc,code:docs/domain-group-ui-styles.md | A:- | S:一轮一簇；模块落基线非 *_thicken；活表行以地图 §0 为准
 cohort-opening-title-map.md[SC5M]: F:今年题名库方向册：题名落到域、皮与已有演示链，不改 bake、不写开题正文 | R:code:docs/parked-work.md,code:docs/README.md | A:- | S:仅「超新农产品销售网站」另有开题正文；其余按题名当范例；不预测明年
 opening-align-gate.md[SC6S]: F:�Ǽǿ���˫�������Ž���A �ǵס�B ɨ�ʡ�C �� cap������������ȫ������ | R:code:backend/app/bake/features/opening_align.py,code:docs/parked-work.md,code:backend/tests/test_opening_align_gate.py | A:- | S:��ֹ�ڶ��״ʵ䣻��������ȫ�Ķ�ҳ��ȫ��
-parked-work.md[SC6T]: F:搁置工作台账：大线与碎另案只记账不写规格 | R:code:docs/opening-align-gate.md,code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:HANDOFF.md | A:- | S:布局闸已落地；下一刀 form-controls；碎另案 f 已修
+parked-work.md[SC6T]: F:搁置工作台账：大线与碎另案只记账不写规格 | R:code:docs/opening-align-gate.md,code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:docs/ui-domain-diagnosis.md,code:HANDOFF.md | A:- | S:布局/控件闸已齐；下一刀候选诊断或控件消红
 bake-fail-analysis.md[SG7T]: F:bake 失败分析码表：归桶规则、A 档权威落点与 B 档建议工作流 | R:code:backend/app/services/bake_fail_classify.py;code:frontend/src/views/FailAnalysis.vue;code:docs/README.md | A:- | S:机器真源在 classify 常量；DeepSeek 草稿不得自动升格进本表
 ui-look-thicken-batch.md[SG8S]: F:UI �۸мӺ��������������ȡ�������/�������桢��Դ��������ҳ���׿ھ� | R:code:docs/domain-group-ui-styles.md,code:backend/app/bake/shell_face.py,code:skeletons/baseline/frontend/src/styles/cardVoice.css | A:- | S:���ߡٺÿ��������� card-foot/card-meta/card-acts��������д�� /goods
-form-controls.md[SG7M]: F:ѧ����ȫ���ɽ����ؼ���Դ������ѡ�͡�ȡֵ������ archiveFieldWidget ���룬���� el-form | R:code:.cursor/rules/form-controls.mdc,code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js,code:docs/ui-layout-prebake-gate.md | A:- | S:©һ����дɸѡ/�Ի���=δ���ɣ������ı����ø�������Դѡ����
+form-controls.md[SG8M]: F:学生包可交互控件真源：选型、下拉禁手填、C0～C5 分期与家在哪 | R:code:.cursor/rules/form-controls.mdc,code:backend/app/bake/form_controls_contract.py,code:backend/app/bake/gates/form_controls_workspace.py,code:docs/ui-layout-prebake-gate.md | A:- | S:C0～C5 已齐；已知债消红另刀；漏筛/对话框=未尽责
 ui-domain-diagnosis.md[SG6M]: F:ȫ�� UI ����̨�ˣ��� 68 ����ѡ���� L ���ؼ� C��ֻ����û�в�дϸ�� | R:code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:backend/app/bake/domains.py | A:- | S:̨������ȫ��δ����ϸ��ָֻ�򲼾�բ���ؼ���
 ui-layout-prebake-gate.md[SG8M]: F:起包前 UI 布局闸真源：一眼病、台账、结构模式、D3–D4 冒烟与出包 p3layout | R:code:backend/app/bake/layout_inventory.py,code:backend/app/bake/layout_contract.py,code:backend/app/bake/layout_smoke.py,code:backend/app/bake/gates/layout_workspace.py,code:docs/form-controls.md | A:- | S:闸只管结构/几何；禁只改当面 ZIP 消红；基线绿≠每题 ZIP 已过 p3layout
 vue-split-batch.md[SG6S]: F:Vue ���ļ��������Σ���ҳ��ͬĿ¼ setup.js+css��Ӳբ��ʮҳ�嵥���տ� | R:code:skeletons/baseline/frontend/src/views/user/ArchiveBrowse.vue,code:backend/tests/_vue_src.py,code:docs/parked-work.md | A:- | S:ֻ�᲻����Ϊ���϶��� .vue+.setup.js��Լǧ�г�ҳ����
@@ -836,7 +840,7 @@ icons.svg[DB5T]: F:仓库文件 icons | R:- | A:- | S:-
 
 ===D:/graduate_factory_v3/frontend/src/===
 App.vue[EU6S]: F:工厂运营台壳：侧栏工作台/系统导航、主题切换与面包屑 | R:code:frontend/src/router.js;code:frontend/src/theme.js;code:frontend/src/opsShared.js | A:- | S:工作台首项为开工台 /，失败分析 /fail-analysis 夹在任务队列与帮助之间
-api.js[ER6M]: F:工厂运营台前端 API 封装（项目/运行/失败分析/运行环境含布局检查） | R:code:frontend/src/views/FailAnalysis.vue,code:frontend/src/views/OpsHome.vue,code:frontend/src/views/System.vue,code:backend/app/api/system_info.py | A:- | S:布局检查只读摘要接口；failAnalysis 辅助超时不阻断；轮询用 POLL_OPTS
+api.js[ER6M]: F:工厂运营台前端 API 封装（项目/运行/失败分析/布局与控件检查） | R:code:frontend/src/views/FailAnalysis.vue,code:frontend/src/views/OpsHome.vue,code:frontend/src/views/System.vue,code:backend/app/api/system_info.py | A:- | S:layoutGate/formControlsGate 只读摘要；轮询用 POLL_OPTS
 llmPricing.js[FB5T]: F:前端脚本 llmPricing | R:- | A:- | S:-
 main.js[FB5T]: F:前端脚本 main | R:- | A:- | S:-
 opsShared.js[FB5M]: F:前端脚本 opsShared | R:- | A:- | S:-
@@ -891,10 +895,10 @@ Jobs.vue[FB6L]: F:展示生成任务队列，并支持取消、清空历史与�
 Llm.vue[FB6L]: F:工厂前端页面 Llm | R:- | A:- | S:-
 ProjectDetail.vue[FB6S]: F:项目详情壳：履约按钮与匹配/生成/运行/日志/产物五页签，加载失败嵌 ErrorPage | R:code:frontend/src/views/projectDetail/useProjectDetail.js;code:frontend/src/views/projectDetail/MatchTab.vue;code:frontend/src/views/projectDetail/ArtifactsTab.vue;code:frontend/src/views/ErrorPage.vue | A:- | S:正文状态与下载/履约动作均经 useProjectDetail provide；无项目时骨架或可重试 ErrorPage
 Projects.vue[FB6L]: F:工厂项目列表页：检索、状态、运行中预览批量启停、ZIP 下载与生成测试开题入口 | R:code:frontend/src/api.js;code:frontend/src/router.js | A:- | S:ZIP 下载用同页 a 点击；测试开题说明须区分默认随机抽词与真单压力；多选靠 row-key=id 不会误触行跳转；关闭全部运行中不传 ids，启动所选对运行中即重启
-System.vue[AU6M]: F:运行环境页：工具探测、端口与共享资源，含起包前布局检查摘要 | R:code:frontend/src/api.js,code:backend/app/api/system_info.py,code:backend/app/bake/layout_gate_status.py | A:- | S:布局检查用通过/未通过/已登记例外；有预览占用时清理按钮应禁用
+System.vue[AU6M]: F:运行环境页：工具探测、端口与共享资源，含布局与可交互控件检查摘要 | R:code:frontend/src/api.js,code:backend/app/api/system_info.py,code:backend/app/bake/layout_gate_status.py,code:backend/app/bake/form_controls_gate_status.py | A:- | S:通过/未通过/已登记例外；有预览占用时清理按钮应禁用
 Unsplash.vue[FB6S]: F:工厂前端页面 Unsplash | R:- | A:- | S:-
 FailAnalysis.vue[AU7L]: F:失败分析页：按码/步骤/域看分布、展示 A 档落点，并按需助归与未核对修法建议 | R:code:frontend/src/api.js;code:backend/app/services/bake_fail_classify.py;code:docs/bake-fail-analysis.md | A:- | S:周优先与样本的 fix_locus 只渲染接口下发；B 档卡片标未核对且可丢弃复制
-OpsHome.vue[AU6M]: F:运营工作台首页：匹配、进行中、告警与环境摘要（含布局检查入口） | R:code:frontend/src/api.js,code:frontend/src/router.js,code:frontend/src/views/System.vue,code:frontend/src/views/FailAnalysis.vue | A:- | S:文案忌口语；布局检查状态只展示接口字段；统计卡片跳转带 focus/code 查询
+OpsHome.vue[AU6M]: F:运营工作台首页：匹配、进行中、告警与环境摘要（含布局/控件检查） | R:code:frontend/src/api.js,code:frontend/src/router.js,code:frontend/src/views/System.vue,code:frontend/src/views/FailAnalysis.vue | A:- | S:文案忌口语；检查状态只展示接口字段
 
 ===D:/graduate_factory_v3/frontend/src/views/projectDetail/===
 ArtifactsTab.vue[FB6L]: F:展示交付 ZIP、工程目录与论文图等产物，并控制下载与交付复审入口 | R:code:frontend/src/views/projectDetail/useProjectDetail.js;code:frontend/src/components/DeliveryReviewPane.vue | A:- | S:ZIP 未就绪时下载按钮锁定，并给出锁定原因
@@ -1202,7 +1206,7 @@ http.js[IU5T]: F:axios 实例与响应拦截；40100/停用踢登录，透传业
 
 ===D:/graduate_factory_v3/skeletons/baseline/frontend/src/components/===
 AiAssistantFloat.vue[FB5M]: F:前端组件 AiAssistantFloat | R:- | A:- | S:-
-ArchiveFieldControl.vue[FB5S]: F:档案字段控件按 widget 分流：开关/选择/日期时间/时刻/金额数字/链接/多行/富文本/普通输入 | R:code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js,code:skeletons/baseline/frontend/src/utils/dateTimeField.js | A:- | S:widget=time 走 el-time-picker 不得退化文本框；开关统一存 0|1；金额空值写空串
+ArchiveFieldControl.vue[FB5S]: F:档案字段控件按 widget 分流：开关/选择/日期时间/时刻/金额数字/链接/多行/富文本/普通输入 | R:code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js,code:skeletons/baseline/frontend/src/utils/dateTimeField.js,code:docs/form-controls.md | A:- | S:select 禁 creatable；time 走 el-time-picker；开关存 0|1
 AuthShell.vue[FB5L]: F:登录注册壳：版式跟交付配置的模板与氛围图，与门户同主色、去模板光晕 | R:code:skeletons/baseline/frontend/src/appDelivered.js | A:- | S:-
 CartBadge.vue[AU5T]: F:门户顶栏购物车角标：矢量图标与数量徽章 | R:code:skeletons/baseline/frontend/src/utils/domainSchema.js,code:skeletons/baseline/frontend/src/utils/session.js | A:- | S:与文字主路径不同时才出，避免叠两份；无 cart 能力不渲染
 ClaimProofFields.vue[FB5T]: F:前端组件 ClaimProofFields | R:- | A:- | S:-
@@ -1892,7 +1896,7 @@ column-contract.md[SD7T]: F:Trae 侧列契约：能力或开关开则 SQL 有列
 commit-messages.md[SG6T]: F:Trae 侧规定本仓库 git 提交说明、PR 标题与正文一律用中文，一到两句写清为什么而非罗列文件 | R:code:.cursor/rules/commit-messages.mdc | A:- | S:代码标识与路径保留原文，如 DOM-*、scene_scan、ensure_*；禁止英文祈使句当提交标题
 cross-domain-fix.md[SG7T]: F:Trae 侧规定开题翻车视为探针，先修共享 bake、门禁与基线，禁止只改当前学生包或单域硬编码 | R:code:.cursor/rules/cross-domain-fix.mdc,code:docs/delivery-audit-rules.md | A:- | S:先搜已有实现，不许另起平行逻辑、第二套开关或旁路；通用才进共享机制，单域专属须写明原因
 delivery-audit.md[SQ7T]: F:Trae ���涨�������Ʊ������ܱ������ơ������ع����ϰ�С���������ع鶢 AUDIT_GROUP_CANARIES | R:code:.cursor/rules/delivery-audit.mdc,code:docs/delivery-audit-rules.md,code:backend/app/bake/domains.py | A:- | S:ȱС��������Ч���棻��ֹֻ�����⣻�տǲ��ñ�����
-form-controls.md[SU7T]: F:Trae ���涨ѧ�����ɽ����ؼ�������ѡ�ͣ�ϸ������ docs/form-controls.md �� archiveFieldWidget | R:code:.cursor/rules/form-controls.mdc,code:docs/form-controls.md,code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js | A:- | S:��ֹ����ʱ������ö���������ֹ�ƿ�ӳ������һ��
+form-controls.md[SU8T]: F:Trae 同步规则：学生包可交互控件选型与闸摘要，与 .cursor/rules/form-controls.mdc 同文 | R:code:.cursor/rules/form-controls.mdc,code:docs/form-controls.md,code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js | A:- | S:只经 sync-ide-rules 从 .cursor 同步；禁手改漂移
 opening-scene.md[SG7T]: F:Trae 侧规定壳文案、注册资料字段与岗位名只扫题名和开题正文，场景轴不替代 DOM-* 领域匹配 | R:code:.cursor/rules/opening-scene.mdc,code:backend/app/bake/scene_scan.py | A:- | S:校园／企业／社区只走 scene_scan.py；开题未写清则用域默认，不臆造；禁止在 shells 或 profile 另写场景 hint
 student-copy.md[SU7T]: F:Trae 侧规定学生可见文案按店员或买家的口吻书写，页面、按钮、空态、报错与 schema.labels 都算可见面 | R:code:.cursor/rules/student-copy.mdc,code:docs/capability-expansion-batch.md | A:- | S:禁止工厂腔词（开题、bake、DOM-*、能力岛等）；空态不指挥买家去后台；缺列硬失败不写进界面
 tech-stack-delivery.md[SV7T]: F:Trae 侧规定出包默认 Boot、Vue3、Element、MySQL 与 jdbc，开题写了 mybatis、jpa 或 Security 才跟 | R:code:.cursor/rules/tech-stack-delivery.mdc,code:docs/tech-stack-delivery.md | A:- | S:拟选与出包不一致须双显；无生成路径不许开开关；技术栈不得驱动 scene_scan 或替代 DOM-* 匹配
@@ -1917,3 +1921,6 @@ schema.py[EB7L]: F:承接库表/论文图模型与 SVG 下载及学生端 API �
 
 ===D:/graduate_factory_v3/.cursor/skills/ui-layout-gate/===
 SKILL.md[SG6S]: F:布局闸 Skill：解释/跑 inventory、contract、smoke 与 layout-gate 摘要 | R:code:docs/ui-layout-prebake-gate.md,code:backend/app/bake/layout_inventory.py,code:backend/app/bake/layout_smoke.py,code:.cursor/rules/ui-layout-gate.mdc | A:- | S:改 UI 收工前对照台账绑定行；宣称布局齐须有机器闸证据
+
+===D:/graduate_factory_v3/.cursor/skills/form-controls-gate/===
+SKILL.md[SU7T]: F:助手工序：改基线表单/筛选时跑控件闸测并解读 p3controls/工厂摘要 | R:code:docs/form-controls.md,code:backend/app/bake/form_controls_contract.py,code:.cursor/rules/form-controls.mdc | A:- | S:宣称控件已齐前须测绿；不为消红改学生页
