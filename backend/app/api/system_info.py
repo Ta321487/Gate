@@ -187,6 +187,20 @@ async def system_layout_gate():
     return ApiOk(ok=bool(data.get("ok")), message=str(data.get("summary") or ""), data=data)
 
 
+@router.get(
+    "/system/form-controls-gate",
+    response_model=ApiOk,
+    tags=["系统"],
+    summary="可交互控件检查摘要",
+)
+async def system_form_controls_gate():
+    """基线 C1～C3 控件契约摘要。出包另挂 p3controls，见返回字段 bake。"""
+    from app.bake.form_controls_gate_status import form_controls_gate_snapshot
+
+    data = await asyncio.to_thread(form_controls_gate_snapshot)
+    return ApiOk(ok=bool(data.get("ok")), message=str(data.get("summary") or ""), data=data)
+
+
 @router.get("/system/cache", response_model=ApiOk, tags=["系统"], summary="共享缓存占用")
 async def system_cache_status():
     """data/cache 与工作区 .runtime-tmp 占用；有预览在跑时 can_purge=false。"""

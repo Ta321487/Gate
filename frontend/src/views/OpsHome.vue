@@ -74,6 +74,12 @@
                 </span>
               </div>
               <div class="ops-env-line">
+                <span class="muted">控件检查</span>
+                <span :class="controlsGateOk === true ? 'ok' : controlsGateOk === false ? 'bad' : ''">
+                  {{ controlsGateLabel }}
+                </span>
+              </div>
+              <div class="ops-env-line">
                 <span class="muted">JDK / Maven / Node</span>
                 <span class="small">{{ envBrief }}</span>
               </div>
@@ -187,6 +193,8 @@ const system = ref(null)
 const healthOk = ref(false)
 const layoutGateOk = ref(null)
 const layoutGateSummary = ref('')
+const controlsGateOk = ref(null)
+const controlsGateSummary = ref('')
 
 const failTotals = computed(() => fail.value?.totals || {})
 const priorities = computed(() => fail.value?.priorities || [])
@@ -238,6 +246,15 @@ const layoutGateLabel = computed(() => {
   return '未加载'
 })
 
+const controlsGateLabel = computed(() => {
+  if (controlsGateOk.value === true) return '通过'
+  if (controlsGateOk.value === false) {
+    const s = String(controlsGateSummary.value || '').trim()
+    return s ? (s.length > 36 ? `${s.slice(0, 36)}…` : s) : '未通过'
+  }
+  return '未加载'
+})
+
 function formatK(n) {
   const x = Number(n) || 0
   if (x >= 1000) return `${(x / 1000).toFixed(x >= 10000 ? 0 : 1)}k`
@@ -265,7 +282,7 @@ function todoTagClass(p) {
 async function load() {
   loading.value = true
   try {
-    const [st, plist, jlist, fa, sys, health, lg] = await Promise.all([
+    const [st, plist, jlist, fa, sys, health, lg, cg] = await Promise.all([
       api.stats().catch(() => ({})),
       api.listProjects().catch(() => []),
       api.listJobs().catch(() => []),
@@ -273,6 +290,7 @@ async function load() {
       api.system().catch(() => null),
       api.health().catch(() => null),
       api.layoutGate().catch(() => null),
+      api.formControlsGate().catch(() => null),
     ])
     stats.value = st || {}
     projects.value = Array.isArray(plist) ? plist : []
@@ -286,6 +304,13 @@ async function load() {
     } else {
       layoutGateOk.value = null
       layoutGateSummary.value = ''
+    }
+    if (cg?.data) {
+      controlsGateOk.value = cg.data.ok === true
+      controlsGateSummary.value = cg.data.summary || cg.message || ''
+    } else {
+      controlsGateOk.value = null
+      controlsGateSummary.value = ''
     }
   } catch (e) {
     message.error(e?.message || '开工台加载失败')

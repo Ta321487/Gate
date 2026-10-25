@@ -117,6 +117,46 @@
       </div>
       <div class="panel mt-16">
         <div class="panel-hd">
+          <h3>可交互控件检查</h3>
+          <n-button size="small" :loading="controlsLoading" @click="loadFormControlsGate">刷新</n-button>
+        </div>
+        <div class="panel-bd">
+          <p class="small muted mb-12">
+            检查共享基线下拉禁手填、日期/数字控件与档案字段映射。出包另有门禁 p3controls，红则不能出 ZIP。
+            未通过时须修工厂基线或检查规则，禁止仅修补单个学生交付包。
+          </p>
+          <template v-if="controlsGate">
+            <div class="small mb-8">
+              <span :class="controlsGate.ok ? 'ok' : 'bad'">{{ controlsGate.ok ? '通过' : '未通过' }}</span>
+              <span class="muted"> · </span>
+              <span>{{ controlsGate.summary }}</span>
+            </div>
+            <div class="small mb-8">
+              <span class="muted">契约</span>
+              {{ controlsGate.contract?.ok ? '通过' : '未通过' }}
+              · 扫描命中 {{ controlsGate.contract?.hit_count ?? '—' }}
+              · 未登记问题 {{ controlsGate.contract?.finding_count ?? 0 }}
+              · 已登记例外 {{ controlsGate.contract?.known_debt_count ?? 0 }}
+            </div>
+            <div class="small mb-8">
+              <span class="muted">出包</span>
+              {{ controlsGate.bake?.gate_key || 'p3controls' }}
+              · {{ controlsGate.bake?.summary || '对本包 frontend 跑同一套契约' }}
+            </div>
+            <ul
+              v-if="controlsGate.contract?.findings?.length"
+              class="cache-list small mb-8"
+            >
+              <li v-for="(f, idx) in (controlsGate.contract?.findings || []).slice(0, 8)" :key="'fc'+idx">
+                <span class="mono">[{{ f.pattern_id }}] {{ f.vue }} · {{ f.detail || f.message }}</span>
+              </li>
+            </ul>
+          </template>
+          <p v-else-if="!controlsLoading" class="small muted mb-8">尚未加载控件检查结果</p>
+        </div>
+      </div>
+      <div class="panel mt-16">
+        <div class="panel-hd">
           <h3>共享缓存</h3>
           <n-button size="small" :loading="cacheLoading" @click="loadCache">刷新占用</n-button>
         </div>
@@ -180,6 +220,8 @@ const cacheLoading = ref(false)
 const purging = ref(false)
 const layoutGate = ref(null)
 const layoutLoading = ref(false)
+const controlsGate = ref(null)
+const controlsLoading = ref(false)
 
 function formatPorts(ports) {
   return (ports && ports.length) ? ports.join(', ') : '无'
@@ -214,11 +256,23 @@ async function loadLayoutGate() {
   }
 }
 
+async function loadFormControlsGate() {
+  controlsLoading.value = true
+  try {
+    const res = await api.formControlsGate()
+    controlsGate.value = res?.data || null
+  } catch {
+    controlsGate.value = null
+  } finally {
+    controlsLoading.value = false
+  }
+}
+
 async function load() {
   loading.value = true
   try {
     info.value = await api.system()
-    await Promise.all([loadCache(), loadLayoutGate()])
+    await Promise.all([loadCache(), loadLayoutGate(), loadFormControlsGate()])
   } catch {
     info.value = null
   } finally {
