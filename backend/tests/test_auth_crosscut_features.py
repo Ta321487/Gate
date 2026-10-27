@@ -167,6 +167,65 @@ class AuthCrosscutFeatureTests(unittest.TestCase):
         self.assertNotIn("invite_codes", keys)
         self.assertEqual(((out.get("schema") or {}).get("authPolicy") or {}).get("requireInvite"), 0)
 
+    def test_student_no_dup_hint_follows_profile_fields(self) -> None:
+        """商城无学号档案 → 不得校园「学号或工号」句；图书有学号 → 可用校园句。"""
+        from app.bake.features.auth_crosscut import (
+            _STUDENT_NO_DUP_CAMPUS,
+            _STUDENT_NO_DUP_GENERIC,
+        )
+
+        shop = apply_auth_crosscut_to_spec(
+            {
+                "domain": "DOM-SHOP",
+                "title": "方木健身用品电商平台",
+                "capabilities": list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
+                "schema": {
+                    "menus": {"admin": []},
+                    "labels": {},
+                    "profileFields": [
+                        {"key": "receiverName", "label": "收货人"},
+                        {"key": "receiveAddress", "label": "收货地址"},
+                    ],
+                },
+            },
+            "健身用品商城，购物车下单与订单发货。",
+        )
+        shop_hint = ((shop.get("schema") or {}).get("labels") or {}).get("studentNoDupHint")
+        self.assertEqual(shop_hint, _STUDENT_NO_DUP_GENERIC)
+        self.assertNotIn("学号", shop_hint)
+        self.assertNotIn("工号", shop_hint)
+
+        lib = apply_auth_crosscut_to_spec(
+            {
+                "domain": "DOM-LIBRARY",
+                "title": "图书借阅管理系统",
+                "capabilities": list(DOMAIN_CAPABILITIES["DOM-LIBRARY"]),
+                "schema": {
+                    "menus": {"admin": []},
+                    "labels": {},
+                    "profileFields": [
+                        {"key": "studentNo", "label": "学号"},
+                        {"key": "college", "label": "学院"},
+                    ],
+                },
+            },
+            "",
+        )
+        lib_hint = ((lib.get("schema") or {}).get("labels") or {}).get("studentNoDupHint")
+        self.assertEqual(lib_hint, _STUDENT_NO_DUP_CAMPUS)
+
+    def test_userstore_no_campus_dup_literal(self) -> None:
+        """三骨架异常文案不得写死学号/工号（商城包会被交付质量摘要打红）。"""
+        needle = "该学号或工号已被绑定"
+        for rel in (
+            "skeletons/baseline/backend/src/main/java/com/thesis/service/UserStore.java",
+            "skeletons/overlays/persistence-mybatis/backend/src/main/java/com/thesis/service/UserStore.java",
+            "skeletons/overlays/persistence-jpa/backend/src/main/java/com/thesis/service/UserStore.java",
+        ):
+            text = (REPO / rel).read_text(encoding="utf-8")
+            self.assertNotIn(needle, text, rel)
+            self.assertIn("该账号资料已被使用，请更换", text, rel)
+
     def test_app_policy_fields_and_skeletons(self) -> None:
         names = {f[1] for f in FIELDS}
         for c in _AUTH_CONSTANTS:

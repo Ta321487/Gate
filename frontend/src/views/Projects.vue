@@ -90,19 +90,37 @@
           </div>
         </div>
         <div class="row" style="justify-content:space-between;margin-top:16px;gap:8px;flex-wrap:wrap">
-          <div class="row" style="gap:8px">
-            <n-button size="small" quaternary :disabled="planConfirming" @click="planSplitAll">
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <input
+              ref="appendInputEl"
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.txt,.zip"
+              style="display:none"
+              @change="onAppendFileInput"
+            />
+            <n-button
+              size="small"
+              quaternary
+              :disabled="planConfirming || planAppending || appendSlotsLeft <= 0"
+              :loading="planAppending"
+              @click="triggerAppendMaterials"
+            >
+              追加材料{{ appendSlotsLeft > 0 ? `（还可 ${appendSlotsLeft}）` : '' }}
+            </n-button>
+            <n-button size="small" quaternary :disabled="planConfirming || planAppending" @click="planSplitAll">
               全部拆开
             </n-button>
-            <n-button size="small" quaternary :disabled="planConfirming" @click="planMergeAll">
+            <n-button size="small" quaternary :disabled="planConfirming || planAppending" @click="planMergeAll">
               合并为一个
             </n-button>
           </div>
           <div class="row" style="gap:8px">
-            <n-button :disabled="planConfirming" @click="planOpen = false">取消</n-button>
+            <n-button :disabled="planConfirming || planAppending" @click="planOpen = false">取消</n-button>
             <n-button
               v-if="!planData.clusters?.length"
               type="primary"
+              :disabled="planAppending"
               :loading="planConfirming"
               @click="dismissEmptyPlan"
             >
@@ -111,6 +129,7 @@
             <n-button
               v-else
               type="primary"
+              :disabled="planAppending"
               :loading="planConfirming"
               @click="confirmPlan"
             >
@@ -413,18 +432,27 @@ const planJobId = ref(null)
 const planOpen = ref(false)
 const planLoading = ref(false)
 const planConfirming = ref(false)
+const planAppending = ref(false)
 const planData = ref(null)
 /** 确认时覆盖分堆：number[][] | null */
 const planClustersOverride = ref(null)
 const planDiscardOverride = ref(null)
 /** 确认成功关闭弹窗时跳过 after-leave 自动翻页（由 confirmPlan 自行决定） */
 let planCloseFromConfirm = false
+/** @type {import('vue').Ref<HTMLInputElement|null>} */
+const appendInputEl = ref(null)
 
 const otherPendingPlans = computed(() =>
   uploadJobs.value.filter(
     (j) => j.status === 'planned' && j.plan && !j.deferred && j.id !== planJobId.value,
   ).length,
 )
+
+/** 当前方案还可追加几份（与单次上限同口径） */
+const appendSlotsLeft = computed(() => {
+  const n = planData.value?.files?.length || 0
+  return Math.max(0, MAX_UPLOAD_MATERIALS - n)
+})
 
 const uploadQueueHint = computed(() => {
   const jobs = uploadJobs.value
@@ -545,6 +573,7 @@ function pendingPlanCount() {
 
 /** 全剔除 / 0 项目：确认跳过，结束任务，避免只能取消却仍占 planned 队列 */
 async function dismissEmptyPlan() {
+  if (planAppending.value) return
   if (planData.value?.clusters?.length) return
   const job = uploadJobs.value.find((j) => j.id === planJobId.value)
   const planId = planData.value?.plan_id || job?.plan?.plan_id
@@ -619,8 +648,87 @@ function planMergeAll() {
   if (job) job.plan = next
 }
 
+function triggerAppendMaterials() {
+  if (planConfirming.value || planAppending.value || appendSlotsLeft.value <= 0) return
+  const el = appendInputEl.value
+  if (!el) return
+  el.value = ''
+  el.click()
+}
+
+async function onAppendFileInput(ev) {
+  const input = ev?.target
+  const list = input?.files ? Array.from(input.files) : []
+  if (input) input.value = ''
+  if (!list.length) return
+  await appendMaterialsToPlan(list)
+}
+
+async function appendMaterialsToPlan(source) {
+  if (!planData.value?.plan_id) return
+  if (planConfirming.value || planAppending.value) return
+  const room = appendSlotsLeft.value
+  if (room <= 0) {
+    message.warning(`本方案已有 ${MAX_UPLOAD_MATERIALS} 份材料，无法再追加`)
+    return
+  }
+  let files = []
+  try {
+    const collected = await collectUploadMaterials(source, { maxFiles: room })
+    if (collected.error) {
+      message.warning(collected.error)
+      return
+    }
+    files = collected.files
+    if (collected.notes?.length) {
+      collected.notes.forEach((n) => message.info(n))
+    }
+    if (collected.skipped?.length && !files.length) {
+      message.warning(`没有可用材料：${collected.skipped.slice(0, 3).join('、')}`)
+      return
+    }
+    if (collected.skipped?.length) {
+      message.warning(`已跳过 ${collected.skipped.length} 项非材料文件`)
+    }
+  } catch (err) {
+    message.error(err?.message || '读取文件失败')
+    return
+  }
+  if (!files.length) {
+    message.warning('请至少选择一份材料（PDF / Word / TXT，或含这些文件的文件夹 / zip）')
+    return
+  }
+  const planId = planData.value.plan_id
+  planAppending.value = true
+  try {
+    const plan = await api.uploadPlanAppend(planId, files)
+    planClustersOverride.value = null
+    planDiscardOverride.value = null
+    planData.value = plan
+    const job = uploadJobs.value.find((j) => j.id === planJobId.value)
+    if (job) {
+      job.plan = plan
+      job.clustersOverride = null
+      job.discardOverride = null
+      job.fileCount = plan?.files?.length || job.fileCount
+      job.name = `分堆就绪 · ${plan?.clusters?.length || 0} 个项目`
+    }
+    const n = (plan?.clusters || []).length
+    const discarded = (plan?.discard || []).length
+    message.success(
+      `已追加并重新分堆：${n} 个项目` + (discarded ? `，剔除 ${discarded} 份` : ''),
+    )
+  } catch (err) {
+    const detail = err?.response?.data?.detail || err?.message || '追加失败'
+    message.error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+  } finally {
+    planAppending.value = false
+  }
+}
+
 async function confirmPlan() {
   if (!planData.value?.plan_id || !planData.value.clusters?.length) return
+  if (planAppending.value) return
   planConfirming.value = true
   const planId = planData.value.plan_id
   const sourceJob = uploadJobs.value.find((j) => j.id === planJobId.value)

@@ -61,6 +61,7 @@ _AUTH_LABELS_CORE: dict[str, str] = {
     "securityQuestionLabel": "密保问题",
     "securityAnswerLabel": "密保答案",
     "phoneDupHint": "该手机号已被使用，请更换",
+    # 默认校园；无学号/工号档案的域在 apply 里改成账号资料提示，禁止商城残留校园句
     "studentNoDupHint": "该学号或工号已被绑定，请核对",
     "phoneFormatHint": "手机号格式不正确（11 位）",
     "emailFormatHint": "邮箱格式不正确",
@@ -83,6 +84,35 @@ _AUTH_LABELS_INVITE: dict[str, str] = {
 }
 
 _INVITE_LABEL_KEYS = frozenset(_AUTH_LABELS_INVITE.keys())
+
+# 与 UserStore.ID_EXTRA_KEYS 对齐：有这些资料键才用语「学号/工号」
+_CAMPUS_ID_PROFILE_KEYS = frozenset(
+    {
+        "studentNo",
+        "studentId",
+        "jobNo",
+        "workNo",
+        "employeeNo",
+        "staffNo",
+        "readerNo",
+        "studentNoOrEmp",
+    }
+)
+_STUDENT_NO_DUP_CAMPUS = "该学号或工号已被绑定，请核对"
+_STUDENT_NO_DUP_GENERIC = "该账号资料已被使用，请更换"
+
+
+def profile_has_campus_id_fields(schema: dict[str, Any] | None) -> bool:
+    for f in (schema or {}).get("profileFields") or []:
+        if isinstance(f, dict) and str(f.get("key") or "") in _CAMPUS_ID_PROFILE_KEYS:
+            return True
+    return False
+
+
+def student_no_dup_hint_for_schema(schema: dict[str, Any] | None) -> str:
+    if profile_has_campus_id_fields(schema):
+        return _STUDENT_NO_DUP_CAMPUS
+    return _STUDENT_NO_DUP_GENERIC
 
 
 _SEED_MUST_CHANGE = (
@@ -223,7 +253,11 @@ def apply_auth_crosscut_to_spec(spec: dict[str, Any], proposal_text: str = "") -
     schema = dict(spec.get("schema") or {})
     labels = dict(schema.get("labels") or {})
     for key, val in _AUTH_LABELS_CORE.items():
+        if key == "studentNoDupHint":
+            continue
         labels.setdefault(key, val)
+    # 必须跟档案字段走：商城等无学号域不得残留校园绑定句（交付质量摘要会红）
+    labels["studentNoDupHint"] = student_no_dup_hint_for_schema(schema)
     if want_invite:
         for key, val in _AUTH_LABELS_INVITE.items():
             labels.setdefault(key, val)

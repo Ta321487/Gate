@@ -973,7 +973,8 @@ public class UserStore {
                 if (other.extras == null) continue;
                 String ov = other.extras.get(key);
                 if (ov != null && v.equals(ov.trim())) {
-                    throw new IllegalStateException("该学号或工号已被绑定，请核对");
+                    // 文案中性：校园/商城共用；前端用 labels.studentNoDupHint 展示场景句
+                    throw new IllegalStateException("该账号资料已被使用，请更换");
                 }
             }
         }

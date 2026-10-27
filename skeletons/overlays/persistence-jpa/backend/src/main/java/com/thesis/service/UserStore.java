@@ -967,7 +967,7 @@ public class UserStore {
                 if (other.extras == null) continue;
                 String ov = other.extras.get(key);
                 if (ov != null && v.equals(ov.trim())) {
-                    throw new IllegalStateException("该学号或工号已被绑定，请核对");
+                    throw new IllegalStateException("该账号资料已被使用，请更换");
                 }
             }
         }

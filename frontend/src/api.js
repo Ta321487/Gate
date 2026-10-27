@@ -59,6 +59,23 @@ export const api = {
   /** 丢弃未确认分堆 */
   uploadPlanDelete: (planId) =>
     http.delete(`/projects/upload/plans/${encodeURIComponent(planId)}`),
+  /** 待确认分堆追加材料并重新分堆（同 plan_id） */
+  uploadPlanAppend: (planId, files, onProgress) => {
+    const list = Array.isArray(files) ? files : [files]
+    const fd = new FormData()
+    list.forEach((f) => {
+      if (f) fd.append('files', f)
+    })
+    return http.post(
+      `/projects/upload/plans/${encodeURIComponent(planId)}/append`,
+      fd,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: onProgress,
+        ...HEAVY_OPTS,
+      },
+    )
+  },
   /** 确认分堆并创建项目 */
   uploadConfirm: (body) =>
     http.post('/projects/upload/confirm', body, { ...HEAVY_OPTS }),

@@ -1,4 +1,4 @@
-﻿"""项目服务门面：兼容 ``from app.services import projects`` / ``projects.xxx``。
+"""项目服务门面：兼容 ``from app.services import projects`` / ``projects.xxx``。
 
 正文已按职责搬到 project_delivery / project_disk / project_projection / project_match。
 新逻辑请直接进对应家，不要再往本文件堆正文。
@@ -126,12 +126,13 @@ async def stats(db: AsyncSession) -> dict:
     # 且曾占着 SQLite 读锁互相 busy 数秒。过期判定由后台对账线程投影。
     from sqlalchemy.orm import defer
 
-    # pending_review 要读 gates；不拖 spec/checklist/delivery_review
+    # pending_review → is_zip_downloadable → get_review_state，必须带上
+    # delivery_review；若 defer 会在 async 会话外懒加载 → MissingGreenlet。
+    # spec/checklist 仍可不拖。
     result = await db.execute(
         select(Project).options(
             defer(Project.spec),
             defer(Project.checklist),
-            defer(Project.delivery_review),
         )
     )
     items = list(result.scalars().all())

@@ -283,8 +283,7 @@ async def upload_plan(
         relocated: list[tuple[Path, str, int]] = []
         for path, name, size in saved:
             dest = plan_dir / path.name
-            if path.resolve() != dest.resolve():
-                shutil.move(str(path), str(dest))
+            _relocate_upload_file(path, dest)
             relocated.append((dest, name, size))
         save_plan_bundle(relocated, plan)
         return UploadPlanOut.model_validate(plan.to_dict())
@@ -411,6 +410,72 @@ async def delete_upload_plan(plan_id: str):
     return {"ok": True}
 
 
+@router.post(
+    "/upload/plans/{plan_id}/append",
+    response_model=UploadPlanOut,
+    summary="待确认分堆追加材料并重新分堆",
+)
+async def upload_plan_append(
+    plan_id: str,
+    files: list[UploadFile] | None = File(
+        default=None,
+        description=f"追加材料；与已有合计不超过 {MAX_UPLOAD_MATERIALS} 份",
+    ),
+    file: UploadFile | None = File(default=None, description="兼容单文件字段"),
+    db: AsyncSession = Depends(get_db),
+):
+    """在既有 plan 上追加文件，复用 build_upload_plan；确认前不建项。"""
+    from app.llm.runtime import load_llm_runtime
+    from app.services.upload_cluster import append_and_rebuild_plan, load_plan_bundle
+
+    try:
+        root, _data, existing = load_plan_bundle(plan_id)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+
+    uploaded = _require_uploads(files, file, empty_msg="请至少追加一份材料")
+    room = MAX_UPLOAD_MATERIALS - len(existing)
+    if room <= 0:
+        raise HTTPException(
+            400,
+            f"本方案已有 {len(existing)} 份材料，已达上限 {MAX_UPLOAD_MATERIALS}，无法再追加",
+        )
+    if len(uploaded) > room:
+        raise HTTPException(
+            400,
+            f"还可追加 {room} 份（已有 {len(existing)} / 上限 {MAX_UPLOAD_MATERIALS}）",
+        )
+
+    used = {Path(p).name.lower() for p, _n, _s in existing}
+    used.update(n.lower() for _p, n, _s in existing)
+    saved = await _write_uploads(root, uploaded, used_names=used)
+
+    llm_rt = None
+    try:
+        llm_rt = await load_llm_runtime(db)
+    except Exception:  # noqa: BLE001
+        llm_rt = None
+
+    try:
+        plan = await append_and_rebuild_plan(
+            plan_id,
+            saved,
+            db=db,
+            llm_rt=llm_rt,
+            max_materials=MAX_UPLOAD_MATERIALS,
+        )
+    except ValueError as e:
+        # 重分堆失败时清掉刚写入的追加文件，避免脏文件留在方案目录
+        for path, _name, _size in saved:
+            try:
+                Path(path).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise HTTPException(400, str(e)) from e
+
+    return UploadPlanOut.model_validate(plan.to_dict())
+
+
 def _collect_uploads(
     files: list[UploadFile] | None,
     file: UploadFile | None,
@@ -423,13 +488,38 @@ def _collect_uploads(
     return uploaded
 
 
+def _relocate_upload_file(src: Path, dest: Path, *, retries: int = 10) -> None:
+    """把临时上传迁到 plan 目录。Windows 上 docx/杀毒常短锁源文件，裸 move 会 WinError 32。
+
+    策略：先 copy2 保证目标可用；再短重试删源；删不掉留给 finally 清临时目录。
+    """
+    import time
+
+    src_r = Path(src).resolve()
+    dest_r = Path(dest).resolve()
+    if src_r == dest_r:
+        return
+    dest_r.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src_r, dest_r)
+    for i in range(max(1, retries)):
+        try:
+            src_r.unlink(missing_ok=True)
+            if not src_r.exists():
+                return
+        except OSError:
+            time.sleep(0.05 * (i + 1))
+    # 目标已就绪；源残留由调用方清理临时目录
+
+
 async def _write_uploads(
     dest_dir: Path,
     uploaded: list[UploadFile],
+    *,
+    used_names: set[str] | None = None,
 ) -> list[tuple[Path, str, int]]:
     allowed = {".pdf", ".doc", ".docx", ".txt"}
     saved: list[tuple[Path, str, int]] = []
-    used_names: set[str] = set()
+    used = {n.lower() for n in (used_names or set())}
     for uf in uploaded:
         suffix = Path(uf.filename or "proposal.txt").suffix.lower()
         if suffix not in allowed:
@@ -438,10 +528,10 @@ async def _write_uploads(
         base, ext = Path(safe_name).stem, Path(safe_name).suffix
         candidate = safe_name
         n = 2
-        while candidate.lower() in used_names:
+        while candidate.lower() in used:
             candidate = f"{base}_{n}{ext}"
             n += 1
-        used_names.add(candidate.lower())
+        used.add(candidate.lower())
         dest = dest_dir / candidate
         content = await uf.read()
         if not content:

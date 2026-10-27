@@ -373,7 +373,11 @@ async function onPrimary() {
   } catch (e) {
     const msg = String(e?.response?.data?.message || e?.message || '')
     if (msg.includes('手机号已被')) ElMessage.warning(labels.phoneDupHint || msg)
-    else if (msg.includes('学号') || msg.includes('工号')) ElMessage.warning(labels.studentNoDupHint || msg)
+    else if (
+      msg.includes('学号')
+      || msg.includes('工号')
+      || msg.includes('账号资料')
+    ) ElMessage.warning(labels.studentNoDupHint || msg)
     if (msg.includes('多次')) captchaFailHintOn.value = true
     form.captcha = ''
     step.value = 1
