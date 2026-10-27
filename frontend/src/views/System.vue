@@ -122,7 +122,7 @@
         </div>
         <div class="panel-bd">
           <p class="small muted mb-12">
-            检查共享基线下拉禁手填、日期/数字控件与档案字段映射。出包另有门禁 p3controls，红则不能出 ZIP。
+            检查共享基线下拉禁造库外值（可筛选）、日期/数字控件与档案字段映射。出包另有门禁 p3controls，红则不能出 ZIP。
             未通过时须修工厂基线或检查规则，禁止仅修补单个学生交付包。
           </p>
           <template v-if="controlsGate">

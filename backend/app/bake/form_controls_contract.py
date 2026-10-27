@@ -1,7 +1,7 @@
 """学生包可交互控件闸 · C1/C2/C3 契约。
 
 真源：docs/form-controls.md
-- C1 §2：下拉禁 allow-create
+- C1 §2：下拉禁 allow-create（造库外值）；filterable 筛选输入允许
 - C2 §1.1：日期/时刻/数字禁 el-input 手填
 - C3 §1：档案字段循环须走 ArchiveFieldControl（映射见 form_controls_widget）
 
@@ -143,7 +143,7 @@ def _scan_allow_create(rel: str, tpl: str) -> list[ControlFinding]:
             ControlFinding(
                 pattern_id="no_select_allow_create",
                 vue=rel,
-                message="下拉禁止 allow-create / 手填造值",
+                message="下拉禁止 allow-create（不可创库外选项；filterable 筛选除外）",
                 detail=detail,
             )
         )

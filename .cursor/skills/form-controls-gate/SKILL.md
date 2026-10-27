@@ -1,10 +1,11 @@
 ---
 name: form-controls-gate
 description: >-
-  Runs or interprets the student-pack interactive controls gate (creatable ban,
-  date/number handfill, ArchiveFieldControl loops, p3controls) when changing
-  baseline Vue forms/filters/dialogs, or when the user asks about 控件闸 /
-  form-controls / allow-create. Use before claiming controls OK.
+  Runs or interprets the student-pack interactive controls gate (ban allow-create
+  / inventing options; filterable search OK; date/number handfill;
+  ArchiveFieldControl loops; p3controls) when changing baseline Vue
+  forms/filters/dialogs, or when the user asks about 控件闸 / form-controls /
+  allow-create. Use before claiming controls OK.
 ---
 
 # 可交互控件闸
@@ -28,4 +29,5 @@ description: >-
 
 - 非预期 → 修共享映射/契约或记账到 `BASELINE_KNOWN_CONTROLS`（须真阳性）。  
 - 禁止只擦 `.runtime-tmp` 学生包过关。  
-- 有限名单 creatable → 去 creatable；自由叙述 → 改文本框，禁止假下拉。
+- 有限名单 `allow-create` → 去掉 creatable，**保留 filterable**；自由叙述 → 改文本框，禁止假下拉。  
+- 「手填」= 造库外值，不是禁止在下拉里敲字筛选。

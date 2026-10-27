@@ -72,6 +72,25 @@ class UxCrosscutFeatureTests(unittest.TestCase):
         self.assertIn("sys_commission", sql.lower())
         self.assertNotIn("sys_help_doc", sql.lower())
 
+    def test_literature_fenxiao_does_not_mount_commission(self) -> None:
+        """方木探针：研究现状「综合分销系统 / 多维分销网络」≠ 佣金台账。"""
+        body = (
+            "1.2 本课题所涉及问题在国内外设计或研究的现状\n"
+            "1.2.1 国内现状\n"
+            "在国内，针对各类垂直电商及综合分销系统的技术研讨与平台实践日益丰富。"
+            "郑彩莲强调了多维分销网络对扩大体育消费的赋能价值[2]。\n"
+            "管理员端具备用户与商家账号管理、违规商品强制下架与订单监督。"
+        )
+        self.assertFalse(resolve_ux_crosscut_flags(body, "方木健身用品电商平台")["commission"])
+        out = apply_ux_crosscut_to_spec(_spec(body=body), body)
+        admin = ((out.get("schema") or {}).get("menus") or {}).get("admin") or []
+        keys = {m.get("key") for m in admin if isinstance(m, dict)}
+        self.assertNotIn("commissions", keys)
+
+    def test_fenxiao_commission_phrase_still_mounts(self) -> None:
+        body = "注册填邀请人，支付成功记分销佣金并入佣金台账。"
+        self.assertTrue(resolve_ux_crosscut_flags(body, "")["commission"])
+
     def test_help_phrase_opens_menu_and_sql(self) -> None:
         body = "提供系统帮助与操作手册。"
         self.assertTrue(resolve_ux_crosscut_flags(body, "")["help"])

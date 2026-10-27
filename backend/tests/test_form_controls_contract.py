@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
@@ -67,6 +68,7 @@ class FormControlsContractTests(unittest.TestCase):
         self.assertEqual(hits[0].detail, "collegeFilter")
 
     def test_select_without_allow_create_clean(self) -> None:
+        """filterable 筛选输入允许；仅 allow-create 造库外值才红。"""
         snippet = """
 <template>
   <el-select v-model="form.category" filterable clearable>
@@ -187,8 +189,10 @@ class FormControlsContractTests(unittest.TestCase):
     def test_archive_field_control_no_allow_create(self) -> None:
         path = frontend_src() / "components" / "ArchiveFieldControl.vue"
         text = path.read_text(encoding="utf-8")
+        # 注释可写「禁 creatable」；断言只盯标签属性，避免注释误杀
+        stripped = re.sub(r"<!--.*?-->", "", text, flags=re.S)
         self.assertNotRegex(
-            text,
+            stripped,
             r"\ballow-create\b|\ballowCreate\b",
             "ArchiveFieldControl 不得带 allow-create",
         )
@@ -198,6 +202,7 @@ class FormControlsContractTests(unittest.TestCase):
             if f.pattern_id == "no_select_allow_create"
         ]
         self.assertEqual(hits, [])
+        self.assertIn("filterable", text)
 
     def test_archive_loop_without_control_reds(self) -> None:
         snippet = """
