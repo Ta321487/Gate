@@ -1,4 +1,5 @@
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.table-ops { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .board-hint { margin: 0 0 10px; color: #64748b; font-size: 13px; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .rating { color: #b45309; font-weight: 600; }

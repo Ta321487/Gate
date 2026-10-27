@@ -71,19 +71,21 @@
     </section>
 
     <el-drawer v-model="historyOpen" :title="historyTitle" size="46%">
-      <el-table :data="history" stripe>
-        <el-table-column label="动作" width="80">
-          <template #default="{ row }">{{ actionLabel(row.action) }}</template>
-        </el-table-column>
-        <el-table-column label="原分数" width="90">
-          <template #default="{ row }">{{ row.oldScore == null ? '—' : row.oldScore }}</template>
-        </el-table-column>
-        <el-table-column label="新分数" width="90">
-          <template #default="{ row }">{{ row.newScore == null ? '—' : row.newScore }}</template>
-        </el-table-column>
-        <el-table-column prop="operator" label="操作人" width="120" />
-        <el-table-column prop="createdAt" label="时间" />
-      </el-table>
+      <div class="table-scroll">
+        <el-table :data="history" stripe>
+          <el-table-column label="动作" width="80">
+            <template #default="{ row }">{{ actionLabel(row.action) }}</template>
+          </el-table-column>
+          <el-table-column label="原分数" width="90">
+            <template #default="{ row }">{{ row.oldScore == null ? '—' : row.oldScore }}</template>
+          </el-table-column>
+          <el-table-column label="新分数" width="90">
+            <template #default="{ row }">{{ row.newScore == null ? '—' : row.newScore }}</template>
+          </el-table-column>
+          <el-table-column prop="operator" label="操作人" width="120" />
+          <el-table-column prop="createdAt" label="时间" />
+        </el-table>
+      </div>
       <p v-if="!history.length" class="empty">这条成绩还没有改分记录。</p>
     </el-drawer>
 

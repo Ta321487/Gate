@@ -8,8 +8,11 @@ from app.bake.layout_inventory import generate_layout_inventory
 from app.bake.layout_smoke import (
     PILOT_COMPONENT_ROW_ID,
     PILOT_PAGE_ROW_ID,
+    PILOT_PROFILE_ROW_ID,
     PILOT_ROW_IDS,
     Box,
+    assert_abs_ctrls_near_flow,
+    assert_avatar_edit_geometry,
     assert_metrics_ok,
     box_contains,
     box_iou,
@@ -42,6 +45,11 @@ class LayoutSmokeGeometryTests(unittest.TestCase):
             "footer": {"x": 420, "y": 480, "w": 320, "h": 40},
             "cta": {"x": 420, "y": 400, "w": 200, "h": 40},
             "cta_full_ellipsis": False,
+            "profile_member": {
+                "not_blank": True,
+                "account_face": "member",
+                "abs_ctrls": [{"gap": 8, "text": "换头像", "tag": "button"}],
+            },
         }
         self.assertEqual(assert_metrics_ok(metrics), [])
 
@@ -56,7 +64,9 @@ class LayoutSmokeGeometryTests(unittest.TestCase):
             "cta": {"x": 420, "y": 100, "w": 300, "h": 40},
             "cta_full_ellipsis": False,
         }
-        hits = assert_metrics_ok(metrics)
+        hits = assert_metrics_ok(
+            metrics, row_ids={PILOT_PAGE_ROW_ID, PILOT_COMPONENT_ROW_ID}
+        )
         self.assertTrue(
             any(f.defect_class == "overflow" for f in hits),
             f"溢出未红: {hits}",
@@ -73,7 +83,9 @@ class LayoutSmokeGeometryTests(unittest.TestCase):
             "cta": {"x": 30, "y": 400, "w": 100, "h": 36},
             "cta_full_ellipsis": True,
         }
-        hits = assert_metrics_ok(metrics)
+        hits = assert_metrics_ok(
+            metrics, row_ids={PILOT_PAGE_ROW_ID, PILOT_COMPONENT_ROW_ID}
+        )
         self.assertTrue(
             any(f.defect_class == "clip_hide" for f in hits),
             f"挤破 ellipsis 未红: {hits}",
@@ -90,7 +102,9 @@ class LayoutSmokeGeometryTests(unittest.TestCase):
             "cta": {"x": 140, "y": 300, "w": 120, "h": 40},
             "cta_full_ellipsis": False,
         }
-        hits = assert_metrics_ok(metrics)
+        hits = assert_metrics_ok(
+            metrics, row_ids={PILOT_PAGE_ROW_ID, PILOT_COMPONENT_ROW_ID}
+        )
         self.assertTrue(
             any(f.defect_class == "overlap" and f.row_id == PILOT_COMPONENT_ROW_ID for f in hits),
             f"叠穿未红: {hits}",
@@ -102,9 +116,40 @@ class LayoutSmokeGeometryTests(unittest.TestCase):
         self.assertEqual(ids, set(PILOT_ROW_IDS))
         page = next(r for r in rows if r.row_id == PILOT_PAGE_ROW_ID)
         comp = next(r for r in rows if r.row_id == PILOT_COMPONENT_ROW_ID)
+        prof = next(r for r in rows if r.row_id == PILOT_PROFILE_ROW_ID)
         self.assertEqual(page.vue, "views/Login.vue")
         self.assertEqual(comp.vue, "components/AuthShell.vue")
+        self.assertEqual(prof.vue, "views/Profile.vue")
         self.assertIn(PILOT_PAGE_ROW_ID, comp.hosts)
+
+    def test_abs_ctrl_far_from_flow_reds(self) -> None:
+        """绝对可点远离同槽文档流 → misaligned（通用，非换头像专断言）。"""
+        hits = assert_abs_ctrls_near_flow(
+            {"abs_ctrls": [{"gap": 120, "text": "换头像", "tag": "button"}]},
+            row_ids=[PILOT_PROFILE_ROW_ID],
+        )
+        self.assertTrue(
+            any(f.defect_class == "misaligned" for f in hits),
+            f"远离未红: {hits}",
+        )
+
+    def test_abs_ctrl_near_flow_green(self) -> None:
+        hits = assert_abs_ctrls_near_flow(
+            {"abs_ctrls": [{"gap": 8, "text": "换头像", "tag": "button"}]},
+            row_ids=[PILOT_PROFILE_ROW_ID],
+        )
+        self.assertEqual(hits, [], f"贴近误杀: {hits}")
+
+    def test_avatar_compat_wrapper(self) -> None:
+        hits = assert_avatar_edit_geometry(
+            {
+                "not_blank": True,
+                "avatar": {"x": 20, "y": 20, "w": 72, "h": 72},
+                "avatar_btn": {"x": 30, "y": 84, "w": 52, "h": 22},
+            },
+            row_id=PILOT_PROFILE_ROW_ID,
+        )
+        self.assertEqual(hits, [], f"兼容包装误杀: {hits}")
 
 
 class LayoutSmokePlanTests(unittest.TestCase):
@@ -147,6 +192,13 @@ class LayoutSmokePlanTests(unittest.TestCase):
         self.assertTrue(
             any(v.delivered for v in visits),
             "缺少 surface 皮覆盖 visit（多脸未循环）",
+        )
+        self.assertTrue(
+            any(
+                v.path == "/profile" and v.delivered.get("domainGroup") == "trade"
+                for v in visits
+            ),
+            "缺少 /profile×member 账户脸探针",
         )
         self.assertGreaterEqual(len(visits), 100, f"visit 过少: {len(visits)}")
 
@@ -217,12 +269,8 @@ class LayoutSmokeBrowserTests(unittest.TestCase):
 # D3 试点：表空 = 须零红
 _BASELINE_SMOKE_KNOWN: frozenset[tuple[str, str, str]] = frozenset()
 
-# D1 孤儿：无 hosts，D4 记不可访（不改页挂回）
-_BASELINE_UNVISITABLE: frozenset[str] = frozenset(
-    {
-        "component:components/EntityDetailLayout.vue",
-    }
-)
+# D4 不可访记账（无 hosts / 不可 visit）；现无基线孤儿
+_BASELINE_UNVISITABLE: frozenset[str] = frozenset()
 
 # D4 全表真阳性记账：(defect_class, row_id, message)；本刀不改页消红
 _BASELINE_FULL_KNOWN: frozenset[tuple[str, str, str]] = frozenset(

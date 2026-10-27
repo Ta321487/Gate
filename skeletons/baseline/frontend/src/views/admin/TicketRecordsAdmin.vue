@@ -369,7 +369,7 @@
       </el-table-column>
       <el-table-column label="操作" min-width="200" fixed="right">
         <template #default="{ row }">
-          <div class="table-ops">
+          <div class="table-ops flex-wrap">
           <el-button link type="info" @click="openProgress(row)">进度</el-button>
           <el-button
             v-if="canAdminCheckin(row)"

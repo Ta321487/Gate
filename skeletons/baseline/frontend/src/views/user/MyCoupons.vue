@@ -23,7 +23,16 @@
             · 余 {{ Math.max(0, Number(row.totalQuota) - Number(row.claimed || 0)) }} 张
           </template>
         </p>
-        <el-button size="small" type="primary" @click="claim(row)">领取</el-button>
+        <div class="card-foot">
+          <div class="card-acts">
+            <el-button
+              size="small"
+              type="primary"
+              class="act-primary"
+              @click="claim(row)"
+            >领取</el-button>
+          </div>
+        </div>
       </article>
       <div v-if="!templates.length">
         <EmptyHint title="暂无可领券" desc="有新券时会出现在这里。" mark="券" />

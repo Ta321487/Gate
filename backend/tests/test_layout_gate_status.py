@@ -24,10 +24,13 @@ class LayoutGateStatusTests(unittest.TestCase):
         self.assertEqual(snap["inventory"]["issue_count"], 0)
         self.assertEqual(snap["contract"]["finding_count"], 0)
 
-    def test_known_debt_surfaced(self) -> None:
+    def test_known_debt_cleared(self) -> None:
+        """共享结构债消红后摘要不得再挂登记例外。"""
         snap = layout_gate_snapshot()
-        self.assertGreaterEqual(snap["inventory"]["known_debt_count"], 1)
-        self.assertGreaterEqual(snap["contract"]["known_debt_count"], 1)
+        self.assertEqual(snap["inventory"]["known_debt_count"], 0, snap["inventory"])
+        self.assertEqual(snap["contract"]["known_debt_count"], 0, snap["contract"])
+        self.assertEqual(snap["inventory"]["known_debt"], [])
+        self.assertEqual(snap["contract"]["known_debt"], [])
 
 
 if __name__ == "__main__":

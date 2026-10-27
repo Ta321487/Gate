@@ -86,15 +86,8 @@ public class TicketDashboardController {
                 m.put("rejectedTickets", 0);
                 m.put("todoScopedByRole", false);
             }
-        } else {
-            try {
-                m.putAll(TicketStore.dashboard(userRole, uid, superAdmin));
-            } catch (Exception ignored) {
-                m.putIfAbsent("userTotal", 0);
-                m.putIfAbsent("bookTotal", 0);
-                m.putIfAbsent("todoScopedByRole", false);
-            }
         }
+        // 无单据包 prune 掉 TicketStore 后不要再调 dashboard（会变成 putAll(null) 把 KPI 写成 0）
 
         if (OrderStore.enabled()) {
             String ownerFilter = merchantScoped ? uid : null;
@@ -170,9 +163,10 @@ public class TicketDashboardController {
             }
             m.put("lowStockCount", ArchiveStore.countLowStock(warn, merchantScoped ? uid : null));
             m.put("stockWarnBelow", warn);
-            if (merchantScoped) {
-                m.put("bookTotal", ArchiveStore.countItems(uid));
-            }
+            // 平台总管看全站用品数；商家岗只看本店（勿只给 merchantScoped 赋值）
+            m.put("bookTotal", ArchiveStore.countItems(merchantScoped ? uid : null));
+        } else if (!TicketStore.enabled()) {
+            m.putIfAbsent("bookTotal", ArchiveStore.countItems());
         }
         if (SurveyStore.ready()) {
             try {
@@ -187,9 +181,9 @@ public class TicketDashboardController {
             m.putIfAbsent("pvToday", 0);
             m.putIfAbsent("pvTotal", 0);
         }
-        // 无单据域 prune 掉 TicketStore 后仍要有买家/用户数；勿只靠 TicketDashOps
+        // 买家/用户数：始终按注册角色重算（勿 putIfAbsent，避免 prune/异常路径留下的 0 锁死）
         String countRole = userRole == null || userRole.isBlank() ? "user" : userRole.trim();
-        m.putIfAbsent("userTotal", UserStore.countByRole(countRole));
+        m.put("userTotal", UserStore.countByRole(countRole));
         m.put("charts", charts);
         return m;
     }

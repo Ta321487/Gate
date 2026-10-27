@@ -82,7 +82,10 @@
   color: #f8fafc;
 }
 [data-account-face='member'] .card.af-identity .avatar-slot {
-  padding: 20px 0 20px 22px;
+  /* stretch 只撑彩条高度；缩进用 margin，勿用左 padding（会把 absolute 水平中心挤歪） */
+  align-self: center;
+  margin: 20px 0 16px 22px;
+  padding: 0 0 12px;
 }
 [data-account-face='member'] .card.af-identity .who {
   padding: 20px 22px 20px 8px;

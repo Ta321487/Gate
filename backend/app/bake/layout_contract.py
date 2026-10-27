@@ -16,12 +16,22 @@ from app.bake.layout_inventory import frontend_src, list_vue_rel
 _ACTIONS_HARD_CAP = 5
 
 _STATUS_MARK = re.compile(
-    r"""StatusChip|<el-tag\b|class=["'][^"']*\bstatus\b|class=["'][^"']*\bchip\b""",
+    r"""StatusChip|<el-tag\b|class=["'][^"']*\bstatus\b|class=["'][^"']*\bchip\b"""
+    r"""|class=["'][^"']*\bstage-chip\b""",
     re.I,
 )
+# 列表/工具条「按钮个数」仍只计 el-button（原生 button 另由绝对定位纪律管，避免把上传/分页钮当操作堆）
 _BTN = re.compile(r"""<el-button\b""", re.I)
 _FLEX_WRAP = re.compile(
     r"""flex-wrap\s*:\s*wrap|class=["'][^"']*\bflex-wrap\b|class=["'][^"']*\bwrap\b""",
+    re.I,
+)
+_CARD_ARTICLE = re.compile(
+    r"""<article\b([^>]*\bclass=["'][^"']*\bcard\b[^"']*["'][^>]*)>([\s\S]*?)</article>""",
+    re.I,
+)
+_SIDE_RAIL_REL = re.compile(
+    r"""(?:^|/)components/PortalSideRail\.vue$""",
     re.I,
 )
 _TABLE_OPS = re.compile(
@@ -29,16 +39,20 @@ _TABLE_OPS = re.compile(
     re.I,
 )
 _MORE_BTN = re.compile(r"""更多|more-actions|actions-more""", re.I)
+# 主 CTA：el-button type=primary，或原生 button.submit / type=submit（工厂常混用）
 _PRIMARY_ABS = re.compile(
     r"""<el-button\b[^>]*\btype=["']primary["'][^>]*\bstyle=["'][^"']*position\s*:\s*absolute"""
-    r"""|<el-button\b[^>]*\bstyle=["'][^"']*position\s*:\s*absolute[^"']*["'][^>]*\btype=["']primary["']""",
+    r"""|<el-button\b[^>]*\bstyle=["'][^"']*position\s*:\s*absolute[^"']*["'][^>]*\btype=["']primary["']"""
+    r"""|<button\b[^>]*(?:\btype=["']submit["']|\bclass=["'][^"']*\bsubmit\b)[^>]*\bstyle=["'][^"']*position\s*:\s*absolute"""
+    r"""|<button\b[^>]*\bstyle=["'][^"']*position\s*:\s*absolute[^"']*["'][^>]*(?:\btype=["']submit["']|\bclass=["'][^"']*\bsubmit\b)""",
     re.I | re.S,
 )
 _BTN_ABS = re.compile(
-    r"""<el-button\b[^>]*\bstyle=["'][^"']*position\s*:\s*absolute""",
+    r"""<(?:el-button|button)\b[^>]*\bstyle=["'][^"']*position\s*:\s*absolute""",
     re.I | re.S,
 )
-_BTN_OPEN = re.compile(r"""<el-button\b([^>]*)/?>""", re.I)
+# 工厂可点控件：Element 钮 + 原生 button（换头像等）；不扫裸 <a> 以免顶栏绝对定位误杀
+_BTN_OPEN = re.compile(r"""<(?:el-button|button)\b([^>]*)/?>""", re.I)
 _CLASS_ATTR = re.compile(r"""\bclass\s*=\s*["']([^"']*)["']""", re.I)
 _STYLE_BLOCK = re.compile(r"""<style\b[^>]*>([\s\S]*?)</style>""", re.I)
 _CSS_COMMENT = re.compile(r"""/\*[\s\S]*?\*/""")
@@ -88,18 +102,16 @@ def _companion_css(src: Path, vue_rel: str) -> str:
     return ""
 
 
-def _classes_with_out_of_flow(css: str) -> set[str]:
-    """选择器最右简单段上、声明了 position:absolute|fixed 的 class 名。
-
-    只取最右 compound（如 `.card .float-cta` → `float-cta`），避免容器 class 误杀。
-    装饰点/轨道等非 el-button 挂载时不会红。
-    """
+def _classes_from_css_body(
+    css: str, body_pred
+) -> set[str]:
+    """选择器最右简单段上、声明满足 body_pred 的 class 名。"""
     out: set[str] = set()
     if not css or not css.strip():
         return out
     cleaned = _CSS_COMMENT.sub("", css)
     for sel, body in _CSS_RULE.findall(cleaned):
-        if not _POS_OUT.search(body):
+        if not body_pred(body):
             continue
         for part in sel.split(","):
             part = part.strip()
@@ -108,6 +120,78 @@ def _classes_with_out_of_flow(css: str) -> set[str]:
             last = re.split(r"""[\s>+~]+""", part)[-1]
             for cm in re.finditer(r"""\.([A-Za-z_][\w-]*)""", last):
                 out.add(cm.group(1))
+    return out
+
+
+def _classes_with_out_of_flow(css: str) -> set[str]:
+    """选择器最右简单段上、声明了 position:absolute|fixed 的 class 名。
+
+    只取最右 compound（如 `.card .float-cta` → `float-cta`），避免容器 class 误杀。
+    装饰点/轨道等非 el-button 挂载时不会红。
+    """
+    return _classes_from_css_body(css, lambda body: bool(_POS_OUT.search(body)))
+
+
+def _classes_with_flex_wrap(css: str) -> set[str]:
+    """companion/SFC CSS 里写了 flex-wrap:wrap 的 class（如 ArchiveBrowse `.row`）。
+
+    结构闸必须认 CSS 别名，不能只认模板字面 `flex-wrap`。
+    """
+    return _classes_from_css_body(
+        css, lambda body: bool(re.search(r"""flex-wrap\s*:\s*wrap\b""", body, re.I))
+    )
+
+
+def _attr_class_tokens(attrs: str) -> set[str]:
+    names: set[str] = set()
+    for m in _CLASS_ATTR.finditer(attrs or ""):
+        for tok in m.group(1).split():
+            if tok.startswith(":") or "{{" in tok:
+                continue
+            names.add(tok)
+    return names
+
+
+def _strip_class_subtrees(html: str, class_names: set[str]) -> str:
+    """粗剥带指定 class 的一级开标签子树（深度配对），用于看槽外是否还剩按钮。"""
+    if not html or not class_names:
+        return html
+    out = html
+    # 多轮：嵌套槽少见，两轮够用
+    for _ in range(3):
+        changed = False
+        for m in list(re.finditer(r"""<([a-zA-Z0-9-]+)([^>]*)>""", out)):
+            tag, attrs = m.group(1), m.group(2)
+            if tag.lower() in {"script", "style", "template"}:
+                continue
+            if not (_attr_class_tokens(attrs) & class_names):
+                continue
+            start = m.start()
+            depth = 1
+            i = m.end()
+            open_re = re.compile(rf"""<{tag}\b""", re.I)
+            close_re = re.compile(rf"""</{tag}\s*>""", re.I)
+            end = None
+            while i < len(out) and depth > 0:
+                mo = open_re.search(out, i)
+                mc = close_re.search(out, i)
+                if mc is None:
+                    break
+                if mo and mo.start() < mc.start():
+                    depth += 1
+                    i = mo.end()
+                else:
+                    depth -= 1
+                    if depth == 0:
+                        end = mc.end()
+                    i = mc.end()
+            if end is None:
+                continue
+            out = out[:start] + out[end:]
+            changed = True
+            break
+        if not changed:
+            break
     return out
 
 
@@ -122,10 +206,20 @@ def _btn_class_names(attrs: str) -> set[str]:
     return names
 
 
+def _is_primary_clickable_attrs(attrs: str) -> bool:
+    if re.search(r"""type\s*=\s*["']primary["']""", attrs, re.I):
+        return True
+    if re.search(r"""type\s*=\s*["']submit["']""", attrs, re.I):
+        return True
+    if re.search(r"""\bclass=["'][^"']*\b(?:submit|el-button--primary)\b""", attrs, re.I):
+        return True
+    return False
+
+
 def _btns_with_abs_class(
     template: str, abs_classes: set[str]
 ) -> list[tuple[str, set[str], bool]]:
-    """[(snippet, hit_classes, is_primary), ...]"""
+    """[(snippet, hit_classes, is_primary), ...] — el-button 与原生 button。"""
     if not abs_classes:
         return []
     hits: list[tuple[str, set[str], bool]] = []
@@ -135,34 +229,42 @@ def _btns_with_abs_class(
         hit = owned & abs_classes
         if not hit:
             continue
-        is_primary = bool(re.search(r"""type\s*=\s*["']primary["']""", attrs, re.I))
-        hits.append((m.group(0)[:100], hit, is_primary))
+        hits.append((m.group(0)[:100], hit, _is_primary_clickable_attrs(attrs)))
     return hits
 
 
-def _find_flex_wrap_regions(template: str) -> list[str]:
-    """粗切：带 flex-wrap 的开标签起，做简单深度配对，取内部 HTML。"""
-    regions: list[str] = []
+def _is_wrap_open_attrs(attrs: str, wrap_classes: set[str]) -> bool:
+    """模板字面 flex-wrap / wrap+flex，或 class 命中 CSS 别名。"""
+    if re.search(r"""flex-wrap\s*:\s*wrap""", attrs, re.I):
+        return True
+    if re.search(r"""\bflex-wrap\b""", attrs, re.I):
+        return True
+    if re.search(r"""class=["'][^"']*\bwrap\b""", attrs, re.I) and re.search(
+        r"""\bflex\b""", attrs, re.I
+    ):
+        return True
+    if wrap_classes and (_attr_class_tokens(attrs) & wrap_classes):
+        return True
+    return False
+
+
+_ACTS_SLOT_CLASSES = frozenset(
+    {"card-acts", "table-ops", "row-actions", "toolbar", "edit-moves"}
+)
+
+
+def _find_flex_wrap_regions(
+    template: str, wrap_classes: set[str] | None = None
+) -> list[tuple[set[str], str]]:
+    """粗切：带 flex-wrap（含 CSS class 别名）的开标签 → (开标签 class 集, 内部 HTML)。"""
+    wrap_classes = wrap_classes or set()
+    regions: list[tuple[set[str], str]] = []
     for m in re.finditer(r"""<([a-zA-Z0-9-]+)([^>]*)>""", template):
         tag, attrs = m.group(1), m.group(2)
         if tag.lower() in {"script", "style", "template"}:
             continue
-        blob = attrs + ("" if "flex-wrap" in attrs else "")
-        # class 或 style 含 wrap
-        if not (
-            re.search(r"""flex-wrap\s*:\s*wrap""", attrs, re.I)
-            or re.search(r"""\bflex-wrap\b""", attrs, re.I)
-            or (
-                re.search(r"""\bclass=["'][^"']*\bwrap\b""", attrs, re.I)
-                and "flex" in attrs.lower()
-            )
-        ):
-            # 也认 class="... wrap" 且同标签有 display:flex / d-flex / flex
-            if not (
-                re.search(r"""class=["'][^"']*\bwrap\b""", attrs, re.I)
-                and re.search(r"""\bflex\b""", attrs, re.I)
-            ):
-                continue
+        if not _is_wrap_open_attrs(attrs, wrap_classes):
+            continue
         start = m.end()
         depth = 1
         i = start
@@ -179,26 +281,125 @@ def _find_flex_wrap_regions(template: str) -> list[str]:
             else:
                 depth -= 1
                 if depth == 0:
-                    regions.append(template[start : mc.start()])
+                    regions.append((_attr_class_tokens(attrs), template[start : mc.start()]))
                 i = mc.end()
-        _ = blob  # keep linter calm
     return regions
 
 
-def check_no_status_acts_same_wrap(vue_rel: str, template: str) -> list[ContractFinding]:
+def check_no_status_acts_same_wrap(
+    vue_rel: str, template: str, css: str = ""
+) -> list[ContractFinding]:
+    """状态+按钮同处 wrap 根 → wrap_mess。
+
+    wrap 根 = 模板字面 flex-wrap **或** 同页/companion CSS 上 flex-wrap:wrap 的 class 别名
+   （农产货架卡曾用 class=row + ArchiveBrowse.css .row{flex-wrap} 逃过字面扫描）。
+    操作槽自身（card-acts 等）允许内部 wrap；状态+按钮同槽缠行才红。
+    """
     out: list[ContractFinding] = []
-    for i, region in enumerate(_find_flex_wrap_regions(template)):
-        if _STATUS_MARK.search(region) and _BTN.search(region):
-            # 区内若已有 table-ops 单独包按钮、状态在外——仍可能同 wrap 根；本模式禁同根
+    wrap_classes = _classes_with_flex_wrap(css)
+    for i, (classes, region) in enumerate(
+        _find_flex_wrap_regions(template, wrap_classes)
+    ):
+        # 操作槽根上的 wrap（多按钮换行）合法；挤破由 actions_may_wrap_or_menu 管
+        if classes & _ACTS_SLOT_CLASSES:
+            continue
+        if not (_STATUS_MARK.search(region) and _BTN.search(region)):
+            continue
+        stripped = _strip_class_subtrees(region, set(_ACTS_SLOT_CLASSES))
+        if not (_BTN.search(stripped) and _STATUS_MARK.search(stripped)):
+            continue
+        out.append(
+            ContractFinding(
+                "no_status_acts_same_wrap",
+                "wrap_mess",
+                vue_rel,
+                "状态标记与操作按钮同处 flex-wrap 根（含 CSS 别名）",
+                f"region#{i}",
+            )
+        )
+    return out
+
+
+def check_list_card_partition(vue_rel: str, template: str) -> list[ContractFinding]:
+    """列表卡 article.card：有状态又有操作时，按钮必须落在 card-acts。
+
+    挡「CSS 已写 card-foot/card-acts、模板仍把库存标签和加购揉进 .row」这类 DOM/CSS 脱节。
+    状态可在 hd / card-meta；不要求每卡都有 card-meta。
+    """
+    out: list[ContractFinding] = []
+    for i, m in enumerate(_CARD_ARTICLE.finditer(template)):
+        region = m.group(2)
+        if not (_STATUS_MARK.search(region) and _BTN.search(region)):
+            continue
+        if not re.search(r"""\bcard-acts\b""", region):
             out.append(
                 ContractFinding(
-                    "no_status_acts_same_wrap",
+                    "list_card_partition",
                     "wrap_mess",
                     vue_rel,
-                    "状态标记与操作按钮同处 flex-wrap 根",
-                    f"region#{i}",
+                    "列表卡同时有状态标记与操作按钮，但缺少 card-acts 操作槽",
+                    f"article.card#{i}",
                 )
             )
+            continue
+        leaked = _strip_class_subtrees(
+            region, {"card-acts", "table-ops", "row-actions", "toolbar"}
+        )
+        if _BTN.search(leaked):
+            out.append(
+                ContractFinding(
+                    "list_card_partition",
+                    "wrap_mess",
+                    vue_rel,
+                    "列表卡操作按钮落在 card-acts 外（状态与操作易缠行）",
+                    f"article.card#{i}",
+                )
+            )
+    return out
+
+
+def check_side_rail_align(
+    vue_rel: str, template: str, css: str = ""
+) -> list[ContractFinding]:
+    """市集右侧栏：图标须进固定 mark 槽；编辑行须 grid 两栏（防大空白缝）。"""
+    rel = vue_rel.replace("\\", "/")
+    if not _SIDE_RAIL_REL.search(rel):
+        return []
+    out: list[ContractFinding] = []
+    if not re.search(r"""class=["'][^"']*\brail-mark\b""", template):
+        out.append(
+            ContractFinding(
+                "side_rail_align",
+                "misaligned",
+                vue_rel,
+                "PortalSideRail 外侧入口缺少 rail-mark 图标槽（图标光心易飘）",
+                "rail-mark",
+            )
+        )
+    if not re.search(r"""\bedit-row\b""", template):
+        out.append(
+            ContractFinding(
+                "side_rail_align",
+                "gap_chaos",
+                vue_rel,
+                "PortalSideRail 编辑列表缺少 edit-row",
+                "edit-row",
+            )
+        )
+    elif not re.search(
+        r"""\.edit-row\b[^{]*\{[^}]*grid-template-columns\s*:""",
+        css or "",
+        re.I,
+    ):
+        out.append(
+            ContractFinding(
+                "side_rail_align",
+                "gap_chaos",
+                vue_rel,
+                "PortalSideRail 编辑行未用 grid-template-columns（易出现勾选区与箭头大空白缝）",
+                "edit-row-grid",
+            )
+        )
     return out
 
 
@@ -253,7 +454,7 @@ def check_primary_cta_in_slot(
                 "primary_cta_in_slot",
                 "misaligned",
                 vue_rel,
-                "主 CTA（type=primary）带 position:absolute 漂出文档流",
+                "主 CTA（primary/submit）带 position:absolute 漂出文档流",
                 m.group(0)[:80],
             )
         )
@@ -261,13 +462,12 @@ def check_primary_cta_in_slot(
     for snippet, hit, is_primary in _btns_with_abs_class(template, abs_cls):
         if not is_primary:
             continue
-        # inline 已报过的同钮跳过（detail 不同也无妨；按 snippet 粗去重）
         out.append(
             ContractFinding(
                 "primary_cta_in_slot",
                 "misaligned",
                 vue_rel,
-                "主 CTA（type=primary）经 CSS class position:absolute|fixed 漂出文档流",
+                "主 CTA（primary/submit）经 CSS class position:absolute|fixed 漂出文档流",
                 f"class={','.join(sorted(hit))} | {snippet[:60]}",
             )
         )
@@ -336,14 +536,14 @@ def check_no_orphan_absolute_btn(
     for m in _BTN_ABS.finditer(template):
         # primary 已由 primary_cta_in_slot 报，这里报其余业务钮
         snippet = m.group(0)
-        if re.search(r"""type=["']primary["']""", snippet, re.I):
+        if _is_primary_clickable_attrs(snippet):
             continue
         out.append(
             ContractFinding(
                 "no_orphan_absolute_btn",
                 "misaligned",
                 vue_rel,
-                "业务按钮 inline position:absolute 脱离文档流",
+                "业务按钮（el-button/原生 button）inline position:absolute 脱离文档流",
                 snippet[:80],
             )
         )
@@ -356,8 +556,121 @@ def check_no_orphan_absolute_btn(
                 "no_orphan_absolute_btn",
                 "misaligned",
                 vue_rel,
-                "业务按钮经 CSS class position:absolute|fixed 脱离文档流",
+                "业务按钮（el-button/原生 button）经 CSS class position:absolute|fixed 脱离文档流",
                 f"class={','.join(sorted(hit))} | {snippet[:60]}",
+            )
+        )
+    return out
+
+
+_SLOT_SELF_SIZED = re.compile(
+    r"""align-self\s*:\s*(?:flex-start|start|center)"""
+    r"""|height\s*:\s*fit-content"""
+    r"""|width\s*:\s*max-content""",
+    re.I,
+)
+
+
+def _class_rule_bodies(css: str, class_name: str) -> list[str]:
+    """某 class 在 CSS 中各条规则声明体（粗切）。"""
+    if not css or not class_name:
+        return []
+    cleaned = _CSS_COMMENT.sub("", css)
+    out: list[str] = []
+    for sel, body in _CSS_RULE.findall(cleaned):
+        if re.search(rf"""\.{re.escape(class_name)}\b""", sel):
+            out.append(body)
+    return out
+
+
+def check_abs_in_stretch_slot(
+    vue_rel: str, template: str, css: str = ""
+) -> list[ContractFinding]:
+    """通用：flex stretch 下，装着「贴边 absolute 可点」的 relative 槽必须自限高。
+
+    反例类：身份栏 stretch 把槽拉高 → absolute 底边钮掉到条底，远离槽内文档流内容
+    （换头像只是首发样例，禁止再为每个控件单开模式）。
+    """
+    css = css or ""
+    if not re.search(r"""align-items\s*:\s*stretch\b""", css, re.I):
+        return []
+    # 贴底 absolute（勿匹配 padding-bottom / border-bottom）
+    _ABS_BOTTOM = re.compile(r"""(?<![\w-])bottom\s*:""", re.I)
+    abs_edge = _classes_from_css_body(
+        css,
+        lambda body: bool(_POS_OUT.search(body)) and bool(_ABS_BOTTOM.search(body)),
+    )
+    if not abs_edge:
+        return []
+    rel_classes = _classes_from_css_body(
+        css, lambda body: bool(re.search(r"""position\s*:\s*relative\b""", body, re.I))
+    )
+    if not rel_classes:
+        return []
+    # 轮播台/横幅等故意拉满的媒体槽：有明确高度/inset，不要求 align-self
+    _SLOT_MEDIA_FILL = re.compile(
+        r"""aspect-ratio\s*:|inset\s*:|min-height\s*:"""
+        r"""|height\s*:\s*(?!fit-content|auto)[^;]+"""
+        r"""|flex\s*:\s*[1-9]""",
+        re.I,
+    )
+
+    def _slot_ok(cls: str) -> bool:
+        bodies = _class_rule_bodies(css, cls)
+        if not bodies:
+            return False
+        if any(_SLOT_SELF_SIZED.search(b) for b in bodies):
+            return True
+        if any(_SLOT_MEDIA_FILL.search(b) for b in bodies):
+            return True
+        return False
+
+    out: list[ContractFinding] = []
+    for m in re.finditer(r"""<([a-zA-Z0-9-]+)([^>]*)>""", template):
+        tag, attrs = m.group(1), m.group(2)
+        if tag.lower() in {"script", "style", "template"}:
+            continue
+        owned = _attr_class_tokens(attrs)
+        slot_hit = owned & rel_classes
+        if not slot_hit:
+            continue
+        start = m.end()
+        depth = 1
+        i = start
+        open_re = re.compile(rf"""<{tag}\b""", re.I)
+        close_re = re.compile(rf"""</{tag}\s*>""", re.I)
+        end = None
+        while i < len(template) and depth > 0:
+            mo = open_re.search(template, i)
+            mc = close_re.search(template, i)
+            if mc is None:
+                break
+            if mo and mo.start() < mc.start():
+                depth += 1
+                i = mo.end()
+            else:
+                depth -= 1
+                if depth == 0:
+                    end = mc.start()
+                i = mc.end()
+        if end is None:
+            continue
+        body = template[start:end]
+        if not re.search(r"""<(?:el-button|button)\b""", body, re.I):
+            continue
+        if not any(re.search(rf"""\b{re.escape(c)}\b""", body) for c in abs_edge):
+            continue
+        unsized = [cls for cls in sorted(slot_hit) if not _slot_ok(cls)]
+        if not unsized:
+            continue
+        out.append(
+            ContractFinding(
+                "abs_in_stretch_slot",
+                "misaligned",
+                vue_rel,
+                "stretch 布局下 relative 槽内有贴底 absolute 可点控件，但槽未自限高"
+                "（align-self/fit-content/max-content）；钮易掉到条底远离文档流内容",
+                ",".join(unsized),
             )
         )
     return out
@@ -389,27 +702,57 @@ def check_dialog_body_scroll(vue_rel: str, template: str) -> list[ContractFindin
     return out
 
 
+_CSS_AWARE_CHECKERS = frozenset(
+    {
+        check_no_status_acts_same_wrap,
+        check_primary_cta_in_slot,
+        check_no_orphan_absolute_btn,
+        check_side_rail_align,
+        check_abs_in_stretch_slot,
+    }
+)
+
 _CHECKERS = (
     check_no_status_acts_same_wrap,
+    check_list_card_partition,
+    check_side_rail_align,
     check_toolbar_layers,
     check_primary_cta_in_slot,
     check_row_actions_column,
     check_actions_may_wrap_or_menu,
     check_no_orphan_absolute_btn,
     check_dialog_body_scroll,
+    check_abs_in_stretch_slot,
 )
 
 PATTERN_IDS: tuple[str, ...] = tuple(
     {
         "no_status_acts_same_wrap",
+        "list_card_partition",
+        "side_rail_align",
         "toolbar_layers",
         "primary_cta_in_slot",
         "row_actions_column",
         "actions_may_wrap_or_menu",
         "no_orphan_absolute_btn",
         "dialog_body_scroll",
+        "abs_in_stretch_slot",
     }
 )
+
+def load_global_styles_css(src: Path) -> str:
+    """工厂全局皮：styles/**/*.css（含 accountFace / themes / chrome）。
+
+    结构闸必须扫到，禁止只认 SFC + companion 而漏 stretch/绝对定位写在全局皮里。
+    """
+    styles = src / "styles"
+    if not styles.is_dir():
+        return ""
+    chunks: list[str] = []
+    for p in sorted(styles.rglob("*.css")):
+        if p.is_file():
+            chunks.append(p.read_text(encoding="utf-8"))
+    return "\n".join(chunks)
 
 
 def scan_file_contracts(
@@ -419,7 +762,7 @@ def scan_file_contracts(
     css = "\n".join(p for p in (_extract_style_css(raw), extra_css) if p)
     findings: list[ContractFinding] = []
     for fn in _CHECKERS:
-        if fn in (check_primary_cta_in_slot, check_no_orphan_absolute_btn):
+        if fn in _CSS_AWARE_CHECKERS:
             findings.extend(fn(vue_rel, template, css))
         else:
             findings.extend(fn(vue_rel, template))
@@ -430,13 +773,15 @@ def scan_layout_contracts(
     root: Path | None = None, *, src: Path | None = None
 ) -> list[ContractFinding]:
     src = frontend_src(root, src=src)
+    global_css = load_global_styles_css(src)
     findings: list[ContractFinding] = []
     for part in ("views", "layouts", "components"):
         for vue_rel in list_vue_rel(src, part):
             vue_path = src / vue_rel
             text = vue_path.read_text(encoding="utf-8") if vue_path.is_file() else ""
             side_css = _companion_css(src, vue_rel)
-            findings.extend(scan_file_contracts(vue_rel, text, extra_css=side_css))
+            extra = "\n".join(p for p in (side_css, global_css) if p)
+            findings.extend(scan_file_contracts(vue_rel, text, extra_css=extra))
     # 稳定去重
     seen: set[tuple[str, str, str]] = set()
     out: list[ContractFinding] = []
@@ -450,22 +795,8 @@ def scan_layout_contracts(
 
 
 # 基线真阳性记账（不改页消红）。工厂摘要与 D2 测共用。(pattern_id, vue, detail)
-BASELINE_KNOWN_CONTRACTS: frozenset[tuple[str, str, str]] = frozenset(
-    {
-        ("actions_may_wrap_or_menu", "views/admin/ArchiveAdmin.vue", "n=9"),
-        ("dialog_body_scroll", "views/admin/ArchiveAdmin.vue", "snackVisible"),
-        ("dialog_body_scroll", "views/admin/GradeScoresAdmin.vue", "historyOpen"),
-        ("actions_may_wrap_or_menu", "views/admin/OrdersAdmin.vue", "n=19"),
-        ("toolbar_layers", "views/admin/OverdueAdmin.vue", "after#0"),
-        ("actions_may_wrap_or_menu", "views/admin/ReservationsAdmin.vue", "n=20"),
-        ("actions_may_wrap_or_menu", "views/admin/TicketRecordsAdmin.vue", "n=14"),
-        ("toolbar_layers", "views/admin/TicketsAdmin.vue", "after#1"),
-        ("toolbar_layers", "views/admin/TicketsAdmin.vue", "after#2"),
-        ("actions_may_wrap_or_menu", "views/admin/TicketsAdmin.vue", "n=7"),
-        ("dialog_body_scroll", "views/admin/TicketsAdmin.vue", "evalCollege.visible"),
-        ("actions_may_wrap_or_menu", "views/admin/UsersAdmin.vue", "n=9"),
-    }
-)
+# 2026-10-25：共享管理页结构债已消；空集 = 无登记例外。
+BASELINE_KNOWN_CONTRACTS: frozenset[tuple[str, str, str]] = frozenset()
 
 
 def assert_layout_contracts_ok(

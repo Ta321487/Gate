@@ -1,5 +1,5 @@
 /**
- * D3 试点：打开 /login，mock /api，采集 AuthShell + 主 CTA 几何。
+ * D3 试点：/login（AuthShell）+ /profile×member（换头像贴圆）。
  * stdout 最后一行 JSON；由 layout_smoke.run_playwright_pilot 消费。
  */
 import { createRequire } from 'node:module'
@@ -20,8 +20,13 @@ const baseURL = (process.env.LAYOUT_SMOKE_BASE_URL || 'http://127.0.0.1:5173').r
 const crush = process.env.LAYOUT_SMOKE_CRUSH === '1'
 const viewport = crush ? { width: 390, height: 844 } : { width: 1280, height: 800 }
 
+const MEMBER_DELIVERED = {
+  domainGroup: 'trade',
+  shellNavStyle: 'storefront',
+  tradeSurfaceStyle: 'shelfgrid',
+}
+
 async function mockApi(page) {
-  // 只挡后端 /api/*；禁止误伤 Vite 模块 /src/api/*.js
   await page.route('**/*', async (route) => {
     let pathname = ''
     try {
@@ -32,39 +37,63 @@ async function mockApi(page) {
     if (!pathname.startsWith('/api/')) {
       return route.continue()
     }
+    const json = (body) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      })
     const u = route.request().url()
     if (u.includes('/auth/captcha')) {
-      const png =
-        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ image: png, captchaKey: 'smoke' }),
+      return json({
+        image:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        captchaKey: 'smoke',
       })
     }
-    if (u.includes('/meta')) {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ title: '布局冒烟夹具', appName: '布局冒烟夹具' }),
+    if (u.includes('/auth/me')) {
+      return json({
+        code: 0,
+        data: {
+          username: 'smoke',
+          role: 'user',
+          nickname: '冒烟',
+          superAdmin: false,
+          profileEditable: true,
+          mustChangePassword: false,
+        },
       })
     }
-    if (u.includes('/site-settings')) {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({}),
+    if (u.includes('/api/profile') && !u.includes('avatar') && !u.includes('change')) {
+      return json({
+        code: 0,
+        data: {
+          username: 'smoke',
+          nickname: '买家甲',
+          phone: '',
+          avatarUrl: '',
+          profileEditable: true,
+          extras: {},
+          hasSecurityQuestion: false,
+          realNameAcked: false,
+          orgId: null,
+        },
       })
     }
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: '{}',
-    })
+    if (u.includes('/meta') || u.includes('/site-settings')) {
+      return json({ title: '布局冒烟夹具', appName: '布局冒烟夹具' })
+    }
+    if (u.includes('/auth/login-logs') || u.includes('/auth/my-sessions')) {
+      return json({ code: 0, data: [] })
+    }
+    if (u.includes('/loyalty/me')) {
+      return json({ code: 0, data: null })
+    }
+    return json({ code: 0, data: {} })
   })
 }
 
-async function collect(page) {
+async function collectLogin(page) {
   return page.evaluate(() => {
     const auth = document.querySelector('.auth')
     const panel = document.querySelector('.auth .panel')
@@ -104,6 +133,86 @@ async function collect(page) {
   })
 }
 
+async function collectProfile(page) {
+  return page.evaluate(() => {
+    function b(el) {
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      if (r.width <= 0 || r.height <= 0) return null
+      return { x: r.x, y: r.y, w: r.width, h: r.height }
+    }
+    function edgeGap(a, c) {
+      const dx = Math.max(0, Math.max(a.x - (c.x + c.w), c.x - (a.x + a.w)))
+      const dy = Math.max(0, Math.max(a.y - (c.y + c.h), c.y - (a.y + a.h)))
+      if (dx === 0 && dy === 0) return 0
+      if (dx === 0) return dy
+      if (dy === 0) return dx
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+    const slot = document.querySelector('.avatar-slot')
+    const text = (document.body?.innerText || '').trim()
+    const faceHost = document.querySelector('[data-account-face]')
+    const abs_ctrls = []
+    for (const el of document.querySelectorAll(
+      'button, a.el-button, button.el-button, .el-button, [role="button"]',
+    )) {
+      if (abs_ctrls.length >= 16) break
+      let posEl = el
+      while (posEl && posEl !== document.body) {
+        const st = getComputedStyle(posEl)
+        if (st.position === 'absolute' || st.position === 'fixed') break
+        posEl = posEl.parentElement
+      }
+      if (!posEl || posEl === document.body) continue
+      const pst = getComputedStyle(posEl)
+      if (pst.position !== 'absolute' && pst.position !== 'fixed') continue
+      const ctrlBox = b(el)
+      if (!ctrlBox) continue
+      const host = posEl.offsetParent || posEl.parentElement
+      if (!host) continue
+      let best = Infinity
+      for (const kid of host.children) {
+        if (kid === posEl || kid.contains(el) || posEl.contains(kid)) continue
+        const ks = getComputedStyle(kid)
+        if (ks.position === 'absolute' || ks.position === 'fixed') continue
+        if (ks.display === 'none') continue
+        const kb = b(kid)
+        if (!kb) continue
+        const g = edgeGap(ctrlBox, kb)
+        if (g < best) best = g
+      }
+      if (best === Infinity) continue
+      let nearest = null
+      for (const kid of host.children) {
+        if (kid === posEl || kid.contains(el) || posEl.contains(kid)) continue
+        const ks = getComputedStyle(kid)
+        if (ks.position === 'absolute' || ks.position === 'fixed') continue
+        if (ks.display === 'none') continue
+        const kb = b(kid)
+        if (!kb) continue
+        if (edgeGap(ctrlBox, kb) === best) {
+          nearest = kb
+          break
+        }
+      }
+      const cx = ctrlBox.x + ctrlBox.w / 2
+      const ax = nearest ? nearest.x + nearest.w / 2 : null
+      abs_ctrls.push({
+        gap: best,
+        cx_delta: ax == null ? null : Math.abs(cx - ax),
+        text: (el.innerText || '').trim().slice(0, 24),
+        tag: (el.tagName || '').toLowerCase(),
+      })
+    }
+    return {
+      not_blank: text.length >= 8 && !!slot,
+      path: location.pathname,
+      account_face: faceHost ? faceHost.getAttribute('data-account-face') || '' : '',
+      abs_ctrls,
+    }
+  })
+}
+
 async function launchBrowser() {
   const attempts = [
     { headless: true },
@@ -129,6 +238,7 @@ try {
   page.on('pageerror', (err) => {
     console.error('PAGEERR', err.message)
   })
+
   await page.goto(`${baseURL}/login`, {
     waitUntil: 'networkidle',
     timeout: 60000,
@@ -154,9 +264,36 @@ try {
     })
     await page.waitForTimeout(100)
   }
-  const metrics = await collect(page)
-  metrics.crush = crush
-  metrics.viewport = viewport
+  const login = await collectLogin(page)
+
+  await page.evaluate((delivered) => {
+    globalThis.__LAYOUT_SMOKE_DELIVERED__ = delivered || {}
+    localStorage.setItem('token', 'smoke-token')
+    localStorage.setItem('username', 'smoke')
+    localStorage.setItem('nickname', '冒烟')
+    localStorage.setItem('role', 'user')
+    localStorage.setItem('superAdmin', 'false')
+    localStorage.removeItem('mustChangePassword')
+  }, MEMBER_DELIVERED)
+  await page.goto(`${baseURL}/profile`, {
+    waitUntil: 'networkidle',
+    timeout: 60000,
+  })
+  try {
+    await page.waitForSelector('.avatar-slot', { timeout: 30000 })
+  } catch (err) {
+    const body = await page.locator('body').innerHTML()
+    throw new Error(`等待 .avatar-slot 超时 url=${page.url()} body=${body.slice(0, 800)}`)
+  }
+  await page.waitForTimeout(200)
+  const profile = await collectProfile(page)
+
+  const metrics = {
+    ...login,
+    crush,
+    viewport,
+    profile_member: profile,
+  }
   console.log(JSON.stringify(metrics))
 } finally {
   await browser.close()

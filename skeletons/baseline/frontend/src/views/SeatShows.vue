@@ -52,9 +52,11 @@
         <article v-for="s in list" :key="s.id" class="card item">
           <div>
             <strong>{{ s.title }}</strong>
-            <el-tag v-if="effectTag(s)" size="small" type="warning" effect="plain" class="hall-tag">
-              {{ effectTag(s) }}
-            </el-tag>
+            <div class="card-meta">
+              <el-tag v-if="effectTag(s)" size="small" type="warning" effect="plain" class="hall-tag">
+                {{ effectTag(s) }}
+              </el-tag>
+            </div>
             <div class="muted">
               {{ s.isbn || '—' }}
               <template v-if="s.categoryName"> · {{ s.categoryName }}</template>
@@ -64,7 +66,9 @@
               · 余座 {{ s.stock }}
             </div>
           </div>
-          <el-button type="primary" @click="go(s.id)">选座</el-button>
+          <div class="card-acts">
+            <el-button type="primary" class="act-primary" @click="go(s.id)">选座</el-button>
+          </div>
         </article>
       </div>
       <div v-if="!list.length" class="empty">

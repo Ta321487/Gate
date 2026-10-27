@@ -19,16 +19,51 @@ from typing import Any
 
 from app.bake.layout_inventory import LayoutRow, generate_layout_inventory
 
-# D3 试点行（一页 + 一组件；同一次 /login 覆盖）
+# D3 试点行：/login + AuthShell；另钉 /profile×member 换头像几何
 PILOT_PAGE_ROW_ID = "page:auth:/login"
 PILOT_COMPONENT_ROW_ID = "component:components/AuthShell.vue"
-PILOT_ROW_IDS: frozenset[str] = frozenset({PILOT_PAGE_ROW_ID, PILOT_COMPONENT_ROW_ID})
+PILOT_PROFILE_ROW_ID = "page:user:/profile"
+PILOT_ROW_IDS: frozenset[str] = frozenset(
+    {PILOT_PAGE_ROW_ID, PILOT_COMPONENT_ROW_ID, PILOT_PROFILE_ROW_ID}
+)
 
 # 可点下限（px）
 _MIN_HIT_W = 28.0
 _MIN_HIT_H = 28.0
 _IOU_MAX = 0.28
 _CONTAIN_SLACK = 2.0
+# 绝对定位可点控件到同槽文档流内容的最大边距（px）；再大 = 悬空/掉条底
+_ABS_CTRL_NEAR_FLOW_MAX = 36.0
+
+# 资料页账户脸探针（accountFace 由 domainGroup+壳/货架皮推导，不进台账 surfaces）
+_PROFILE_FACE_PROBES: tuple[tuple[str, dict[str, str]], ...] = (
+    (
+        "member",
+        {
+            "domainGroup": "trade",
+            "shellNavStyle": "storefront",
+            "tradeSurfaceStyle": "shelfgrid",
+        },
+    ),
+    (
+        "stall",
+        {
+            "domainGroup": "trade",
+            "shellNavStyle": "marketplace",
+            "tradeSurfaceStyle": "shelfgrid",
+        },
+    ),
+    (
+        "showcard",
+        {
+            "domainGroup": "trade",
+            "shellNavStyle": "storefront",
+            "tradeSurfaceStyle": "showtime",
+        },
+    ),
+    ("reader", {"domainGroup": "borrow"}),
+    ("plain", {"domainGroup": "fallback"}),
+)
 
 # surface 标签 axis:id → APP_DELIVERED 字段
 _SURFACE_TO_DELIVERED: dict[str, str] = {
@@ -168,7 +203,11 @@ def pilot_rows(root: Path | None = None) -> list[LayoutRow]:
     missing = sorted(PILOT_ROW_IDS - set(by_id))
     if missing:
         raise AssertionError(f"D3 试点行不在台账: {missing}")
-    return [by_id[PILOT_PAGE_ROW_ID], by_id[PILOT_COMPONENT_ROW_ID]]
+    return [
+        by_id[PILOT_PAGE_ROW_ID],
+        by_id[PILOT_COMPONENT_ROW_ID],
+        by_id[PILOT_PROFILE_ROW_ID],
+    ]
 
 
 def box_contains(parent: Box, child: Box, *, slack: float = _CONTAIN_SLACK) -> bool:
@@ -309,78 +348,212 @@ def build_visit_plan(root: Path | None = None) -> tuple[list[VisitSpec], list[st
         if try_dialog:
             spec.try_dialog = True
 
+    # 资料页账户脸不进台账 surfaces；显式探针，否则 member stretch 病扫不到
+    for face_id, delivered in _PROFILE_FACE_PROBES:
+        vid = f"user:/profile:accountFace:{face_id}"
+        key = (
+            "/profile",
+            "user",
+            json.dumps(delivered, sort_keys=True, ensure_ascii=False),
+            False,
+        )
+        if key in bucket:
+            spec = bucket[key]
+            if PILOT_PROFILE_ROW_ID not in spec.row_ids:
+                spec.row_ids.append(PILOT_PROFILE_ROW_ID)
+            continue
+        bucket[key] = VisitSpec(
+            visit_id=vid,
+            path="/profile",
+            role="user",
+            delivered=dict(delivered),
+            row_ids=[PILOT_PROFILE_ROW_ID],
+            kinds=["page"],
+        )
+
     visits = sorted(bucket.values(), key=lambda v: (v.role, v.path, v.visit_id))
     return visits, unvisitable
 
 
+def _box_edge_gap(a: Box, b: Box) -> float:
+    """两轴对齐外包矩形的外边距；相交为 0。"""
+    dx = max(0.0, max(a.x - b.x2, b.x - a.x2))
+    dy = max(0.0, max(a.y - b.y2, b.y - a.y2))
+    if dx == 0.0 and dy == 0.0:
+        return 0.0
+    if dx == 0.0:
+        return dy
+    if dy == 0.0:
+        return dx
+    return (dx * dx + dy * dy) ** 0.5
+
+
+def assert_abs_ctrls_near_flow(
+    metrics: dict[str, Any], *, row_ids: list[str]
+) -> list[SmokeFinding]:
+    """通用：绝对/固定定位可点控件须贴近同槽文档流内容（禁一事一控件断言）。"""
+    ctrls = metrics.get("abs_ctrls")
+    if not isinstance(ctrls, list) or not ctrls:
+        return []
+    out: list[SmokeFinding] = []
+    for item in ctrls:
+        if not isinstance(item, dict):
+            continue
+        gap = item.get("gap")
+        if gap is None:
+            continue
+        try:
+            g = float(gap)
+        except (TypeError, ValueError):
+            continue
+        label = str(item.get("text") or item.get("tag") or "ctrl")[:24]
+        if g > _ABS_CTRL_NEAR_FLOW_MAX:
+            for rid in row_ids:
+                out.append(
+                    SmokeFinding(
+                        "misaligned",
+                        rid,
+                        "绝对定位可点控件远离同槽文档流内容（易悬空/掉条底）",
+                        f"gap={g:.1f}px ctrl={label}",
+                    )
+                )
+            break
+        # 水平：须大致钉在文档流锚中轴（非对称 padding 把 left:50% 挤歪时必红）
+        cx_delta = item.get("cx_delta")
+        try:
+            cxd = float(cx_delta) if cx_delta is not None else None
+        except (TypeError, ValueError):
+            cxd = None
+        if cxd is not None and cxd > 24.0:
+            for rid in row_ids:
+                out.append(
+                    SmokeFinding(
+                        "misaligned",
+                        rid,
+                        "绝对定位可点控件未水平居中于同槽文档流锚点",
+                        f"cx_delta={cxd:.1f}px ctrl={label}",
+                    )
+                )
+            break
+    return out
+
+
+def assert_avatar_edit_geometry(
+    metrics: dict[str, Any], *, row_id: str
+) -> list[SmokeFinding]:
+    """兼容旧测：把换头像样例折成 abs_ctrls 再走通用断言。"""
+    if metrics.get("abs_ctrls"):
+        return assert_abs_ctrls_near_flow(metrics, row_ids=[row_id])
+    btn = Box.from_dict(metrics.get("avatar_btn"))
+    av = Box.from_dict(metrics.get("avatar")) or Box.from_dict(metrics.get("avatar_slot"))
+    if not metrics.get("not_blank"):
+        return [SmokeFinding("chrome_break", row_id, "资料页空白或头像槽未挂载")]
+    if btn is None or av is None:
+        return [
+            SmokeFinding(
+                "clip_hide",
+                row_id,
+                "可编辑资料页缺少可见「换头像」或圆头像几何",
+            )
+        ]
+    synth = {
+        "abs_ctrls": [
+            {
+                "gap": _box_edge_gap(btn, av),
+                "text": "换头像",
+            }
+        ]
+    }
+    return assert_abs_ctrls_near_flow(synth, row_ids=[row_id])
+
+
 def assert_metrics_ok(metrics: dict[str, Any], *, row_ids: set[str] | None = None) -> list[SmokeFinding]:
-    """D3 试点几何断言（login / AuthShell）；返回 findings（空=绿）。"""
+    """D3 试点几何断言（login / AuthShell / profile×member）；返回 findings（空=绿）。"""
     rows = row_ids or set(PILOT_ROW_IDS)
     out: list[SmokeFinding] = []
     page_id = PILOT_PAGE_ROW_ID
     comp_id = PILOT_COMPONENT_ROW_ID
+    profile_id = PILOT_PROFILE_ROW_ID
 
-    if not metrics.get("not_blank"):
+    # 登录段（顶层字段）；资料段在 profile_member
+    login_blank = not metrics.get("not_blank")
+    if login_blank and page_id in rows:
+        out.append(SmokeFinding("chrome_break", page_id, "页面空白或关键壳未挂载"))
+        # 仍尝试资料段
+    elif not login_blank:
+        auth = Box.from_dict(metrics.get("auth"))
+        panel = Box.from_dict(metrics.get("panel"))
+        cta = Box.from_dict(metrics.get("cta"))
+        footer = Box.from_dict(metrics.get("footer"))
+
         if page_id in rows:
-            out.append(SmokeFinding("chrome_break", page_id, "页面空白或关键壳未挂载"))
-        return out
-
-    auth = Box.from_dict(metrics.get("auth"))
-    panel = Box.from_dict(metrics.get("panel"))
-    cta = Box.from_dict(metrics.get("cta"))
-    footer = Box.from_dict(metrics.get("footer"))
-
-    if page_id in rows:
-        if auth is None:
-            out.append(SmokeFinding("chrome_break", page_id, "缺 layout_faces 壳节点 .auth"))
-        if cta is None:
-            out.append(SmokeFinding("clip_hide", page_id, "主 CTA（.submit）未找到或不可见"))
-        elif cta.w < _MIN_HIT_W or cta.h < _MIN_HIT_H:
-            out.append(
-                SmokeFinding(
-                    "crushed",
-                    page_id,
-                    "主 CTA 可点尺寸过小",
-                    f"{cta.w:.1f}x{cta.h:.1f}",
-                )
-            )
-        if panel is not None and cta is not None and not box_contains(panel, cta):
-            out.append(
-                SmokeFinding(
-                    "overflow",
-                    page_id,
-                    "主 CTA 外包矩形未落在 .panel 内容盒内",
-                    f"cta={cta} panel={panel}",
-                )
-            )
-        if metrics.get("cta_full_ellipsis"):
-            out.append(
-                SmokeFinding(
-                    "clip_hide",
-                    page_id,
-                    "主 CTA 文案整段单一 ellipsis（挤破可读性）",
-                )
-            )
-
-    if comp_id in rows:
-        if auth is None:
-            out.append(SmokeFinding("chrome_break", comp_id, "AuthShell 根 .auth 未挂载"))
-        if footer is None and metrics.get("expect_footer"):
-            out.append(
-                SmokeFinding("chrome_break", comp_id, "AuthShell card_foot（.panel-ft）缺失")
-            )
-        brand = Box.from_dict(metrics.get("brand"))
-        if brand is not None and panel is not None:
-            iou = box_iou(brand, panel)
-            if iou > _IOU_MAX:
+            if auth is None:
+                out.append(SmokeFinding("chrome_break", page_id, "缺 layout_faces 壳节点 .auth"))
+            if cta is None:
+                out.append(SmokeFinding("clip_hide", page_id, "主 CTA（.submit）未找到或不可见"))
+            elif cta.w < _MIN_HIT_W or cta.h < _MIN_HIT_H:
                 out.append(
                     SmokeFinding(
-                        "overlap",
-                        comp_id,
-                        "AuthShell brand 与 panel 叠穿过重",
-                        f"iou={iou:.2f}",
+                        "crushed",
+                        page_id,
+                        "主 CTA 可点尺寸过小",
+                        f"{cta.w:.1f}x{cta.h:.1f}",
                     )
                 )
+            if panel is not None and cta is not None and not box_contains(panel, cta):
+                out.append(
+                    SmokeFinding(
+                        "overflow",
+                        page_id,
+                        "主 CTA 外包矩形未落在 .panel 内容盒内",
+                        f"cta={cta} panel={panel}",
+                    )
+                )
+            if metrics.get("cta_full_ellipsis"):
+                out.append(
+                    SmokeFinding(
+                        "clip_hide",
+                        page_id,
+                        "主 CTA 文案整段单一 ellipsis（挤破可读性）",
+                    )
+                )
+
+        if comp_id in rows:
+            if auth is None:
+                out.append(SmokeFinding("chrome_break", comp_id, "AuthShell 根 .auth 未挂载"))
+            if footer is None and metrics.get("expect_footer"):
+                out.append(
+                    SmokeFinding("chrome_break", comp_id, "AuthShell card_foot（.panel-ft）缺失")
+                )
+            brand = Box.from_dict(metrics.get("brand"))
+            if brand is not None and panel is not None:
+                iou = box_iou(brand, panel)
+                if iou > _IOU_MAX:
+                    out.append(
+                        SmokeFinding(
+                            "overlap",
+                            comp_id,
+                            "AuthShell brand 与 panel 叠穿过重",
+                            f"iou={iou:.2f}",
+                        )
+                    )
+
+    if profile_id in rows:
+        prof = metrics.get("profile_member")
+        if not isinstance(prof, dict):
+            out.append(
+                SmokeFinding(
+                    "chrome_break",
+                    profile_id,
+                    "试点未采集 profile_member（账户脸/绝对可点探针）",
+                )
+            )
+        else:
+            if not prof.get("not_blank"):
+                out.append(
+                    SmokeFinding("chrome_break", profile_id, "资料页空白或头像槽未挂载")
+                )
+            out.extend(assert_abs_ctrls_near_flow(prof, row_ids=[profile_id]))
 
     return out
 
@@ -463,6 +636,9 @@ def assert_row_metrics(metrics: dict[str, Any], row_ids: list[str]) -> list[Smok
                     "主 CTA 文案整段单一 ellipsis（挤破可读性）",
                 )
             )
+
+    # 全页通用：绝对定位可点 ↔ 同槽文档流（换头像等只是样例）
+    out.extend(assert_abs_ctrls_near_flow(metrics, row_ids=list(row_ids)))
 
     # 多 CTA 叠穿
     raw_ctas = metrics.get("ctas") or []

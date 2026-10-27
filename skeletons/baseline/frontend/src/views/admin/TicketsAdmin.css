@@ -87,6 +87,9 @@
   font-weight: 600;
 }
 .muted { color: var(--portal-muted, #94a3b8); }
+.table-ops { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.desk-panel { margin-bottom: 12px; }
+.table-scroll { overflow: auto; max-height: min(70vh, 520px); }
 .type-dot {
   display: inline-block;
   width: 8px;

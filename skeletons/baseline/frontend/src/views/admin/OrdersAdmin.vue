@@ -142,7 +142,7 @@
       <el-table-column prop="createdAt" label="下单时间" width="170" />
       <el-table-column label="操作" min-width="220" fixed="right">
         <template #default="{ row }">
-          <div class="table-ops">
+          <div class="table-ops flex-wrap">
           <el-button
             v-if="riderPoolOn && canClaimRider(row)"
             link

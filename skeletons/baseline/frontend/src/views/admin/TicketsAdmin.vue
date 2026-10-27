@@ -45,7 +45,7 @@
       <el-button v-if="allowCheckinDailyReport" @click="openCheckinDaily">{{ checkinDailyLabel }}</el-button>
       <el-button v-if="allowEvalCollegeExport" @click="openEvalCollege">{{ evalCollegeExportLabel }}</el-button>
     </div>
-    <div v-if="allowApproveDurationStats" class="toolbar" style="display:block;margin-bottom:12px">
+    <div v-if="allowApproveDurationStats" class="desk-panel" style="display:block;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
         <strong style="font-size:13px">{{ approveDurationStatsLabel }}</strong>
         <el-button link type="primary" @click="loadDurationStats">刷新</el-button>
@@ -58,7 +58,7 @@
         <template #empty>暂无已办结单据</template>
       </el-table>
     </div>
-    <div v-if="creditOn" class="toolbar" style="display:block;margin-bottom:12px">
+    <div v-if="creditOn" class="desk-panel" style="display:block;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
         <strong style="font-size:13px">{{ creditScoreLabel }}台账</strong>
         <el-button link type="primary" @click="loadCredit">刷新</el-button>
@@ -143,7 +143,7 @@
       <el-table-column prop="applyAt" label="申请时间" width="170" />
       <el-table-column label="操作" min-width="200" fixed="right">
         <template #default="{ row }">
-          <div class="table-ops">
+          <div class="table-ops flex-wrap">
           <el-button link type="primary" @click="openProgress(row)">进度</el-button>
           <el-button
             v-if="requireClaimProof && row.status === 'verifying'"
@@ -669,11 +669,13 @@
 
     <el-dialog v-model="evalCollege.visible" :title="evalCollegeExportLabel" width="480px" destroy-on-close>
       <p v-if="evalCollegeExportHint" class="audit-tip">{{ evalCollegeExportHint }}</p>
-      <el-table :data="evalCollege.list" size="small" stripe max-height="320">
-        <el-table-column prop="college" :label="evalCollegeLabel" min-width="160" />
-        <el-table-column prop="count" label="已评份数" width="110" />
-        <template #empty>还没有评教记录</template>
-      </el-table>
+      <div class="table-scroll">
+        <el-table :data="evalCollege.list" size="small" stripe max-height="320">
+          <el-table-column prop="college" :label="evalCollegeLabel" min-width="160" />
+          <el-table-column prop="count" label="已评份数" width="110" />
+          <template #empty>还没有评教记录</template>
+        </el-table>
+      </div>
       <template #footer>
         <el-button @click="evalCollege.visible = false">关闭</el-button>
         <el-button :disabled="!evalCollege.list.length" @click="exportEvalCollege">导出</el-button>

@@ -102,7 +102,7 @@
       </el-table-column>
       <el-table-column label="操作" min-width="220" fixed="right">
         <template #default="{ row }">
-          <div class="table-ops">
+          <div class="table-ops flex-wrap">
           <el-button link type="primary" @click="openEdit(row)">
             {{ isPendingMerchant(row) ? '审核' : '编辑' }}
           </el-button>
@@ -650,6 +650,7 @@ onMounted(() => {
 
 <style scoped>
 .toolbar { margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.table-ops { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .batch-hint { font-size: 13px; color: var(--portal-muted, #606266); }
 .page-lead { margin: 0 0 10px; color: var(--portal-muted, #606266); font-size: 13px; }
 .grid {

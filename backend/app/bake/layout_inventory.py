@@ -758,11 +758,8 @@ def reconcile_layout_inventory(
 
 
 # 基线真阳性记账（不改页消红）。工厂摘要与 D1 测共用。(code, detail)
-BASELINE_KNOWN_ISSUES: frozenset[tuple[str, str]] = frozenset(
-    {
-        ("empty_hosts", "component:components/EntityDetailLayout.vue"),
-    }
-)
+# 2026-10-25：EntityDetailLayout 孤儿已删；空集 = 无登记例外。
+BASELINE_KNOWN_ISSUES: frozenset[tuple[str, str]] = frozenset()
 
 
 def issue_key(issue: LayoutIssue) -> tuple[str, str]:

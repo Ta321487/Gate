@@ -339,6 +339,32 @@
               plain
               @click="openActivitySurvey(row)"
             >{{ activitySurveyLinkLabel }}</el-button>
+            <el-button
+              v-if="row.passCode && !isPassExpired(row)"
+              link
+              type="primary"
+              size="small"
+              @click="copyPass(row.passCode)"
+            >复制{{ passCodeLabel }}</el-button>
+            <el-button
+              v-if="allowVisitorPassPrint && row.passCode && !isPassExpired(row)"
+              link
+              type="primary"
+              size="small"
+              @click="printVisitorPass(row)"
+            >{{ visitorPassPrintLabel }}</el-button>
+            <el-button
+              v-if="allowAttachKeepOld && row.attachUrl"
+              size="small"
+              plain
+              @click="openAttachRevs(row)"
+            >{{ attachKeepOldLabel }}</el-button>
+            <el-button
+              v-if="canCcComment(row)"
+              size="small"
+              plain
+              @click="openCcComment(row)"
+            >{{ approveCcCommentLabel }}</el-button>
           </div>
           </div>
           <p v-if="row.creditWritebackAck && creditWritebackHint" class="sub">{{ creditWritebackHint }}</p>
@@ -375,16 +401,8 @@
             {{ passCodeLabel }} <strong>{{ row.passCode }}</strong>
             <template v-if="allowPassExpire && row.passExpireAt"> · {{ passExpireAtLabel }} {{ row.passExpireAt }}</template>
             <span v-if="allowPassExpire && isPassExpired(row)" class="muted"> {{ passExpiredLabel }}</span>
-            <el-button v-if="!isPassExpired(row)" link type="primary" size="small" @click="copyPass(row.passCode)">复制</el-button>
             <span v-if="!isPassExpired(row)" class="muted">到访时出示即可</span>
             <CodeQrBlock v-if="codeQrOn && !isPassExpired(row)" :code="row.passCode" :label="passCodeLabel" />
-            <el-button
-              v-if="allowVisitorPassPrint && row.passCode && !isPassExpired(row)"
-              link
-              type="primary"
-              size="small"
-              @click="printVisitorPass(row)"
-            >{{ visitorPassPrintLabel }}</el-button>
           </p>
           <p v-if="row.attachUrl" class="sub">
             附件 <a :href="row.attachUrl" target="_blank" rel="noopener noreferrer">查看</a>
@@ -534,12 +552,6 @@
             />
           </p>
           <p v-if="allowAttachKeepOld && attachKeepOldHint" class="sub">{{ attachKeepOldHint }}</p>
-          <el-button
-            v-if="allowAttachKeepOld && row.attachUrl"
-            size="small"
-            plain
-            @click="openAttachRevs(row)"
-          >{{ attachKeepOldLabel }}</el-button>
           <p v-if="allowProcureReturn && (row.returnFail || row.returnNote)" class="sub">
             {{ procureReturnFailLabel }} {{ row.returnFail ? '是' : '否' }}
             <template v-if="row.returnNote"> · {{ returnNoteLabel }} {{ row.returnNote }}</template>
@@ -548,12 +560,6 @@
           <p v-if="allowFleetViolation && row.violationPerson" class="sub">
             {{ violationPersonLabel }} {{ row.violationPerson }}
           </p>
-          <el-button
-            v-if="canCcComment(row)"
-            size="small"
-            plain
-            @click="openCcComment(row)"
-          >{{ approveCcCommentLabel }}</el-button>
         </div>
       </article>
     </div>

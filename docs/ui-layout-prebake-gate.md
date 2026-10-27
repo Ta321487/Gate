@@ -305,13 +305,19 @@
 
 | 模式 id | 主要挡 | 口径（示例，实现时钉成可红断言） |
 |---------|--------|----------------------------------|
-| `no_status_acts_same_wrap` | `wrap_mess` | 状态标签与操作按钮禁止挤在同一 `flex-wrap` 行 |
+| `no_status_acts_same_wrap` | `wrap_mess` | 状态标签与操作按钮禁止挤在同一 wrap 根；**含**模板字面 `flex-wrap` **与** companion/SFC CSS 上 `flex-wrap:wrap` 的 class 别名（如 `.row`）。操作槽（`card-acts`/`table-ops` 等）自身 wrap 不红 |
+| `list_card_partition` | `wrap_mess` | `article.card` 同时有状态标记与 `el-button` 时，按钮必须落在 `card-acts`；禁止 CSS 已写分区、模板仍揉进 `.row` |
+| `side_rail_align` | `misaligned` / `gap_chaos` | 仅 `components/PortalSideRail.vue`：外侧须 `rail-mark` 图标槽；编辑行须 `edit-row` + `grid-template-columns` |
 | `toolbar_layers` | `gap_chaos` / `wrap_mess` | 多段 `.toolbar` 须可区分间距/分区，禁止无间隔三坨堆叠 |
 | `primary_cta_in_slot` | `misaligned` / `clip_hide` | 主 CTA 落在约定容器 class；禁止 inline **或** CSS class（SFC `<style>` / 同页 `.css`）`position:absolute|fixed` 漂出卡片 |
 | `row_actions_column` | `column_blow` / `overlap` | 行内操作在独立列/actions 槽，不与状态 chip 同 flex 子树根 |
 | `actions_may_wrap_or_menu` | `crushed` / `overflow` | 一排操作超过 N 个须允许换行分区或收进「更多」，禁止单行硬塞挤破 |
-| `no_orphan_absolute_btn` | `misaligned` / `overlap` | 业务按钮禁止脱离文档流（同：inline + CSS class）；装饰点/轨道等非 `el-button` 挂载不误杀 |
+| `no_orphan_absolute_btn` | `misaligned` / `overlap` | 业务按钮禁止脱离文档流（inline + CSS class）；**含原生 `<button>`**（换头像等）；装饰点/裸 `<a>` 不误杀 |
 | `dialog_body_scroll` | `overflow` | 对话框超高走 body 滚动，禁止整页被 dialog 撑出横向滚动 |
+| `abs_in_stretch_slot` | `misaligned` | **通用**：存在 `align-items:stretch` 时，内含「贴底 absolute 可点」的 `position:relative` 槽必须自限高。换头像为首发样例；轮播左右箭头（非贴底）不误杀；禁止再为一控件单开模式 |
+
+**全局皮**：D2 每次合并 `frontend/src/styles/**/*.css`。  
+**视觉通用**：每 visit 采集绝对/固定定位可点控件到同槽文档流间距，超阈 → `misaligned`（全页同一条，不是一控件一断言）。D3/D4 仍用 `/profile`×accountFace 作回归探针。
 
 新骂过的一眼病 → **先补 §0.0a `defect_class`（若新）+ 本表模式 id，再写测**；禁止只修当面页/组件。病在共享件 → 断言钉 `components/` 并扫全部 `hosts`。
 
@@ -367,7 +373,7 @@
 |----|------|
 | 台账生成 / 对账 | `backend/app/bake/layout_inventory.py` |
 | D1 测 | `backend/tests/test_layout_inventory.py` |
-| 结构契约 | `backend/app/bake/layout_contract.py` + `backend/tests/test_layout_contract.py`（§3.2 七模式；反例必红；基线真阳性记账） |
+| 结构契约 | `backend/app/bake/layout_contract.py` + `backend/tests/test_layout_contract.py`（§3.2 十模式；反例必红；基线真阳性记账） |
 | Fixture / 冒烟 | `backend/app/bake/layout_smoke.py` + `backend/tests/layout_smoke/`（Vite 垫片内联 `script setup src` + `APP_DELIVERED` 皮 Proxy；Playwright 全表 visit + 挤破探针；覆盖率门禁）；**不**改学生 ZIP 当夹具真源 |
 | 出包保险丝 | `backend/app/bake/gates/layout_workspace.py` → 门禁键 **`p3layout`**（`evaluate_domain_gates`）；失败码 `BAKE_LAYOUT` |
 | 工序（助手） | D5：`.cursor/rules/ui-layout-gate.mdc` + `.cursor/skills/ui-layout-gate` |
@@ -396,4 +402,7 @@
 | 2026-10-23 | **D4 开闸**：台账全表 visit（页/壳/组件/dialog）+ 多脸皮覆盖 + 挤破探针；`visual_ok` 覆盖率 100%（含已知债/孤儿不可访记账）；不为消红改学生页；下一刀 D5 |
 | 2026-10-23 | **D5 口径加厚**：助手规则之外，工厂进程须对布局闸红灯有反应（控制台/起包前路径露状态）；只写 skill 不算齐 |
 | 2026-10-23 | **D5 开闸**：规则+skill；`layout_gate_status` + `/api/system/layout-gate`；运行环境/开工台露红绿；已知债收进 bake 模块真源 |
+| 2026-10-25 | **结构已知债消红**：管理端 wrap/toolbar/dialog-scroll；删 `EntityDetailLayout` 孤儿；`BASELINE_KNOWN_ISSUES`/`CONTRACTS` 空；诊断台账 68 双 OK |
+| 2026-10-25 | **拆分页 Vite 垫片进基线**：`vue-script-setup-src.js` 随学生包出厂（此前仅冒烟有 → Profile 等 `setup src` 起包红） |
+| 2026-10-25 | **布局闸收紧**：全局 `styles/**` + 原生 `button` 绝对定位；**通用** `abs_in_stretch_slot` + 视觉「绝对可点↔文档流间距」（换头像仅为探针，禁止一事一断言） |
 | 2026-10-23 | **出包保险丝**：`p3layout` 对本包 `frontend/src` 跑对账+结构（剪枝包跳过全厂菜单对账）；红禁 ZIP；补任意开题覆盖缺口 |

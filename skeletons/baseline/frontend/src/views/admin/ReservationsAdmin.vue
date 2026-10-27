@@ -74,7 +74,7 @@
       </el-table-column>
       <el-table-column label="操作" min-width="260" fixed="right">
         <template #default="{ row }">
-          <div class="table-ops">
+          <div class="table-ops flex-wrap">
           <el-button
             v-if="requireConfirm && (row.status === 'pending' || row.status === 'waitlisted')"
             link
@@ -953,6 +953,7 @@ onMounted(load)
 
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+.table-ops { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .ops-empty { color: var(--el-text-color-placeholder, #c0c4cc); font-size: 13px; padding: 0 4px; }
 .hint { margin: 0 0 12px; color: var(--portal-muted, #64748b); font-size: 13px; line-height: 1.5; }

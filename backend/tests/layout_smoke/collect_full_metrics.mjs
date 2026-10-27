@@ -66,6 +66,31 @@ async function mockApi(page, role, { mustChangePassword = false } = {}) {
         },
       })
     }
+    if (
+      pathname === '/api/profile' ||
+      (pathname.includes('/api/profile') &&
+        !pathname.includes('avatar') &&
+        !pathname.includes('change') &&
+        !pathname.includes('cancel'))
+    ) {
+      return json({
+        code: 0,
+        data: {
+          username: 'smoke',
+          nickname: '买家甲',
+          phone: '',
+          avatarUrl: '',
+          profileEditable: true,
+          extras: {},
+          hasSecurityQuestion: false,
+          realNameAcked: false,
+          orgId: null,
+        },
+      })
+    }
+    if (pathname.includes('/auth/login-logs') || pathname.includes('/auth/my-sessions')) {
+      return json({ code: 0, data: [] })
+    }
     if (pathname.includes('/auth/captcha')) {
       return json({
         image:
@@ -134,6 +159,70 @@ async function collect(page, visit) {
     )
     const overflow_x =
       document.documentElement.scrollWidth > document.documentElement.clientWidth + 2
+
+    function edgeGap(a, c) {
+      const dx = Math.max(0, Math.max(a.x - (c.x + c.w), c.x - (a.x + a.w)))
+      const dy = Math.max(0, Math.max(a.y - (c.y + c.h), c.y - (a.y + a.h)))
+      if (dx === 0 && dy === 0) return 0
+      if (dx === 0) return dy
+      if (dy === 0) return dx
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+    /** 绝对/固定定位可点：量到同一定位宿主里最近文档流子块的间距 */
+    const abs_ctrls = []
+    const clickables = document.querySelectorAll(
+      'button, a.el-button, button.el-button, .el-button, [role="button"]',
+    )
+    for (const el of clickables) {
+      if (abs_ctrls.length >= 16) break
+      let posEl = el
+      while (posEl && posEl !== document.body) {
+        const st = getComputedStyle(posEl)
+        if (st.position === 'absolute' || st.position === 'fixed') break
+        posEl = posEl.parentElement
+      }
+      if (!posEl || posEl === document.body) continue
+      const pst = getComputedStyle(posEl)
+      if (pst.position !== 'absolute' && pst.position !== 'fixed') continue
+      const ctrlBox = b(el)
+      if (!ctrlBox) continue
+      const host = posEl.offsetParent || posEl.parentElement
+      if (!host) continue
+      let best = Infinity
+      for (const kid of host.children) {
+        if (kid === posEl || kid.contains(el) || posEl.contains(kid)) continue
+        const ks = getComputedStyle(kid)
+        if (ks.position === 'absolute' || ks.position === 'fixed') continue
+        if (ks.display === 'none') continue
+        const kb = b(kid)
+        if (!kb) continue
+        const g = edgeGap(ctrlBox, kb)
+        if (g < best) best = g
+      }
+      if (best === Infinity) continue
+      let nearest = null
+      for (const kid of host.children) {
+        if (kid === posEl || kid.contains(el) || posEl.contains(kid)) continue
+        const ks = getComputedStyle(kid)
+        if (ks.position === 'absolute' || ks.position === 'fixed') continue
+        if (ks.display === 'none') continue
+        const kb = b(kid)
+        if (!kb) continue
+        if (edgeGap(ctrlBox, kb) === best) {
+          nearest = kb
+          break
+        }
+      }
+      const cx = ctrlBox.x + ctrlBox.w / 2
+      const ax = nearest ? nearest.x + nearest.w / 2 : null
+      abs_ctrls.push({
+        gap: best,
+        cx_delta: ax == null ? null : Math.abs(cx - ax),
+        text: (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0, 24),
+        tag: (el.tagName || '').toLowerCase(),
+      })
+    }
+
     return {
       visit_id: v.visit_id,
       want_path: v.path,
@@ -155,6 +244,7 @@ async function collect(page, visit) {
       brand: b(document.querySelector('.auth .brand')),
       footer: b(document.querySelector('.auth .panel-ft')),
       expect_footer: !!v.expect_footer,
+      abs_ctrls,
     }
   }, visit)
 }

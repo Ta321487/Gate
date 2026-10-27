@@ -15,8 +15,6 @@
         show-icon
         :title="`逾期按 ${finePerDay} 元/天登记预估${fineLabel}；可${remindVerb}或办理${returnVerb}。`"
       />
-    </div>
-    <div class="toolbar">
       <el-button type="primary" @click="load">{{ slaMode ? '刷新超时' : '刷新逾期' }}</el-button>
     </div>
     <el-table :data="list" stripe>
@@ -115,6 +113,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.toolbar { margin-bottom: 12px; }
+.toolbar { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 </style>

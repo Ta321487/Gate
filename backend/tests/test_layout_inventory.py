@@ -82,17 +82,11 @@ class LayoutInventoryD1Tests(unittest.TestCase):
             home.surfaces,
         )
 
-    def test_orphan_component_is_reported(self) -> None:
-        """闸判断须与人审一致：无人引用的组件必须 empty_hosts，不得静默放过。"""
+    def test_no_baseline_orphan_components(self) -> None:
+        """基线组件不得长期空 hosts；孤儿探测能力见 test_empty_hosts_reds。"""
         issues = reconcile_layout_inventory()
-        self.assertTrue(
-            any(
-                i.code == "empty_hosts"
-                and i.detail == "component:components/EntityDetailLayout.vue"
-                for i in issues
-            ),
-            issues,
-        )
+        orphans = [i for i in issues if i.code == "empty_hosts"]
+        self.assertEqual(orphans, [], orphans)
 
     def test_inline_drawer_and_card_voice_in_ledger(self) -> None:
         """抽屉入 dialog 行；ArchiveBrowse 卡面叙事入 surfaces（册 D）。"""
