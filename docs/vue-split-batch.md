@@ -2,7 +2,7 @@
 
 > **本文只负责**：骨架超大 `.vue` 外提同名 `.setup.js` + `.css` 的进度与护栏口径。  
 > **不负责**：观感加厚、布局闸、控件选型（各见专题册）。  
-> **状态**：**已收口** · ≥1000 行排队页外提完毕；合读护栏 `tests._vue_src.vue_src`。  
+> **状态**：**已收口** · ≥1000 行排队页外提完毕；合读护栏 `tests._vue_src.vue_src`；**学生包 Vite 垫片已挂基线**（2026-10-25）。  
 > **硬闸**：只搬家不改行为；断言须 **合读** `.vue` + `.setup.js`（必要时 + `.css`），禁止假绿。  
 > **索引**：[README.md](./README.md) · 交接 [`../HANDOFF.md`](../HANDOFF.md) · 搁置 [`parked-work.md`](./parked-work.md)
 
@@ -16,6 +16,7 @@
 | **只搬家** | `<script setup>` / `<style scoped>` 原样外提；不改模板、逻辑、文案 |
 | **命名** | `Foo.vue` → 同目录 `Foo.setup.js` + `Foo.css` |
 | **范式** | `<script setup src="./Foo.setup.js"></script>` + `<style scoped src="./Foo.css"></style>` |
+| **Vite 垫片** | Vue 官方禁止 `setup`+`src`；学生包须挂 `vue-script-setup-src.js`（`vite.config.js` 里在 `vue()` 前）。真源在基线；冒烟复用同一文件。缺垫片 → 起包 `ambiguous` 红 |
 | **合读护栏** | 测里凡读整页源码的，拆后须 `.vue`+`.setup.js` 拼接断言（对齐 `test_interact_thicken_features._archive_browse_src`） |
 | **门槛** | 本批只拆约 **≥1000 行** 的页 |
 

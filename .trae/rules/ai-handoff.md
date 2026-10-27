@@ -9,9 +9,10 @@ alwaysApply: true
 
 ## 接手三步走（开场必做，按序）
 
-1. **读交接**：先读 `HANDOFF.md`（当前主线 / 中断点 / 下一步 / 坑）；核心规则读 `AGENTS.md`；需要仓库认知时用 AOCI 精确查，禁止默认整仓 overview。
-2. **跑测试**：`cd backend; .\.venv\Scripts\python.exe -m pytest -q tests\xxx.py`；**红的测试就是上一个 AI 的中断点**。
-3. **顺脉络**：`git log --oneline -20`、`git status` 看提交与未提交改动，确认当前在做哪个主题。
+0. **拆片**（见 `query-decompose`）：用户一条里牵扯 ≥2 交付/主链路段 → 先拆片表、定主片，**禁止**为余片先读大上下文。
+1. **读交接**：读 `HANDOFF.md` 与**主片**相关的段（可只读头 30 行 + 搜主片关键词）；勿为「可能做的余片」通读全文。需要仓库认知时用 AOCI 精确查，禁止默认整仓 overview。
+2. **跑测试**：只跑**主片**对应用例：`cd backend; .\.venv\Scripts\python.exe -m pytest -q tests\xxx.py`；**红的测试就是上一个 AI 的中断点**。
+3. **顺脉络**：主片需要再 `git log --oneline -20` 或 `git status`；勿默认拉全量 diff。
 
 ## 交活三步走（收工 / 切换必做）
 

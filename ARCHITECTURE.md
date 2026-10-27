@@ -128,6 +128,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     U["上传材料<br/>PDF / Word / TXT"] --> PLAN["分堆方案<br/>upload/plan"]
+    PLAN -->|"追加材料<br/>plans/{id}/append"| PLAN
     PLAN --> CONF["确认分堆<br/>upload/confirm"]
     CONF --> MATCH["匹配推荐<br/>骨架 × 领域"]
     MATCH --> GEN["POST /{id}/generate<br/>建 Job"]
@@ -240,7 +241,7 @@ flowchart TB
 
 > 全程无 WebSocket、无 `fetch()`：进度靠轮询 + SSE，文件类（ZIP / 交接包 / PPTX / SVG / Markdown）走浏览器直达 URL，不走 axios。
 
-**上传链路（前端）**：`uploadMaterials.js` 负责递归收集（拖拽用 `webkitGetAsEntry()`、`.zip` 用 jszip 动态展开、跳过 `__MACOSX` / `.DS_Store` / `~$`、大小写无关去重），**超过 8 份直接报错而不是截断**；`Projects.vue` 用客户端队列逐个上传 → `upload/plan` 出分堆方案 → 人工确认 → `upload/confirm` 建项目，未确认方案刷新后可从 `upload/plans` 恢复。
+**上传链路（前端）**：`uploadMaterials.js` 负责递归收集（拖拽用 `webkitGetAsEntry()`、`.zip` 用 jszip 动态展开、跳过 `__MACOSX` / `.DS_Store` / `~$`、大小写无关去重），**超过 8 份直接报错而不是截断**；`Projects.vue` 用客户端队列逐个上传 → `upload/plan` 出分堆方案 → 人工确认 → `upload/confirm` 建项目；确认弹窗可 `upload/plans/{id}/append` 追加材料并**同 plan_id** 重跑分堆（合计仍 ≤8）；未确认方案刷新后可从 `upload/plans` 恢复。
 
 **开发期代理**：`frontend/vite.config.js` 把 `/api`、`/docs`、`/redoc`、`/openapi.json` 代理到 `VITE_API_PROXY || http://127.0.0.1:8000`；host 取 `VITE_HOST || GF_HOST || 127.0.0.1`。
 

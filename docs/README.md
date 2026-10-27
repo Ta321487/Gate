@@ -36,8 +36,8 @@
 | [ui-look-thicken-batch.md](./ui-look-thicken-batch.md) | **UI 观感加厚**（公共壳 + 各组主表面；**68 域台账**） | 再磨已收口 |
 | [vue-split-batch.md](./vue-split-batch.md) | **Vue 大文件拆分**（`.setup.js` + `.css`；合读护栏） | 已收口 |
 | [ui-layout-prebake-gate.md](./ui-layout-prebake-gate.md) | **布局一眼病规则与闸**（几何；起包前全表） | D1～D5 已齐（助手+工厂反应） |
-| [form-controls.md](./form-controls.md) | **可交互控件规则**（选型；下拉禁手填） | 口径册 · 代码未开 |
-| [ui-domain-diagnosis.md](./ui-domain-diagnosis.md) | **诊断结果台账**（68 域 L/C 勾选；不写细则） | 台账已立 · 全域未诊 |
+| [form-controls.md](./form-controls.md) | **可交互控件规则**（选型；下拉可筛选、禁造库外值） | 口径册 · C0～C5 已齐 |
+| [ui-domain-diagnosis.md](./ui-domain-diagnosis.md) | **诊断结果台账**（68 域 L/C 勾选；不写细则） | 68 双 OK（共享 L 已消红） |
 | [parked-work.md](./parked-work.md) | **搁置工作**台账（大线 + 碎另案） | 活表 · 大线 4（#3+#4 全族已收口）· 碎另案 f 已修 |
 | [cohort-opening-title-map.md](./cohort-opening-title-map.md) | 今年选题 → 成品域/皮；只代表今年，按册一点点长 | 方向册 · 工厂未改（见搁置 j） |
 | [opening-align-gate.md](./opening-align-gate.md) | **开题对齐门禁**：A 白名单 + B 扫词 + C cap（登记表双向） | **全族 A/B/C 已齐**（见搁置 #3/#4） |

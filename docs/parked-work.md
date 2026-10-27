@@ -11,7 +11,7 @@
 
 | # | 项 | 一句话 | 真源 / 下次从哪开 | 现状 |
 |---|----|--------|-------------------|------|
-| 1 | **UI 包** | 观感 / Vue 拆分 / 布局闸 / 可交互控件 / 全域诊断（见下子表） | 选型另见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) | **下一刀候选**：全域诊断开诊；或控件已知债消红；布局/控件闸已齐 |
+| 1 | **UI 包** | 观感 / Vue 拆分 / 布局闸 / 可交互控件 / 全域诊断（见下子表） | 选型另见 [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) | **已收口**（观感/拆分/布局闸/控件闸/诊断 68 双 OK） |
 | 2 | **X 系列** | §0 通识横切剩余簇（一轮一簇） | [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) | X-AUTH～X-UX 已齐；打印/灯箱/Toast/页脚版本/离开提示/复制单号为**基线体验**；档案 Excel 导入导出已是 xlsx |
 | 3 | **挂载收口 → 全族** | 把 **A 壳底 / B 扫词开 / C 能力加深** 三档从交易族**迁到其它域组**（地图挂载列 + bake） | 范本：[`trade-thicken-batch.md`](./trade-thicken-batch.md) §0.3；地图各 §1.x | **全族已收口**（交易+借用+跟进+报修+报名+审批+预约+内容+互动） |
 | 4 | **开题对齐门禁 → 全族** | 登记开关双向对上（B↔扫词、C↔cap）；禁止全文自由匹配；**随 #3 扩到各域组** | [`opening-align-gate.md`](./opening-align-gate.md)；各组 `*_ALIGN_RULES` + `test_opening_align_gate.py` | **全族 A/B/C 门禁已齐** |
@@ -22,9 +22,9 @@
 |------|--------|------|------|
 | **观感加厚** | 公共壳 + 九组主表面 + 软皮短签，不像模板后台 | [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md) | **再磨已收口** |
 | **Vue 大文件拆分** | 大页拆 `.setup.js` + `.css`；合读护栏 | [`vue-split-batch.md`](./vue-split-batch.md) | **已收口** |
-| **起包前布局闸** | 一眼病（错位/挤破/叠穿/溢出）；页+壳+组件全表；起包前挡住 | [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md) | **D1～D5 已齐**（含助手规则+工厂摘要）；孤儿/结构/视觉债记账不改页 |
-| **可交互控件** | 全包可交互控件选型；下拉只选不填；无免检区 | [`form-controls.md`](./form-controls.md) | **C0～C5 已齐**；已知债消红另刀 |
-| **全域 UI 诊断** | 68 域 × `L`布局/`C`控件 勾选台账；不写细则正文 | [`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md) | **台账已立 · 下一刀候选开诊** |
+| **起包前布局闸** | 一眼病（错位/挤破/叠穿/溢出）；页+壳+组件全表；起包前挡住 | [`ui-layout-prebake-gate.md`](./ui-layout-prebake-gate.md) | **D1～D5 已齐**；结构 `BASELINE_KNOWN_*` 空（视觉全表 D4 另账） |
+| **可交互控件** | 全包选型；下拉可筛选、禁造库外值；无免检区 | [`form-controls.md`](./form-controls.md) | **C0～C5 已齐**；`BASELINE_KNOWN_CONTROLS` 空 |
+| **全域 UI 诊断** | 68 域 × `L`布局/`C`控件 勾选台账；不写细则正文 | [`ui-domain-diagnosis.md`](./ui-domain-diagnosis.md) | **68 双 OK**（共享 L 消红已入账） |
 
 ### #3 / #4 与 ABC（要扩展到全族）
 

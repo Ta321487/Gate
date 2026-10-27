@@ -33,7 +33,7 @@
 | 消息中心 | `views/user/Messages.vue` | 类型小标；相对时间；EmptyHint | — | 已读回执 IM |
 | 门户首页 | `views/user/PortalHome.vue` | mall/editorial；**空货架 EmptyHint CTA** | — | 运营弹窗轰炸 |
 | 轮播 | `components/PortalCarousel.vue` | 自动轮播 + dots | — | 视频直播轮播 |
-| 缺页/加载 | `PageSkeleton` · `EntityDetailLayout` · `NoticeDetail` | 详情骨架；**列表 `variant=list`**（消息/公告/订单） | — | SPA 假进度条 |
+| 缺页/加载 | `PageSkeleton` · `ArchiveItemDetail` · `NoticeDetail` | 详情骨架；**列表 `variant=list`**（消息/公告/订单） | — | SPA 假进度条 |
 | 游客提示 | `GuestLoginHint.vue` | 未登录引导 | — | 强制注册墙 |
 
 ---

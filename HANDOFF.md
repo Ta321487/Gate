@@ -10,13 +10,11 @@
 
 ## 当前主线
 
-> **本刀：大线 #1 · 全域 UI 诊断台账开诊**（[`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)）。  
-> **控件闸 C0～C5 + 基线已知债消红已齐**（工作区已改；**若未 commit 先提交再开诊**）：`BASELINE_KNOWN_CONTROLS` 空；`test_form_controls_*` 27 passed。  
-> **布局闸已齐**；勿回抢布局/控件细则。  
-> 站队：**修工厂**；只勾台账、记红灯短码；细则外链布局闸/控件册。  
-> **开诊顺序**：先 §2 共享基线 → 再 §3 域行 68；`L`/`C` 皆 OK 才算该行过。  
-> **禁止**：开诊时改布局/控件细则正文；把消红混进诊断勾选；只擦单包。  
-> **#3+#4** 全族已齐，旁路勿抢刀。
+> **大线 #1 · 全域 UI 诊断已收口**（[`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md)）。  
+> **热修①**：拆分页 `<script setup src>` 学生包起红 → 基线已挂 `vue-script-setup-src.js`（Vite 垫片）；旧工作区需重 bake 或同步该文件+`vite.config.js`。  
+> **热修②**：市集右侧栏双「我的」/内外同表 + 手选 mall 被空 domain 降成 cards → 已修工厂（见本会话日志）。  
+> **热修③**：布局闸 D2 补齐对齐覆盖——CSS 别名 wrap、`list_card_partition`、`side_rail_align`；基线同构面已消红，`BASELINE_KNOWN_CONTRACTS` 仍空。  
+> **结论**：§2/§3 **68 双 OK**；布局/控件 `BASELINE_KNOWN_*` 空。**#3+#4** 全族已齐。
 
 1. **薄壳架构**（不另起厚 DOM 包）+ 能力运行时 + 具名域 A～F / 真交叉 G / 兜底 H（GENERIC）已可 bake。  
 2. **Path B** 三条真交叉可 `full`；三合一与智慧校园仍 `reject`。  
@@ -24,9 +22,108 @@
 4. **Path B 口径**：拟实现必须能答辩演示；做不到就拒收 / 改开题 / 先扩能力。  
 5. **UI 观感 / Vue 拆分**：已收口。  
 6. **#3+#4 挂载/对齐**：**全族已齐**（含互动）。  
-7. **起包前布局闸**：**D1～D5 已齐**（含工厂反应）；基线结构/视觉债/孤儿先记账不改页。  
-8. **可交互控件**：**C0～C5 已齐**；**C1～C3 基线已知债已消红**（含 `p3controls` + 工厂摘要）。  
-9. **全域 UI 诊断**：台账已立；**下一刀开诊**（`docs/ui-domain-diagnosis.md`）。
+7. **起包前布局闸**：**D1～D5 已齐**（D2 现 **九模式**，含 CSS 别名 wrap / 列表卡分区 / 侧栏对齐）；`BASELINE_KNOWN_ISSUES` / `CONTRACTS` 空。  
+8. **可交互控件**：**C0～C5 已齐**；`BASELINE_KNOWN_CONTROLS` 空。  
+9. **全域 UI 诊断**：**68 域双 OK**（`docs/ui-domain-diagnosis.md`）。
+
+### 本会话（2026-10-27）· 任务日志按次切段
+
+- **主题**：控制台 job.log 按 RUN 切段（多次出包不糊一条河）→ **修工厂**。
+- **已做**：`jobLogRuns.js` 分隔符与 `jobs.format_run_*` 同 U+00B7；pytest↔Node parity 用 `encoding=utf-8`（Windows 不再把 `·` 读成 `?` 导致 outcome=RUNNING）。`test_job_log_runs.py` **4 passed**。未提交。
+
+- **主题**：功能模块图短签 + 机器闸（全选题，不靠人盯）→ **修工厂**。
+- **原因**：切开粘句后仍啰嗦；「…系统后台登录」因含「登录」进框；人不能每题盯 SVG。
+- **已做**：
+  - 认证白名单；散文/泄漏双丢；短签去前缀/模块尾；超长·并列换菜单短名；每行≤8 折行。
+  - **`label_gate`**：每张图出 `ok/findings`；红则材料卡「文案红」、弹窗警告；SHOP/HOTEL/BLOG/CARRENT + 方木 canary 钉绿；人工补丁后重跑闸。
+- **测试**：`test_schema_modules.py` **30 passed**。未提交。
+- **下一步**：热重载后重开模块图；闸红改 `modules.py` 清洗，勿只擦单包 SVG。
+
+### 本会话（2026-10-26）· 任务日志按次切段
+
+- **主题**：行业配色与壳强调色打架（健身橙盖海蓝）→ **修工厂**。
+- **已做**：壳色优先从 themes CSS 按当前 theme 派生；出包 `shell_colors_for_pack` 重算；货架橙仅无 theme 兜底。`test_shell_face` 绿。须重 bake / 改配色后再生成。未提交。
+
+- **主题**：商城 GATE 红「学号或工号已被绑定」错域残留 → **修工厂**。
+- **原因**：`studentNoDupHint` + `UserStore` 写死校园句，无学号档案的商城仍进包。
+- **已做**：hint 跟 `profileFields` 有无校园身份键；三骨架异常改中性句；Register 映射；auth 钉测。须重 bake。未提交。
+
+- **主题**：分堆题名「了面向…」+ 任务书标成开题 → **修工厂**（通用，不一种一修）。
+- **原因**：文献句「设计并实现了…[6]」串题；研究现状段别人系统名；长文压过文件名「任务书」。
+- **已做**：明示/整行/引号优先；弱线索裁掉研究现状；跳过助词与 `[n]` 尾；文件名角色优先；图书/宿舍/方木等多例钉测。未提交。
+
+- **主题**：`upload/plan` WinError 32（move 开题 docx）→ **修工厂**。
+- **原因**：python-docx 按路径打开会占锁；随后 `shutil.move` 删源失败。
+- **已做**：`_read_docx` 改 BytesIO；迁 plan 目录改 copy2 + 重试 unlink。未提交。
+
+- **主题**：任务书被分堆剔除（看起来像 LLM 误伤）→ **修工厂**。
+- **原因**：`_read_docx` 只读段落，方木任务书正文在表格里 → 仅 11 字 → signal=0 → 规则/LLM 都当空材料剔。
+- **已做**：docx 抽表（按 `tc` 去重）；`test_read_docx_tables`。不关上传 LLM（多课题分堆仍有用）。未提交。
+
+- **主题**：`GET /api/projects/stats` MissingGreenlet → **修工厂**。
+- **原因**：`stats` 误 `defer(delivery_review)`，但 `pending_review`→`is_zip_downloadable`→`get_review_state` 仍要读该列 → async 懒加载炸。
+- **已做**：去掉该 defer；`test_stats_must_not_defer_delivery_review` 钉住。未提交。
+
+- **主题**：确认分堆缺「追加材料」→ **修工厂**（复用 `build_upload_plan`，不改分堆/建项语义）。
+- **已做**：`POST /upload/plans/{id}/append` + `append_and_rebuild_plan`（同 plan_id）；`Projects.vue` 弹窗按钮；Help / ARCHITECTURE；`test_upload_cluster` 追加 2 例。
+- **测试**：`test_upload_cluster.py` **14 passed**。未提交。
+- **下一步**：浏览器确认弹窗点「追加材料」验活；后端热重载后即可。
+
+### 本会话（2026-10-25）· 任务日志按次切段
+
+- **主题**：控件闸口径——下拉可筛选、禁造库外值 → **修工厂**。
+- **已做**：册/规则/skill/`ArchiveFieldControl` 注释对齐；C1 仍只红 `allow-create`，`filterable` 绿。方木 `p3controls` 扫 0 命中（无 creatable；列表分类 ID / 佣金误挂不归本闸）。未提交。
+
+- **主题**：佣金台账误挂（方木研究现状「分销」）→ **修工厂**。
+- **已做**：`ux_crosscut` 禁光杆「分销」，改扫一级/推广/分销佣金等；`CONTRAST` 补研究现状段；钉测。旧包须重 bake 才掉菜单。未提交。
+
+- **主题**：管理端列表双「分类」出 `1,5` + 回收站同列 → **修工厂**。
+- **已做**：`listExtraFields` 禁 `multi-select`/分类键；`vue-script-setup-src` 补 `addWatchFile`（改 `.setup.js` 须重编 `.vue`，否则 HMR 假绿）。
+- **验活**：方木预览列表/回收站均只 1 列「分类」（名称）；`test_archive_admin_core_fields` + `test_vue_script_setup_src` 绿。未提交。
+- **坑**：只改 setup 不碰 `.vue` 时旧 Vite 会吃内联缓存；垫片已钉 watch。
+
+- **主题**：档案字段「不适用」L1～L3 → **修工厂**（方木探针）。
+- **L1**：管理端主通道吞 `categoryIds` 等，禁二次手填「9,7」。
+- **L2**：承重/阻力等出 `number`；控件兜底。
+- **L3**：适用表**不进学生 schema**。软皮 `detail_attr_when` + 基线 `detailAttrWhen.js`（按 `shopCatalogKind`）；出包只带皮 id（如 `retail_fitness`）。`scrub` 会剥 `detailAttrWhen`。
+- **测试**：`test_detail_attr_when` 等绿。未提交。
+- **坑**：开题含糊且没命中皮 → 整池选填+空不露；正式题重 bake。
+- **下一步**：硬刷新：选瑜伽垫无阻力；选弹力带才有。
+
+- **主题（早段）**：货架卡 + 独立详情不像真货架 → **修工厂**。
+- **已做**：短签只出值；关货架「另有 N 项」；详情 buybox 钉底、去「单价(元)」。
+- **测试**：trade/detail shop 绿。未提交。
+
+- **主题（早段）**：货架卡底（库存/详情/加购）歪 → **修工厂**（`ArchiveBrowse` 卡底拆分 + shelfgrid CSS）。
+- **已做**：卡底拆分；`:only-of-type`→`nth-child(2):last-child`；预览曾只同步 CSS。
+- **测试**：layout + portal nav 绿。未提交。
+
+- **主题（早段）**：方木「换头像」掉条底 → **修工厂**；闸改**通用规则**（禁一事一断言）。
+- **已做**：
+  - 基线头像槽自限高。
+  - D2 通用 `abs_in_stretch_slot`（stretch + 贴底 absolute → 槽须自限高；全局 `styles/**`；原生 button）；轮播满高台豁免。
+  - 视觉通用：每 visit 量「绝对可点 ↔ 同槽文档流」间距；`/profile`×accountFace 仅作回归探针。
+- **测试**：contract+smoke 单元绿；`test_pilot_browser_pipe` **1 passed**。未提交。
+- **坑**：出包 `p3layout` 仍只 D1+D2。
+
+- **主题（早段）**：布局闸对齐覆盖不全（一包装露 → 全基线同构）→ **修工厂闸**。
+- **已做**：`list_card_partition` / `side_rail_align`；CSS `flex-wrap` 别名；消红若干页；册九→十模式续见上段。
+- **坑**：曾标 D1～D5 已齐但断言窄；绿 ≠ 盖住。
+
+- **主题（早段）**：市集侧栏 UX + 门户首页 mall 被空 domain 打回 cards → **修工厂**。
+- **已做**：
+  - `portalShellNav.js`：`RAIL_OUTSIDE_DEFAULT=3`；`RAIL_SHORT_LABEL` + `railShortLabel`（禁双「我的」）。
+  - `PortalSideRail.vue`：短签 + 居中对齐。
+  - `themes.resolve_portal_home_style`：domain 空串时手选 mall 不再降级；`pdLabels.defaultPortalHomeStyle` + `useProjectDetail` 货架域缺省 mall。
+  - 探针 `gf-20260929-235748` 已同步侧栏文件并把 `appDelivered.portalHomeStyle`→`mall`。
+- **测试**：`test_portal_shell_nav.py` + `test_portal_home_style.py` **17 passed**。
+- **下一步**：浏览器清 `localStorage.gf_shop_side_rail` 后硬刷新 Vite；正式题请重 bake。未提交。
+- **坑**：旧本机偏好会把 5 个全钉外侧，看起来「编辑=外侧」；清 key 即可。
+
+- **主题（早段）**：项目详情「日志」Tab 多次出包糊成一条河 → 修工厂控制台。
+- **已做**：`jobs.py` 写 `RUN start/end` 锚点；`LogsTab` 默认只看最近一次，可下拉历史/全部；旧日志用 `preview stopped` 兼容切段；`job_log` tail 200→800。
+- **测试**：`tests/test_job_log_runs.py` **3 passed**。
+- **坑**：未提交；勿只擦学生包日志。切段真源 `frontend/.../jobLogRuns.js`；parity 测 `tests/fixtures/run_job_log_parse.mjs`。
 
 领域与交叉长表 → [`docs/domains.md`](./docs/domains.md)。  
 能力 cap 矩阵 → [`docs/capabilities.md`](./docs/capabilities.md)。  
@@ -90,7 +187,7 @@ Vue 大文件拆分 → [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)�
 | §1.8 内容加厚批次（进行中） | [`docs/content-thicken-batch.md`](./docs/content-thicken-batch.md) |
 | 域组 UI 表面选型 | [`docs/domain-group-ui-styles.md`](./docs/domain-group-ui-styles.md) |
 | 起包前 UI 布局闸（全表） | [`docs/ui-layout-prebake-gate.md`](./docs/ui-layout-prebake-gate.md) |
-| 学生包可交互控件（全包·下拉禁手填） | [`docs/form-controls.md`](./docs/form-controls.md) |
+| 学生包可交互控件（全包·可筛选、禁造库外值） | [`docs/form-controls.md`](./docs/form-controls.md) |
 | 全域 UI 诊断表（68 域 L×C） | [`docs/ui-domain-diagnosis.md`](./docs/ui-domain-diagnosis.md) |
 | AI 开题对照 | [`docs/ai-opening-delivery-map.md`](./docs/ai-opening-delivery-map.md) |
 | 全索引 | [`docs/README.md`](./docs/README.md) |
@@ -102,11 +199,9 @@ Vue 大文件拆分 → [`docs/vue-split-batch.md`](./docs/vue-split-batch.md)�
 ## 新对话开场（当前主线）
 
 ```
-继续 graduate_factory_v3。先读 HANDOFF.md 与 docs/ui-domain-diagnosis.md。
-本刀：全域 UI 诊断开诊（台账勾 L/C；先 §2 共享再 §3 域行 68）。
-前置：控件消红工作区已齐（BASELINE_KNOWN 空；test_form_controls_* 27 passed）——若 git 仍脏，先提交消红再开诊。
-站队：修工厂；只记账不改布局/控件细则正文；禁止只擦单包。
-布局闸/控件闸已齐，勿回抢。#3+#4 全族已齐。
+继续 graduate_factory_v3。先读 HANDOFF.md。
+大线 #1 UI 诊断已收口（68 双 OK；布局/控件 BASELINE_KNOWN 空）。
+下一主题另开；勿回抢已齐闸。#3+#4 全族已齐。
 ```
 
 ## 新对话开场（某个具名域）
