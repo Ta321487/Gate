@@ -12,10 +12,7 @@ from app.bake.domain_schema import (
 )
 from app.bake.engine_islands import emit_schema_to_workspace
 from app.bake.gates.evaluate import evaluate_domain_gates
-from app.bake.pack_prune import (
-    prune_shell_chrome_in_workspace,
-    scrub_factory_notes_in_workspace,
-)
+from app.bake.pack_prune import heal_student_pack_before_gates
 from app.models import Project
 from app.services import projects as project_svc
 
@@ -54,11 +51,15 @@ def scrub_project_student_copy(project: Project) -> dict[str, Any]:
     written.extend(refresh_polluted_vue_from_baseline(ws))
     # utils/*.js 展示字面量（旁路/不对接…）——只 scrub Vue 会漏 p3copy
     written.extend(refresh_polluted_js_from_baseline(ws))
-    # 全树再抹注记：覆盖 js/css，以及回拷 baseline Vue 残留
-    notes = scrub_factory_notes_in_workspace(ws)
+    # 回拷后可能带回未挂岛源码 / 工厂注记 / 壳件——整包幂等重裁（含抹注记）
+    prune_stats = heal_student_pack_before_gates(ws, spec)
+    notes = list(prune_stats.get("notes_scrubbed") or [])
+    chrome = [
+        d
+        for d in (prune_stats.get("deleted") or [])
+        if "PortalSideRail" in str(d)
+    ]
     written.extend(notes)
-    # 非市集补裁右侧栏（旧包漏裁 / 清洗不重跑 prune 时 p3lean 会红）
-    chrome = prune_shell_chrome_in_workspace(ws, spec)
     written.extend(chrome)
     cleaned = json.loads(disk.read_text(encoding="utf-8")) if disk.is_file() else dict(
         spec.get("schema") or {}

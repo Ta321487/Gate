@@ -188,6 +188,8 @@ function goHub(item) {
 .avatar-slot {
   position: relative;
   flex-shrink: 0;
+  align-self: flex-start;
+  width: max-content;
 }
 .avatar {
   background: var(--portal-cover, linear-gradient(160deg, #0b6e75, #08545a));

@@ -878,6 +878,121 @@ class PackPruneTests(unittest.TestCase):
                 (fe_dst / "layouts/PortalLayout.vue").read_text(encoding="utf-8"),
             )
 
+    def test_commission_off_scrubs_order_paid_without_null_stmt(self) -> None:
+        """未开佣金：删 Commission*，OrderStore.onOrderPaid 不得留 null; 诱编译回拷。"""
+        if not BASELINE_JAVA.is_dir() or not BASELINE_FE.is_dir():
+            self.skipTest("baseline skeleton missing")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            java_dst = dest / "backend/src/main/java/com/thesis"
+            for sub in ("controller", "service", "capability", "config"):
+                (java_dst / sub).mkdir(parents=True)
+            (java_dst / "config" / "AppConfig.java").write_text(
+                "package com.thesis.config;\npublic class AppConfig {}\n",
+                encoding="utf-8",
+            )
+            for rel in (
+                "controller/CommissionController.java",
+                "service/CommissionStore.java",
+            ):
+                src = BASELINE_JAVA / rel
+                if src.is_file():
+                    shutil.copy2(src, java_dst / rel)
+            (java_dst / "capability" / "OrderStore.java").write_text(
+                "package com.thesis.capability;\n"
+                "import com.thesis.service.CommissionStore;\n"
+                "public class OrderStore {\n"
+                "  static void pay() {\n"
+                "    CommissionStore.onOrderPaid(\"u\", 1L, 1.0);\n"
+                "  }\n"
+                "}\n",
+                encoding="utf-8",
+            )
+            fe = dest / "frontend/src"
+            for rel in (
+                "components/MaterialChecklistFields.vue",
+                "views/admin/CommissionAdmin.vue",
+                "views/admin/MaterialChecklistAdmin.vue",
+            ):
+                src = BASELINE_FE / rel
+                dst = fe / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                if src.is_file():
+                    shutil.copy2(src, dst)
+                else:
+                    dst.write_text(f"<!-- {rel} -->\n", encoding="utf-8")
+            (fe / "views/user").mkdir(parents=True, exist_ok=True)
+            (fe / "views/user/ArchiveBrowse.setup.js").write_text(
+                "/* 开题 · §3 · 软皮 · 工厂 */\n"
+                "import MaterialChecklistFields from "
+                "'../../components/MaterialChecklistFields.vue'\n"
+                "export const x = 1\n",
+                encoding="utf-8",
+            )
+            (fe / "styles").mkdir(parents=True, exist_ok=True)
+            (fe / "styles/cardVoice.css").write_text(
+                "/* bake 能力岛 门禁 */\n.card { }\n",
+                encoding="utf-8",
+            )
+            (fe / "router").mkdir(parents=True, exist_ok=True)
+            (fe / "router/index.js").write_text("export default []\n", encoding="utf-8")
+
+            spec = {
+                "domain": "DOM-SHOP",
+                "capabilities": ["archive", "order"],
+                "schema": {
+                    "uxCrosscut": {
+                        "commission": False,
+                        "help": False,
+                        "files": False,
+                    }
+                },
+                "shell_nav_style": "storefront",
+            }
+            prune_student_pack(dest, spec)
+            self.assertFalse((java_dst / "service/CommissionStore.java").is_file())
+            self.assertFalse(
+                (fe / "components/MaterialChecklistFields.vue").is_file()
+            )
+            order = (java_dst / "capability/OrderStore.java").read_text(encoding="utf-8")
+            self.assertNotIn("CommissionStore", order)
+            self.assertNotIn("null;", order)
+            lean = evaluate_pack_lean_gate(dest, spec)
+            self.assertTrue(lean.get("ok"), lean.get("desc"))
+
+
+class PackPruneFactorySelfGateTests(unittest.TestCase):
+    """工厂自检：骨架禁脏注记；可选 Store/Controller 必须进裁剪名单。"""
+
+    def test_baseline_frontend_has_no_factory_notes(self) -> None:
+        from app.bake.pack_prune import scan_baseline_factory_notes
+
+        if not BASELINE_FE.is_dir():
+            self.skipTest("baseline frontend missing")
+        hits = scan_baseline_factory_notes(BASELINE_FE)
+        self.assertEqual(
+            hits,
+            [],
+            "基线 FE 不得含工厂注记注释（应改骨架或扩 ALWAYS 前先抹干净）："
+            + ", ".join(hits[:12]),
+        )
+
+    def test_three_chain_stores_controllers_are_prune_registered(self) -> None:
+        """jdbc / mybatis / jpa 三链路：可选 Store/Controller 都能按选题裁，禁止只登基线。"""
+        from app.bake.pack_prune import scan_unregistered_skeleton_java
+        from app.core.config import get_settings
+
+        sk = get_settings().skeletons_dir
+        if not (sk / "baseline").is_dir():
+            self.skipTest("skeletons missing")
+        hits = scan_unregistered_skeleton_java(sk)
+        self.assertEqual(
+            hits,
+            [],
+            "三链路新增 Store/Controller 须写入 Island/SchemaGate 或 ALWAYS_KEEP_JAVA："
+            + ", ".join(hits[:20]),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -859,7 +859,10 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
 
     from app.bake.gates.semantic import merge_semantic_into_gates
     from app.bake.gates.schema_nf import evaluate_workspace_schema_nf
-    from app.bake.pack_prune import evaluate_pack_lean_gate
+    from app.bake.pack_prune import (
+        evaluate_pack_lean_gate,
+        heal_student_pack_before_gates,
+    )
 
     merge_semantic_into_gates(results, workspace, spec)
     nf = evaluate_workspace_schema_nf(workspace)
@@ -885,13 +888,23 @@ def evaluate_domain_gates(workspace: Path, spec: dict[str, Any]) -> dict[str, An
         results["zip_allowed"] = False
         results["overall"] = False
 
+    # 先幂等重裁（填岛/修编译/清洗可能回带未挂岛或工厂注记）
+    heal_student_pack_before_gates(workspace, spec)
+
+    from app.bake.gates.layout_workspace import evaluate_workspace_layout_gate
+    from app.bake.layout_heal import heal_layout_companions_from_baseline
+    from app.bake.pack_prune import scrub_factory_notes_in_workspace
+
+    # 布局 companion / cardVoice 与基线对齐（旧 Profile 槽、旧 § 注记皮）
+    # 必须在 lean 之前：回拷后再抹一次注记，避免「先评 lean、后回拷脏皮」假绿/假红错位
+    heal_layout_companions_from_baseline(workspace)
+    scrub_factory_notes_in_workspace(workspace)
+
     lean = evaluate_pack_lean_gate(workspace, spec)
     results["p3lean"] = lean
     if not lean.get("ok"):
         results["zip_allowed"] = False
         results["overall"] = False
-
-    from app.bake.gates.layout_workspace import evaluate_workspace_layout_gate
 
     # 出包侧布局检查：对本包 frontend 台账对账与结构契约（全表视觉检测不在此执行）
     layout_g = evaluate_workspace_layout_gate(workspace)

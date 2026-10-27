@@ -460,9 +460,16 @@ class StudentFacingCopyTests(unittest.TestCase):
                     return_value=[],
                 ),
                 patch(
-                    "app.services.student_copy.scrub_factory_notes_in_workspace",
-                    return_value=["fe:utils/portalShellNav.js"],
-                ) as notes_mock,
+                    "app.services.student_copy.refresh_polluted_js_from_baseline",
+                    return_value=[],
+                ),
+                patch(
+                    "app.services.student_copy.heal_student_pack_before_gates",
+                    return_value={
+                        "notes_scrubbed": ["fe:utils/portalShellNav.js"],
+                        "deleted": [],
+                    },
+                ) as heal_mock,
                 patch(
                     "app.services.student_copy.project_svc.touch_json_fields",
                     return_value=None,
@@ -503,7 +510,7 @@ class StudentFacingCopyTests(unittest.TestCase):
             self.assertNotIn("双通道", disk["labels"]["guestbookPageLead"])
             self.assertTrue(out["copy_ok"])
             self.assertTrue(out["lean_ok"])
-            notes_mock.assert_called_once_with(ws)
+            heal_mock.assert_called_once()
             self.assertIn("fe:utils/portalShellNav.js", out["notes_scrubbed"])
             self.assertFalse(proj.zip_ready)
 

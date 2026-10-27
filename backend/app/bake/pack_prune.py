@@ -41,6 +41,139 @@ _WORKBENCH_KEEP_VUE: frozenset[str] = frozenset(
     }
 )
 
+# 壳/账号/档案/订单等常驻源码：不进岛表，prune 也不删。
+# 基线新增 *Store/*Controller 必须要么写入某 Island/SchemaGate，要么显式进本集合——禁止「落盘了却无人裁」。
+ALWAYS_KEEP_JAVA: frozenset[str] = frozenset(
+    {
+        "capability/AddressStore.java",
+        "capability/ArchiveStore.java",
+        "capability/AuditLogStore.java",
+        "capability/FavoriteStore.java",
+        "capability/LoyaltyStore.java",
+        "capability/OrderReviewStore.java",
+        "capability/OrderStore.java",
+        "capability/RecommendStore.java",
+        "service/AccountCancelStore.java",
+        "service/AuthSessionStore.java",
+        "service/BannerStore.java",
+        "service/DmStore.java",
+        "service/GuestbookStore.java",
+        "service/LoginLogStore.java",
+        "service/MessageStore.java",
+        "service/NoticeStore.java",
+        "service/SiteStatStore.java",
+        "service/UserStore.java",
+        "controller/ArchiveController.java",
+        "controller/AuditLogController.java",
+        "controller/AuthController.java",
+        "controller/AuthSessionController.java",
+        "controller/BannerController.java",
+        "controller/CategoryController.java",
+        "controller/CommonController.java",
+        "controller/DmController.java",
+        "controller/FavoriteController.java",
+        "controller/GateController.java",
+        "controller/GuestbookController.java",
+        "controller/LoyaltyController.java",
+        "controller/MessageController.java",
+        "controller/NoticeController.java",
+        "controller/OrderController.java",
+        "controller/OrderReviewController.java",
+        "controller/ProfileController.java",
+        "controller/RecommendController.java",
+        "controller/ScheduleJobsController.java",
+        "controller/SiteStatController.java",
+        "controller/TagController.java",
+        "controller/UsersAdminController.java",
+    }
+)
+
+
+def registered_prune_java_rels() -> set[str]:
+    """岛表 + schema 闸 + 邀请码 + 工作台：已登记可裁 Java 相对路径。"""
+    out: set[str] = set(ALWAYS_KEEP_JAVA)
+    out.update(_WORKBENCH_KEEP_JAVA)
+    for island in _ISLANDS:
+        out.update(r for r in island.java_files if r.endswith(".java"))
+    for gate in _SCHEMA_GATES:
+        out.update(gate.java_files)
+    out.update(_INVITE_JAVA_RELS)
+    return out
+
+
+def scan_unregistered_java_pkg(java_pkg_root: Path) -> list[str]:
+    """单包根下 capability/service *Store 与 controller *Controller 未登记 → 相对路径。
+
+    工厂自己落的可选源码必须能按选题 capabilities 裁进包；漏登 = 未挂岛也会进 ZIP。
+    """
+    root = Path(java_pkg_root)
+    if not root.is_dir():
+        return []
+    registered = registered_prune_java_rels()
+    hits: list[str] = []
+    for sub, pattern in (
+        ("capability", "*Store.java"),
+        ("service", "*Store.java"),
+        ("controller", "*Controller.java"),
+    ):
+        folder = root / sub
+        if not folder.is_dir():
+            continue
+        for path in sorted(folder.glob(pattern)):
+            rel = path.relative_to(root).as_posix()
+            if rel not in registered:
+                hits.append(rel)
+    return hits
+
+
+def scan_unregistered_baseline_java(java_pkg_root: Path) -> list[str]:
+    """兼容旧名：等同 ``scan_unregistered_java_pkg``。"""
+    return scan_unregistered_java_pkg(java_pkg_root)
+
+
+# 出包三链路骨架：jdbc 基线 + mybatis/jpa 叠层（Store 必须同登记口径，禁止只登一条链）
+_PRUNE_REGISTRY_SKELETON_RELS: tuple[str, ...] = (
+    "baseline/backend/src/main/java/com/thesis",
+    "overlays/persistence-mybatis/backend/src/main/java/com/thesis",
+    "overlays/persistence-jpa/backend/src/main/java/com/thesis",
+)
+
+
+def scan_unregistered_skeleton_java(skeletons_dir: Path) -> list[str]:
+    """三链路 Store/Controller 未进岛表/ALWAYS_KEEP → ``链名:相对路径``。
+
+    选题包只保留本题挂上的岛；三套骨架漏登任一链 = 该 persistence 出包仍可能胖。
+    """
+    sk = Path(skeletons_dir)
+    out: list[str] = []
+    labels = ("jdbc", "mybatis", "jpa")
+    for label, rel in zip(labels, _PRUNE_REGISTRY_SKELETON_RELS, strict=True):
+        root = sk / rel
+        for hit in scan_unregistered_java_pkg(root):
+            out.append(f"{label}:{hit}")
+    return out
+
+
+def scan_baseline_factory_notes(fe_src: Path) -> list[str]:
+    """基线 frontend/src 注释仍含工厂注记 → 相对路径（骨架禁脏，不靠出包才抹）。"""
+    root = Path(fe_src)
+    if not root.is_dir():
+        return []
+    hits: list[str] = []
+    for path in root.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in {".vue", ".js", ".css", ".ts"}:
+            continue
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if scrub_factory_notes_from_source(raw) != raw:
+            try:
+                hits.append(path.relative_to(root).as_posix())
+            except ValueError:
+                hits.append(path.name)
+    return sorted(set(hits))
+
 
 def _is_workbench_keep(rel: str, *, kind: str) -> bool:
     rel_n = rel.replace("\\", "/").lstrip("./")
@@ -1015,6 +1148,11 @@ def _strip_type_usages(text: str, type_name: str) -> str:
         )
     if type_name == "OrgStore":
         text = _replace_type_calls(text, type_name, "subtreeIds", "java.util.Set.of()")
+    # 佣金未开：订单支付回调整句删掉，禁止留 null; 诱使 Fix Agent 回拷 CommissionStore
+    if type_name == "CommissionStore":
+        text = _replace_type_calls(text, type_name, "onOrderPaid", "")
+        text = re.sub(r"(?m)^\s*;\s*\n", "", text)
+        text = re.sub(r"(?<=\{)\s*;", "", text)
 
     if type_name == "TicketStore":
         # 工作台：无单据包仍会 putAll(dashboard)；抹成空 Map，禁止 putAll(null) 把 KPI 锁死成 0
@@ -1192,8 +1330,10 @@ def _strip_type_usages(text: str, type_name: str) -> str:
             break
         text = text[: m.start()] + "null" + text[end:]
 
-    # 清掉变成「null;」的空语句
+    # 清掉变成「null;」的空语句（含同行块内 `{ null; }`，否则 javac「不是语句」→ Fix 回拷已删岛）
     text = re.sub(r"(?m)^\s*null\s*;\s*\n", "", text)
+    text = re.sub(r"\{\s*null\s*;\s*\}", "{}", text)
+    text = re.sub(r"(?<=[{;])\s*null\s*;", "", text)
     # int n = Type.foo() → int n = null 会炸编译；数值原语改 0，布尔改 false
     text = re.sub(
         r"\b(int|long|short|byte|float|double)\s+(\w+)\s*=\s*null\b",
@@ -2237,41 +2377,6 @@ def _prune_portal_side_rail(
 def prune_shell_chrome_in_workspace(
     workspace: Path, spec: dict[str, Any] | None = None
 ) -> list[str]:
-    """非 marketplace 工作区补裁 PortalSideRail（清洗文案 / 幂等重跑用）。
-
-    bake 裁剪会做；若旧包漏裁或回拷带回来，「工厂清洗文案」必须再裁，否则 p3lean 壳件红。
-    """
-    workspace = Path(workspace)
-    if spec is None:
-        sp = workspace / "spec.json"
-        if sp.is_file():
-            import json
-
-            spec = json.loads(sp.read_text(encoding="utf-8"))
-        else:
-            spec = {}
-    assert isinstance(spec, dict)
-    spec = dict(spec)
-    nav = str(spec.get("shell_nav_style") or "").strip().lower()
-    if nav not in ("marketplace", "storefront"):
-        from app.bake.shell_face import resolve_shell_nav_style
-
-        spec["shell_nav_style"] = resolve_shell_nav_style(
-            str(spec.get("domain") or ""),
-            str(spec.get("title") or ""),
-            "",
-            None,
-        )
-    fe = _fe_src(workspace)
-    deleted: list[str] = []
-    vue_killed: set[str] = set()
-    _prune_portal_side_rail(fe, spec, deleted, vue_killed)
-    return deleted
-
-
-def prune_shell_chrome_in_workspace(
-    workspace: Path, spec: dict[str, Any] | None = None
-) -> list[str]:
     """按软皮裁壳件（非 marketplace 去 PortalSideRail）。清洗文案须调，勿只靠 bake。
 
     ``shell_nav_style`` 缺省时按域解析（医院等非 SHOP → storefront）。
@@ -2306,6 +2411,16 @@ def prune_shell_chrome_in_workspace(
     vue_killed: set[str] = set()
     _prune_portal_side_rail(fe, spec, deleted, vue_killed)
     return deleted
+
+
+def heal_student_pack_before_gates(
+    workspace: Path, spec: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """门禁前幂等重裁：填岛/修编译/清洗文案可能把未挂岛或工厂注记带回。
+
+    与 archive 语义列「先改写再评」同口径——评 lean 前先收口磁盘，再扫。
+    """
+    return prune_student_pack(workspace, spec)
 
 
 def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[str, Any]:

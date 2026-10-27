@@ -425,6 +425,20 @@ def _bake_project_body(
             len(prune_stats.get("stripped_types") or []),
             prune_stats.get("notes_scrubbed_count"),
         )
+        # 布局 companion / cardVoice 与基线对齐，再抹注记，再评 lean（顺序与 gates 一致）
+        from app.bake.layout_heal import heal_layout_companions_from_baseline
+        from app.bake.pack_prune import scrub_factory_notes_in_workspace
+
+        layout_healed = heal_layout_companions_from_baseline(dest)
+        if layout_healed:
+            logging.getLogger("app.bake").info(
+                "layout_heal companions=%s", layout_healed
+            )
+        notes_again = scrub_factory_notes_in_workspace(dest)
+        if notes_again:
+            logging.getLogger("app.bake").info(
+                "notes_scrub after layout_heal=%s", notes_again[:12]
+            )
         leftovers = scan_forbidden_island_files(dest, spec)
         if leftovers:
             raise RuntimeError(

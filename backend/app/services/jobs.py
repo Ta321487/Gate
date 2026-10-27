@@ -525,6 +525,17 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     },
                 )
                 await set_step(2, "done", f"{meta} · 写入={written_n}")
+                # 填岛可能回带未挂岛源码 / 工厂注记；门禁前先幂等收口
+                try:
+                    from app.bake.pack_prune import heal_student_pack_before_gates
+
+                    await asyncio.to_thread(
+                        heal_student_pack_before_gates,
+                        workspace,
+                        dict(project.spec or {}),
+                    )
+                except Exception as he:  # noqa: BLE001
+                    await append_log(project.id, f"pack_heal after fill · {he}")
                 await asyncio.sleep(0.2)
 
             # 4 构建验证 + Fix Agent（编译中通过 meta 刷新子进度文案）
@@ -545,6 +556,30 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 if not build_ok:
                     raise RuntimeError(build_meta or "构建验证失败")
                 await set_step(3, "done", build_meta)
+                # Fix Agent 可能为消编译红从骨架回拷胖件；评门禁前再收口一次
+                # 岛裁 / 布局回拷分拆：一处失败不挡另一处；最终仍以 evaluate 内同序收口为准
+                from app.bake.layout_heal import heal_layout_companions_from_baseline
+                from app.bake.pack_prune import (
+                    heal_student_pack_before_gates,
+                    scrub_factory_notes_in_workspace,
+                )
+
+                spec_heal = dict(project.spec or {})
+                try:
+                    await asyncio.to_thread(
+                        heal_student_pack_before_gates, workspace, spec_heal
+                    )
+                except Exception as he:  # noqa: BLE001
+                    await append_log(project.id, f"pack_heal after fix · {he}")
+                try:
+                    await asyncio.to_thread(
+                        heal_layout_companions_from_baseline, workspace
+                    )
+                    await asyncio.to_thread(
+                        scrub_factory_notes_in_workspace, workspace
+                    )
+                except Exception as he:  # noqa: BLE001
+                    await append_log(project.id, f"layout_heal after fix · {he}")
                 await asyncio.sleep(0.2)
 
             # 5 gates（只传 spec 快照，勿把 ORM 丢进线程）
