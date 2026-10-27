@@ -47,6 +47,9 @@ class RetailNichePack:
     mp_promo_title: str
     mp_promo_body: str
     flags: frozenset[str] = field(default_factory=frozenset)
+    # 详情属性适用表：key→分类名子串（命中任一才在管理端/买家露）。
+    # 未出现在表中的 detailAttrKeys 视为 always；空表=不裁剪（整池选填）。
+    detail_attr_when: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
     @property
     def gift_line_custom(self) -> bool:
@@ -437,6 +440,11 @@ _PACKS: tuple[RetailNichePack, ...] = (
         mp_notice_body="多店健身用品入驻；下单后可在订单页查看进度。",
         mp_promo_title="春季哑铃满减",
         mp_promo_body="六角哑铃满 2 件减 20 元（待平台审核）。",
+        # 器材类型维取值；开题不明写适用矩阵时靠此皮默认（禁 NLP 猜开题）
+        detail_attr_when={
+            "loadCap": ("哑铃", "杠铃", "壶铃"),
+            "resistance": ("弹力带", "拉力"),
+        },
     ),
     RetailNichePack(
         id="sports",

@@ -8,6 +8,7 @@ import { ARCHIVE_ADMIN_HINT_KEYS } from '../../utils/labelHintMount.js'
 import { archiveCopy, formatArchiveScalar, getSchema, hasCap, isGalleryEnabled, softDeleteCopy } from '../../utils/domainSchema.js'
 import { datePickerProps, dateTimePickerProps } from '../../utils/dateTimeField.js'
 import { archiveFieldWidget } from '../../utils/archiveFieldWidget.js'
+import { isDetailAttrApplicable } from '../../utils/detailAttrWhen.js'
 import { sanitizeHtml } from '../../utils/richHtml.js'
 import { saveBlob } from '../../utils/csvDownload.js'
 import { isValidIsbn } from '../../utils/isbn.js'
@@ -308,14 +309,60 @@ void passHintAdminHint
 void parkingCarpassHint
 const parkingPassMenuLabel = computed(() => getSchema()?.labels?.parkingPassMenuLabel || '停车次卡')
 void parkingPassMenuLabel
+/**
+ * 主通道已吃掉的语义：专用槽位渲染，禁止再进 extraFields 手填（如多分类下
+ * categoryIds 再露成文本「9,7」）。含单/多分类、标签、封面等键名别名。
+ */
 const CORE_FIELD_KEYS = new Set([
-  'title', 'author', 'isbn', 'category', 'stock',
-  'mutexCode', 'checkinCode', 'startAt', 'endAt', 'applyDeadlineAt',
+  'title', 'author', 'isbn',
+  'category', 'categoryId', 'categoryIds',
+  'stock',
+  'tagIds', 'tagId',
+  'coverUrl', 'cover',
+  'mutexCode', 'checkinCode',
+  'startAt', 'endAt', 'applyDeadlineAt',
+  'seatRows', 'seatCols',
 ])
-const extraFields = computed(() => fields.value.filter((f) => f?.key && !CORE_FIELD_KEYS.has(f.key)))
-/** 列表展示的扩展列（排除富文本等过宽类型） */
+/** 表单已选分类名（多分类 ids → name）；供详情属性适用表裁剪 */
+const formCategoryNames = computed(() => {
+  const list = categories.value || []
+  const byId = new Map(list.map((c) => [c.id, String(c.name || '').trim()]))
+  const names = []
+  if (multiCategory.value) {
+    for (const id of form.categoryIds || []) {
+      const n = byId.get(id)
+      if (n) names.push(n)
+    }
+  } else if (form.categoryId != null) {
+    const n = byId.get(form.categoryId)
+    if (n) names.push(n)
+  }
+  return names
+})
+const extraFields = computed(() =>
+  fields.value.filter((f) => {
+    if (!f?.key || CORE_FIELD_KEYS.has(f.key)) return false
+    const t = String(f.type || '')
+    if (t === 'hidden') return false
+    // 有适用表且已选分类时，不适用的详情属性不进表单（整包一致）
+    if (!isDetailAttrApplicable(f.key, formCategoryNames.value)) return false
+    return true
+  }),
+)
+/**
+ * 列表扩展列：禁再出「分类/标签」ID 串（专用列已显示名称）。
+ * multi-select 一律不进列表 prop 直出（会变成 1,5）。
+ */
 const listExtraFields = computed(() =>
-  extraFields.value.filter((f) => f.type !== 'richtext' && f.type !== 'hidden'),
+  extraFields.value.filter((f) => {
+    if (!f?.key) return false
+    const t = String(f.type || '')
+    if (t === 'richtext' || t === 'hidden' || t === 'multi-select') return false
+    const lab = String(f.label || '').trim()
+    if (lab === '分类' || lab === '标签') return false
+    if (/^category/i.test(f.key) || /^tagIds?$/i.test(f.key)) return false
+    return true
+  }),
 )
 const isbnRich = computed(() => {
   const f = fields.value.find((x) => x.key === 'isbn')

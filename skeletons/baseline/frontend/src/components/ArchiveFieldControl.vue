@@ -7,7 +7,7 @@
     inactive-text="关"
     @update:model-value="onSwitch"
   />
-  <!-- 下拉只选不填：禁止 creatable（见 docs/form-controls.md §2） -->
+  <!-- 下拉可筛选；禁 creatable 造库外选项（docs/form-controls.md §2） -->
   <el-select
     v-else-if="widget === 'select'"
     :model-value="modelValue"

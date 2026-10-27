@@ -29,6 +29,10 @@ export function archiveFieldWidget(field, ctx = {}) {
   if (type === 'textarea') return 'textarea'
   if (type === 'richtext' || (ctx.bodyField && key === ctx.bodyField)) return 'richtext'
   if (type === 'number') return isArchiveMoneyField(field) ? 'money' : 'number'
+  /* 量纲标签误标 string 时仍走数字框（与 detail_attrs 出字段纪律对齐；旧包未重 bake 可兜） */
+  if (type === 'string' && /^(承重|阻力|重量|时长|份量|容量|净含量|面积|租金)$/.test(label)) {
+    return 'number'
+  }
   if (type === 'string' && /摘要|备注|说明|特征|简介|描述/.test(label)) return 'textarea'
   return 'text'
 }

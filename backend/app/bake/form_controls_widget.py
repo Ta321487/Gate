@@ -29,6 +29,9 @@ WIDGET_KINDS: frozenset[str] = frozenset(
 _BOOL_LABEL_RE = re.compile(r"[（(]?\s*1\s*是\s*0\s*否\s*[）)]?|是否")
 _TEXTAREA_LABEL_RE = re.compile(r"摘要|备注|说明|特征|简介|描述")
 _MONEY_LABEL_RE = re.compile(r"元|费|价|金额|房价|单价|挂号")
+_NUMERIC_STRING_LABEL_RE = re.compile(
+    r"^(承重|阻力|重量|时长|份量|容量|净含量|面积|租金)$"
+)
 
 
 def is_archive_money_field(field: dict[str, Any] | None) -> bool:
@@ -82,6 +85,8 @@ def archive_field_widget(
         return "richtext"
     if typ == "number":
         return "money" if is_archive_money_field(field) else "number"
+    if typ == "string" and _NUMERIC_STRING_LABEL_RE.match(label):
+        return "number"
     if typ == "string" and _TEXTAREA_LABEL_RE.search(label):
         return "textarea"
     return "text"
@@ -107,6 +112,8 @@ WIDGET_CASES: tuple[tuple[dict[str, Any], dict[str, Any], str], ...] = (
     ({"key": "fee", "type": "number", "format": "money"}, {}, "money"),
     ({"key": "author", "type": "number", "label": "价"}, {}, "money"),
     ({"key": "remark", "type": "string", "label": "备注"}, {}, "textarea"),
+    ({"key": "loadCap", "type": "string", "label": "承重"}, {}, "number"),
+    ({"key": "resistance", "type": "string", "label": "阻力"}, {}, "number"),
     ({"key": "title", "type": "string", "label": "名称"}, {}, "text"),
     ({}, {}, "text"),
 )

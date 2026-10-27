@@ -1,4 +1,6 @@
 .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.table-ops { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.table-scroll { overflow: auto; max-height: min(70vh, 520px); }
 .ops-hint { margin: 0 0 10px; color: var(--el-text-color-secondary); font-size: 13px; }
 .seat-attr-grid {
   display: grid;

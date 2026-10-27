@@ -974,7 +974,7 @@ _LABEL_FALLBACKS: dict[str, str] = {
     "dmMerchantEmptyPeers": "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。",
     "dmMerchantEmptyChat": "选择左侧会话，或新建联系买家。",
     # 清洗回退句必须干净（骨架/builders 可脏；学生包点「洗文案」靠此落净）
-    "demoPayHint": "选择支付宝或微信，确认后从账户余额扣款。",
+    "demoPayHint": "请选择支付宝或微信支付完成下单。",
     "authLead": _AUTH_LEAD_FALLBACK,
     "noticePageLead": "通知与须知，点击条目阅读全文。",
     "messagesPageLead": "审核结果与系统通知。",
@@ -1074,6 +1074,8 @@ def scrub_schema_student_copy(schema: dict[str, Any]) -> dict[str, Any]:
     out = dict(schema)
     # 工厂键不进学生 schema 面
     out.pop("dmPeerMode", None)
+    # 适用表留基线 FE（按 shopCatalogKind 查）；禁止规则块进学生 schema
+    out.pop("detailAttrWhen", None)
 
     labels = dict(out.get("labels") or {})
     shop_cs = bool(out.get("dmShopCs"))

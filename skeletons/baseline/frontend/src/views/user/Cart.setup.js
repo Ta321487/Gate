@@ -41,7 +41,7 @@ const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const demoPayHint = computed(
   () =>
     getSchema()?.labels?.demoPayHint
-    || '选择支付宝或微信，确认后从账户余额扣款。',
+    || '请选择支付宝或微信支付完成下单。',
 )
 const pointsOn = computed(() => isPointsEnabled())
 const pointsPayOn = computed(() => !!account.value.pointsPayEnabled || !!loyaltySchema()?.points?.payEnabled)

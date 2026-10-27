@@ -176,15 +176,47 @@ def scan_detail_attrs_opening(text: str, title: str = "") -> bool:
     return any(keyword_mentioned(blob, kw, ignore_contrast=True) for kw in _OPENING_PHRASES)
 
 
+# 量纲类详情属性：出 number，禁 string 文本框（承重/阻力等）
+_NUMERIC_ATTR_LABELS = frozenset(
+    {
+        "重量",
+        "时长",
+        "份量",
+        "承重",
+        "阻力",
+        "容量",
+        "净含量",
+        "面积",
+        "租金",
+    }
+)
+
+
 def _field_type(label: str) -> str:
     if "时间" in label or "日期" in label:
         return "date"
-    if label in ("重量", "时长", "份量"):
+    if label in _NUMERIC_ATTR_LABELS:
         return "number"
     # 房源等：面积/租金按数值录入（含「建筑面积」「月租金」等写法）
     if any(k in label for k in ("面积", "租金")):
         return "number"
     return "string"
+
+
+def _normalize_existing_detail_field_types(fields: list[Any]) -> None:
+    """已挂列若仍是 string，按标签纠成 number/date（旧包重 bake 可消红）。"""
+    for field in fields:
+        if not isinstance(field, dict):
+            continue
+        label = str(field.get("label") or "").strip()
+        if not label:
+            continue
+        want = _field_type(label)
+        cur = str(field.get("type") or "string").strip().lower() or "string"
+        if want == "number" and cur == "string":
+            field["type"] = "number"
+        elif want == "date" and cur == "string":
+            field["type"] = "date"
 
 
 def detail_attr_fields(labels: list[str]) -> list[dict[str, str]]:
@@ -286,6 +318,7 @@ def apply_detail_attrs_to_spec(
     if not isinstance(archive, dict):
         return {**spec, "schema": schema}
     existing = list(archive.get("fields") or [])
+    _normalize_existing_detail_field_types(existing)
     have_labels = {
         str(field.get("label") or "")
         for field in existing
@@ -308,6 +341,7 @@ def apply_detail_attrs_to_spec(
         archive["fields"] = existing + added
         schema["detailAttrKeys"] = [field["key"] for field in added]
     else:
+        archive["fields"] = existing
         schema.setdefault("detailAttrKeys", [])
     features = list(spec.get("features") or [])
     names = {f.get("name") for f in features if isinstance(f, dict)}
@@ -316,6 +350,33 @@ def apply_detail_attrs_to_spec(
     spec["features"] = features
     spec["schema"] = schema
     return spec
+
+
+def resolve_shop_catalog_kind(title: str = "", proposal_text: str = "") -> str:
+    """出包只带皮 id（如 retail_fitness）；适用表留基线 FE，禁止塞进学生 schema。"""
+    try:
+        from app.bake.scene_scan import shop_catalog_kind
+    except ImportError:
+        return ""
+    return str(shop_catalog_kind(title or "", proposal_text or "") or "").strip()
+
+
+def niche_detail_attr_when(niche_id: str | None) -> dict[str, list[str]]:
+    """软皮登记表 → { attrKey: [分类子串…] }；供测与基线对照，不写出包 schema。"""
+    try:
+        from app.bake.shop_retail_niches import get_retail_niche
+    except ImportError:
+        return {}
+    pack = get_retail_niche(niche_id)
+    if not pack:
+        return {}
+    out: dict[str, list[str]] = {}
+    for key, needles in dict(getattr(pack, "detail_attr_when", None) or {}).items():
+        k = str(key or "").strip()
+        names = [str(n).strip() for n in (needles or ()) if str(n).strip()]
+        if k and names:
+            out[k] = names
+    return out
 
 
 # --- SQL ensure (moved from fragments.py) ---

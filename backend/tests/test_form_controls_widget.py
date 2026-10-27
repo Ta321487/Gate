@@ -78,6 +78,7 @@ class FormControlsWidgetC3Tests(unittest.TestCase):
             "type === 'richtext'",
             "type === 'number'",
             "isArchiveMoneyField",
+            "承重|阻力|重量|时长|份量|容量|净含量|面积|租金",
             "摘要|备注|说明|特征|简介|描述",
         ]
         for n in needles:

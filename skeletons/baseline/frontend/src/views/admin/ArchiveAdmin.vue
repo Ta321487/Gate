@@ -157,7 +157,7 @@
       </el-table-column>
       <el-table-column label="操作" min-width="200" fixed="right">
         <template #default="{ row }">
-          <div class="table-ops">
+          <div class="table-ops flex-wrap">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button
             v-if="hospitalStopOn && canStopNotify(row)"
@@ -508,6 +508,7 @@
     </el-dialog>
     <el-dialog v-model="snackVisible" :title="cinemaSnackLabel" width="720px" destroy-on-close>
       <p v-if="cinemaSnackHint" class="ops-hint">{{ cinemaSnackHint }}</p>
+      <div class="table-scroll">
       <el-table :data="snackRows" stripe size="small">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column label="名称" min-width="140">
@@ -536,6 +537,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
       <template #footer>
         <el-button @click="addSnackRow">新增卖品</el-button>
         <el-button type="primary" @click="snackVisible = false">关闭</el-button>
@@ -555,6 +557,7 @@
   </div>
 </template>
 
+<!-- setup 经 vue-script-setup-src 内联；改 .setup.js 须能触发本文件重编 -->
 <script setup src="./ArchiveAdmin.setup.js"></script>
 
 <style scoped src="./ArchiveAdmin.css"></style>

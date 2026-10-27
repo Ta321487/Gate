@@ -143,6 +143,14 @@ def _write_ticket_copy_resource(dest: Path, schema: dict[str, Any]) -> None:
     path = dest / "backend" / "src" / "main" / "resources" / "domain-ticket-copy.json"
     _write(path, json.dumps(payload, ensure_ascii=False, indent=2))
 
+def _shop_catalog_kind_for_delivered(title: str, seed: str = "") -> str:
+    try:
+        from app.bake.scene_scan import shop_catalog_kind
+    except ImportError:
+        return ""
+    return str(shop_catalog_kind(title or "", seed or "") or "").strip()
+
+
 def _write_factory_delivered(
     dest: Path,
     title: str,
@@ -269,6 +277,8 @@ def _write_factory_delivered(
         "flavor": skin["flavor"],
         "domainLabel": skin["domainLabel"],
         "traits": skin["traits"],
+        # 零售软皮 id（如 retail_fitness）；适用表在基线 FE，不进 schema
+        "shopCatalogKind": _shop_catalog_kind_for_delivered(title, seed),
         "authTemplate": auth_tpl,
         "authEntryMode": normalize_auth_entry_mode(auth_entry_mode),
         "authRoleWidget": normalize_auth_role_widget(auth_role_widget),
