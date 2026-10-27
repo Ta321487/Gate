@@ -182,6 +182,24 @@ def _fail_running_step(steps: list[dict[str, Any]] | None, meta: str) -> list[di
     return out
 
 
+# 任务日志 RUN 锚点：供控制台按次切段；时间戳由 append_log 统一加前缀
+RUN_START_MARK = "======== RUN start"
+RUN_END_MARK = "======== RUN end"
+
+
+def format_run_start(job_id: int) -> str:
+    return f"{RUN_START_MARK} · job={int(job_id)} ========"
+
+
+def format_run_end(outcome: str, detail: str = "") -> str:
+    """outcome：SUCCESS / FAIL / GATE_FAIL / CANCELLED。"""
+    oc = (outcome or "FAIL").strip().upper() or "FAIL"
+    d = (detail or "").replace("\n", " ").strip()
+    if d:
+        return f"{RUN_END_MARK} · {oc} · {d[:120]} ========"
+    return f"{RUN_END_MARK} · {oc} ========"
+
+
 def _append_log_sync(project_id: str, line: str) -> None:
     settings = get_settings()
     log_file = settings.logs_dir / project_id / "job.log"
@@ -246,7 +264,9 @@ async def fail_orphaned_jobs() -> int:
                 Job.status.in_([JobStatus.queued.value, JobStatus.running.value])
             )
         )
+        orphans: list[tuple[Job, bool]] = []
         for job in q.scalars().all():
+            was_running = job.status == JobStatus.running.value
             job.status = JobStatus.failed.value
             _apply_job_error(job, "服务重启，任务中断 · 请从失败步骤重试")
             job.steps = _fail_running_step(job.steps, "服务重启中断")
@@ -258,9 +278,18 @@ async def fail_orphaned_jobs() -> int:
                 if project and project.status == ProjectStatus.generating.value:
                     project.status = ProjectStatus.ready.value
                     project.zip_ready = False
+            orphans.append((job, was_running))
             n += 1
         if n:
             await db.commit()
+        orphan_msg = "服务重启，任务中断 · 请从失败步骤重试"
+        for job, was_running in orphans:
+            if not was_running:
+                continue
+            try:
+                await append_log(job.project_id, format_run_end("FAIL", orphan_msg))
+            except Exception:  # noqa: BLE001
+                logger.exception("orphan job log append failed project=%s", job.project_id)
     return n
 
 
@@ -324,6 +353,8 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 wp = Path(project.workspace_path)
                 if wp.exists():
                     workspace = wp
+
+            await append_log(project.id, format_run_start(job_id))
 
             # 一点生成就停预览，避免 Spec 阶段仍挂着旧前端（列表「生成中+运行中」误导）
             await asyncio.to_thread(
@@ -557,6 +588,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     project.zip_ready = False
                     await db.commit()
                     await append_log(project.id, f"GATE FAIL · {detail}")
+                    await append_log(project.id, format_run_end("GATE_FAIL", detail))
                     return
 
                 await set_step(4, "done", "门禁与质量摘要通过")
@@ -599,6 +631,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             job.finished_at = datetime.now()
             await db.commit()
             await append_log(project.id, "SUCCESS · zip unlocked")
+            await append_log(project.id, format_run_end("SUCCESS"))
         except asyncio.CancelledError:
             job.status = JobStatus.cancelled.value
             _apply_job_error(job, "已取消")
@@ -606,6 +639,10 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             job.finished_at = datetime.now()
             project.status = ProjectStatus.ready.value
             await db.commit()
+            try:
+                await append_log(project.id, format_run_end("CANCELLED"))
+            except Exception:  # noqa: BLE001
+                pass
             raise
         except Exception as e:  # noqa: BLE001
             logger.exception("job failed")
@@ -637,6 +674,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         project2.delivery_mark = "none"
                     await db2.commit()
             await append_log(project_id, f"ERROR {err}")
+            await append_log(project_id, format_run_end("FAIL", err))
             try:
                 from app.services.fill_events import fill_event_hub
 

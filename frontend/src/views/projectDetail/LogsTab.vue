@@ -5,17 +5,31 @@
         <n-button-group size="small">
           <n-button v-for="s in logSides" :key="s.id" :type="logSide===s.id?'primary':'default'" @click="loadLog(s.id)">{{ s.label }}</n-button>
         </n-button-group>
+        <n-select
+          v-if="showLogRunPicker"
+          v-model:value="logRunSel"
+          size="small"
+          :options="logRunOptions"
+          :consistent-menu-width="false"
+          style="width:260px"
+        />
         <n-input v-model:value="logFilter" clearable placeholder="过滤关键字…" style="width:180px" />
       </div>
       <n-button size="small" :loading="logLoading" @click="loadLog(logSide)">刷新</n-button>
     </div>
     <ContentLoading v-if="logLoading && !logText" :rows="6" compact />
-    <pre v-else class="log-viewer" :class="{ 'log-viewer-refreshing': logLoading }">{{ filteredLog }}</pre>
+    <pre v-else class="log-viewer" :class="{ 'log-viewer-refreshing': logLoading }"><span
+      v-for="(line, i) in filteredLogLines"
+      :key="i"
+      class="log-line"
+      :class="logLineClass(line)"
+    >{{ line }}{{ i < filteredLogLines.length - 1 ? '\n' : '' }}</span></pre>
   </div>
 </template>
 
 <script setup>
 import ContentLoading from '../../components/ContentLoading.vue'
+import { logLineClass } from './jobLogRuns'
 import { bindPd } from './bindPd'
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,
@@ -28,11 +42,11 @@ const {
   downloadBlockedReason, downloadZip, downloadZipLabel, entryOptions, erDownloadBase, erEntity, erEntityOptions, erLabelSaving,
   erLayoutKey, erLoading, erMode, erSvgSource, failedBannerTitle, fetchErSvg, fetchModSvg, fillEventSource,
   fillLiveCols, fillLiveRows, fillLiveSnap, fillLiveSummary, fillLiveVisible, fillPlanCols, fillPlanHint,
-  fillPlanLoading, fillPlanRows, filteredApiGroups, filteredLog, form, formatSize, frontendAddr, gateCols,
+  fillPlanLoading, fillPlanRows, filteredApiGroups, filteredLog, filteredLogLines, form, formatSize, frontendAddr, gateCols,
   gateRows, genState, genSuccessBannerHint, genSuccessBannerTitle, goArtifacts, isApiCollapsed, isTableCollapsed, jobActing,
   jobInFlight, keepDb, keywordHits, labelLooksLatin, layoutOptions, llmOptions, load, loadApis,
   loadArtifactView, loadError, loadErrorCode, loadLog, loadSchema, logFilter, logLoading, logReqSeq,
-  logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
+  logRunOptions, logRunSel, logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openEr, openFillPlan, openModules,
@@ -44,7 +58,7 @@ const {
   rtBeLive, rtBothLive, rtBusyBe, rtBusyFe, rtCanRestartAll, rtCanStartAll, rtCanStopAll, rtFeLive,
   rtGenerating, rtPendingAll, rtStartBlockedReason, runApiSmoke, runGenerateJob, runtimeCanStop, runtimeLogView, runtimeStatusLabel,
   runtimeStatusPill, runtimeTransient, saveSoft, sceneOptions, schema, schemaErGapCount, securityDeviant, securityLabel,
-  securityOn, securityOptions, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
+  securityOn, securityOptions, showDelete, showEr, showFillPlan, showJobSteps, showLogRunPicker, showModules, showPreGenerate,
   showSoftBakePanel, showSpec, showTestcases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
@@ -59,4 +73,7 @@ const {
   opacity: 0.55;
   transition: opacity 0.15s ease;
 }
+.log-line-ok { color: #3dd68c; }
+.log-line-err { color: #ff6b6b; }
+.log-line-mark { color: #7eb8ff; }
 </style>

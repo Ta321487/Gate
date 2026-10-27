@@ -24,6 +24,7 @@ import {
   FILL_UNIT_STATUS_ZH,
   PORTAL_HOME_FALLBACK,
   MALL_PORTAL_HOME_DOMAINS,
+  defaultPortalHomeStyle,
   CONTENT_SURFACE_FALLBACK,
   CONTENT_SURFACE_DOMAINS,
   TRADE_SURFACE_FALLBACK,
@@ -186,8 +187,13 @@ const {
   logLoading,
   logSides,
   logReqSeq,
+  logRunSel,
+  logRuns,
+  logRunOptions,
+  showLogRunPicker,
   loadLog,
   filteredLog,
+  filteredLogLines,
 } = pdLogs
 
 const pdFill = usePdFillLive({ p })
@@ -1134,7 +1140,8 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
       form.chrome = p.value.spec?.chrome || 'soft'
       form.layout = p.value.spec?.layout || 'topbar'
       form.typeface = p.value.spec?.typeface || 'clean'
-      form.portalHomeStyle = p.value.spec?.portal_home_style || 'cards'
+      form.portalHomeStyle =
+        p.value.spec?.portal_home_style || defaultPortalHomeStyle(form.domain)
       form.contentSurfaceStyle = p.value.spec?.content_surface_style || 'folio'
       form.tradeSurfaceStyle = p.value.spec?.trade_surface_style || 'shelfgrid'
       form.reserveSurfaceStyle = p.value.spec?.reserve_surface_style || 'slotstrip'
@@ -1564,6 +1571,13 @@ const erDownloadBase = computed(() => {
 })
 
 const modulesOk = computed(() => !!modulesMeta.value?.root || !!schema.value)
+/** 功能模块图叶子文案机器闸；红则模块图不当「可导出」 */
+const modulesLabelOk = computed(() => {
+  const m = modulesMeta.value
+  if (!m?.root) return false
+  if (m.label_gate && m.label_gate.ok === false) return false
+  return true
+})
 
 const modDownloadBase = computed(() => {
   const id = p.value?.id || 'modules'
@@ -2150,7 +2164,8 @@ async function resetMatch() {
     form.chrome = p.value.spec?.chrome || 'soft'
     form.layout = p.value.spec?.layout || 'topbar'
     form.typeface = p.value.spec?.typeface || 'clean'
-    form.portalHomeStyle = p.value.spec?.portal_home_style || 'cards'
+    form.portalHomeStyle =
+      p.value.spec?.portal_home_style || defaultPortalHomeStyle(form.domain)
     form.contentSurfaceStyle = p.value.spec?.content_surface_style || 'folio'
     form.tradeSurfaceStyle = p.value.spec?.trade_surface_style || 'shelfgrid'
     form.reserveSurfaceStyle = p.value.spec?.reserve_surface_style || 'slotstrip'
@@ -2718,6 +2733,7 @@ onUnmounted(() => {
     fillPlanRows,
     filteredApiGroups,
     filteredLog,
+    filteredLogLines,
     form,
     formatSize,
     frontendAddr,
@@ -2751,9 +2767,13 @@ onUnmounted(() => {
     logFilter,
     logLoading,
     logReqSeq,
+    logRunOptions,
+    logRunSel,
+    logRuns,
     logSide,
     logSides,
     logText,
+    showLogRunPicker,
     loadPptDeck,
     markDelivery,
     matchAltsText,
@@ -2772,6 +2792,7 @@ onUnmounted(() => {
     modulesExpandDetails,
     modulesMeta,
     modulesOk,
+    modulesLabelOk,
     narrativeDualText,
     normalizeStepStatus,
     onArchDomChange,

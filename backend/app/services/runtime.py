@@ -819,7 +819,8 @@ def frontend_log(project_id: str) -> str:
 
 def job_log(project_id: str) -> str:
     settings = get_settings()
-    return _tail(settings.logs_dir / project_id / "job.log", 200)
+    # 多次出包共用一文件；控制台按 RUN 切段，需留够历史行
+    return _tail(settings.logs_dir / project_id / "job.log", 800)
 
 
 async def allocate_ports(used_be: set[int], used_fe: set[int]) -> tuple[int, int]:
