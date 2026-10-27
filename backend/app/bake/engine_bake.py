@@ -35,6 +35,7 @@ from app.bake.engine_resources import (  # noqa: F401
     _write_ticket_columns_resource,
     _write_ticket_copy_resource,
 )
+from app.bake.shell_face import shell_colors_for_pack
 from app.bake.engine_sql import (  # noqa: F401
     TABLE_COUNT_MAX,
     TABLE_COUNT_MIN,
@@ -378,11 +379,7 @@ def _bake_project_body(
         repair_surface_style=repair_surface,
         approve_surface_style=approve_surface,
         card_voice=str(spec.get("card_voice") or ""),
-        shell_colors=(
-            spec.get("shell_colors")
-            if isinstance(spec.get("shell_colors"), dict)
-            else None
-        ),
+        shell_colors=shell_colors_for_pack(spec, theme=theme, domain=domain, title=title),
         shell_nav_style=str(spec.get("shell_nav_style") or ""),
         domain_group=str(spec.get("domain_group") or ""),
         seed=dest.name,

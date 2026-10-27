@@ -29,6 +29,7 @@ from app.bake.domain_schema import (
 from app.bake.engine_bake import _patch_thesis_yml
 from app.bake.engine_resources import _write_factory_delivered
 from app.bake.engine_sql import _write
+from app.bake.shell_face import shell_colors_for_pack
 
 def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]:
     """把已合并的 schema 写入 islands / appDelivered / spec.json，并同步 thesis yml。"""
@@ -81,10 +82,11 @@ def emit_schema_to_workspace(workspace: Path, spec: dict[str, Any]) -> list[str]
         repair_surface_style=repair_surface,
         approve_surface_style=approve_surface,
         card_voice=str(spec.get("card_voice") or ""),
-        shell_colors=(
-            spec.get("shell_colors")
-            if isinstance(spec.get("shell_colors"), dict)
-            else None
+        shell_colors=shell_colors_for_pack(
+            spec,
+            theme=str(spec.get("theme") or ""),
+            domain=str(spec.get("domain") or ""),
+            title=str(spec.get("title") or ""),
         ),
         shell_nav_style=str(spec.get("shell_nav_style") or ""),
         domain_group=str(spec.get("domain_group") or ""),

@@ -4,10 +4,16 @@
 规矩见 docs/domain-group-ui-styles.md §0.0 / §2.5 / §3.0.4。
 不新开 surface id；不发明 dense/airy/band。
 68 个 DOM 均有显式占位 / voice / 壳色（审批组可共用色板但占位分域）。
+
+壳强调色真源：有行业配色（theme）时，从骨架 themes/*.css 派生 brand/accent/cover；
+货架皮/域表只作无 theme 时的兜底，禁止健身橙等与下拉配色打架。
 """
 
 from __future__ import annotations
 
+import re
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 
@@ -20,6 +26,78 @@ def _c(brand: str, accent: str, bg: str, ink: str, surface: str = "#FFFFFF") -> 
         "surface": surface,
         "ink": ink,
         "cover": f"linear-gradient(160deg, {accent}, {brand})",
+        "glow": accent,
+    }
+
+
+_THEME_BLOCK_RE = re.compile(
+    r'\[data-theme=(["\'])([^"\']+)\1\]\s*\{([^}]*)\}',
+    re.DOTALL,
+)
+_CSS_VAR_RE = re.compile(
+    r"--portal-(brand|accent|bg|surface|ink|cover)\s*:\s*([^;]+);",
+)
+
+
+def _themes_css_dir() -> Path:
+    # backend/app/bake → 仓库根 / skeletons/...
+    return (
+        Path(__file__).resolve().parents[3]
+        / "skeletons"
+        / "baseline"
+        / "frontend"
+        / "src"
+        / "styles"
+        / "themes"
+    )
+
+
+@lru_cache(maxsize=1)
+def _theme_token_map() -> dict[str, dict[str, str]]:
+    """从学生包 themes CSS 读各行业配色的 portal 变量（与预览同源）。"""
+    root = _themes_css_dir()
+    out: dict[str, dict[str, str]] = {}
+    if not root.is_dir():
+        return out
+    for path in sorted(root.glob("*.css")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for m in _THEME_BLOCK_RE.finditer(text):
+            tid = (m.group(2) or "").strip()
+            body = m.group(3) or ""
+            if not tid:
+                continue
+            toks: dict[str, str] = {}
+            for vm in _CSS_VAR_RE.finditer(body):
+                toks[vm.group(1)] = vm.group(2).strip()
+            if toks.get("brand") and toks.get("accent"):
+                out[tid] = toks
+    return out
+
+
+def shell_colors_from_theme(theme_id: str | None) -> dict[str, str] | None:
+    """行业配色 → 壳强调色。读不到 CSS 则 None，由域/货架兜底。"""
+    tid = (theme_id or "").strip()
+    if not tid:
+        return None
+    from app.bake.themes import THEME_ALIASES
+
+    tid = THEME_ALIASES.get(tid, tid)
+    toks = _theme_token_map().get(tid)
+    if not toks:
+        return None
+    brand = toks["brand"]
+    accent = toks["accent"]
+    cover = toks.get("cover") or f"linear-gradient(160deg, {accent}, {brand})"
+    return {
+        "brand": brand,
+        "accent": accent,
+        "bg": toks.get("bg") or "#F4F6F8",
+        "surface": toks.get("surface") or "#FFFFFF",
+        "ink": toks.get("ink") or "#1A1E24",
+        "cover": cover,
         "glow": accent,
     }
 
@@ -431,13 +509,33 @@ def resolve_shell_colors(
     domain: str,
     title: str = "",
     proposal_text: str = "",
+    theme: str | None = None,
 ) -> dict[str, str]:
+    """有 theme 时跟行业配色；否则才用域/货架皮默认（匹配早期无 theme 的兜底）。"""
+    derived = shell_colors_from_theme(theme)
+    if derived:
+        return derived
     if domain == "DOM-SHOP":
         kind = _shop_kind_key(title, proposal_text)
         if kind in _SHOP_KIND_SHELL_COLORS:
             return dict(_SHOP_KIND_SHELL_COLORS[kind])
     base = _DOMAIN_SHELL_COLORS.get(domain) or _DEFAULT_SHELL
     return dict(base)
+
+
+def shell_colors_for_pack(
+    spec: dict[str, Any] | None,
+    *,
+    theme: str | None = None,
+    domain: str | None = None,
+    title: str | None = None,
+) -> dict[str, str]:
+    """出包时按当前行业配色重算壳色（避免 spec 里旧货架橙盖住下拉选中的蓝）。"""
+    sp = spec if isinstance(spec, dict) else {}
+    tid = (theme or sp.get("theme") or "").strip() or None
+    dom = str(domain or sp.get("domain") or "")
+    tit = str(title or sp.get("title") or "")
+    return resolve_shell_colors(dom, tit, tit, theme=tid)
 
 
 # 农产/文印/花店等「货架市集」皮：顶栏短链 + 右侧图标栏（淘宝感，矢量勿表情）
@@ -494,8 +592,9 @@ def apply_shell_face_to_spec(
     domain = str(spec.get("domain") or "")
     title = str(spec.get("title") or "")
     body = proposal_text or title
+    theme = str(spec.get("theme") or "").strip() or None
     voice = resolve_card_voice(domain, title, body, spec.get("card_voice"))
-    colors = resolve_shell_colors(domain, title, body)
+    colors = resolve_shell_colors(domain, title, body, theme=theme)
     nav = resolve_shell_nav_style(domain, title, body, spec.get("shell_nav_style"))
     group = domain_group_of(domain)
     return {

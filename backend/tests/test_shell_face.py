@@ -15,6 +15,7 @@ from app.bake.shell_face import (
     resolve_card_voice,
     resolve_shell_colors,
     resolve_shell_nav_style,
+    shell_colors_from_theme,
     top_search_placeholder,
 )
 
@@ -56,10 +57,22 @@ class ShellFaceTests(unittest.TestCase):
         title = "健身器材商城"
         body = "哑铃跑步机，按训练目标与器材类型浏览。"
         self.assertEqual(resolve_card_voice("DOM-SHOP", title, body), "catalog")
+        # 无 theme：货架兜底仍可橙；有 theme：必须跟行业配色，禁止另喷橙盖海蓝
         colors = resolve_shell_colors("DOM-SHOP", title, body)
         self.assertEqual(colors.get("brand"), "#12151A")
         self.assertEqual(colors.get("accent"), "#E85D04")
+        ocean = resolve_shell_colors("DOM-SHOP", title, body, theme="shop-ocean")
+        self.assertEqual(ocean.get("accent"), "#0e74b4")
+        self.assertNotEqual(ocean.get("accent"), "#E85D04")
         self.assertEqual(resolve_shell_nav_style("DOM-SHOP", title, body), "storefront")
+
+    def test_theme_shell_colors_from_css(self) -> None:
+        coral = shell_colors_from_theme("shop-coral")
+        self.assertIsNotNone(coral)
+        assert coral is not None
+        self.assertEqual(coral["accent"], "#e1453d")
+        self.assertTrue(str(coral["cover"]).startswith("linear-gradient"))
+        self.assertIsNone(shell_colors_from_theme("not-a-real-theme-xyz"))
 
     def test_farm_marketplace_nav_vs_fitness_storefront(self) -> None:
         self.assertEqual(
@@ -97,6 +110,23 @@ class ShellFaceTests(unittest.TestCase):
         self.assertEqual(out.get("shell_nav_style"), "storefront")
         flags = ((out.get("schema") or {}).get("listCrosscut") or {})
         self.assertTrue(flags.get("globalSearch"))
+
+    def test_attach_accept_theme_drives_shop_shell(self) -> None:
+        """商城带 theme 时壳色跟下拉，不跟健身货架橙。"""
+        out = attach_accept(
+            {
+                "domain": "DOM-SHOP",
+                "title": "方木健身用品电商平台",
+                "theme": "shop-ocean",
+                "capabilities": list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
+                "features": [],
+                "archetype": "ARCH-CRUD",
+            },
+            "哑铃杠铃瑜伽垫，购物车下单与订单发货。",
+        )
+        colors = out.get("shell_colors") or {}
+        self.assertEqual(colors.get("accent"), "#0e74b4")
+        self.assertNotEqual(colors.get("accent"), "#E85D04")
 
 
 if __name__ == "__main__":
