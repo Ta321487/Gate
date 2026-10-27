@@ -28,10 +28,37 @@ _TITLE_HEADING = re.compile(
 _TITLE_TABLE = re.compile(
     r"\|\s*(?:课题名称|题目|毕业设计题目)\s*\|\s*([^|]+?)\s*\|"
 )
+# 「设计并实现了XXX」：了是助词，不能进题名；文献句后常跟 [6] 应跳过
 _TITLE_PHRASE = re.compile(
-    r"(?:设计并实现|实现)(?:一个|一套)?(?:基于[\w\-＋+、/]{2,30}的)?"
+    r"(?:设计并实现|实现)了?"
+    r"(?:一个|一套)?"
+    r"(?:基于[\w\-＋+、/]{2,30}的)?"
     r"([\u4e00-\u9fffA-Za-z0-9]{4,36}(?:管理系统|交易平台|信息平台|服务平台|预约系统|申报系统|系统|平台|网站))"
 )
+_TITLE_PHRASE_CITE_TAIL = re.compile(r"\s*[\[［]\d+[\]］]")
+# 短语/引号题名只在「选题意义」段捞；研究现状里的别人系统名不当本课题
+_TITLE_LIT_CUT = re.compile(
+    r"(?:^|\n)\s*(?:\d+(?:\.\d+)*\s*)?(?:[一二三四五六七八九十]+[、．.\s]+)?"
+    r"(?:国内外)?(?:本课题所涉及问题在)?(?:国内外)?(?:设计或)?研究(?:的)?现状|"
+    r"(?:^|\n)\s*(?:\d+(?:\.\d+)*\s*)?(?:[一二三四五六七八九十]+[、．.\s]+)?"
+    r"(?:文献综述|研究综述|国内外研究)"
+)
+_TITLE_QUOTED = re.compile(
+    r"[「“\"『]([\u4e00-\u9fffA-Za-z0-9]{4,40}"
+    r"(?:管理系统|交易平台|信息平台|服务平台|预约系统|申报系统|系统|平台|网站))[」”\"』]"
+)
+_TITLE_FULL_LINE = re.compile(
+    r"^([\u4e00-\u9fffA-Za-z0-9]{4,48}的设计与(?:实现|开发))$"
+)
+
+
+def title_search_body(text: str) -> str:
+    """题名弱线索（短语/引号）用：裁掉研究现状及以后，避免文献系统名串题。"""
+    body = text or ""
+    m = _TITLE_LIT_CUT.search(body)
+    if m and m.start() > 80:
+        return body[: m.start()]
+    return body
 _MODULE_LINE = re.compile(
     r"^[\s\d\.、)）（]*([\u4e00-\u9fffA-Za-z0-9、/与及]{4,40}模块)(?:[（(].*[)）])?$"
 )
@@ -50,11 +77,35 @@ _LEAVE_FEAT = re.compile(
 
 
 def _read_docx(path: Path) -> str:
+    """抽 docx 纯文本：段落 + 表格（任务书常用表格式，只读段落会几乎空）。
+
+    用 BytesIO 打开，避免 python-docx 长时间占着磁盘路径；
+    Windows 上随后 shutil.move 会 WinError 32。
+    """
     try:
+        from io import BytesIO
+
         from docx import Document
 
-        doc = Document(str(path))
-        return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        doc = Document(BytesIO(path.read_bytes()))
+        parts: list[str] = []
+        for p in doc.paragraphs:
+            t = (p.text or "").strip()
+            if t:
+                parts.append(t)
+        # 合并单元格在 python-docx 里会按格重复，按底层 tc 去重
+        seen_tc: set[int] = set()
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    tc_id = id(cell._tc)
+                    if tc_id in seen_tc:
+                        continue
+                    seen_tc.add(tc_id)
+                    t = (cell.text or "").strip()
+                    if t:
+                        parts.append(t)
+        return "\n".join(parts)
     except Exception as e:  # noqa: BLE001
         return f"[docx 解析失败: {e}]\n文件名: {path.name}"
 

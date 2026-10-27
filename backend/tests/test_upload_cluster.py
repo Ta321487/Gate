@@ -17,11 +17,14 @@ from pathlib import Path
 from app.bake.sample_proposal import build_sample_proposal
 from app.services.upload_cluster import (
     DocProfile,
+    append_and_rebuild_plan,
     apply_overrides,
     assemble_plan,
     build_profiles,
+    build_upload_plan,
     normalize_title_key,
     rule_cluster,
+    save_plan_bundle,
     validate_cluster_payload,
 )
 
@@ -389,6 +392,83 @@ class UploadClusterFixtureTests(unittest.TestCase):
             )
             self.assertEqual(len(overridden["clusters"]), 2)
             self.assertEqual(overridden["source"], "confirmed")
+
+    def test_append_rebuild_keeps_plan_id_and_merges(self):
+        """追加材料：同 plan_id 重跑 build_upload_plan；开题+同题清单并成一簇。"""
+        import asyncio
+        import shutil
+
+        from app.core.config import get_settings
+
+        prop = build_sample_proposal(domain="DOM-LIBRARY", seed=801)
+        checklist = _checklist_for(
+            prop.title,
+            [("借阅", "登记"), ("归还", "销账"), ("检索", "按书名")],
+        )
+        settings = get_settings()
+        plan_id = "gf-plan-appendtest1"
+        root = settings.uploads_dir / "plans" / plan_id
+        if root.exists():
+            shutil.rmtree(root, ignore_errors=True)
+        root.mkdir(parents=True, exist_ok=True)
+        try:
+
+            async def _run():
+                first = _write_bundle(root, [("checklist.txt", checklist)])
+                plan = await build_upload_plan(first, plan_id=plan_id)
+                self.assertEqual(plan.plan_id, plan_id)
+                save_plan_bundle(first, plan)
+                extra = _write_bundle(root, [("proposal.txt", prop.text)])
+                rebuilt = await append_and_rebuild_plan(plan_id, extra, max_materials=8)
+                self.assertEqual(rebuilt.plan_id, plan_id)
+                self.assertEqual(len(rebuilt.files), 2)
+                # 同课题开题+功能清单应并成 1 簇（规则分堆，不调 LLM）
+                self.assertEqual(len(rebuilt.clusters), 1)
+                self.assertEqual(len(rebuilt.clusters[0]["files"]), 2)
+
+            asyncio.run(_run())
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_append_rejects_over_cap(self):
+        """追加后超过上限应拒绝。"""
+        import asyncio
+        import shutil
+
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        plan_id = "gf-plan-appendcap01"
+        root = settings.uploads_dir / "plans" / plan_id
+        if root.exists():
+            shutil.rmtree(root, ignore_errors=True)
+        root.mkdir(parents=True, exist_ok=True)
+        try:
+
+            async def _run():
+                existing = _write_bundle(
+                    root,
+                    [
+                        (f"p{i}.txt", f"题目：测试课题{i}\n开题报告\n功能模块划分\n")
+                        for i in range(7)
+                    ],
+                )
+                plan = await build_upload_plan(existing, plan_id=plan_id)
+                save_plan_bundle(existing, plan)
+                extra = _write_bundle(
+                    root,
+                    [
+                        ("extra1.txt", "题目：另题甲\n开题报告\n"),
+                        ("extra2.txt", "题目：另题乙\n开题报告\n"),
+                    ],
+                )
+                with self.assertRaises(ValueError) as ctx:
+                    await append_and_rebuild_plan(plan_id, extra, max_materials=8)
+                self.assertIn("最多", str(ctx.exception))
+
+            asyncio.run(_run())
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
 
 
 if __name__ == "__main__":

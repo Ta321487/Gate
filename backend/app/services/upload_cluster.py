@@ -87,7 +87,14 @@ def normalize_title_key(title: str) -> str:
 
 def guess_role(name: str, text: str) -> str:
     blob = f"{name}\n{(text or '')[:2500]}"
-    has_prop = bool(_ROLE_PROP.search(blob) or "开题" in name or "开题报告" in blob[:200])
+    # 文件名角色优先：任务书正文也常写「开题/实现」字样，不能凭长文抢成开题
+    if _ROLE_TASK.search(name):
+        return "taskbook"
+    if "开题" in name or "开题报告" in name:
+        return "proposal"
+    if "功能清单" in name or ("清单" in name and "任务" not in name):
+        return "checklist"
+    has_prop = bool(_ROLE_PROP.search(blob) or "开题报告" in blob[:200])
     has_list = bool(
         _ROLE_LIST.search(blob)
         or len(extract_table_features(text or "")) >= 3
@@ -97,9 +104,7 @@ def guess_role(name: str, text: str) -> str:
         return "proposal"
     if has_list and ("功能清单" in blob or len(extract_table_features(text or "")) >= 3):
         return "checklist"
-    if _ROLE_TASK.search(name) or (
-        _ROLE_TASK.search(blob) and not _ROLE_PROP.search(blob[:800])
-    ):
+    if _ROLE_TASK.search(blob) and not _ROLE_PROP.search(blob[:800]):
         return "taskbook"
     if has_prop:
         return "proposal"
@@ -468,25 +473,78 @@ def assemble_plan(
 def save_plan_bundle(
     files: list[tuple[Path, str, int]],
     plan: ClusterPlan,
+    *,
+    created_at: str | None = None,
+    status: str | None = None,
 ) -> Path:
     """files 已落在 plan 目录内；写 manifest。"""
     settings = get_settings()
     root = settings.uploads_dir / "plans" / plan.plan_id
     root.mkdir(parents=True, exist_ok=True)
-    manifest = {
+    manifest: dict[str, Any] = {
         "plan_id": plan.plan_id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": created_at or datetime.now(timezone.utc).isoformat(),
         "files": [
             {"name": name, "rel": Path(path).name, "size": size}
             for path, name, size in files
         ],
         "plan": plan.to_dict(),
     }
+    if status:
+        manifest["status"] = status
     (root / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     return root
+
+
+async def append_and_rebuild_plan(
+    plan_id: str,
+    new_files: list[tuple[Path, str, int]],
+    *,
+    db=None,
+    llm_rt=None,
+    max_materials: int = 8,
+) -> ClusterPlan:
+    """在既有待确认方案上追加材料，并用同一套 build_upload_plan 重算分堆。
+
+    不改分堆算法 / 确认建项语义；仅扩大材料集后原地重写 manifest。
+    new_files 须已落在该 plan 目录内。
+    """
+    pid = (plan_id or "").strip()
+    root, data, existing = load_plan_bundle(pid)
+    status = str(data.get("status") or "pending")
+    if status == "confirming":
+        raise ValueError("正在创建项目，请稍后再追加材料")
+    if status in ("confirmed", "dismissed"):
+        raise ValueError("分堆方案已失效，请重新上传")
+    if not new_files:
+        raise ValueError("请至少追加一份材料")
+    total = len(existing) + len(new_files)
+    if total > max_materials:
+        raise ValueError(
+            f"追加后共 {total} 份材料，单份方案最多 {max_materials} 份"
+            f"（当前已有 {len(existing)} 份）"
+        )
+    # 防呆：追加文件必须在本方案目录内，避免误把临时文件迁走
+    root_res = root.resolve()
+    for path, name, _size in new_files:
+        try:
+            path.resolve().relative_to(root_res)
+        except ValueError as e:
+            raise ValueError(f"追加材料未落在方案目录：{name}") from e
+    combined = list(existing) + list(new_files)
+    plan = await build_upload_plan(
+        combined, db=db, llm_rt=llm_rt, plan_id=pid
+    )
+    save_plan_bundle(
+        combined,
+        plan,
+        created_at=str(data.get("created_at") or "") or None,
+        status="pending",
+    )
+    return plan
 
 
 def load_plan_bundle(plan_id: str) -> tuple[Path, dict[str, Any], list[tuple[Path, str, int]]]:
@@ -681,9 +739,16 @@ async def build_upload_plan(
     *,
     db=None,
     llm_rt=None,
+    plan_id: str | None = None,
 ) -> ClusterPlan:
-    """读材料 → 规则分堆 → 可选 LLM 结构分堆（失败回落规则）。"""
-    plan_id = f"gf-plan-{uuid.uuid4().hex[:12]}"
+    """读材料 → 规则分堆 → 可选 LLM 结构分堆（失败回落规则）。
+
+    plan_id：追加材料重分堆时传入既有 id，保持方案目录与前端队列连续；新建时留空。
+    """
+    pid = (plan_id or "").strip()
+    if not pid or "/" in pid or "\\" in pid or ".." in pid:
+        pid = f"gf-plan-{uuid.uuid4().hex[:12]}"
+    plan_id = pid
     profiles = build_profiles(files)
     rule_clusters, rule_discard, rule_notes = rule_cluster(profiles)
     llm_reasons: dict[str, str] = {}
