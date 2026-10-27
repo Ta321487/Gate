@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { vueScriptSetupSrc } from './vue-script-setup-src.js'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const proxyTarget = process.env.VITE_API_PROXY || 'http://127.0.0.1:8080'
@@ -9,7 +10,8 @@ const proxyTarget = process.env.VITE_API_PROXY || 'http://127.0.0.1:8080'
 export default defineConfig({
   // 独立缓存，避免共享 node_modules 联接下 Windows 抢锁 EBUSY
   cacheDir: path.join(root, '.vite'),
-  plugins: [vue()],
+  // 垫片须在 vue() 前：消化拆分页的 <script setup src>
+  plugins: [vueScriptSetupSrc(), vue()],
   server: {
     host: '127.0.0.1',
     port: 5173,
