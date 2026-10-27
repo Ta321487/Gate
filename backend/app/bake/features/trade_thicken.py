@@ -513,7 +513,7 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
     if domain in ("DOM-SHOP", "DOM-FOOD") and "quota" in caps:
         labels.setdefault(
             "stockLockHint",
-            "下单时扣减库存，取消订单后自动回补。",
+            "拍下后会为您预留库存；取消未发货的订单后，商品可再次购买。",
         )
         thicken["stockLock"] = True
         order_ent["stockLock"] = True

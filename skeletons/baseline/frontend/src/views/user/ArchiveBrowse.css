@@ -290,10 +290,13 @@
 .browse-surface.surface-shelfgrid .grid {
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)) !important;
   gap: 14px !important;
+  align-items: stretch;
 }
 .browse-surface.surface-shelfgrid .card {
+  display: flex;
   flex-direction: column;
   align-items: stretch;
+  height: 100%;
   padding: 0;
   overflow: hidden;
   border-radius: 12px;
@@ -306,13 +309,21 @@
   border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 40%, var(--portal-line, #e2e8e6));
   box-shadow: 0 10px 22px color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent);
 }
-.browse-surface.surface-shelfgrid .cover {
+/* 通栏封面须压过 cardVoice 的 52/88（农产 story / 方木 catalog 同一套，禁修一脸崩另一脸） */
+.browse-surface.surface-shelfgrid .cover,
+html[data-card-voice] .browse-surface.surface-shelfgrid .card .cover {
   width: 100%;
   height: 168px;
   border-radius: 0;
   margin: 0;
+  flex-shrink: 0;
+  font-size: 42px;
 }
 .browse-surface.surface-shelfgrid .meta {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: 10px 12px 12px;
 }
 .browse-surface.surface-shelfgrid .meta h3 {
@@ -335,34 +346,60 @@
 .browse-surface.surface-shelfgrid .detail-line {
   display: none;
 }
+/*
+ * 货架同行等高、操作齐底（电商常态）。
+ * 短内容卡在短签与底栏之间会有弹性空隙——那是齐底，不是漏空白。
+ */
 .browse-surface.surface-shelfgrid .card-foot {
-  margin-top: 10px;
+  margin-top: auto;
   gap: 8px;
 }
 .browse-surface.surface-shelfgrid .card-meta {
-  min-height: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  width: 100%;
 }
-/* 货架：主操作通栏在上，次要两列等高齐宽 */
+/*
+ * 货架底栏贴近真实货架：次要操作轻量一行在上，主 CTA 通栏钉底。
+ * 禁 order 抢行；仅一颗次钮时通栏。
+ */
 .browse-surface.surface-shelfgrid .card-acts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px 8px;
   width: 100%;
+  align-items: stretch;
 }
 .browse-surface.surface-shelfgrid .card-acts .el-button {
   margin: 0 !important;
-  height: 32px;
   padding: 0 10px;
-  font-weight: 650;
   border-radius: 8px;
   width: 100%;
+  justify-self: stretch;
 }
 .browse-surface.surface-shelfgrid .card-acts .act-primary {
   grid-column: 1 / -1;
-  order: -1;
+  grid-row: 2;
+  height: 36px;
+  font-weight: 700;
 }
-.browse-surface.surface-shelfgrid .card-acts .act-secondary:only-of-type {
+.browse-surface.surface-shelfgrid .card-acts .act-secondary {
+  grid-row: 1;
+  height: 28px;
+  font-weight: 500;
+}
+.browse-surface.surface-shelfgrid .card-acts .act-secondary:nth-child(2):last-child {
   grid-column: 1 / -1;
+}
+/* 货架短签：卖点芯片，不走表单标签腔 */
+.browse-surface.surface-shelfgrid .short-tag {
+  border-radius: 6px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--portal-accent, #e85d04) 8%, var(--portal-surface, #fff));
+  border-color: color-mix(in srgb, var(--portal-accent, #e85d04) 18%, var(--portal-line, #e2e8e6));
 }
 /* —— 交易再磨：档口菜单板（菜名+价大字，异于货架封面墙） —— */
 .browse-surface.surface-menuboard .grid {
@@ -1767,6 +1804,9 @@
   gap: 8px;
   width: 100%;
 }
+.card-acts:empty {
+  display: none;
+}
 .card-acts .el-button {
   margin: 0 !important;
   height: 32px;
@@ -1900,7 +1940,8 @@
   gap: 6px;
 }
 .short-tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: baseline;
   max-width: 100%;
   padding: 2px 8px;
   border-radius: 999px;
@@ -1911,19 +1952,37 @@
   background: color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, var(--portal-surface, #fff));
   border: 1px solid color-mix(in srgb, var(--portal-accent, #0b6e75) 22%, var(--portal-line, #e2e8e6));
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 标签 muted + 中文冒号，与值分色；禁止「规格型号FT」糊读 */
+.short-tag-k {
+  flex-shrink: 0;
+  font-weight: 500;
+  color: var(--portal-muted, #64748b);
+}
+.short-tag-k::after {
+  content: '：';
+}
+.short-tag-v {
+  min-width: 0;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .more-hint {
-  margin: 6px 0 0;
+  margin: 0;
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
+  align-self: flex-start;
   font-size: 11px;
   color: var(--portal-accent, #0b6e75);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+.card-foot > .more-hint {
+  margin: 0 0 2px;
 }
 .promo { margin: 4px 0 0; color: var(--el-color-danger); font-size: 13px; }
 .promo-list { color: var(--portal-muted, #94a3b8); text-decoration: line-through; margin-left: 6px; font-size: 12px; }

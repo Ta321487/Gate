@@ -17,6 +17,16 @@ BROWSE = (
     / "user"
     / "ArchiveBrowse.vue"
 )
+BROWSE_SETUP = (
+    ROOT
+    / "skeletons"
+    / "baseline"
+    / "frontend"
+    / "src"
+    / "views"
+    / "user"
+    / "ArchiveBrowse.setup.js"
+)
 HOME = (
     ROOT
     / "skeletons"
@@ -34,12 +44,15 @@ CHROME = ROOT / "skeletons" / "baseline" / "frontend" / "src" / "styles" / "chro
 
 class ArchiveCardSignalTests(unittest.TestCase):
     def test_browse_uses_primary_signal_helper(self) -> None:
-        text = BROWSE.read_text(encoding="utf-8")
-        self.assertIn("function primarySignalOf", text)
-        self.assertIn("cover-fallback", text)
+        # 拆分后函数在 setup，模板只调用
+        vue = BROWSE.read_text(encoding="utf-8")
+        setup = BROWSE_SETUP.read_text(encoding="utf-8")
+        self.assertIn("function primarySignalOf", setup)
+        self.assertIn("primarySignalOf(row)", vue)
+        self.assertIn("cover-fallback", vue)
         self.assertNotIn(
             "formatAuthor(row.author) }} ·",
-            text,
+            vue,
             "主信号不得再拼「作者 · 分类」同构墙",
         )
 

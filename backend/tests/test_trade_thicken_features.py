@@ -224,6 +224,11 @@ CREATE TABLE IF NOT EXISTS goods (
             "inviteReviewBody",
         ):
             self.assertIn(key, labels)
+        # 学生可见：业务口吻，禁止实现腔「扣减/回补」
+        stock_hint = str(labels.get("stockLockHint") or "")
+        self.assertTrue(stock_hint.strip())
+        for bad in ("扣减库存", "自动回补", "写库", "bake"):
+            self.assertNotIn(bad, stock_hint)
         with_receipt = _spec("DOM-SHOP", "校园二手商城系统", "支持打印小票")
         self.assertTrue(
             ((with_receipt.get("schema") or {}).get("tradeThicken") or {}).get(

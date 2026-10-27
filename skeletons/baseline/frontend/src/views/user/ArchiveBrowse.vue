@@ -412,14 +412,8 @@
               v-for="tag in cardShortTags(row)"
               :key="tag.key"
               class="short-tag"
-            >{{ tag.text }}</span>
+            ><span v-if="tag.label" class="short-tag-k">{{ tag.label }}</span><span class="short-tag-v">{{ tag.text }}</span></span>
           </div>
-          <button
-            v-if="cardMoreFieldCount > 0"
-            type="button"
-            class="more-hint"
-            @click.stop="openDetail(row)"
-          >另有 {{ cardMoreFieldCount }} 项，见详情</button>
           <p
             v-for="f in (cardVoice === 'story' ? cardPreviewFields : [])"
             :key="f.key"
@@ -486,130 +480,152 @@
           <p v-if="scheduleText(row)" class="sched">{{ scheduleText(row) }}</p>
           <p v-if="conflictHighlightOn && wouldConflict(row)" class="sched conflict-row">{{ conflictHighlightLabel }}：{{ conflictHighlightHint }}</p>
           <RichTextView v-if="bodyRich && row.isbn" class="excerpt" :html="row.isbn" compact />
-          <div class="row">
-            <span
-              v-if="showStageChip"
-              class="stage-chip"
-              :data-stage="stageTone(row.stage)"
-            >{{ row.stage || '—' }}</span>
-            <el-tag
-              v-if="Number(row.pinTop) === 1"
-              size="small"
-              type="warning"
-              effect="plain"
-            >{{ pinTopLabel }}</el-tag>
-            <el-tag
-              v-if="essenceOn && Number(row.essence) === 1"
-              size="small"
-              type="success"
-              effect="plain"
-            >{{ essenceLabel }}</el-tag>
-            <el-tag
-              v-if="lockedOn && Number(row.locked) === 1"
-              size="small"
-              type="info"
-              effect="plain"
-            >{{ lockedLabel }}</el-tag>
-            <el-tag
-              v-if="stockDisplay !== 'hidden'"
-              :type="stockOk(row) ? (stockTight(row) ? 'warning' : 'success') : 'info'"
-              size="small"
-              effect="plain"
-              :class="{ 'stock-tight': stockTight(row) }"
-            >
-              {{ stockText(row) }}
-            </el-tag>
-            <span
-              v-if="stockTightHint && stockTight(row) && stockOk(row)"
-              class="sched muted"
-            >{{ stockTightHint }}</span>
-            <span
-              v-if="minGroupHintOf(row)"
-              class="sched muted"
-            >{{ minGroupHintOf(row) }}</span>
-            <span
-              v-if="row.courseKind"
-              class="sched muted"
-            >{{ row.courseKind }}</span>
-            <span
-              v-if="row.sessionGroup"
-              class="sched muted"
-            >场次 {{ row.sessionGroup }}</span>
-            <span
-              v-if="row.college"
-              class="sched muted"
-            >{{ row.college }}</span>
-            <span
-              v-if="row.lostCategory"
-              class="sched muted"
-            >{{ row.lostCategory }}</span>
-            <span
-              v-if="viewCountOn || Number(row.viewCount) > 0"
-              class="sched muted"
-            >{{ viewCountLabel }} {{ Number(row.viewCount) || 0 }}</span>
-            <span
-              v-if="downloadCountOn && Number(row.downloadCount) > 0"
-              class="sched muted"
-            >{{ downloadCountLabel }} {{ row.downloadCount }}</span>
-            <a
-              v-if="row.planUrl"
-              class="sched"
-              :href="row.planUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              @click.stop
-            >培养方案</a>
-            <el-button
-              v-if="playUrlOf(row)"
-              size="small"
-              @click="play(row)"
-            >播放</el-button>
-            <el-button
-              v-if="showDetailBtn"
-              size="small"
-              @click="openDetail(row)"
-            >{{ bodyRich ? '阅读' : '详情' }}</el-button>
-            <el-button
-              v-if="teamInviteOn"
-              size="small"
-              plain
-              @click="sendTeamInvite(row)"
-            >{{ teamInviteLabel }}</el-button>
-            <el-button
-              v-if="showPrimaryApply"
-              size="small"
-              type="primary"
-              :disabled="!isSlotMode && !canApplyOrWait(row)"
-              @click="onPrimary(row)"
-            >{{ applyActionLabel(row) }}</el-button>
-            <el-button
-              v-if="favOn && !isGuest"
-              size="small"
-              :type="favIds.includes(row.id) ? 'warning' : 'default'"
-              :class="{ 'like-pulse': favPulseId === row.id }"
-              @click="toggleFav(row)"
-            >{{ favIds.includes(row.id) ? favoritedVerb : favoritesVerb }}</el-button>
-            <el-button
-              v-if="datingUserFollowOn && !isGuest && authorKey(row)"
-              size="small"
-              @click="toggleFollowUser(authorKey(row))"
-            >{{ followBtnLabel(authorKey(row)) }}</el-button>
-            <el-button
-              v-if="likeOn && !isGuest"
-              size="small"
-              :type="likeIds.includes(row.id) ? 'warning' : 'default'"
-              :class="{ 'like-pulse': likePulseId === row.id }"
-              @click="toggleLike(row)"
-            >
-              {{ likeIds.includes(row.id) ? likedVerb : likeVerb }}{{ likeCountText(row) }}
-              <StatusChip v-if="Number(row.likeCount) > 0" tone="warn" compact />
-            </el-button>
-            <el-button
-              v-if="reportOn && !isGuest"
-              size="small"
-              :disabled="reportedIds.has(row.id)"
-              @click="openReport(row)"
-            >{{ reportedIds.has(row.id) ? '已举报' : reportVerb }}</el-button>
+          <div class="card-foot">
+            <!--
+              货架（shelfgrid）不露「另有 N 项」——真实货架无此元信息，详情钮已覆盖。
+              其它表面仍挂底栏顶，禁回短签后（齐底空会顶在链接下）。
+            -->
+            <button
+              v-if="cardMoreFieldCount > 0 && tradeSurface !== 'shelfgrid'"
+              type="button"
+              class="more-hint"
+              @click.stop="openDetail(row)"
+            >另有 {{ cardMoreFieldCount }} 项，见详情</button>
+            <div class="card-meta">
+              <span
+                v-if="showStageChip"
+                class="stage-chip"
+                :data-stage="stageTone(row.stage)"
+              >{{ row.stage || '—' }}</span>
+              <el-tag
+                v-if="Number(row.pinTop) === 1"
+                size="small"
+                type="warning"
+                effect="plain"
+              >{{ pinTopLabel }}</el-tag>
+              <el-tag
+                v-if="essenceOn && Number(row.essence) === 1"
+                size="small"
+                type="success"
+                effect="plain"
+              >{{ essenceLabel }}</el-tag>
+              <el-tag
+                v-if="lockedOn && Number(row.locked) === 1"
+                size="small"
+                type="info"
+                effect="plain"
+              >{{ lockedLabel }}</el-tag>
+              <el-tag
+                v-if="stockDisplay !== 'hidden'"
+                :type="stockOk(row) ? (stockTight(row) ? 'warning' : 'success') : 'info'"
+                size="small"
+                effect="plain"
+                :class="{ 'stock-tight': stockTight(row) }"
+              >
+                {{ stockText(row) }}
+              </el-tag>
+              <span
+                v-if="stockTightHint && stockTight(row) && stockOk(row)"
+                class="meta-hint"
+              >{{ stockTightHint }}</span>
+              <span
+                v-if="minGroupHintOf(row)"
+                class="meta-hint"
+              >{{ minGroupHintOf(row) }}</span>
+              <span
+                v-if="row.courseKind"
+                class="meta-hint"
+              >{{ row.courseKind }}</span>
+              <span
+                v-if="row.sessionGroup"
+                class="meta-hint"
+              >场次 {{ row.sessionGroup }}</span>
+              <span
+                v-if="row.college"
+                class="meta-hint"
+              >{{ row.college }}</span>
+              <span
+                v-if="row.lostCategory"
+                class="meta-hint"
+              >{{ row.lostCategory }}</span>
+              <span
+                v-if="viewCountOn || Number(row.viewCount) > 0"
+                class="meta-hint"
+              >{{ viewCountLabel }} {{ Number(row.viewCount) || 0 }}</span>
+              <span
+                v-if="downloadCountOn && Number(row.downloadCount) > 0"
+                class="meta-hint"
+              >{{ downloadCountLabel }} {{ row.downloadCount }}</span>
+              <a
+                v-if="row.planUrl"
+                class="meta-link"
+                :href="row.planUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                @click.stop
+              >培养方案</a>
+            </div>
+            <div class="card-acts">
+              <el-button
+                v-if="showPrimaryApply"
+                class="act-primary"
+                size="small"
+                type="primary"
+                :disabled="!isSlotMode && !canApplyOrWait(row)"
+                @click="onPrimary(row)"
+              >{{ applyActionLabel(row) }}</el-button>
+              <el-button
+                v-if="playUrlOf(row)"
+                class="act-secondary"
+                size="small"
+                @click="play(row)"
+              >播放</el-button>
+              <el-button
+                v-if="showDetailBtn"
+                class="act-secondary"
+                size="small"
+                @click="openDetail(row)"
+              >{{ bodyRich ? '阅读' : '详情' }}</el-button>
+              <el-button
+                v-if="teamInviteOn"
+                class="act-secondary"
+                size="small"
+                plain
+                @click="sendTeamInvite(row)"
+              >{{ teamInviteLabel }}</el-button>
+              <el-button
+                v-if="favOn && !isGuest"
+                class="act-secondary"
+                size="small"
+                :type="favIds.includes(row.id) ? 'warning' : 'default'"
+                :class="{ 'like-pulse': favPulseId === row.id }"
+                @click="toggleFav(row)"
+              >{{ favIds.includes(row.id) ? favoritedVerb : favoritesVerb }}</el-button>
+              <el-button
+                v-if="datingUserFollowOn && !isGuest && authorKey(row)"
+                class="act-secondary"
+                size="small"
+                @click="toggleFollowUser(authorKey(row))"
+              >{{ followBtnLabel(authorKey(row)) }}</el-button>
+              <el-button
+                v-if="likeOn && !isGuest"
+                class="act-secondary"
+                size="small"
+                :type="likeIds.includes(row.id) ? 'warning' : 'default'"
+                :class="{ 'like-pulse': likePulseId === row.id }"
+                @click="toggleLike(row)"
+              >
+                {{ likeIds.includes(row.id) ? likedVerb : likeVerb }}{{ likeCountText(row) }}
+                <StatusChip v-if="Number(row.likeCount) > 0" tone="warn" compact />
+              </el-button>
+              <el-button
+                v-if="reportOn && !isGuest"
+                class="act-secondary"
+                size="small"
+                :disabled="reportedIds.has(row.id)"
+                @click="openReport(row)"
+              >{{ reportedIds.has(row.id) ? '已举报' : reportVerb }}</el-button>
+            </div>
           </div>
         </div>
       </article>

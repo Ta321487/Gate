@@ -53,6 +53,7 @@ import {
   requireLogin,
 } from '../../utils/session.js'
 import { APP_DELIVERED } from '../../appDelivered.js'
+import { shouldShowDetailAttr } from '../../utils/detailAttrWhen.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -383,17 +384,29 @@ const cardMoreFieldCount = computed(() => {
   return Math.max(0, cardDetailFields.value.length - cardPreviewFields.value.length)
 })
 
+function categoryNamesOfRow(row) {
+  if (!row) return []
+  if (Array.isArray(row.categoryNames) && row.categoryNames.length) {
+    return row.categoryNames.map((x) => String(x || '').trim()).filter(Boolean)
+  }
+  const one = String(row.categoryName || '').trim()
+  return one ? [one] : []
+}
+
 /** 短签：值优先芯片，禁止十行「标签：值」同灰（§2.5 至多 2）；交易档口/排片也可出短签 */
 function cardShortTags(row) {
   if (!row) return []
   const out = []
   const budget = 2
-  const push = (key, text) => {
+  /** @param {string} [label] 短标签（≤4 字）单独成 muted 段，禁止与值空格硬拼导致糊读 */
+  const push = (key, text, label = '') => {
     const t = String(text || '').trim()
     if (!t || t === '—') return
     if (out.some((x) => x.key === key)) return
+    const lab = String(label || '').trim()
     out.push({
       key,
+      label: lab && lab.length <= 4 ? lab : '',
       text: t.length > 18 ? `${t.slice(0, 18)}…` : t,
     })
   }
@@ -589,21 +602,18 @@ function cardShortTags(row) {
     return out.slice(0, budget)
   }
   if (cardVoice.value !== 'catalog') return []
+  /* catalog / 货架：只出值芯片（FT-GD01、加压透气），禁止「规格型号：」表单腔 */
   if (productSpecOn.value) {
     const spec = productSpecText(row)
-    if (spec) {
-      const lab = String(productSpecLabel.value || '').trim()
-      const text = lab && lab.length <= 4 ? `${lab} ${spec}` : spec
-      push('productSpec', text)
-    }
+    if (spec) push('productSpec', spec)
   }
+  const catNames = categoryNamesOfRow(row)
   for (const f of cardPreviewFields.value) {
     if (out.length >= budget) break
+    if (!shouldShowDetailAttr(row, f.key, catNames)) continue
     const v = formatFieldValue(row, f)
     if (!v || v === '—') continue
-    const lab = String(f.label || '').trim()
-    const raw = lab && lab.length <= 4 ? `${lab} ${v}` : v
-    push(f.key, raw)
+    push(f.key, v)
   }
   return out.slice(0, budget)
 }
@@ -613,7 +623,9 @@ function storyLeadOf(row) {
   const raw = row.excerpt || row.summary || row.lead || row.bodyPlain || ''
   const s = String(raw).replace(/<[^>]+>/g, '').trim()
   if (s) return s.length > 72 ? `${s.slice(0, 72)}…` : s
+  const catNames = categoryNamesOfRow(row)
   const bits = cardDetailFields.value
+    .filter((f) => shouldShowDetailAttr(row, f.key, catNames))
     .slice(0, 2)
     .map((f) => formatFieldValue(row, f))
     .filter((x) => x && x !== '—')

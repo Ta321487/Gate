@@ -13,31 +13,40 @@
           <h1>{{ row.title || '未命名' }}</h1>
           <p v-if="lead" class="aid-lead">{{ lead }}</p>
           <p v-if="priceOn" class="aid-price">
-            <span class="aid-price-label">{{ priceLabel }}</span>
+            <span v-if="showPriceLabel" class="aid-price-label">{{ priceLabel }}</span>
             <strong>{{ priceText }}</strong>
           </p>
           <p v-if="metaLine" class="aid-meta">{{ metaLine }}</p>
-          <div v-if="orderOn" class="aid-qty">
-            <button type="button" aria-label="减少" @click="qty = Math.max(1, qty - 1)">−</button>
-            <span>{{ qty }}</span>
-            <button type="button" aria-label="增加" @click="qty += 1">+</button>
-          </div>
-          <div class="aid-acts">
-            <el-button v-if="orderOn" type="primary" size="large" @click="buyNow">{{ buyLabel }}</el-button>
-            <el-button
-              v-else-if="slotOn"
-              type="primary"
-              size="large"
-              @click="goSlots"
-            >{{ slotCtaLabel }}</el-button>
-            <el-button
-              v-else-if="ticketOn"
-              type="primary"
-              size="large"
-              @click="goTicketApply"
-            >{{ ticketApplyLabel }}</el-button>
-            <el-button v-if="favOn" size="large" @click="fav">{{ favored ? '已收藏' : '收藏' }}</el-button>
-            <el-button size="large" plain @click="goList">返回目录</el-button>
+          <ul v-if="detailAttrLines.length" class="aid-attrs">
+            <li v-for="line in detailAttrLines" :key="line.key">
+              <span class="aid-attr-k">{{ line.label }}</span>
+              <span class="aid-attr-v">{{ line.text }}</span>
+            </li>
+          </ul>
+          <!-- 数量+主操作钉右栏底：与左图齐高时禁顶对齐留下半截空 -->
+          <div class="aid-buybox">
+            <div v-if="orderOn" class="aid-qty">
+              <button type="button" aria-label="减少" @click="qty = Math.max(1, qty - 1)">−</button>
+              <span>{{ qty }}</span>
+              <button type="button" aria-label="增加" @click="qty += 1">+</button>
+            </div>
+            <div class="aid-acts">
+              <el-button v-if="orderOn" type="primary" size="large" @click="buyNow">{{ buyLabel }}</el-button>
+              <el-button
+                v-else-if="slotOn"
+                type="primary"
+                size="large"
+                @click="goSlots"
+              >{{ slotCtaLabel }}</el-button>
+              <el-button
+                v-else-if="ticketOn"
+                type="primary"
+                size="large"
+                @click="goTicketApply"
+              >{{ ticketApplyLabel }}</el-button>
+              <el-button v-if="favOn" size="large" @click="fav">{{ favored ? '已收藏' : '收藏' }}</el-button>
+              <el-button size="large" plain @click="goList">返回目录</el-button>
+            </div>
           </div>
         </div>
       </section>
@@ -89,6 +98,7 @@ import EmptyHint from '../../components/EmptyHint.vue'
 import { toggleFavorite, touchBrowseHistory, upsertCart } from '../../utils/apiCalls'
 import { APP_DELIVERED } from '../../appDelivered.js'
 import { archiveCopy, formatArchiveScalar, getSchema, hasCap, schemaLabels } from '../../utils/domainSchema.js'
+import { shouldShowDetailAttr } from '../../utils/detailAttrWhen.js'
 import { requireLogin } from '../../utils/session'
 
 const route = useRoute()
@@ -157,6 +167,14 @@ const entityLabel = computed(() => {
 const priceLabel = computed(() => {
   const f = (archiveCopy().fields || []).find((x) => x?.key === 'author')
   return f?.label || '价格'
+})
+/** 商城价签自己会说话；「单价(元)」是表单腔，真货架详情不露 */
+const showPriceLabel = computed(() => {
+  if (orderOn.value) return false
+  const lab = String(priceLabel.value || '').trim()
+  if (!lab) return false
+  if (/单价|价格|售价/.test(lab) && lab.length <= 8) return false
+  return true
 })
 const buyLabel = computed(() => labels.buyNowLabel || '加入购物车')
 const noticeTab = computed(() => {
@@ -253,6 +271,28 @@ const metaLine = computed(() => {
   const cat = row.value.categoryName || (row.value.categoryNames || []).join(' · ')
   if (cat) bits.push(cat)
   return bits.join(' · ')
+})
+/** 详情属性：适用且有值才露（有皮表按类裁；无表则空不露） */
+const detailAttrLines = computed(() => {
+  if (!row.value || contentOn.value) return []
+  const skip = new Set([
+    'title', 'author', 'isbn', 'category', 'categoryIds', 'stock', 'coverUrl',
+    'sellerNote', 'promoPrice', 'promoStart', 'promoEnd',
+  ])
+  const names = Array.isArray(row.value.categoryNames) && row.value.categoryNames.length
+    ? row.value.categoryNames.map((x) => String(x || '').trim()).filter(Boolean)
+    : (String(row.value.categoryName || '').trim() ? [String(row.value.categoryName).trim()] : [])
+  const fields = archiveCopy().fields || []
+  const lines = []
+  for (const f of fields) {
+    if (!f?.key || skip.has(f.key)) continue
+    if (f.type === 'hidden' || f.type === 'richtext') continue
+    if (!shouldShowDetailAttr(row.value, f.key, names)) continue
+    const text = formatArchiveScalar(f, row.value[f.key], '')
+    if (!text || text === '—') continue
+    lines.push({ key: f.key, label: f.label || f.key, text })
+  }
+  return lines.slice(0, 8)
 })
 const introHtml = computed(() => {
   const raw = String(row.value?.sellerNote || row.value?.content || '').trim()
@@ -362,6 +402,7 @@ onMounted(load)
   display: grid;
   grid-template-columns: minmax(240px, 420px) minmax(0, 1fr);
   gap: 28px;
+  align-items: stretch;
   padding: 22px;
   background: var(--portal-surface, #fff);
   border: 1px solid var(--portal-line, #e2e8e6);
@@ -375,6 +416,20 @@ onMounted(load)
     color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, var(--portal-bg, #f4f6f5)) center / cover no-repeat;
   display: grid;
   place-items: center;
+}
+.aid-info {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.aid-buybox {
+  margin-top: auto;
+  padding-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
 }
 /* 内容阅读脸：宽封 + 正文优先，异于商城方图价签 */
 .aid-content .aid-hero {
@@ -445,22 +500,49 @@ onMounted(load)
   color: var(--portal-muted, #5b6b76);
 }
 .aid-price strong {
-  font-size: 1.75rem;
-  font-weight: 750;
+  font-size: 1.85rem;
+  font-weight: 800;
   color: var(--portal-accent, #0b6e75);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 .aid-meta {
-  margin: 0 0 16px;
+  margin: 0;
   font-size: 13px;
   color: var(--portal-muted, #5b6b76);
   line-height: 1.5;
+}
+.aid-attrs {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aid-attrs li {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.aid-attr-k {
+  flex-shrink: 0;
+  color: var(--portal-muted, #5b6b76);
+}
+.aid-attr-k::after {
+  content: '：';
+}
+.aid-attr-v {
+  color: var(--portal-ink, #15202b);
+  font-weight: 550;
+  min-width: 0;
 }
 .aid-qty {
   display: inline-flex;
   align-items: center;
   gap: 0;
-  margin: 0 0 16px;
+  margin: 0;
   border: 1px solid var(--portal-line, #e2e8e6);
   border-radius: 8px;
   overflow: hidden;

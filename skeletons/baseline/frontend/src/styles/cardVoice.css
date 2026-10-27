@@ -88,7 +88,8 @@ html[data-card-voice='catalog'] .browse-surface .card .short-tags {
   gap: 6px;
 }
 html[data-card-voice='catalog'] .browse-surface .card .short-tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: baseline;
   max-width: 100%;
   padding: 2px 8px;
   border-radius: 999px;
@@ -99,11 +100,10 @@ html[data-card-voice='catalog'] .browse-surface .card .short-tag {
   background: color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, var(--portal-surface, #fff));
   border: 1px solid color-mix(in srgb, var(--portal-accent, #0b6e75) 22%, var(--portal-line, #e2e8e6));
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 html[data-card-voice='catalog'] .browse-surface .card .more-hint {
-  margin: 6px 0 0;
+  margin: 0 0 2px;
   padding: 0;
   border: 0;
   background: none;
