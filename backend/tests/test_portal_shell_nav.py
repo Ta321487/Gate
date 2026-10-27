@@ -269,6 +269,33 @@ class PortalShellNavTests(unittest.TestCase):
             hits2 = _student_copy_hits(ws, {"schema": {}})
             self.assertEqual(hits2, [], msg=str(hits2))
 
+    def test_rail_short_label_no_duplicate_mine(self) -> None:
+        """「我的收藏/我的评价」不得都截成「我的」。"""
+        uri = json.dumps(_UTIL.as_uri())
+        script = (
+            "import { railShortLabel } from "
+            f"{uri};\n"
+            "console.log(JSON.stringify({\n"
+            "  fav: railShortLabel('我的收藏', 'favorites'),\n"
+            "  rev: railShortLabel('我的评价', 'order_reviews'),\n"
+            "  addr: railShortLabel('收货地址', 'addresses'),\n"
+            "}));\n"
+        )
+        proc = subprocess.run(
+            ["node", "--input-type=module", "-e", script],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise AssertionError(proc.stderr or proc.stdout)
+        got = json.loads(proc.stdout)
+        self.assertEqual(got["fav"], "收藏")
+        self.assertEqual(got["rev"], "评价")
+        self.assertEqual(got["addr"], "收货")
+        self.assertNotEqual(got["fav"], got["rev"])
+
     def test_arrange_side_rail_respects_saved_outside(self) -> None:
         """编辑勾选/顺序须落地：不得保存后又自动补满外侧。"""
         uri = json.dumps(_UTIL.as_uri())
@@ -298,7 +325,8 @@ class PortalShellNavTests(unittest.TestCase):
         got = json.loads(proc.stdout)
         self.assertEqual(got["savedOutside"], ["c", "a"])
         self.assertEqual(got["savedMore"][:4], ["b", "d", "e", "f"])
-        self.assertEqual(len(got["freshOutside"]), 5)
+        # 无本机偏好：默认外侧 3，其余进更多（勿与编辑区同表）
+        self.assertEqual(got["freshOutside"], ["a", "b", "c"])
 
     def test_account_hub_groups_not_flat_dump(self) -> None:
         uri = json.dumps(_UTIL.as_uri())
@@ -412,6 +440,15 @@ class PortalShellNavTests(unittest.TestCase):
         self.assertIn("act-primary", browse)
         self.assertIn(
             "surface-shelfgrid .card-acts",
+            browse.replace("\n", " "),
+        )
+        # 货架仅一颗次钮须通栏；:only-of-type 对两个 button 永远不中，会半格空位
+        self.assertIn(
+            "act-secondary:nth-child(2):last-child",
+            browse.replace("\n", " "),
+        )
+        self.assertNotIn(
+            "act-secondary:only-of-type",
             browse.replace("\n", " "),
         )
         # 卡底口径铺开到五个用户页：状态条（card-meta）与操作条（card-acts）拆开，

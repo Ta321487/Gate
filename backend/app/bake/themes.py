@@ -515,10 +515,15 @@ def resolve_portal_home_style(
     override: str | None,
     seed: str | None,
 ) -> str:
-    """手选优先；货架域默认 mall；内容域未选手动则种子抽 cards/editorial；其它域固定 cards。"""
+    """手选优先；货架域默认 mall；内容域未选手动则种子抽 cards/editorial；其它域固定 cards。
+
+    手选 mall 仅在「已知非货架域」时降为 cards；domain 空串不得把 mall 打回 cards
+    （学生包 appDelivered 故意不写 DOM-*，解析侧仍以匹配域为准）。
+    """
     if override:
         style = normalize_portal_home_style(override)
-        if style == "mall" and domain not in MALL_PORTAL_HOME_DOMAINS:
+        dom = str(domain or "").strip()
+        if style == "mall" and dom and dom not in MALL_PORTAL_HOME_DOMAINS:
             return "cards"
         return style
     if domain in MALL_PORTAL_HOME_DOMAINS:

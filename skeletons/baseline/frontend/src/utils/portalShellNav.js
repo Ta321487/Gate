@@ -12,7 +12,42 @@ import { APP_DELIVERED } from '../appDelivered.js'
 /** 顶栏业务链软上限（Ant 顶栏约 2～7；§3 约四五）。超出仅 marketplace 收进右侧栏 */
 export const PRIMARY_MAX = 5
 export const RAIL_OUTSIDE_MAX = 5
+/** 首次无本机偏好时外侧只钉这么多，其余进「更多」，避免编辑弹层与外侧同表 */
+export const RAIL_OUTSIDE_DEFAULT = 3
 export const RAIL_STORAGE_KEY = 'gf_shop_side_rail'
+
+/** 右侧栏短签（禁「我的收藏/我的评价」都截成「我的」） */
+export const RAIL_SHORT_LABEL = {
+  favorites: '收藏',
+  order_reviews: '评价',
+  addresses: '收货',
+  guestbook: '留言',
+  dm: '客服',
+  browse_history: '足迹',
+  coupons: '优惠',
+  points_ledger: '积分',
+  points_rules: '规则',
+  blind_draws: '盲盒',
+  my_consigns: '寄卖',
+  my_buybacks: '回收',
+  my_digital: '卡密',
+  balance_mine: '余额',
+  balance_ledger_mine: '流水',
+}
+
+/**
+ * 侧栏二字签：优先键表；去掉「我的」前缀再截，避免重名。
+ * @param {string} label
+ * @param {string} [key]
+ */
+export function railShortLabel(label, key = '') {
+  const mapped = RAIL_SHORT_LABEL[String(key || '')]
+  if (mapped) return mapped
+  let s = String(label || '').trim()
+  if (s.startsWith('我的')) s = s.slice(2)
+  if (!s) s = String(label || '').trim()
+  return s.length <= 2 ? s : s.slice(0, 2)
+}
 
 const CHROME_ALWAYS = new Set(['messages', 'profile', 'home', 'ai_assistant'])
 
@@ -323,7 +358,9 @@ export function arrangeSideRail(items, pref = null) {
   if (hasOutsidePref) {
     outsideKeys = pref.outside.filter((k) => byKey.has(k)).slice(0, RAIL_OUTSIDE_MAX)
   } else {
-    outsideKeys = ordered.slice(0, RAIL_OUTSIDE_MAX).map((it) => it.key)
+    // 未满铺：默认外侧 3，其余进更多（对齐手磨 Dock 内外分层）
+    const n = Math.min(RAIL_OUTSIDE_DEFAULT, RAIL_OUTSIDE_MAX, ordered.length)
+    outsideKeys = ordered.slice(0, n).map((it) => it.key)
   }
 
   const outsideSet = new Set(outsideKeys)

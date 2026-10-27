@@ -88,6 +88,11 @@ class PortalHomeStyleTests(unittest.TestCase):
             resolve_portal_home_style("DOM-LIBRARY", "mall", "seed"),
             "cards",
         )
+        # 学生包不写 DOM-* 时 domain 可能空；手选 mall 不得被空串降成 cards
+        self.assertEqual(
+            resolve_portal_home_style("", "mall", "seed"),
+            "mall",
+        )
         self.assertEqual(
             resolve_portal_home_style("DOM-SHOP", None, "seed"),
             "mall",

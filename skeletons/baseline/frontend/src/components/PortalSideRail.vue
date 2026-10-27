@@ -9,8 +9,10 @@
         :class="{ 'is-active': navItemActive(route.path, item.to) }"
         :title="item.label"
       >
-        <el-icon :size="18"><component :is="iconOf(item.key)" /></el-icon>
-        <span class="rail-cap">{{ shortLabel(item.label) }}</span>
+        <span class="rail-mark">
+          <el-icon :size="16"><component :is="iconOf(item.key)" /></el-icon>
+        </span>
+        <span class="rail-cap">{{ railShortLabel(item.label, item.key) }}</span>
       </router-link>
 
       <el-popover
@@ -24,7 +26,9 @@
       >
         <template #reference>
           <button type="button" class="rail-btn rail-more-trig" title="更多入口">
-            <el-icon :size="18"><MoreFilled /></el-icon>
+            <span class="rail-mark rail-mark--more">
+              <el-icon :size="16"><MoreFilled /></el-icon>
+            </span>
             <span class="rail-cap">更多</span>
           </button>
         </template>
@@ -37,7 +41,9 @@
             :class="{ 'is-active': navItemActive(route.path, item.to) }"
             @click="pinOutside(item.key)"
           >
-            <el-icon :size="16"><component :is="iconOf(item.key)" /></el-icon>
+            <span class="rail-mark rail-mark--sm">
+              <el-icon :size="14"><component :is="iconOf(item.key)" /></el-icon>
+            </span>
             <span>{{ item.label }}</span>
             <span class="pin-hint">钉住</span>
           </router-link>
@@ -45,7 +51,9 @@
       </el-popover>
 
       <button type="button" class="rail-btn rail-edit" title="编辑入口" @click="editOpen = true">
-        <el-icon :size="18"><Setting /></el-icon>
+        <span class="rail-mark">
+          <el-icon :size="16"><Setting /></el-icon>
+        </span>
         <span class="rail-cap">编辑</span>
       </button>
     </div>
@@ -64,14 +72,40 @@
   >
     <p class="edit-lead">勾选外侧显示（最多 {{ RAIL_OUTSIDE_MAX }} 个），可上下调整顺序。只改本机。</p>
     <ul class="edit-list">
-      <li v-for="(row, idx) in editRows" :key="row.key" class="edit-row">
-        <div class="edit-moves">
-          <button type="button" class="edit-handle" title="上移" @click="moveEdit(idx, -1)">↑</button>
-          <button type="button" class="edit-handle" title="下移" @click="moveEdit(idx, 1)">↓</button>
-        </div>
-        <el-checkbox v-model="row.outside" :disabled="outsideDisabled(row)">
-          {{ row.label }}
+      <li
+        v-for="(row, idx) in editRows"
+        :key="row.key"
+        class="edit-row"
+        :class="{ on: row.outside }"
+      >
+        <el-checkbox
+          v-model="row.outside"
+          :disabled="outsideDisabled(row)"
+          class="edit-pick"
+        >
+          <span class="edit-pick-inner">
+            <span class="rail-mark rail-mark--sm">
+              <el-icon :size="14"><component :is="iconOf(row.key)" /></el-icon>
+            </span>
+            <span class="edit-name">{{ row.label }}</span>
+          </span>
         </el-checkbox>
+        <div class="edit-moves">
+          <button
+            type="button"
+            class="edit-handle"
+            title="上移"
+            :disabled="idx === 0"
+            @click="moveEdit(idx, -1)"
+          >↑</button>
+          <button
+            type="button"
+            class="edit-handle"
+            title="下移"
+            :disabled="idx === editRows.length - 1"
+            @click="moveEdit(idx, 1)"
+          >↓</button>
+        </div>
       </li>
     </ul>
     <template #footer>
@@ -104,6 +138,7 @@ import {
   RAIL_OUTSIDE_MAX,
   arrangeSideRail,
   loadRailPreference,
+  railShortLabel,
   saveRailPreference,
 } from '../utils/portalShellNav.js'
 
@@ -142,11 +177,6 @@ function iconOf(key) {
   return ICON_MAP[key] || CollectionTag
 }
 
-function shortLabel(label) {
-  const s = String(label || '')
-  return s.length <= 2 ? s : s.slice(0, 2)
-}
-
 function pinOutside(key) {
   const cur = arrangeSideRail(props.items, pref.value)
   let outsideKeys = [...cur.outsideKeys]
@@ -163,8 +193,7 @@ function pinOutside(key) {
 
 function outsideDisabled(row) {
   if (row.outside) return false
-  const n = editRows.value.filter((r) => r.outside).length
-  return n >= RAIL_OUTSIDE_MAX
+  return editRows.value.filter((r) => r.outside).length >= RAIL_OUTSIDE_MAX
 }
 
 function moveEdit(idx, delta) {
@@ -192,13 +221,15 @@ watch(editOpen, (open) => {
 
 function saveEdit() {
   const order = editRows.value.map((r) => r.key)
-  const outsideKeys = editRows.value.filter((r) => r.outside).map((r) => r.key).slice(0, RAIL_OUTSIDE_MAX)
+  const outsideKeys = editRows.value
+    .filter((r) => r.outside)
+    .map((r) => r.key)
+    .slice(0, RAIL_OUTSIDE_MAX)
   const next = { order, outside: outsideKeys }
   saveRailPreference(next)
   pref.value = next
   editOpen.value = false
-}
-</script>
+}</script>
 
 <style scoped>
 .side-rail {
@@ -210,7 +241,7 @@ function saveEdit() {
   z-index: 30;
   display: flex;
   align-items: center;
-  padding: 8px 0 8px 0;
+  padding: 8px 0;
   pointer-events: none;
   width: auto;
   max-width: 72px;
@@ -219,7 +250,9 @@ function saveEdit() {
   pointer-events: auto;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 4px;
+  width: 56px;
   padding: 8px 6px;
   background: color-mix(in srgb, var(--portal-surface, #fff) 94%, transparent);
   border: 1px solid var(--portal-line, #e2e8f0);
@@ -227,14 +260,18 @@ function saveEdit() {
   border-radius: 10px 0 0 10px;
   box-shadow: -2px 4px 16px rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(10px);
+  box-sizing: border-box;
 }
 .rail-btn {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  width: 48px;
-  padding: 8px 4px;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 0;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -242,15 +279,48 @@ function saveEdit() {
   text-decoration: none;
   cursor: pointer;
   font-size: 11px;
-  line-height: 1.2;
+  line-height: 1.15;
+  box-sizing: border-box;
+}
+.rail-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--portal-accent, #0b6e75);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent);
+}
+.rail-mark--more {
+  color: #fff;
+  background: var(--portal-accent, #0b6e75);
+}
+.rail-mark--sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.rail-mark :deep(.el-icon) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
 }
 .rail-btn:hover,
 .rail-btn.is-active {
   color: var(--portal-ink, #15202b);
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 14%, transparent);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, transparent);
+}
+.rail-btn:hover .rail-mark,
+.rail-btn.is-active .rail-mark {
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 22%, transparent);
 }
 .rail-cap {
-  max-width: 100%;
+  display: block;
+  width: 100%;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -298,36 +368,91 @@ function saveEdit() {
   overflow: auto;
 }
 .portal-side-rail-edit .edit-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
   align-items: center;
   gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--portal-line, #eef2f5);
+  min-height: 48px;
+  padding: 0 8px;
+  border-radius: 8px;
+}
+.portal-side-rail-edit .edit-row:hover {
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 6%, transparent);
+}
+.portal-side-rail-edit .edit-row.on {
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, transparent);
+}
+.portal-side-rail-edit .edit-pick {
+  min-width: 0;
+  height: auto;
+  margin-right: 0;
+}
+.portal-side-rail-edit .edit-pick .el-checkbox__label {
+  min-width: 0;
+  padding-left: 10px;
+  line-height: 1.3;
+}
+.portal-side-rail-edit .edit-pick-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  vertical-align: middle;
+}
+.portal-side-rail-edit .edit-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--portal-ink, #15202b);
 }
 .portal-side-rail-edit .edit-moves {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   gap: 2px;
   flex-shrink: 0;
 }
 .portal-side-rail-edit .edit-handle {
-  width: 28px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  border: 1px solid var(--portal-line, #e2e8f0);
-  border-radius: 4px;
-  background: var(--portal-surface, #fff);
+  border: none;
+  border-radius: 6px;
+  background: transparent;
   color: var(--portal-muted, #94a3b8);
   cursor: pointer;
   line-height: 1;
-  font-size: 12px;
+  font-size: 14px;
 }
-.portal-side-rail-edit .edit-handle:hover {
+.portal-side-rail-edit .edit-handle:hover:not(:disabled) {
   color: var(--portal-accent, #0b6e75);
-  border-color: var(--portal-accent, #0b6e75);
+  background: var(--portal-surface, #fff);
+  box-shadow: 0 0 0 1px var(--portal-line, #e2e8f0);
 }
-.portal-side-rail-edit .el-checkbox {
-  flex: 1;
-  min-width: 0;
+.portal-side-rail-edit .edit-handle:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+.portal-side-rail-edit .rail-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--portal-accent, #0b6e75);
+  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent);
+}
+.portal-side-rail-edit .rail-mark--sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+.portal-side-rail-edit .rail-mark .el-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
 }
 </style>

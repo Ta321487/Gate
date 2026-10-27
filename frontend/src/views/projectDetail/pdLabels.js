@@ -27,6 +27,11 @@ export const PORTAL_HOME_FALLBACK = [
 
 export const MALL_PORTAL_HOME_DOMAINS = new Set(['DOM-SHOP', 'DOM-FOOD'])
 
+/** 货架域缺省门户首页为 mall；禁止用 cards 当弱默认盖过商城货架。 */
+export function defaultPortalHomeStyle(domain) {
+  return MALL_PORTAL_HOME_DOMAINS.has(String(domain || '')) ? 'mall' : 'cards'
+}
+
 export const CONTENT_SURFACE_FALLBACK = [
   { label: '刊头阅读流', value: 'folio' },
   { label: '封面墙', value: 'coverwall' },
