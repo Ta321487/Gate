@@ -225,6 +225,20 @@ class PackPruneTests(unittest.TestCase):
         self.assertIn("int m = 0", out6)
         self.assertNotIn("= null", out6)
 
+        # 工作台：dashboard/chartStats 须抹成空 Map，禁止 putAll(null) 锁死 KPI
+        dash = """
+        if (TicketStore.enabled()) {
+            m.putAll(TicketStore.dashboard(userRole, uid, superAdmin));
+            charts.putAll(TicketStore.chartStats());
+        } else {
+            m.putAll(TicketStore.dashboard(userRole, uid, superAdmin));
+        }
+"""
+        out_dash = _strip_type_usages(dash, "TicketStore")
+        self.assertNotIn("TicketStore", out_dash)
+        self.assertNotIn("putAll(null)", out_dash.replace(" ", ""))
+        self.assertIn("java.util.Map.of()", out_dash)
+
         # 预约+未挂寄养：if (enabled) 岛路径 else 主路径 —— else 体必须留下
         boarding = """
         Map<String, Object> slot;

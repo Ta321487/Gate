@@ -1017,6 +1017,9 @@ def _strip_type_usages(text: str, type_name: str) -> str:
         text = _replace_type_calls(text, type_name, "subtreeIds", "java.util.Set.of()")
 
     if type_name == "TicketStore":
+        # 工作台：无单据包仍会 putAll(dashboard)；抹成空 Map，禁止 putAll(null) 把 KPI 锁死成 0
+        text = _replace_type_calls(text, type_name, "dashboard", "java.util.Map.of()")
+        text = _replace_type_calls(text, type_name, "chartStats", "java.util.Map.of()")
         text = re.sub(rf"{fqn}\.scheduleChangeNotify\b", "false", text)
         text = re.sub(rf"{fqn}\.allowContractExpireRemind\b", "false", text)
         text = _replace_type_calls(text, type_name, "notifyArchiveExpireDays", "0")

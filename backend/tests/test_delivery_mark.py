@@ -1,4 +1,4 @@
-﻿"""人工交付标记：与机器质检 zip_ready 分离。"""
+"""人工交付标记：与机器质检 zip_ready 分离。"""
 
 from __future__ import annotations
 
@@ -328,6 +328,17 @@ def test_delivery_block_reason_projection_skips_workspace_scan(tmp_path):
         "app.services.delivery_review.workspace_delivery_hash", return_value="changed"
     ):
         assert project_svc.delivery_block_reason(p) == project_svc.MSG_DOWNLOAD_ZIP_STALE
+
+
+def test_stats_must_not_defer_delivery_review():
+    """/stats 的 pending_review 会读 delivery_review；defer 会触发 MissingGreenlet。"""
+    import inspect
+
+    from app.services import projects as project_svc
+
+    src = inspect.getsource(project_svc.stats)
+    assert "defer(Project.delivery_review)" not in src
+    assert "is_zip_downloadable" in src
 
 
 def test_reconcile_scans_workspace_once_per_project(tmp_path):

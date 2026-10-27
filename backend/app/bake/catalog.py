@@ -260,14 +260,24 @@ def merge_llm_match(kw: MatchResult, data: dict) -> MatchResult | None:
 
 
 def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
-    """从开题/任务书等结构里捞课题名。"""
+    """从开题/任务书等结构里捞课题名。
+
+    优先级（通用，不按选题特判）：
+    1) 表头/「题目：」明示  2) 「毕业设计题目」下一行  3) 整行「…的设计与实现」
+    4) 引号内系统名（裁掉研究现状后）  5) 「设计并实现…」短语（同上，跳过助词/文献引用）
+    6) 文首短行兜底
+    """
     from app.services.proposal import (
         _SKIP_TITLE_LINE,
         _TITLE_EXPLICIT,
+        _TITLE_FULL_LINE,
         _TITLE_HEADING,
         _TITLE_PHRASE,
+        _TITLE_PHRASE_CITE_TAIL,
+        _TITLE_QUOTED,
         _TITLE_TABLE,
         strip_non_dev_sections,
+        title_search_body,
     )
 
     body = strip_non_dev_sections(text or "")
@@ -291,13 +301,43 @@ def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
             if 4 <= len(nxt) <= 60 and not _SKIP_TITLE_LINE.match(nxt) and "。" not in nxt:
                 return nxt[:80]
 
-    phrases: list[str] = []
-    for m in _TITLE_PHRASE.finditer(body[:8000]):
+    for ln in lines[:20]:
+        m = _TITLE_FULL_LINE.match(ln)
+        if m:
+            return m.group(1)[:80]
+
+    # 弱线索只在研究现状之前捞，避免「别人做的系统」串成本课题名
+    focus = title_search_body(body)[:8000]
+
+    quoted: list[str] = []
+    for m in _TITLE_QUOTED.finditer(focus):
         p = m.group(1).strip()
         if 4 <= len(p) <= 40 and not _SKIP_TITLE_LINE.match(p):
-            phrases.append(p)
+            quoted.append(p)
+    if quoted:
+        first_at = {p: next(i for i, x in enumerate(quoted) if x == p) for p in set(quoted)}
+        best = max(
+            set(quoted),
+            key=lambda p: (quoted.count(p), -first_at[p], len(p)),
+        )
+        return best[:80]
+
+    phrases: list[str] = []
+    for m in _TITLE_PHRASE.finditer(focus):
+        p = m.group(1).strip()
+        if len(p) < 4 or len(p) > 40 or _SKIP_TITLE_LINE.match(p):
+            continue
+        if p.startswith(("了", "的", "等")):
+            continue
+        if _TITLE_PHRASE_CITE_TAIL.match(focus[m.end() : m.end() + 12]):
+            continue
+        phrases.append(p)
     if phrases:
-        best = max(set(phrases), key=lambda p: (phrases.count(p), len(p)))
+        first_at = {p: next(i for i, x in enumerate(phrases) if x == p) for p in set(phrases)}
+        best = max(
+            set(phrases),
+            key=lambda p: (phrases.count(p), -first_at[p], len(p)),
+        )
         return best[:80]
 
     for ln in lines[:30]:
@@ -305,7 +345,9 @@ def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
             return ln[:80]
         m = _TITLE_PHRASE.search(ln)
         if m:
-            return m.group(1).strip()[:80]
+            p = m.group(1).strip()
+            if p and not p.startswith(("了", "的", "等")):
+                return p[:80]
 
     for ln in lines[:12]:
         if _SKIP_TITLE_LINE.match(ln):
