@@ -28,6 +28,7 @@ _SCHEMA_LEAF_NOTE = "以下模块名由交付菜单推断，非开题原文，�
 _ALIGNED_LEAF_NOTE = "已按交付菜单过滤开题枚举；未交付模块不进图"
 
 # 材料枚举：{身份}功能模块划分为：… / {身份}端主要包括：… 等
+# 冒号可缺：任务书常写「划分为登录注册模块、…」无「：」
 _IDENTITY_SECTION_RE = re.compile(
     r"(?P<label>"
     r"[^\s：:，,。；;\n]{1,16}?"
@@ -40,7 +41,7 @@ _IDENTITY_SECTION_RE = re.compile(
     r"模块划分为|"
     r"主要功能(?:模块)?(?:包括|包含|如下|为)"
     r")"
-    r"[：:]\s*",
+    r"[：:]?\s*",
 )
 
 # 前台/后台是叙述口径，框上改成身份名（有 schema 则用 roles）
@@ -482,8 +483,92 @@ def _truncate_module_enum_body(body: str) -> str:
     return text
 
 
+def _is_leaked_section_module_label(name: str) -> bool:
+    """下一段「…功能模块划分为…」未切开时会整句进叶子；一律丢掉。"""
+    s = name or ""
+    return any(
+        t in s
+        for t in (
+            "功能模块划分为",
+            "模块划分为",
+            "功能模块包括",
+            "功能主要包括",
+            "主要功能包括",
+            "端功能涉及",
+            "功能涉及",
+        )
+    )
+
+
+def _is_prose_module_label(name: str) -> bool:
+    """叙述句/开题散文冒充一级模块名 → 不进图。"""
+    s = (name or "").strip().rstrip("等")
+    if not s:
+        return True
+    if any(
+        t in (name or "")
+        for t in (
+            "涉及",
+            "端功能",
+            "具备",
+            "支持",
+            "涵盖",
+            "从而",
+            "进行",
+            "实现了",
+            "旨在",
+            "全方位",
+            "深度契合",
+            "紧扣",
+            "立足",
+            "不仅",
+            "有效",
+            "切实",
+        )
+    ):
+        return True
+    if (name or "").count("的") >= 2:
+        return True
+    # 过长且含顿号腔/多连接 → 多半是没切开的枚举残段
+    if len(s) > 14:
+        return True
+    return False
+
+
+# 一级枚举硬分隔（括号外）；含中英文逗号——任务书常写「A模块，B模块」
+_HARD_MODULE_SEPS = frozenset("、；;，,")
+# 「××模块」之后的软接驳（不穷举文风；未写「模块」的词组不靠这些切开，避免「购物车与在线支付模块」误伤）
+_SOFT_MODULE_CONJ = ("以及", "及", "和", "与", "还有", "并")
+
+
+def _match_soft_module_conj(text: str, i: int) -> int:
+    for conj in _SOFT_MODULE_CONJ:
+        if text.startswith(conj, i):
+            return len(conj)
+    return 0
+
+
+def _buf_ends_module_unit(buf: list[str]) -> bool:
+    """当前缓冲是否已是完整一级单元：…模块 或 …模块【/（细节）。"""
+    s = "".join(buf)
+    if not s:
+        return False
+    if s.endswith("模块"):
+        return True
+    if s[-1] in _BRACKET_CLOSE:
+        name, _ = _peel_module_brackets(s)
+        return bool(name) and name.endswith("模块")
+    return False
+
+
 def _split_top_modules(body: str) -> list[tuple[str, list[str]]]:
-    """一级模块名 + 括号细节；括号内不拆成并列一级。"""
+    """一级模块名 + 括号细节；括号内不拆成并列一级。
+
+    切分口径（换说法仍稳）：
+    - 硬分隔：顿号/分号/逗号（括号外一律切）
+    - 软接驳：仅当上一单元已以「模块」收束时，才吃掉「以及/及/和/与/…」
+    - 括号内「库存以及预警」等叙述不切
+    """
     text = re.sub(r"\s+", "", _truncate_module_enum_body(body or ""))
     text = text.rstrip("。．.;；")
     if not text:
@@ -504,21 +589,50 @@ def _split_top_modules(body: str) -> list[tuple[str, list[str]]]:
         # 过长名 = 枚举越界吃进正文，丢弃
         if len(name) > _MAX_MODULE_LABEL_LEN:
             return
+        # 下一段身份头 / 开题散文粘进本段叶子
+        if _is_leaked_section_module_label(name) or _is_prose_module_label(name):
+            return
         items.append((name, details))
 
-    for ch in text:
+    def try_sep_at(i: int) -> int | None:
+        """若此处应切开，返回应跳过的分隔长度；否则 None。"""
+        if depth != 0:
+            return None
+        ch = text[i]
+        if ch in _HARD_MODULE_SEPS:
+            return 1
+        if _buf_ends_module_unit(buf):
+            n = _match_soft_module_conj(text, i)
+            if n:
+                return n
+        return None
+
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
         if ch in _BRACKET_OPEN:
             depth += 1
             buf.append(ch)
+            i += 1
             continue
         if ch in _BRACKET_CLOSE and depth > 0:
             depth -= 1
             buf.append(ch)
+            i += 1
+            # …模块【细节】之后若直接「以及/和」下一模块，立刻切
+            sep_n = try_sep_at(i) if i < n else None
+            if sep_n is not None:
+                flush()
+                i += sep_n
             continue
-        if depth == 0 and ch in "、；;":
+        sep_n = try_sep_at(i)
+        if sep_n is not None:
             flush()
+            i += sep_n
             continue
         buf.append(ch)
+        i += 1
     flush()
     return items
 
@@ -827,8 +941,37 @@ def _menu_keys_for_module_text(text: str, menu_items: list[dict[str, Any]]) -> l
     return out
 
 
+_AUTH_LABEL_EXACT = frozenset(
+    {
+        "登录",
+        "注册",
+        "登录注册",
+        "注册登录",
+        "用户登录",
+        "用户注册",
+        "管理员登录",
+        "商家登录",
+        "商户登录",
+    }
+)
+
+
 def _is_auth_module_label(lab: str) -> bool:
-    return any(t in (lab or "") for t in ("登录", "注册"))
+    """仅短认证名；禁止「…系统后台登录」这类散文因含「登录」混进认证叶子。"""
+    s = (lab or "").strip()
+    if not s or _is_prose_module_label(s):
+        return False
+    for suf in ("模块", "功能"):
+        if s.endswith(suf) and len(s) > len(suf):
+            s = s[: -len(suf)].strip()
+    if s in _AUTH_LABEL_EXACT:
+        return True
+    return bool(
+        re.fullmatch(
+            r"(?:用户|管理员|商家|商户|学员|患者)?(?:登录注册|注册登录|登录|注册)",
+            s,
+        )
+    )
 
 
 def _score_identity_section(sec_lab: str, *, slot: str, role_lab: str) -> int:
@@ -917,12 +1060,143 @@ def _pick_material_section(
 
 
 def _format_menu_module_label(lab: str) -> str:
-    lab = (lab or "").strip()
+    """菜单叶子进图前的底稿名；短签化由 `_clean_module_leaf_label` 统一收。"""
+    return (lab or "").strip()
+
+
+def _role_prefix_candidates(role_lab: str) -> list[str]:
+    """子节点可剥的角色前缀（最长优先）；父框已写身份则叶子不重复。"""
+    lab = (role_lab or "").strip()
     if not lab:
+        return []
+    cands: list[str] = [lab]
+    if lab.startswith("平台") and len(lab) > 2:
+        cands.append(lab[2:])
+    if "管理员" in lab:
+        cands.append("管理员")
+    if any(t in lab for t in ("买家", "用户", "顾客", "会员", "读者", "学生")):
+        cands.extend(["用户", "买家", "顾客", "会员"])
+    if any(t in lab for t in ("商家", "商户", "店家")):
+        cands.extend(["商家", "商户", "店家", "店铺"])
+    # 去重、最长优先，避免短前缀先吃掉
+    uniq: list[str] = []
+    seen: set[str] = set()
+    for p in sorted(cands, key=len, reverse=True):
+        p = p.strip()
+        if p and p not in seen:
+            seen.add(p)
+            uniq.append(p)
+    return uniq
+
+
+_LEAF_SUFFIXES = ("子模块", "功能模块", "模块", "功能")
+_LEAF_HEAD_NOISE = ("全局", "全平台", "整个平台")
+# 超过此字数或含「与/和/及」并列 → 优先换成菜单短名（不砍字加「等」）
+_LEAF_SHORT_PREFER = 6
+
+
+def _clean_module_leaf_label(lab: str, *, role_lab: str = "") -> str:
+    """图面短签：去角色前缀、去「模块/功能」尾、去全局腔/「等」；不截断加「等」。"""
+    original = (lab or "").strip()
+    if not original:
+        return ""
+    s = original.rstrip("等").strip()
+    for pref in _role_prefix_candidates(role_lab):
+        if s.startswith(pref) and len(s) > len(pref):
+            rest = s[len(pref) :].lstrip("的之 \t")
+            if rest:
+                s = rest
+                break
+    for suf in _LEAF_SUFFIXES:
+        if s.endswith(suf) and len(s) > len(suf):
+            s = s[: -len(suf)]
+            break
+    s = s.strip("的之 \t").rstrip("等").strip()
+    for noise in _LEAF_HEAD_NOISE:
+        if s.startswith(noise) and len(s) > len(noise):
+            s = s[len(noise) :].lstrip("的之 \t")
+            break
+    # 并列长称（购物车与在线支付 / 用户与商家账号管理）不在此手拆，交给菜单短名替换
+    return s.strip() or original.rstrip("等").strip() or original
+
+
+def _menu_alt_shorts(
+    *,
+    role_lab: str,
+    menu_items: list[dict[str, Any]],
+    keys: list[str],
+) -> list[str]:
+    by_key = {
+        str(it.get("key") or ""): it
+        for it in menu_items
+        if isinstance(it, dict) and it.get("key")
+    }
+    alts: list[str] = []
+    for k in keys:
+        it = by_key.get(k)
+        if not it:
+            continue
+        alt = _clean_module_leaf_label(_menu_label(it), role_lab=role_lab)
+        if alt:
+            alts.append(alt)
+    return alts
+
+
+def _prefer_short_leaf_label(
+    lab: str,
+    *,
+    role_lab: str,
+    menu_items: list[dict[str, Any]] | None = None,
+    keys: list[str] | None = None,
+) -> str:
+    cleaned = _clean_module_leaf_label(lab, role_lab=role_lab)
+    if not cleaned:
         return lab
-    if not lab.endswith("模块") and lab not in ("购物车", "数据分析", "申请售后", "售后管理"):
-        return f"{lab}模块" if len(lab) <= 8 else lab
-    return lab
+    need_menu = len(cleaned) > _LEAF_SHORT_PREFER or any(
+        c in cleaned for c in ("与", "和", "及")
+    )
+    if not need_menu:
+        return cleaned
+    if not menu_items or not keys:
+        return cleaned
+    alts = _menu_alt_shorts(role_lab=role_lab, menu_items=menu_items, keys=keys)
+    if not alts:
+        return cleaned
+    # 并列/超长：直接换最短菜单名（避免「用户与商家账号管理」手拆成光杆「用户」）
+    return min(alts, key=lambda a: (len(a), a))
+
+
+def _polish_identity_modules(
+    mods: list[dict[str, Any]],
+    *,
+    role_lab: str,
+    menu_items: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """对齐/回落之后统一短签；丢散文；全选题同一过滤器。"""
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for mod in mods:
+        if not isinstance(mod, dict):
+            continue
+        lab = str(mod.get("label") or "").strip()
+        if not lab or _is_prose_module_label(lab) or _is_leaked_section_module_label(lab):
+            continue
+        details = [str(d).strip() for d in (mod.get("details") or []) if str(d).strip()]
+        keys = (
+            _menu_keys_for_module_text(lab, menu_items)
+            if menu_items
+            else []
+        )
+        short = _prefer_short_leaf_label(
+            lab, role_lab=role_lab, menu_items=menu_items, keys=keys or None
+        )
+        if not short or _is_prose_module_label(short):
+            continue
+        if short in seen:
+            continue
+        seen.add(short)
+        out.append({"label": short, "details": details})
+    return out
 
 
 def _align_material_modules_to_menus(
@@ -930,8 +1204,9 @@ def _align_material_modules_to_menus(
     *,
     side: str,
     menus: list[Any],
+    role_lab: str = "",
 ) -> list[dict[str, Any]]:
-    """开题一级模块 ∩ 交付 menus；命名跟开题，缺的用菜单补上。"""
+    """开题一级模块 ∩ 交付 menus；命名跟开题，缺的用菜单补上；出列表前短签化。"""
     menu_items = _side_menu_items(menus)
     covered: set[str] = set()
     out: list[dict[str, Any]] = []
@@ -941,6 +1216,9 @@ def _align_material_modules_to_menus(
             continue
         lab = str(mod.get("label") or "").strip()
         if not lab:
+            continue
+        # 散文/泄漏段头：绝不当认证、不对齐进图
+        if _is_leaked_section_module_label(lab) or _is_prose_module_label(lab):
             continue
         details = [str(d).strip() for d in (mod.get("details") or []) if str(d).strip()]
         if _is_auth_module_label(lab):
@@ -964,7 +1242,7 @@ def _align_material_modules_to_menus(
             continue
         covered.add(key)
         out.append({"label": _format_menu_module_label(_menu_label(raw)), "details": []})
-    return out
+    return _polish_identity_modules(out, role_lab=role_lab, menu_items=menu_items)
 
 
 def _model_from_parsed_identities(
@@ -1005,9 +1283,15 @@ def _model_from_parsed_identities(
     }
 
 
-def _menu_as_identity_modules(menus: list[Any], *, side: str) -> list[dict[str, Any]]:
-    """menus → 一级模块；登录注册合成一项以贴近论文口径。"""
+def _menu_as_identity_modules(
+    menus: list[Any],
+    *,
+    side: str,
+    role_lab: str = "",
+) -> list[dict[str, Any]]:
+    """menus → 一级模块；登录注册合成一项以贴近论文口径；出列表前短签化。"""
     nodes = _menu_nodes(menus, side=side)
+    menu_items = _side_menu_items(menus)
     mods: list[dict[str, Any]] = []
     if side == "user" and nodes:
         mods.append({"label": "登录注册模块", "details": []})
@@ -1018,7 +1302,7 @@ def _menu_as_identity_modules(menus: list[Any], *, side: str) -> list[dict[str, 
         if not lab:
             continue
         mods.append({"label": _format_menu_module_label(lab), "details": []})
-    return mods
+    return _polish_identity_modules(mods, role_lab=role_lab, menu_items=menu_items)
 
 
 def _staff_identity_section(
@@ -1034,18 +1318,26 @@ def _staff_identity_section(
     staff_menus = _staff_menu_items(schema, post)
     if not staff_menus:
         return None
+    branch_lab = (
+        str(material_sec.get("label") or post_lab).strip() or post_lab
+        if material_sec
+        else post_lab
+    )
     if material_sec:
         return {
-            "label": str(material_sec.get("label") or post_lab).strip() or post_lab,
+            "label": branch_lab,
             "modules": _align_material_modules_to_menus(
                 list(material_sec.get("modules") or []),
                 side="admin",
                 menus=staff_menus,
+                role_lab=branch_lab,
             ),
         }
     return {
         "label": post_lab,
-        "modules": _menu_as_identity_modules(staff_menus, side="admin"),
+        "modules": _menu_as_identity_modules(
+            staff_menus, side="admin", role_lab=post_lab
+        ),
     }
 
 
@@ -1065,10 +1357,13 @@ def _model_by_identity_from_schema(
     # 顺序对齐用例图/架构图：用户 → 岗位（商家等）→ 管理员
     sections: list[dict[str, Any]] = []
     if has_user:
+        user_lab = _identity_label_from_slot(roles, "user")
         sections.append(
             {
-                "label": _identity_label_from_slot(roles, "user"),
-                "modules": _menu_as_identity_modules(user_menus, side="user"),
+                "label": user_lab,
+                "modules": _menu_as_identity_modules(
+                    user_menus, side="user", role_lab=user_lab
+                ),
             }
         )
     for post in _delivered_staff_posts(schema):
@@ -1076,10 +1371,13 @@ def _model_by_identity_from_schema(
         if sec:
             sections.append(sec)
     if admin_menus:
+        admin_lab = _identity_label_from_slot(roles, "admin")
         sections.append(
             {
-                "label": _identity_label_from_slot(roles, "admin"),
-                "modules": _menu_as_identity_modules(admin_menus, side="admin"),
+                "label": admin_lab,
+                "modules": _menu_as_identity_modules(
+                    admin_menus, side="admin", role_lab=admin_lab
+                ),
             }
         )
 
@@ -1124,13 +1422,15 @@ def _model_by_identity(
             sections, slot="user", role_lab=role_lab, used=used
         )
         if sec:
+            branch_lab = str(sec.get("label") or role_lab).strip() or role_lab
             aligned.append(
                 {
-                    "label": str(sec.get("label") or role_lab).strip() or role_lab,
+                    "label": branch_lab,
                     "modules": _align_material_modules_to_menus(
                         list(sec.get("modules") or []),
                         side="user",
                         menus=user_menus,
+                        role_lab=branch_lab,
                     ),
                 }
             )
@@ -1138,7 +1438,9 @@ def _model_by_identity(
             aligned.append(
                 {
                     "label": role_lab,
-                    "modules": _menu_as_identity_modules(user_menus, side="user"),
+                    "modules": _menu_as_identity_modules(
+                        user_menus, side="user", role_lab=role_lab
+                    ),
                 }
             )
 
@@ -1161,13 +1463,15 @@ def _model_by_identity(
             sections, slot="admin", role_lab=role_lab, used=used
         )
         if sec:
+            branch_lab = str(sec.get("label") or role_lab).strip() or role_lab
             aligned.append(
                 {
-                    "label": str(sec.get("label") or role_lab).strip() or role_lab,
+                    "label": branch_lab,
                     "modules": _align_material_modules_to_menus(
                         list(sec.get("modules") or []),
                         side="admin",
                         menus=admin_menus,
+                        role_lab=branch_lab,
                     ),
                 }
             )
@@ -1175,7 +1479,9 @@ def _model_by_identity(
             aligned.append(
                 {
                     "label": role_lab,
-                    "modules": _menu_as_identity_modules(admin_menus, side="admin"),
+                    "modules": _menu_as_identity_modules(
+                        admin_menus, side="admin", role_lab=role_lab
+                    ),
                 }
             )
 
@@ -1213,7 +1519,9 @@ def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
     for key in _menu_keys_in_order(menus):
         for item in indexed.get(key) or []:
             lab = str(item.get("label") or "")
-            _ensure(_biz_id_for_item(key, lab)).append(item)
+            short_item = dict(item)
+            short_item["label"] = _clean_module_leaf_label(lab)
+            _ensure(_biz_id_for_item(key, lab)).append(short_item)
 
     _merge_slot_order_buckets(buckets, biz_order)
 
@@ -1222,7 +1530,7 @@ def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
         kids = buckets.get(biz_id) or []
         if not kids:
             continue
-        group_lab = _infer_biz_label(biz_id, kids, schema)
+        group_lab = _clean_module_leaf_label(_infer_biz_label(biz_id, kids, schema))
         if len(kids) == 1 and str(kids[0].get("label") or "") == group_lab:
             leaf = dict(kids[0])
             leaf["id"] = f"biz:{biz_id}"
@@ -1240,6 +1548,105 @@ def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
         "root": _node("root", title, source="system", children=roots),
         "capabilities": list(schema.get("capabilities") or []),
     }
+
+
+# 图面叶子硬闸：超过则记 findings（全选题同一标准，禁止靠人盯 SVG）
+_LEAF_GATE_MAX_LEN = 8
+
+
+def _branch_is_identity_role(lab: str) -> bool:
+    """身份枝才查「复读角色前缀」；业务枝「商品→商品浏览」是正常菜单名。"""
+    s = (lab or "").strip()
+    if not s:
+        return False
+    return any(
+        t in s
+        for t in (
+            "用户",
+            "买家",
+            "顾客",
+            "会员",
+            "患者",
+            "学生",
+            "管理员",
+            "平台",
+            "商家",
+            "商户",
+            "店家",
+            "馆员",
+            "骑手",
+            "店员",
+        )
+    )
+
+
+def audit_module_model(model: dict[str, Any] | None) -> list[dict[str, str]]:
+    """机器闸：身份/业务枝下的一级叶子不得散文、不得带「模块」、不得复读角色前缀。"""
+    if not isinstance(model, dict):
+        return []
+    root = model.get("root") if isinstance(model.get("root"), dict) else {}
+    findings: list[dict[str, str]] = []
+
+    def add(kind: str, branch: str, label: str, detail: str) -> None:
+        findings.append(
+            {
+                "kind": kind,
+                "branch": branch,
+                "label": label,
+                "detail": detail,
+            }
+        )
+
+    def audit_leaf(lab: str, role_lab: str) -> None:
+        if not lab:
+            add("empty", role_lab, lab, "空叶子")
+            return
+        if _is_leaked_section_module_label(lab) or _is_prose_module_label(lab):
+            add("prose", role_lab, lab, "散文/泄漏段头进图")
+        if "模块" in lab or lab.endswith("子模块") or lab.endswith("功能"):
+            add("suffix", role_lab, lab, "叶子仍带「模块/功能」尾")
+        if lab.endswith("等"):
+            add("etc", role_lab, lab, "叶子以「等」收尾")
+        if "以及" in lab or "划分为" in lab:
+            add("glue", role_lab, lab, "并列/段头未切开")
+        if role_lab and _branch_is_identity_role(role_lab):
+            for pref in _role_prefix_candidates(role_lab):
+                if pref and lab.startswith(pref) and lab != pref:
+                    add("role_prefix", role_lab, lab, f"复读角色前缀「{pref}」")
+                    break
+        if len(lab) > _LEAF_GATE_MAX_LEN:
+            add("too_long", role_lab, lab, f"超过 {_LEAF_GATE_MAX_LEN} 字")
+
+    for branch in root.get("children") or []:
+        if not isinstance(branch, dict):
+            continue
+        role_lab = str(branch.get("label") or "").strip()
+        kids = [c for c in (branch.get("children") or []) if isinstance(c, dict)]
+        if not kids:
+            # 按业务单叶提升到根下：自身即叶子
+            audit_leaf(role_lab, "")
+            continue
+        for leaf in kids:
+            if str(leaf.get("source") or "").endswith(":detail"):
+                continue
+            audit_leaf(str(leaf.get("label") or "").strip(), role_lab)
+    return findings
+
+
+def attach_module_label_gate(model: dict[str, Any]) -> dict[str, Any]:
+    """给模型挂 label_gate；红则写入 leaf_source_note，导出卡可直接红。"""
+    findings = audit_module_model(model)
+    ok = not findings
+    note = "" if ok else f"模块图叶子文案检查红 {len(findings)} 处（散文/超长/带模块尾/角色前缀等）"
+    model["label_gate"] = {
+        "ok": ok,
+        "findings": findings[:30],
+        "note": note,
+    }
+    if note:
+        prev = str(model.get("leaf_source_note") or "").strip()
+        model["leaf_source_note"] = f"{prev}；{note}" if prev else note
+    return model
 
 
 def module_model(
@@ -1267,7 +1674,8 @@ def module_model(
         )
     else:
         model = _model_by_biz(schema, title=title)
-    return apply_proposal_hints(model, proposal_text)
+    model = apply_proposal_hints(model, proposal_text)
+    return attach_module_label_gate(model)
 
 
 def build_module_model(
@@ -1292,6 +1700,8 @@ def build_module_model(
     )
     if with_label_patch:
         model = apply_module_label_patch(model, load_module_label_patch(workspace))
+        # 人工补丁也可能写回「模块」/散文 → 再跑闸
+        model = attach_module_label_gate(model)
     return model
 
 
@@ -1394,6 +1804,8 @@ _VBOX_W = 30.0
 _GAP_X = 14.0
 _GAP_Y = 52.0
 _PAD = 28.0
+# 身份枝下叶子超过该数则多行排布（语义不变，只控横向宽度）
+_MAX_KIDS_PER_ROW = 8
 
 
 def _box_w(label: str, *, orient: str = "h") -> float:
@@ -1413,12 +1825,39 @@ def _node_orient(node: dict) -> str:
     return "v" if str(node.get("orient") or "") == "v" else "h"
 
 
+def _child_rows(kids: list[dict]) -> list[list[dict]]:
+    if not kids:
+        return []
+    per = _MAX_KIDS_PER_ROW
+    return [kids[i : i + per] for i in range(0, len(kids), per)]
+
+
 def _subtree_width(node: dict) -> float:
     kids = [c for c in (node.get("children") or []) if isinstance(c, dict)]
     self_w = _box_w(str(node.get("label") or ""), orient=_node_orient(node))
     if not kids:
         return self_w
-    return max(self_w, sum(_subtree_width(c) for c in kids) + _GAP_X * (len(kids) - 1))
+    row_ws: list[float] = []
+    for row in _child_rows(kids):
+        row_ws.append(
+            sum(_subtree_width(c) for c in row) + _GAP_X * max(0, len(row) - 1)
+        )
+    return max(self_w, max(row_ws) if row_ws else self_w)
+
+
+def _subtree_height(node: dict) -> float:
+    """含多行子节点的子树高度（用于折行后的下一行起点）。"""
+    label = str(node.get("label") or "")
+    orient = _node_orient(node)
+    h = _box_h(label, orient=orient)
+    kids = [c for c in (node.get("children") or []) if isinstance(c, dict)]
+    if not kids:
+        return h
+    total = h
+    rows = _child_rows(kids)
+    for i, row in enumerate(rows):
+        total += _GAP_Y + max(_subtree_height(c) for c in row)
+    return total
 
 
 def _layout(node: dict, cx: float, top: float, positions: dict[str, dict]) -> None:
@@ -1442,14 +1881,18 @@ def _layout(node: dict, cx: float, top: float, positions: dict[str, dict]) -> No
     kids = [c for c in (node.get("children") or []) if isinstance(c, dict)]
     if not kids:
         return
-    widths = [_subtree_width(c) for c in kids]
-    total = sum(widths) + _GAP_X * (len(kids) - 1)
-    x = cx - total / 2
     child_top = top + h + _GAP_Y
-    for c, cw in zip(kids, widths):
-        child_cx = x + cw / 2
-        _layout(c, child_cx, child_top, positions)
-        x += cw + _GAP_X
+    for row in _child_rows(kids):
+        widths = [_subtree_width(c) for c in row]
+        total = sum(widths) + _GAP_X * max(0, len(row) - 1)
+        x = cx - total / 2
+        row_h = 0.0
+        for c, cw in zip(row, widths):
+            child_cx = x + cw / 2
+            _layout(c, child_cx, child_top, positions)
+            row_h = max(row_h, _subtree_height(c))
+            x += cw + _GAP_X
+        child_top += row_h + _GAP_Y
 
 
 def _edges(node: dict) -> list[tuple[str, str]]:

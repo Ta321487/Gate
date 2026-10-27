@@ -35,7 +35,11 @@
     <p v-if="layoutMismatch" class="small mod-hint mb-8 mod-warn">
       界面选的是「按身份」，但图数据仍是「按业务」——请重启工厂后端后再点重新加载。
     </p>
-    <p v-if="sourceNote" class="small muted mod-hint mb-8 mod-source-note">{{ sourceNote }}</p>
+    <p
+      v-if="sourceNote"
+      class="small mod-hint mb-8 mod-source-note"
+      :class="labelGateBad ? 'mod-warn' : 'muted'"
+    >{{ sourceNote }}</p>
     <div
       ref="frameRef"
       class="mod-frame"
@@ -67,10 +71,14 @@ const props = defineProps({
   resolvedLayout: { type: String, default: '' },
   expandDetails: { type: Boolean, default: false },
   sourceNote: { type: String, default: '' },
+  /** 叶子文案机器闸：false 时提示加红 */
+  labelGateOk: { type: Boolean, default: true },
   loading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['reload', 'update:layout', 'update:expandDetails'])
+
+const labelGateBad = computed(() => props.labelGateOk === false)
 
 const PNG_SCALE = 2.5
 const frameRef = ref(null)

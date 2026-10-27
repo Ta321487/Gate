@@ -263,12 +263,14 @@
                           <strong>{{ card.title }}</strong>
                           <span
                             class="pill"
-                            :class="artifactsFrozen ? 'pill-amber' : (modulesOk ? 'pill-green' : 'pill-neutral')"
+                            :class="artifactsFrozen ? 'pill-amber' : (thesisCardOk(card) ? 'pill-green' : (card.id === 'modules' && modulesOk && !modulesLabelOk ? 'pill-amber' : 'pill-neutral'))"
                           >
                             {{
                               artifactsFrozen
                                 ? '生成中'
-                                : (modulesOk ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))
+                                : (card.id === 'modules' && modulesOk && !modulesLabelOk
+                                  ? '文案红'
+                                  : (thesisCardOk(card) ? '可导出' : (p.workspace_path ? '待生成' : '未生成')))
                             }}
                           </span>
                         </div>
@@ -276,7 +278,7 @@
                         <n-button
                           size="small"
                           type="primary"
-                          :disabled="!modulesOk || artifactsFrozen"
+                          :disabled="!thesisCardOk(card) || artifactsFrozen"
                           :loading="card.loading"
                           :title="artifactsFrozen ? artifactsFrozenReason : undefined"
                           @click="card.open"
@@ -627,7 +629,7 @@ const {
   loadArtifactView, loadError, loadErrorCode, loadLog, loadSchema, logFilter, logLoading, logReqSeq,
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
-  modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
+  modulesLayout, modulesMeta, modulesOk, modulesLabelOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openArchitecture, openClasses, openSequences, openActivities, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
@@ -645,6 +647,12 @@ const {
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucLoading, ucdLoading, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint, archLoading, classLoading, seqLoading, actLoading,
 } = bindPd()
+
+function thesisCardOk(card) {
+  if (!card) return false
+  if (card.id === 'modules') return !!modulesLabelOk.value
+  return !!modulesOk.value
+}
 
 const thesisGroups = computed(() => [
   {

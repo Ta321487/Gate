@@ -159,6 +159,7 @@
         :resolved-layout="modulesMeta?.layout || ''"
         :expand-details="modulesExpandDetails"
         :source-note="modulesMeta?.leaf_source_note || ''"
+        :label-gate-ok="modulesMeta?.label_gate?.ok !== false"
         :loading="modLoading"
         @update:layout="onModulesLayout"
         @update:expand-details="onModulesExpandDetails"

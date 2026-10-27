@@ -10,6 +10,8 @@ from app.bake.schema.modules import (
     _ALIGNED_LEAF_NOTE,
     _SCHEMA_LEAF_NOTE,
     apply_proposal_hints,
+    attach_module_label_gate,
+    audit_module_model,
     module_model,
     parse_identity_modules,
     render_module_svg,
@@ -85,7 +87,7 @@ class ModuleDiagramTests(unittest.TestCase):
         text = (
             _SHOP_ENUM
             + "2.1.2文献研究法在前期准备阶段，主要通过文献研究法通过阅读大量关于农产品销售"
-            "SpringBoot框架、Vue框架以及MySQL数据库相关的关键技术的文献资料。"
+            "SpringBoot框架、Vue框架以及MySQL数据库相关的Android技术的文献资料。"
         )
         secs = parse_identity_modules(text)
         self.assertEqual([s["label"] for s in secs], ["用户", "商家", "管理员"])
@@ -95,6 +97,171 @@ class ModuleDiagramTests(unittest.TestCase):
         blob = " ".join(admin_labs)
         self.assertNotIn("文献研究", blob)
         self.assertIn("活动管理模块", admin_labs)
+
+    def test_parse_taskbook_no_colon_and_conjunction(self) -> None:
+        """任务书常无「：」、末项用「以及/及」；不得把管理员段灌进商家叶子。"""
+        text = (
+            "用户的功能模块划分为用户登录注册模块、个人中心模块、商品信息模块、"
+            "活动模块、购物车与在线支付模块、订单管理模块、售后模块、"
+            "在线客服模块及留言反馈模块；"
+            "商家的功能模块划分为：登录注册模块、店铺个人中心模块、"
+            "健身用品管理模块、订单管理模块、售后管理模块、评价管理模块、"
+            "活动管理模块、在线客服模块、留言反馈模块以及数据分析模块；"
+            "管理员的功能模块划分为管理员登录模块、用户与商家账号管理模块、"
+            "健身用品分类管理模块、全局健身用品管理模块、活动管理模块、"
+            "全平台订单监控模块、全平台售后仲裁处理模块、"
+            "评价监管模块以及留言反馈沟通模块。"
+        )
+        secs = parse_identity_modules(text)
+        self.assertEqual([s["label"] for s in secs], ["用户", "商家", "管理员"])
+        user_labs = [m["label"] for m in secs[0]["modules"]]
+        merch_labs = [m["label"] for m in secs[1]["modules"]]
+        admin_labs = [m["label"] for m in secs[2]["modules"]]
+        self.assertIn("留言反馈模块", user_labs)
+        self.assertIn("在线客服模块", user_labs)
+        # 单元内部「与」保留：购物车与在线支付模块
+        self.assertIn("购物车与在线支付模块", user_labs)
+        self.assertIn("留言反馈模块", merch_labs)
+        self.assertIn("数据分析模块", merch_labs)
+        self.assertNotIn("留言反馈模块以及数据分析模块", merch_labs)
+        self.assertTrue(all("划分为" not in x for x in merch_labs))
+        self.assertNotIn("管理员登录模块", merch_labs)
+        self.assertNotIn("全平台订单监控模块", merch_labs)
+        self.assertIn("管理员登录模块", admin_labs)
+        self.assertIn("全平台订单监控模块", admin_labs)
+        self.assertIn("评价监管模块", admin_labs)
+        self.assertIn("留言反馈沟通模块", admin_labs)
+        self.assertNotIn("评价监管模块以及留言反馈沟通模块", admin_labs)
+
+    def test_parse_module_unit_soft_joins_variants(self) -> None:
+        """认「××模块」收束；中间换以及/和/与/还有/逗号都能切，括号内叙述不切。"""
+        text = (
+            "用户功能模块划分为："
+            "登录注册模块，个人中心模块【头像、昵称和联系方式】、"
+            "商品模块（浏览以及收藏)、订单模块和售后模块与客服模块还有留言模块。"
+        )
+        secs = parse_identity_modules(text)
+        self.assertEqual([s["label"] for s in secs], ["用户"])
+        labs = [m["label"] for m in secs[0]["modules"]]
+        self.assertEqual(
+            labs,
+            [
+                "登录注册模块",
+                "个人中心模块",
+                "商品模块",
+                "订单模块",
+                "售后模块",
+                "客服模块",
+                "留言模块",
+            ],
+        )
+        center = next(m for m in secs[0]["modules"] if m["label"] == "个人中心模块")
+        self.assertTrue(any("和" in d for d in center["details"]))
+        goods = next(m for m in secs[0]["modules"] if m["label"] == "商品模块")
+        self.assertTrue(any("以及" in d for d in goods["details"]))
+
+    def test_fangmu_identity_human_short_labels(self) -> None:
+        """进图短签：去角色前缀、去「模块」；禁止粘句；不发明未交付叶子。"""
+        from app.bake.domain_schema import build_domain_schema
+
+        text = (
+            "用户的功能模块划分为用户登录注册模块、个人中心模块、商品信息模块、"
+            "活动模块、购物车与在线支付模块、订单管理模块、售后模块、"
+            "在线客服模块及留言反馈模块；"
+            "商家的功能模块划分为：登录注册模块、店铺个人中心模块、"
+            "健身用品管理模块、订单管理模块、售后管理模块、评价管理模块、"
+            "活动管理模块、在线客服模块、留言反馈模块以及数据分析模块；"
+            "管理员的功能模块划分为管理员登录模块、用户与商家账号管理模块、"
+            "健身用品分类管理模块、全局健身用品管理模块、活动管理模块、"
+            "全平台订单监控模块、全平台售后仲裁处理模块、"
+            "评价监管模块以及留言反馈沟通模块。"
+            "\n本平台支持多商家入驻，商家端可上架健身用品并处理订单。"
+        )
+        schema = build_domain_schema(
+            "方木健身用品电商平台的设计与实现",
+            "DOM-SHOP",
+            proposal_text=text,
+        )
+        model = module_model(schema, proposal_text=text, layout="identity")
+        blob = " ".join(self._walk_labels(model))
+        self.assertNotIn("模块", blob)
+        self.assertNotIn("划分为", blob)
+        self.assertNotIn("以及", blob)
+        branches = {c["label"]: c for c in model["root"]["children"]}
+        self.assertIn("商家", branches)
+        admin_key = next(k for k in branches if "管理" in k)
+        admin_labs = [c["label"] for c in branches[admin_key]["children"]]
+        self.assertIn("登录", admin_labs)
+        self.assertTrue(all(not x.startswith("管理员") for x in admin_labs))
+        self.assertTrue(all(len(x) <= 8 for x in admin_labs), admin_labs)
+        # 未切开粘句不得进图
+        self.assertFalse(any("评价监管" in x and "留言" in x for x in admin_labs))
+        merch_labs = [c["label"] for c in branches["商家"]["children"]]
+        self.assertNotIn("超级管理员端功能涉及系统后台登录", merch_labs)
+        self.assertTrue(all("涉及" not in x for x in merch_labs))
+
+    def test_prose_with_login_not_auth_leaf(self) -> None:
+        """含「登录」的散文不得因认证旁路进图。"""
+        from app.bake.schema.modules import (
+            _is_auth_module_label,
+            _is_prose_module_label,
+            _align_material_modules_to_menus,
+        )
+
+        junk = "超级管理员端功能涉及系统后台登录"
+        self.assertTrue(_is_prose_module_label(junk))
+        self.assertFalse(_is_auth_module_label(junk))
+        aligned = _align_material_modules_to_menus(
+            [
+                {"label": junk, "details": []},
+                {"label": "促销活动审批等", "details": []},
+                {"label": "登录注册模块", "details": []},
+                {"label": "订单管理模块", "details": []},
+            ],
+            side="admin",
+            menus=[
+                {"key": "orders", "label": "订单管理"},
+                {"key": "archive", "label": "商品管理"},
+            ],
+            role_lab="管理员",
+        )
+        labs = [m["label"] for m in aligned]
+        self.assertNotIn(junk, labs)
+        self.assertTrue(all("涉及" not in x and not x.endswith("等") for x in labs))
+        self.assertIn("登录注册", labs)
+        self.assertIn("订单管理", labs)
+
+    def test_layout_wraps_when_many_children(self) -> None:
+        """子节点 >8：多行排布，总宽不超过单行 8 叶的量级。"""
+        from app.bake.schema.modules import _MAX_KIDS_PER_ROW, _subtree_width
+
+        kids = [
+            {"id": f"m{i}", "label": "短", "orient": "v", "source": "t"}
+            for i in range(_MAX_KIDS_PER_ROW + 3)
+        ]
+        node = {"id": "b", "label": "管理员", "source": "identity", "children": kids}
+        one_row = {
+            "id": "b1",
+            "label": "管理员",
+            "source": "identity",
+            "children": kids[:_MAX_KIDS_PER_ROW],
+        }
+        w_many = _subtree_width(node)
+        w_one = _subtree_width(one_row)
+        self.assertLessEqual(w_many, w_one + 1.0)
+        svg = render_module_svg(
+            {
+                "title": "t",
+                "layout": "identity",
+                "root": {
+                    "id": "root",
+                    "label": "t",
+                    "source": "system",
+                    "children": [node],
+                },
+            }
+        )
+        self.assertIn("mod-node", svg)
 
     def test_parse_nested_and_mixed_brackets(self) -> None:
         text = (
@@ -147,18 +314,20 @@ class ModuleDiagramTests(unittest.TestCase):
         # 单店未交付商家角色 → 整枝丢掉，禁止图上有包里无
         self.assertNotIn("商家", branches)
         user_labs = [c["label"] for c in branches["用户"]["children"]]
-        self.assertIn("商品模块", user_labs)
+        self.assertIn("商品", user_labs)
         self.assertIn("购物车", user_labs)
-        self.assertIn("订单模块", user_labs)
+        self.assertIn("订单", user_labs)
+        # 短签：不带「模块」、不带角色前缀
+        self.assertTrue(all("模块" not in x for x in user_labs))
         # 开题有、交付无 → 不进图
-        self.assertNotIn("支付模块", user_labs)
+        self.assertNotIn("支付", user_labs)
         self.assertNotIn("申请售后", user_labs)
-        self.assertNotIn("评价模块", user_labs)
-        self.assertNotIn("客服模块", user_labs)
+        self.assertNotIn("评价", user_labs)
+        self.assertNotIn("客服", user_labs)
         blob = " ".join(self._walk_labels(model))
         self.assertNotIn("区块链", blob)
         # 默认不展开细节
-        goods = next(c for c in branches["用户"]["children"] if c["label"] == "商品模块")
+        goods = next(c for c in branches["用户"]["children"] if c["label"] == "商品")
         self.assertNotIn("children", goods)
         svg = render_module_svg(model)
         self.assertNotIn(_ALIGNED_LEAF_NOTE, svg)
@@ -225,7 +394,7 @@ class ModuleDiagramTests(unittest.TestCase):
             expand_details=True,
         )
         user = next(c for c in model["root"]["children"] if c["label"] == "用户")
-        goods = next(c for c in user["children"] if c["label"] == "商品模块")
+        goods = next(c for c in user["children"] if c["label"] == "商品")
         self.assertTrue(goods.get("children"))
 
     def test_identity_schema_fallback_note(self) -> None:
@@ -257,7 +426,7 @@ class ModuleDiagramTests(unittest.TestCase):
         self.assertIn("biz:cart", branches)
         self.assertIn("biz:order", branches)
         self.assertIn("biz:admin", branches)
-        self.assertEqual(branches["biz:archive"]["label"], "商品模块")
+        self.assertEqual(branches["biz:archive"]["label"], "商品")
         archive_labs = {c["label"] for c in branches["biz:archive"]["children"]}
         self.assertIn("商品浏览", archive_labs)
         self.assertIn("商品管理", archive_labs)
@@ -318,8 +487,9 @@ class ModuleDiagramTests(unittest.TestCase):
         ident = module_model(schema, layout="identity")
         self.assertEqual(ident["root"]["children"][0]["label"], "患者")
         user_labs = [c["label"] for c in ident["root"]["children"][0]["children"]]
-        self.assertEqual(user_labs[0], "登录注册模块")
-        self.assertIn("选医生模块", user_labs)
+        self.assertEqual(user_labs[0], "登录注册")
+        self.assertIn("选医生", user_labs)
+        self.assertTrue(all("模块" not in x for x in user_labs))
 
         biz = module_model(schema, layout="biz")
         branches = {c["id"]: c for c in biz["root"]["children"]}
@@ -389,7 +559,7 @@ class ModuleDiagramTests(unittest.TestCase):
         self.assertIn("我的收藏", labels)
         branches = {c["id"]: c for c in model["root"]["children"]}
         self.assertIn("biz:favorite", branches)
-        self.assertEqual(branches["biz:favorite"]["label"], "收藏模块")
+        self.assertEqual(branches["biz:favorite"]["label"], "收藏")
         self.assertNotIn("biz:ticket", branches)
 
     def test_svg_renders(self) -> None:
@@ -427,6 +597,88 @@ class ModuleDiagramTests(unittest.TestCase):
         }
         out = apply_proposal_hints(model, "前台功能说明")
         self.assertEqual(out["root"]["children"][0]["label"], "用户")
+
+    def test_label_gate_flags_prose_and_suffix(self) -> None:
+        """机器闸：人不用盯图也能红。"""
+        raw = {
+            "title": "t",
+            "layout": "identity",
+            "leaf_source_note": "",
+            "root": {
+                "id": "root",
+                "label": "t",
+                "children": [
+                    {
+                        "id": "identity:0",
+                        "label": "管理员",
+                        "children": [
+                            {
+                                "id": "a1",
+                                "label": "超级管理员端功能涉及系统后台登录",
+                                "source": "materials",
+                            },
+                            {
+                                "id": "a2",
+                                "label": "管理员登录模块",
+                                "source": "materials",
+                            },
+                            {
+                                "id": "a3",
+                                "label": "促销活动审批等",
+                                "source": "materials",
+                            },
+                            {"id": "a4", "label": "登录", "source": "materials"},
+                        ],
+                    }
+                ],
+            },
+        }
+        findings = audit_module_model(raw)
+        kinds = {f["kind"] for f in findings}
+        self.assertIn("prose", kinds)
+        self.assertIn("suffix", kinds)
+        self.assertIn("etc", kinds)
+        self.assertIn("role_prefix", kinds)
+        gated = attach_module_label_gate(dict(raw))
+        self.assertFalse(gated["label_gate"]["ok"])
+        self.assertIn("检查红", gated["leaf_source_note"])
+
+    def test_label_gate_green_on_canaries(self) -> None:
+        """多域出图后 label_gate 必须绿——全选题同一闸，不靠人盯。"""
+        from app.bake.domain_schema import build_domain_schema
+
+        for stem in ("DOM-SHOP", "DOM-HOTEL", "DOM-BLOG", "DOM-CARRENT"):
+            schema = self._schema(stem)
+            for layout in ("identity", "biz"):
+                model = module_model(schema, layout=layout)
+                self.assertTrue(
+                    model.get("label_gate", {}).get("ok"),
+                    msg=f"{stem}/{layout}: {model.get('label_gate')}",
+                )
+
+        fangmu = (
+            "用户的功能模块划分为用户登录注册模块、个人中心模块、商品信息模块、"
+            "活动模块、购物车与在线支付模块、订单管理模块、售后模块、"
+            "在线客服模块及留言反馈模块；"
+            "商家的功能模块划分为：登录注册模块、店铺个人中心模块、"
+            "健身用品管理模块、订单管理模块、售后管理模块、评价管理模块、"
+            "活动管理模块、在线客服模块、留言反馈模块以及数据分析模块；"
+            "管理员的功能模块划分为管理员登录模块、用户与商家账号管理模块、"
+            "健身用品分类管理模块、全局健身用品管理模块、活动管理模块、"
+            "全平台订单监控模块、全平台售后仲裁处理模块、"
+            "评价监管模块以及留言反馈沟通模块。"
+            "\n本平台支持多商家入驻，商家端可上架健身用品并处理订单。"
+        )
+        schema = build_domain_schema(
+            "方木健身用品电商平台的设计与实现",
+            "DOM-SHOP",
+            proposal_text=fangmu,
+        )
+        model = module_model(schema, proposal_text=fangmu, layout="identity")
+        self.assertTrue(
+            model["label_gate"]["ok"],
+            msg=model["label_gate"],
+        )
 
 
 if __name__ == "__main__":
