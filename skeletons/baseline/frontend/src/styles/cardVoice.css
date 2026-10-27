@@ -1,5 +1,5 @@
 /**
- * 列表卡面叙事（§2.5 card_voice）：catalog / story / board
+ * 列表卡面叙事（card_voice）：catalog / story / board
  * 挂在 html[data-card-voice] 与列表卡片 [data-card-voice]
  * 禁止只拧 gap/padding；字阶、主信号、图文关系要可感知。
  */

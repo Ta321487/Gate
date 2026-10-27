@@ -1,15 +1,8 @@
-/**
- * 门户壳导航摆法（§3 + 真实产品）。
- *
- * 菜单集合/顺序 = 开题 schemaMenus。
- * 顶栏只放业务主路径；账户类进头像账户短页（文案跟 accountFace，禁笼统「我的」当功能篓）；
- * 交易 marketplace 次要进右侧栏。
- * 不做顶栏「更多」垃圾桶（对标站与 Ant 顶栏均无此模式）。
- */
+
 
 import { APP_DELIVERED } from '../appDelivered.js'
 
-/** 顶栏业务链软上限（Ant 顶栏约 2～7；§3 约四五）。超出仅 marketplace 收进右侧栏 */
+/** 顶栏业务链软上限（常见顶栏约 2～7；本壳约四五）。超出仅 marketplace 收进右侧栏 */
 export const PRIMARY_MAX = 5
 export const RAIL_OUTSIDE_MAX = 5
 /** 首次无本机偏好时外侧只钉这么多，其余进「更多」，避免编辑弹层与外侧同表 */
@@ -52,7 +45,7 @@ export function railShortLabel(label, key = '') {
 const CHROME_ALWAYS = new Set(['messages', 'profile', 'home', 'ai_assistant'])
 
 /**
- * 账户·个人向（开题挂了才出）：进账户短页 / 市集右侧栏。
+ * 账户·个人向（交付菜单挂了才出）：进账户短页 / 市集右侧栏。
  * 头像下拉只留「账户短页入口 / 资料 / 退出」，禁止把本集合平铺成长下拉。
  * 借阅单、工单、排片、试卷等业务链不进此集合。
  */
@@ -119,7 +112,7 @@ export const ACCOUNT_HUB_GROUPS = [
 ]
 
 /**
- * 从开题菜单抽出账户向入口（保持相对顺序），供「我的」短页。
+ * 从交付菜单抽出账户向入口（保持相对顺序），供「我的」短页。
  * @param {Array<{ key: string, to?: string, label?: string }>} menuItems
  */
 export function collectAccountHubItems(menuItems) {
@@ -159,7 +152,7 @@ export function groupAccountHubItems(hubItems) {
 export function domainGroupFromDelivered(delivered = APP_DELIVERED) {
   const g = String(delivered?.domainGroup || '').trim()
   if (g) return g
-  // 旧包兜底：只认构图键，禁止 DOM-* 业务分支
+  // 旧包兜底：只认构图键，禁止按业务域名硬分支
   const trade = String(delivered?.tradeSurfaceStyle || '').trim()
   if (trade === 'shelfgrid' || trade === 'menuboard' || trade === 'showtime') return 'trade'
   return 'fallback'
@@ -172,10 +165,7 @@ export function shellNavStyleFromDelivered(delivered = APP_DELIVERED) {
   return 'storefront'
 }
 
-/**
- * 个人中心 /「我的」脸：按域组+软皮换构图（从头到脚像另一系统）。
- * 功能入口仍只跟开题 schemaMenus / profileFields，本键不增删能力。
- */
+
 export function accountFaceFromDelivered(delivered = APP_DELIVERED) {
   const group = domainGroupFromDelivered(delivered)
   const style = shellNavStyleFromDelivered(delivered)
@@ -198,7 +188,7 @@ export function accountFaceFromDelivered(delivered = APP_DELIVERED) {
   return map[group] || 'plain'
 }
 
-/** 脸对应的短文案（标题/导语）；须学生可见口语，禁工厂腔 */
+/** 脸对应的短文案（标题/导语）；须学生可见口语 */
 export function accountFaceCopy(face) {
   const f = String(face || 'plain')
   const table = {
@@ -289,7 +279,7 @@ export function classifyPortalMenus(
   const useRail = style === 'marketplace' && group === 'trade'
 
   if (useRail) {
-    // 市集：顶栏短业务链；账户类 + 超额业务进右侧栏（对标淘宝式工具条，不是「更多」）
+    // 市集：顶栏短业务链；账户类 + 超额业务进右侧栏（工具条，不是「更多」）
     return {
       primary: business.slice(0, PRIMARY_MAX),
       account: [],
@@ -297,7 +287,7 @@ export function classifyPortalMenus(
     }
   }
 
-  // 店面/其它组：业务全在顶栏（毕设开题通常 ≤5；多也不造「更多」）；账户进头像
+  // 店面/其它组：业务全在顶栏（通常 ≤5；多也不造「更多」）；账户进头像
   return {
     primary: business,
     account: accountish,

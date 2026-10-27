@@ -152,7 +152,7 @@ function withPortalHub(baseRoutes) {
         component: () => import('../views/user/Messages.vue'),
       })
     }
-    // §3 独立详情：挂在列表旁；须写在 archive 同级，路径用 archive/item/:id
+    
     if (has('archive') && !has('archive/item/:id')) {
       const archIdx = kids.findIndex((c) => c.path === 'archive')
       kids.splice(archIdx >= 0 ? archIdx + 1 : kids.length, 0, {
@@ -401,7 +401,7 @@ function withBlogFriendLinkRoutes(baseRoutes) {
   return routes
 }
 
-/** 使用说明：开题写到才挂 */
+
 function withHelpRoutes(baseRoutes) {
   if (!getSchema()?.uxCrosscut?.help) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
@@ -418,7 +418,7 @@ function withHelpRoutes(baseRoutes) {
   return routes
 }
 
-/** 文件列表：开题写到文件管理才挂 */
+
 function withFileRoutes(baseRoutes) {
   if (!getSchema()?.uxCrosscut?.files) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
@@ -430,7 +430,7 @@ function withFileRoutes(baseRoutes) {
   return routes
 }
 
-/** 一级佣金台账：开题写到分销才挂 */
+
 function withCommissionRoutes(baseRoutes) {
   if (!getSchema()?.uxCrosscut?.commission) return baseRoutes
   const routes = cloneRoutes(baseRoutes)

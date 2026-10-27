@@ -33,7 +33,7 @@ document.documentElement.setAttribute('data-card-voice', cardVoice)
 /**
  * 行业配色 × 壳色叠用（浅色/夜间/影院等全部适用，不只夜间）：
  * - data-theme：底色、字色、线色（整站氛围）
- * - shellColors：只叠 brand/accent/cover/glow（软皮主色角色 + Element primary）
+ * - shellColors：只叠 brand/accent/cover/glow（壳主色角色 + Element primary）
  * 禁止再用壳色的浅 bg/surface/ink 盖掉任一行业皮。
  */
 const shellColors = APP_DELIVERED.shellColors || {}

@@ -1,7 +1,7 @@
 /* 门户壳：与配色/质感正交；由 VITE_LAYOUT → data-layout 选定
  * 仍用同一套 PortalLayout DOM，只改导航放置与内容宽度 */
 
-/* 菜单项整词不折字。顶栏只放 §3 主路径短链；次要进右侧栏 / 用户区「其它」 */
+/* 菜单项整词不折字。顶栏只放主路径短链；次要进右侧栏 / 用户区「其它」 */
 .portal > .top .nav a {
   white-space: nowrap;
   flex-shrink: 0;

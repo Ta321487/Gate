@@ -40,7 +40,7 @@ const labels = schemaLabels()
 const accountFace = computed(() => accountFaceFromDelivered(APP_DELIVERED))
 const profileCopy = profilePageCopy()
 const tabsPosition = computed(() => (accountFace.value === 'inbox' ? 'left' : 'top'))
-/** §3：资料 / 安全 / 设备 / 其他 —— 禁止整页瀑布；脸只换构图 */
+/** 资料 / 安全 / 设备 / 其他 —— 禁止整页瀑布；脸只换构图 */
 const TAB_NAMES = new Set(['profile', 'security', 'devices', 'other'])
 const activeTab = ref(
   TAB_NAMES.has(String(route.query.tab || '')) ? String(route.query.tab) : 'profile',

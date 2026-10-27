@@ -369,13 +369,13 @@ const cardDetailFields = computed(() => {
     return ['string', 'number', 'datetime', 'date', 'url', 'textarea', 'select'].includes(t)
   })
 })
-/** §2.5 叙事脸：catalog 多参数 / story 少短签 / board 几乎不堆字段 */
+/** 叙事脸：catalog 多参数 / story 少短签 / board 几乎不堆字段 */
 const cardVoice = computed(() => {
   const v = String(APP_DELIVERED?.cardVoice || 'catalog').toLowerCase()
   return v === 'story' || v === 'board' ? v : 'catalog'
 })
 const cardPreviewFields = computed(() => {
-  // §2.5：catalog 至多 2 短签；story 2 句料；board 不堆
+  // catalog 至多 2 短签；story 2 句料；board 不堆
   const n = cardVoice.value === 'story' ? 2 : cardVoice.value === 'board' ? 0 : 2
   return cardDetailFields.value.slice(0, n)
 })
@@ -393,7 +393,7 @@ function categoryNamesOfRow(row) {
   return one ? [one] : []
 }
 
-/** 短签：值优先芯片，禁止十行「标签：值」同灰（§2.5 至多 2）；交易档口/排片也可出短签 */
+/** 短签：值优先芯片，禁止十行「标签：值」同灰（至多 2）；交易档口/排片也可出短签 */
 function cardShortTags(row) {
   if (!row) return []
   const out = []
@@ -1626,7 +1626,7 @@ const activeSectionNotice = computed(() => {
 })
 const searchAssist = computed(() => isSearchAssistEnabled())
 const titleSuggestOn = computed(() => searchAssist.value || titleSearchOn.value)
-/** 与顶栏检索槽同开时隐藏页内关键词，避免双搜框（§3.0.4） */
+/** 与顶栏检索槽同开时隐藏页内关键词，避免双搜框 */
 const topBarSearchOn = computed(() => !!getSchema()?.listCrosscut?.globalSearch)
 const hotKeywords = computed(() => searchHotKeywords())
 const hotMode = ref(false)
@@ -2106,7 +2106,7 @@ async function loadThread(itemId) {
   }
 }
 
-/** §3：交易/商城/借用/预约/内容/报名主路径进独立详情页，避免抽屉交差 */
+/** 交易/商城/借用/预约/内容/报名主路径进独立详情页，避免抽屉交差 */
 function preferArchiveItemPage() {
   if (route.query?.openApply === '1') return false
   if (hasCap('order_lines')) return true

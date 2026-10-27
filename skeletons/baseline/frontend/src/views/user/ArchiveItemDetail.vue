@@ -86,10 +86,7 @@
 </template>
 
 <script setup>
-/**
- * 档案独立详情页（§3：列表进详情，禁止只开抽屉交差）。
- * 路径 /archive/item/:id，不写死 /goods。
- */
+
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
