@@ -301,13 +301,8 @@ class ClassDiagramTests(unittest.TestCase):
         self.assertGreaterEqual(len(pts), 3)
 
     def test_boxes_do_not_overlap_and_paths_avoid_boxes(self) -> None:
-        """零交叉布局：框不叠；已画关联线不穿第三方框。"""
-        from app.bake.schema.classes import (
-            _path_obstacle_hits,
-            _paths_proper_cross,
-            attach_layout,
-            ortho_path,
-        )
+        """ELK 初局：框不叠；尽量画全关联（不要求零交叉）。"""
+        from app.bake.schema.classes import attach_layout
 
         classes = []
         for i, name in enumerate(["a", "b", "c", "d", "e", "f"]):
@@ -344,31 +339,18 @@ class ClassDiagramTests(unittest.TestCase):
                     ax + aw <= bx or bx + bw <= ax or ay + ah <= by or by + bh <= ay
                 )
                 self.assertFalse(overlap, f"{ids[i]} overlaps {ids[j]}")
-        # 零交叉硬约束：已画路径不得冲突；尽量多画
-        self.assertTrue(model.get("zero_crossing"))
-        self.assertEqual(model.get("assoc_mode"), "zero")
-        self.assertGreaterEqual(len(model["associations"]), 5)
-        obstacles = [(tid, *pos[tid]) for tid in ids]
+        self.assertFalse(model.get("zero_crossing"))
+        self.assertEqual(model.get("assoc_mode"), "elk")
+        self.assertEqual(model.get("evidence", {}).get("layout_algo"), "elk")
+        self.assertEqual(len(model["associations"]), 7)
         paths = model.get("_assoc_paths") or []
         self.assertEqual(len(paths), len(model["associations"]))
-        for i, pts in enumerate(paths):
-            a = model["associations"][i]
-            frm, to = a["from"], a["to"]
-            hits = _path_obstacle_hits(pts, obstacles, {frm, to})
-            self.assertEqual(hits, 0, f"path {frm}->{to} punches boxes: {pts}")
-        for i in range(len(paths)):
-            for j in range(i + 1, len(paths)):
-                self.assertFalse(
-                    _paths_proper_cross(paths[i], paths[j]),
-                    f"crossing between edge {i} and {j}",
-                )
         svg = render_class_svg(model)
-        self.assertIn('data-zero-crossing="1"', svg)
-        self.assertNotIn(" A ", svg)  # 不过桥
+        self.assertNotIn('data-zero-crossing="1"', svg)
 
-    def test_dense_assoc_svg_has_no_path_conflicts(self) -> None:
-        """稠密关联 + 零交叉：出图路径两两不得冲突（可少画边）。"""
-        from app.bake.schema.classes import _paths_conflict, attach_layout
+    def test_dense_assoc_svg_draws_all(self) -> None:
+        """稠密关联：ELK 初局尽量画全边（允许交叉）。"""
+        from app.bake.schema.classes import attach_layout
 
         names = [f"n{i}" for i in range(8)]
         classes = [
@@ -388,28 +370,15 @@ class ClassDiagramTests(unittest.TestCase):
         for b in names[1:]:
             assocs.append({"from": names[0], "to": b})
         model = {"classes": classes, "associations": assocs}
-        attach_layout(model, assoc_mode="zero")
+        attach_layout(model)
+        self.assertEqual(len(model["associations"]), len(assocs))
+        self.assertEqual(len(model.get("associations_omitted") or []), 0)
         svg = render_class_svg(model)
-        import re
+        self.assertIn("uml-assoc", svg)
 
-        ds = re.findall(r'class="uml-assoc"[^>]*\sd="([^"]+)"', svg)
-        paths = []
-        for d in ds:
-            pts = []
-            for m in re.finditer(r"[ML]\s*([-\d.]+)\s+([-\d.]+)", d, re.I):
-                pts.append((float(m.group(1)), float(m.group(2))))
-            if len(pts) >= 2:
-                paths.append(pts)
-        for i in range(len(paths)):
-            for j in range(i + 1, len(paths)):
-                self.assertFalse(
-                    _paths_conflict(paths[i], paths[j]),
-                    f"svg edges {i} and {j} still conflict",
-                )
-
-    def test_zero_cross_maximizes_triangle(self) -> None:
-        """零交叉下竞赛布局：三角环至少画出生成树 2 条，且无交叉。"""
-        from app.bake.schema.classes import _paths_conflict, attach_layout
+    def test_elk_draws_triangle_all_edges(self) -> None:
+        """三角环：ELK 画全 3 条边（不要求零交叉）。"""
+        from app.bake.schema.classes import attach_layout
 
         classes = [
             {"id": n, "name": n.upper(), "attributes": [], "methods": []}
@@ -424,14 +393,10 @@ class ClassDiagramTests(unittest.TestCase):
             ],
         }
         attach_layout(model)
-        self.assertTrue(model.get("zero_crossing"))
-        self.assertGreaterEqual(len(model["associations"]), 2)
-        paths = model.get("_assoc_paths") or []
-        for i in range(len(paths)):
-            for j in range(i + 1, len(paths)):
-                self.assertFalse(_paths_conflict(paths[i], paths[j]))
+        self.assertFalse(model.get("zero_crossing"))
+        self.assertEqual(len(model["associations"]), 3)
         svg = render_class_svg(model)
-        self.assertIn('data-zero-crossing="1"', svg)
+        self.assertIn("uml-assoc", svg)
 
     def test_readable_text_full_no_truncate(self) -> None:
         """框随全文加宽：不截断签名、不省略条目，字仍落在框内。"""
@@ -537,13 +502,11 @@ class ClassDiagramTests(unittest.TestCase):
         self.assertTrue(y1 and y2)
         self.assertGreaterEqual(abs(y1[0] - y2[0]), _LANE_GAP - 0.5)
 
-    def test_zero_crossing_spanning_tree(self) -> None:
-        """环上优先生成树；能无交叉补回的边可保留，最终路径仍无交叉。"""
-        from app.bake.schema.classes import (
-            _assoc_route,
-            _paths_proper_cross,
-            attach_layout,
-        )
+    def test_manual_layout_keeps_box_positions(self) -> None:
+        """人工钉框：重算折线不挪其它框，且不重跑 ELK。"""
+        from unittest import mock
+
+        from app.bake.schema.classes import _apply_manual_zero_cross, attach_layout
 
         classes = [
             {"id": n, "name": n.upper(), "attributes": [], "methods": []}
@@ -557,22 +520,24 @@ class ClassDiagramTests(unittest.TestCase):
                 {"from": "c", "to": "a"},
             ],
         }
-        attach_layout(model, assoc_mode="zero")
-        self.assertGreaterEqual(len(model["associations"]), 2)
-        self.assertLessEqual(len(model["associations"]), 3)
-        self.assertTrue(model.get("zero_crossing"))
-        pos = {
-            k: (v["x"], v["y"], v["w"], v["h"]) for k, v in model["layout"].items()
+        attach_layout(model)
+        model["layout"] = {
+            "a": {"x": 40.0, "y": 40.0, "w": 120.0, "h": 80.0},
+            "b": {"x": 280.0, "y": 40.0, "w": 120.0, "h": 80.0},
+            "c": {"x": 160.0, "y": 220.0, "w": 120.0, "h": 80.0},
         }
-        parents = model.get("tree_parents") or {}
-        obstacles = [(tid, *pos[tid]) for tid in pos]
-        paths = model.get("_assoc_paths") or [
-            _assoc_route(a["from"], a["to"], pos, parents, obstacles)
-            for a in model["associations"]
-        ]
-        for i in range(len(paths)):
-            for j in range(i + 1, len(paths)):
-                self.assertFalse(_paths_proper_cross(paths[i], paths[j]))
+        before = {k: dict(v) for k, v in model["layout"].items()}
+        with mock.patch(
+            "app.bake.schema.class_layout.layout_graph",
+            side_effect=AssertionError("manual path must not call ELK"),
+        ):
+            _apply_manual_zero_cross(model)
+        for k, v in before.items():
+            self.assertEqual(model["layout"][k]["x"], v["x"])
+            self.assertEqual(model["layout"][k]["y"], v["y"])
+        self.assertTrue(model.get("layout_manual"))
+        self.assertEqual(model.get("layout_algo"), "manual")
+        self.assertEqual(len(model["associations"]), 3)
 
     def test_build_with_skeleton_java(self) -> None:
         with tempfile.TemporaryDirectory() as td:

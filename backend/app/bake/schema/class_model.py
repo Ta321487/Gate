@@ -505,9 +505,9 @@ def refine_and_persist_class_layout(
     display_mode: str | None = None,
     title_fallback: str = "",
 ) -> dict[str, Any]:
-    """人工坐标落盘后：按零交叉挪框精炼，并把精炼后的 x/y 写回。
+    """人工坐标落盘：钉框写回，只重算折线；禁止 ELK/挪其它框。
 
-    零交叉/挪框只在后端做；前端拖完回拉 SVG 即可。
+    前端拖完回拉 SVG 即可。
     """
     mode = normalize_class_display_mode(display_mode)
     model = load_class_model(
@@ -543,9 +543,9 @@ def refine_and_persist_class_layout(
         "layout": saved.get("layout") or cleaned,
         "assoc_drawn": int(ev.get("assoc_drawn") or 0),
         "assoc_omitted": int(ev.get("assoc_omitted") or 0),
-        "layout_nudged": bool(ev.get("layout_nudged")),
+        "layout_nudged": False,
         "source_note": model.get("source_note") or "",
-        "message": "类图布局已保存并按零交叉精炼",
+        "message": "类图布局已保存（钉框，未重跑自动排版）",
     }
 
 
@@ -887,7 +887,7 @@ def build_class_model(
     compact = bool(saved_mode) and saved_mode != normalize_class_display_mode(display_mode)
     auto_layout_fresh = False
     if patch and not compact:
-        # 快路径：已有落盘坐标时跳过 hub/tree 竞赛，只算框高 + 零交叉选边
+        # 快路径：已有落盘坐标时跳过 ELK，只算框高 + 钉框折线
         _sized_layout_stub(model)
         if apply_class_layout_patch(model, patch, compact=False):
             _apply_manual_zero_cross(model, max_rounds=8)

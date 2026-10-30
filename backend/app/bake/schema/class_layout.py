@@ -1,4 +1,4 @@
-"""论文「类图」：零交叉摆框、选边与正交折线。"""
+"""论文「类图」：ELK layered 初局摆框；人工钉框只重算折线（不重跑 ELK）。"""
 
 from __future__ import annotations
 
@@ -14,9 +14,9 @@ from app.bake.schema.class_model import (
     _f,
     _normalize_rel_kind,
 )
+from app.bake.schema.layout_elk import ElkLayoutError, layout_graph
 
-# 打开类图接口有 axios 60s 上限；稠密依赖边时旧选边/挪框会拖死。
-# 预算内尽量画满，超时则少画进 omitted（仍保证已画边零交叉）。
+# 旧竞赛预算常量保留：部分辅助函数/单测仍引用。
 _ATTACH_BUDGET_SEC = 5.0
 _SELECT_BUDGET_SEC = 2.0
 _NUDGE_BUDGET_SEC = 2.0
@@ -259,25 +259,95 @@ def _commit_zero_cross_layout(
         ev["zero_crossing"] = True
 
 
-def attach_layout(model: dict[str, Any], *, assoc_mode: str | None = None) -> dict[str, Any]:
-    """零交叉硬约束：多套摆框竞赛 + 挪框精炼，选「无交叉下画出最多关联」的方案。
+def _box_border_point(
+    box: tuple[float, float, float, float], tx: float, ty: float
+) -> tuple[float, float]:
+    x, y, w, h = box
+    cx, cy = x + w / 2.0, y + h / 2.0
+    dx, dy = tx - cx, ty - cy
+    if abs(dx) < 1e-9 and abs(dy) < 1e-9:
+        return cx, y
+    sx = (w / 2.0) / abs(dx) if abs(dx) > 1e-9 else float("inf")
+    sy = (h / 2.0) / abs(dy) if abs(dy) > 1e-9 else float("inf")
+    t = min(sx, sy)
+    return cx + dx * t, cy + dy * t
 
-    assoc_mode 参数保留兼容，一律按零交叉处理（全关联凑线已取消）。
+
+def _simple_ortho_path(
+    frm: str,
+    to: str,
+    pos: dict[str, tuple[float, float, float, float]],
+) -> list[tuple[float, float]] | None:
+    """钉框后的轻量折线：始终可画（可交叉），不跑 ELK。"""
+    if frm not in pos or to not in pos or frm == to:
+        return None
+    ax, ay, aw, ah = pos[frm]
+    bx, by, bw, bh = pos[to]
+    acx, acy = ax + aw / 2.0, ay + ah / 2.0
+    bcx, bcy = bx + bw / 2.0, by + bh / 2.0
+    mid_x = (acx + bcx) / 2.0
+    p0 = _box_border_point(pos[frm], mid_x, acy)
+    p1 = (mid_x, acy)
+    p2 = (mid_x, bcy)
+    p3 = _box_border_point(pos[to], mid_x, bcy)
+    pts = [p0, p1, p2, p3]
+    cleaned: list[tuple[float, float]] = []
+    for p in pts:
+        if not cleaned or abs(cleaned[-1][0] - p[0]) > 0.5 or abs(cleaned[-1][1] - p[1]) > 0.5:
+            cleaned.append(p)
+    return cleaned if len(cleaned) >= 2 else [p0, p3]
+
+
+def _commit_elk_layout(
+    model: dict[str, Any],
+    *,
+    pos: dict[str, tuple[float, float, float, float]],
+    associations: list[dict[str, Any]],
+    paths: list[list[tuple[float, float]]],
+    layout_algo: str,
+    elapsed_ms: float = 0.0,
+) -> None:
+    use_pos = _pad_positions(pos)
+    model["associations"] = list(associations)
+    model["associations_omitted"] = []
+    model["_assoc_paths"] = paths
+    model["tree_parents"] = {}
+    model["layout_algo"] = layout_algo
+    model["zero_crossing"] = False
+    model["assoc_mode"] = "elk"
+    model["layout"] = {
+        k: {"x": round(x, 1), "y": round(y, 1), "w": round(w, 1), "h": round(h, 1)}
+        for k, (x, y, w, h) in use_pos.items()
+    }
+    ev = model.setdefault("evidence", {})
+    if isinstance(ev, dict):
+        ev["assoc_drawn"] = len(associations)
+        ev["assoc_omitted"] = 0
+        ev["assoc_total"] = len(model.get("associations_all") or associations)
+        ev["layout_algo"] = layout_algo
+        ev["zero_crossing"] = False
+        ev["layout_ms"] = round(elapsed_ms, 1)
+
+
+def attach_layout(model: dict[str, Any], *, assoc_mode: str | None = None) -> dict[str, Any]:
+    """初局：pyelk layered 摆框并尽量画全关联；不保证零交叉。
+
+    assoc_mode 保留兼容，忽略。
     """
-    del assoc_mode  # 兼容旧调用；产品口径只有零交叉
-    deadline = time.monotonic() + _ATTACH_BUDGET_SEC
+    del assoc_mode
+    t0 = time.perf_counter()
     all_a = [a for a in (model.get("associations") or []) if isinstance(a, dict)]
     model["associations_all"] = all_a
     model["associations"] = list(all_a)
     model["associations_omitted"] = []
     model["tree_parents"] = {}
-    model["zero_crossing"] = True
-    model["assoc_mode"] = "zero"
+    model["zero_crossing"] = False
+    model["assoc_mode"] = "elk"
     ev = model.setdefault("evidence", {})
     if isinstance(ev, dict):
-        ev["assoc_mode"] = "zero"
+        ev["assoc_mode"] = "elk"
         ev["assoc_total"] = len(all_a)
-        ev["zero_crossing"] = True
+        ev["zero_crossing"] = False
 
     classes = [c for c in (model.get("classes") or []) if isinstance(c, dict)]
     if not classes:
@@ -286,107 +356,100 @@ def attach_layout(model: dict[str, Any], *, assoc_mode: str | None = None) -> di
         return model
 
     sizes = {str(c["id"]): _box_size(c) for c in classes}
-    names = [str(c["id"]) for c in classes]
-    edges = [
-        (str(a.get("from")), str(a.get("to")))
-        for a in all_a
-        if isinstance(a, dict)
-    ]
-
-    layout_cands: list[tuple[str, dict[str, tuple[float, float, float, float]], dict[str, str]]] = []
+    names = [str(c["id"]) for c in classes if c.get("id")]
     if len(names) == 1:
         w, h = sizes[names[0]]
-        layout_cands.append(("single", {names[0]: (_PAD, _PAD, w, h)}, {}))
-    else:
-        # 只比 2 套：枢纽（观感）+ 树（树边易零交叉）；避免多根重复全量选边卡死
-        layout_cands.append(("hub", _hub_column_layout(names, sizes, edges), {}))
-        pos_t, par_t = _tree_forest_layout(names, sizes, edges)
-        layout_cands.append(("tree", pos_t, par_t))
-
-    best_key: tuple[int, float] | None = None
-    best_trial: dict[str, Any] | None = None
-    best_name = "hub"
-    best_pos: dict[str, tuple[float, float, float, float]] = {}
-    best_parents: dict[str, str] = {}
-    n_total = len(all_a)
-
-    for name, pos, parents in layout_cands:
-        if not pos:
-            continue
-        if time.monotonic() >= deadline:
-            break
-        trial_deadline = min(deadline, time.monotonic() + _SELECT_BUDGET_SEC)
-        n_draw, plen, trial = _trial_zero_crossing(
-            all_a, pos, parents, deadline=trial_deadline
+        pos = {names[0]: (_PAD, _PAD, w, h)}
+        _commit_elk_layout(
+            model,
+            pos=pos,
+            associations=list(all_a),
+            paths=[],
+            layout_algo="elk",
+            elapsed_ms=(time.perf_counter() - t0) * 1000.0,
         )
-        key = (n_draw, -plen)
-        if best_key is None or key > best_key:
-            best_key = key
-            best_trial = trial
-            best_name = name
-            best_pos = trial.get("_pos") or _pad_positions(pos)
-            best_parents = dict(parents)
-        # 已能画满全部外键则不必再赛
-        if n_total and n_draw >= n_total:
-            break
-
-    if best_trial is None:
-        model["layout"] = {}
-        model["associations"] = []
-        model["_assoc_paths"] = []
         _refresh_assoc_note(model)
         return model
 
-    # 竞赛后再挪框开槽，尽量把漏边补回来（仍保证零交叉）
-    # 缺边很少或已画大半时挪框性价比低；挪框再单独给短预算，避免顶满 12s
-    remain = deadline - time.monotonic()
-    drawn_n = len(best_trial.get("associations") or [])
-    missing = n_total - drawn_n
-    if n_total and missing >= 3 and remain > 1.0:
-        nudge_deadline = min(deadline, time.monotonic() + min(2.5, remain))
-        nudged_pos, nudged_trial = _nudge_layout_for_zero_cross(
-            best_pos,
-            all_a,
-            best_parents,
-            deadline=nudge_deadline,
-            max_rounds=4,
-        )
-        n2 = len(nudged_trial.get("associations") or [])
-        plen2 = sum(
-            _path_len(p)
-            for p in (nudged_trial.get("_assoc_paths") or [])
-            if isinstance(p, list) and len(p) >= 2
-        )
-        n1 = len(best_trial.get("associations") or [])
-        plen1 = sum(
-            _path_len(p)
-            for p in (best_trial.get("_assoc_paths") or [])
-            if isinstance(p, list) and len(p) >= 2
-        )
-        if (n2, -plen2) > (n1, -plen1):
-            best_pos, best_trial = nudged_pos, nudged_trial
-            best_name = f"{best_name}+nudge"
+    nodes = [
+        {"id": n, "width": float(sizes[n][0]), "height": float(sizes[n][1])}
+        for n in names
+        if n in sizes
+    ]
+    elk_edges = []
+    for i, a in enumerate(all_a):
+        frm, to = str(a.get("from") or ""), str(a.get("to") or "")
+        if not frm or not to or frm == to:
+            continue
+        if frm not in sizes or to not in sizes:
+            continue
+        elk_edges.append({"id": f"a{i}", "sources": [frm], "targets": [to]})
 
-    _commit_zero_cross_layout(
+    try:
+        laid = layout_graph(nodes, elk_edges)
+    except ElkLayoutError:
+        # 显式失败不退回竞赛环；退网格保接口可用
+        pos = {}
+        x = _PAD
+        for n in names:
+            w, h = sizes[n]
+            pos[n] = (x, _PAD, w, h)
+            x += w + _BOX_GAP
+        paths = []
+        drawn = []
+        for a in all_a:
+            pts = _simple_ortho_path(str(a.get("from")), str(a.get("to")), pos)
+            if pts:
+                drawn.append(a)
+                paths.append(pts)
+        _commit_elk_layout(
+            model,
+            pos=pos,
+            associations=drawn,
+            paths=paths,
+            layout_algo="grid-fallback",
+            elapsed_ms=(time.perf_counter() - t0) * 1000.0,
+        )
+        _refresh_assoc_note(model)
+        return model
+
+    raw_pos = laid.get("positions") or {}
+    pos: dict[str, tuple[float, float, float, float]] = {}
+    for n in names:
+        box = raw_pos.get(n)
+        if box:
+            pos[n] = box
+        else:
+            w, h = sizes[n]
+            pos[n] = (_PAD, _PAD, w, h)
+
+    edge_paths = laid.get("edge_paths") or {}
+    paths: list[list[tuple[float, float]]] = []
+    drawn: list[dict[str, Any]] = []
+    for i, a in enumerate(all_a):
+        frm, to = str(a.get("from") or ""), str(a.get("to") or "")
+        pts = edge_paths.get(f"a{i}")
+        if not pts or len(pts) < 2:
+            pts = _simple_ortho_path(frm, to, pos)
+        if not pts:
+            continue
+        drawn.append(a)
+        paths.append([(float(x), float(y)) for x, y in pts])
+
+    _commit_elk_layout(
         model,
-        pos=best_pos,
-        trial=best_trial,
-        parents=best_parents,
-        layout_algo=best_name.split(":", 1)[0].split("+", 1)[0],
+        pos=pos,
+        associations=drawn,
+        paths=paths,
+        layout_algo="elk",
+        elapsed_ms=float(laid.get("elapsed_ms") or (time.perf_counter() - t0) * 1000.0),
     )
-    if "+nudge" in best_name and isinstance(ev, dict):
-        ev["layout_nudged"] = True
-    if isinstance(ev, dict) and time.monotonic() >= deadline - 0.05:
-        ev["layout_budget_hit"] = True
     _refresh_assoc_note(model)
     return model
 
 
 def _apply_manual_zero_cross(model: dict[str, Any], *, max_rounds: int = 0) -> None:
-    """人工坐标：框位不动（对齐 draw.io），只在当前摆放下选零交叉折线。
-
-    max_rounds 保留兼容；人工拖拽路径不再挪其它框。
-    """
+    """人工坐标：框位不动，只重算折线；禁止重跑 ELK / 挪其它框。"""
     del max_rounds
     layout = model.get("layout") or {}
     pos = {
@@ -413,19 +476,23 @@ def _apply_manual_zero_cross(model: dict[str, Any], *, max_rounds: int = 0) -> N
         model["_assoc_paths"] = []
         return
     model["associations_all"] = all_a
-    model["zero_crossing"] = True
-    model["assoc_mode"] = "zero"
+    use_pos = dict(pos)  # 钉死：不 pad 平移，避免拖完整体挪位
+    paths: list[list[tuple[float, float]]] = []
+    drawn: list[dict[str, Any]] = []
+    for a in all_a:
+        pts = _simple_ortho_path(str(a.get("from")), str(a.get("to")), use_pos)
+        if not pts:
+            continue
+        drawn.append(a)
+        paths.append(pts)
+    model["associations"] = drawn
+    model["associations_omitted"] = []
+    model["_assoc_paths"] = paths
+    model["zero_crossing"] = False
+    model["assoc_mode"] = "manual"
     model["tree_parents"] = {
         str(k): str(v) for k, v in (model.get("tree_parents") or {}).items()
     }
-    _select_crossing_free_assocs(
-        model,
-        _pad_positions(pos),
-        deadline=time.monotonic() + _SELECT_BUDGET_SEC,
-    )
-    # 选边可能 pad 平移了障碍坐标；把 layout 与路径对齐
-    # _select 不改 pos；pad 仅在 trial 内。这里用原 pos 写回。
-    use_pos = _pad_positions(pos)
     model["layout"] = {
         tid: {
             "x": round(x, 1),
@@ -436,27 +503,28 @@ def _apply_manual_zero_cross(model: dict[str, Any], *, max_rounds: int = 0) -> N
         for tid, (x, y, w, h) in use_pos.items()
     }
     model["layout_manual"] = True
+    model["layout_algo"] = "manual"
     ev = model.setdefault("evidence", {})
     if isinstance(ev, dict):
-        ev["assoc_drawn"] = len(model.get("associations") or [])
-        ev["assoc_omitted"] = len(model.get("associations_omitted") or [])
+        ev["assoc_drawn"] = len(drawn)
+        ev["assoc_omitted"] = 0
         ev["assoc_total"] = len(all_a)
-        ev["zero_crossing"] = True
+        ev["zero_crossing"] = False
         ev["layout_algo"] = "manual"
         ev.pop("layout_nudged", None)
     _refresh_assoc_note(model)
 
 
 def _sized_layout_stub(model: dict[str, Any]) -> None:
-    """只算框尺寸占位，不做竞赛排版（人工坐标会覆盖 x/y）。"""
+    """只算框尺寸占位，不做自动排版（人工坐标会覆盖 x/y）。"""
     classes = [c for c in (model.get("classes") or []) if isinstance(c, dict)]
     all_a = [a for a in (model.get("associations") or []) if isinstance(a, dict)]
     model["associations_all"] = all_a
     model["associations"] = list(all_a)
     model["associations_omitted"] = []
     model["tree_parents"] = {}
-    model["zero_crossing"] = True
-    model["assoc_mode"] = "zero"
+    model["zero_crossing"] = False
+    model["assoc_mode"] = "manual"
     layout: dict[str, dict[str, float]] = {}
     x = _PAD
     for c in classes:
@@ -469,9 +537,9 @@ def _sized_layout_stub(model: dict[str, Any]) -> None:
     model["layout"] = layout
     ev = model.setdefault("evidence", {})
     if isinstance(ev, dict):
-        ev["assoc_mode"] = "zero"
+        ev["assoc_mode"] = "manual"
         ev["assoc_total"] = len(all_a)
-        ev["zero_crossing"] = True
+        ev["zero_crossing"] = False
         ev["layout_algo"] = "manual"
 
 
@@ -972,10 +1040,11 @@ def _refresh_assoc_note(model: dict[str, Any]) -> None:
     )
     skin = str(model.get("_display_mode_note") or "")
     extra = (
-        f" 连线规则：同图零交叉、不过桥（多套摆框竞赛选画线最多）；"
+        f" 连线规则：初局 ELK layered（不保证零交叉）；"
+        f"人工拖拽钉框只重算折线、不重跑布局；"
         f"布局={algo}；已画 {n_draw}/{n_total} 条"
         + (
-            f"；未画 {n_omit} 条外键仍保留在类属性中（可拖开后复位再试）。"
+            f"；未画 {n_omit} 条外键仍保留在类属性中（可在控制台拖开后重算）。"
             if n_omit
             else "。"
         )

@@ -2,7 +2,7 @@
 
 拆分：
 - class_model：SQL/Java 模型组装、display、layout 补丁 I/O
-- class_layout：零交叉摆框、选边、正交折线
+- class_layout：ELK 初局 + 人工钉框折线
 - class_svg：SVG 渲染
 - class_code：Java 成员与 OO 关系（已独立）
 
@@ -14,6 +14,7 @@ from __future__ import annotations
 from app.bake.schema.class_layout import (
     _BOX_GAP,
     _LANE_GAP,
+    _apply_manual_zero_cross,
     _assoc_route,
     _nudge_layout_for_zero_cross,
     _path_obstacle_hits,
@@ -63,6 +64,7 @@ __all__ = [
     "_FONT_BODY",
     "_H_PAD",
     "_LANE_GAP",
+    "_apply_manual_zero_cross",
     "_assoc_route",
     "_box_size",
     "_classify_fk_relation_kind",
