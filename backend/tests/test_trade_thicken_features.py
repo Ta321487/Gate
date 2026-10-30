@@ -187,15 +187,32 @@ CREATE TABLE IF NOT EXISTS goods (
   title VARCHAR(128) DEFAULT ''
 );
 """
-        out = ensure_trade_archive_columns(sql, domain="DOM-SHOP", item_table="goods")
+        out = ensure_trade_archive_columns(
+            sql,
+            domain="DOM-SHOP",
+            item_table="goods",
+            gates={"cartFreeShip": True},
+        )
         self.assertIn("free_ship_yuan", out)
+        skip_gate = ensure_trade_archive_columns(
+            sql, domain="DOM-SHOP", item_table="goods", gates={}
+        )
+        self.assertNotIn("free_ship_yuan", skip_gate)
         skip = ensure_trade_archive_columns(sql, domain="DOM-FOOD", item_table="goods")
         self.assertNotIn("free_ship_yuan", skip)
+        bare = domain_sql(
+            "DOM-SHOP",
+            "db_test",
+            capabilities=list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
+            title="校园二手商城系统",
+        )
+        self.assertNotIn("free_ship_yuan", bare)
         baked = domain_sql(
             "DOM-SHOP",
             "db_test",
             capabilities=list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
             title="校园二手商城系统",
+            proposal_text="支持满额包邮与凑单包邮提示。",
         )
         self.assertIn("free_ship_yuan", baked)
 
@@ -323,13 +340,14 @@ CREATE TABLE IF NOT EXISTS goods (
         # 骨架兜底字典须与 bake 默认同源，禁止再手补农产包
         from pathlib import Path
 
-        vue = (
+        # 拆分页后常量在 .setup.js，勿只扫 .vue 模板
+        orders_js = (
             Path(__file__).resolve().parents[2]
-            / "skeletons/baseline/frontend/src/views/user/MyOrders.vue"
+            / "skeletons/baseline/frontend/src/views/user/MyOrders.setup.js"
         ).read_text(encoding="utf-8")
-        self.assertIn("DEFAULT_REFUND_REASONS", vue)
+        self.assertIn("DEFAULT_REFUND_REASONS", orders_js)
         for reason in DEFAULT_REFUND_REASONS:
-            self.assertIn(reason, vue)
+            self.assertIn(reason, orders_js)
         for key in (
             "refundReasonLabel",
             "refundReasonHint",
@@ -527,11 +545,23 @@ CREATE TABLE IF NOT EXISTS goods (
             "支持订单分享口令，买家可凭口令免登录查单。",
         )
         self.assertTrue((with_share.get("schema") or {}).get("tradeThicken", {}).get("orderShare"))
+        bare = domain_sql(
+            "DOM-SHOP",
+            "db_test",
+            capabilities=list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
+            title="校园二手商城系统",
+        )
+        # A 壳：部分发货；B 档延保/分享/收货码/物流表未写不开
+        self.assertIn("partial_ship", bare)
+        self.assertNotIn("order_ship_node", bare)
+        for col in ("share_token", "warranty_until", "receive_verified_at"):
+            self.assertNotIn(col, bare)
         baked = domain_sql(
             "DOM-SHOP",
             "db_test",
             capabilities=list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
             title="校园二手商城系统",
+            proposal_text="支持物流进度手填、收货码核销、延保登记与订单分享口令。",
         )
         self.assertIn("order_ship_node", baked)
         for col in ("share_token", "warranty_until", "partial_ship", "receive_verified_at"):
@@ -562,11 +592,19 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertTrue(
             (with_share.get("schema") or {}).get("tradeThicken", {}).get("orderShare")
         )
+        bare = domain_sql(
+            "DOM-FOOD",
+            "db_test",
+            capabilities=list(DOMAIN_CAPABILITIES["DOM-FOOD"]),
+            title="校园点餐配送系统",
+        )
+        self.assertNotIn("share_token", bare)
         baked = domain_sql(
             "DOM-FOOD",
             "db_test",
             capabilities=list(DOMAIN_CAPABILITIES["DOM-FOOD"]),
             title="校园点餐配送系统",
+            proposal_text="支持凭口令查看订单进度。",
         )
         self.assertIn("share_token", baked)
         self.assertNotIn("CREATE TABLE IF NOT EXISTS order_ship_node", baked)
@@ -1079,11 +1117,20 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertTrue((food.get("schema") or {}).get("tradeThicken", {}).get("refundOrigin"))
         self.assertFalse((food.get("schema") or {}).get("tradeThicken", {}).get("invoiceTitle"))
 
+        bare_inv = domain_sql(
+            "DOM-SHOP",
+            "db_test",
+            capabilities=caps,
+            title="校园二手商城系统",
+        )
+        self.assertNotIn("invoice_title", bare_inv)
+        self.assertNotIn("invoice_status", bare_inv)
         baked = domain_sql(
             "DOM-SHOP",
             "db_test",
             capabilities=caps,
             title="校园二手商城系统",
+            proposal_text="满减优惠券会员日折扣；支持发票开票与满赠说明",
         )
         self.assertIn("invoice_title", baked)
         self.assertIn("invoice_status", baked)
@@ -1201,11 +1248,23 @@ CREATE TABLE IF NOT EXISTS goods (
             ((food_shelf.get("schema") or {}).get("tradeThicken") or {}).get("shelfSchedule")
         )
 
+        bare_cat = domain_sql(
+            "DOM-SHOP",
+            "db_test",
+            capabilities=list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
+            title="校园二手商城系统",
+        )
+        # A 壳好评晒图；B 档预售/定时上下架/到货通知未写不开
+        for needle in ("follow_body", "image_url"):
+            self.assertIn(needle, bare_cat, needle)
+        for needle in ("shelf_on", "shelf_off", "presale_note", "stock_notify"):
+            self.assertNotIn(needle, bare_cat)
         baked = domain_sql(
             "DOM-SHOP",
             "db_test",
             capabilities=list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
             title="校园二手商城系统",
+            proposal_text="支持定时上架与预售定金尾款说明，缺货可到货通知。",
         )
         for needle in (
             "shelf_on",
@@ -1222,6 +1281,13 @@ CREATE TABLE IF NOT EXISTS goods (
             "CREATE TABLE IF NOT EXISTS sys_guestbook (id BIGINT PRIMARY KEY);\n",
             domain="DOM-SHOP",
             item_table="shop_item",
+            gates={
+                "shelfSchedule": True,
+                "presaleNote": True,
+                "stockNotify": True,
+                "itemQa": True,
+                "goodRate": True,
+            },
         )
         self.assertIn("shelf_on", inj)
         self.assertIn("stock_notify", inj)
@@ -1461,11 +1527,19 @@ CREATE TABLE IF NOT EXISTS goods (
         )
         self.assertIn("cinema_snack", baked)
         self.assertIn("line_kind", baked)
+        bare_pkg = domain_sql(
+            "DOM-SHOP",
+            "db_test",
+            capabilities=list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
+            title="校园二手商城系统",
+        )
+        self.assertNotIn("packaging_fee_yuan", bare_pkg)
         shop_sql = domain_sql(
             "DOM-SHOP",
             "db_test",
             capabilities=list(DOMAIN_CAPABILITIES["DOM-SHOP"]),
             title="校园二手商城系统",
+            proposal_text="下单可选包装费。",
         )
         self.assertIn("packaging_fee_yuan", shop_sql)
 

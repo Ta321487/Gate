@@ -1,4 +1,4 @@
--- bake domain=DOM-CRM · tables in [6,15]
+-- 业务库脚本：建库、建表与初始数据
 CREATE DATABASE IF NOT EXISTS `thesis_test` DEFAULT CHARACTER SET utf8mb4;
 USE `thesis_test`;
 
@@ -16,6 +16,16 @@ CREATE TABLE IF NOT EXISTS sys_user (
   enabled TINYINT DEFAULT 1,
   staff_post VARCHAR(64) DEFAULT '',
   staff_kind VARCHAR(16) DEFAULT '',
+  failed_login_count INT NOT NULL DEFAULT 0,
+  lock_until DATETIME NULL,
+  must_change_password TINYINT NOT NULL DEFAULT 0,
+  password_changed_at DATETIME NULL,
+  security_question VARCHAR(128) NULL,
+  security_answer_hash VARCHAR(128) NULL,
+  email_activated TINYINT NOT NULL DEFAULT 0,
+  activation_code VARCHAR(16) NULL,
+  real_name_acked TINYINT NOT NULL DEFAULT 0,
+  admin_tags VARCHAR(255) NOT NULL DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -75,6 +85,7 @@ CREATE TABLE IF NOT EXISTS sys_message (
   ref_type VARCHAR(32) DEFAULT '',
   ref_id BIGINT NULL,
   read_at DATETIME NULL,
+  deleted_at DATETIME NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   KEY idx_msg_user (username, id)
 );
@@ -86,6 +97,9 @@ CREATE TABLE IF NOT EXISTS sys_notice (
   publisher_username VARCHAR(64),
   publisher_name VARCHAR(64),
   pinned TINYINT NOT NULL DEFAULT 0,
+  expire_at DATETIME NULL,
+  force_ack TINYINT NOT NULL DEFAULT 0,
+  content_fmt VARCHAR(16) NOT NULL DEFAULT 'text',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -121,6 +135,78 @@ CREATE TABLE IF NOT EXISTS `follow_up_progress` (
   KEY idx_progress_ticket (ticket_id, id)
 );
 
+-- 会话登记、登录记录、注销申请
+CREATE TABLE IF NOT EXISTS sys_auth_session (
+  session_id VARCHAR(128) NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  ip VARCHAR(64) NOT NULL DEFAULT '',
+  user_agent VARCHAR(255) NOT NULL DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  kicked TINYINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (session_id),
+  KEY idx_auth_sess_user (username, kicked)
+);
+
+CREATE TABLE IF NOT EXISTS sys_login_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  ip VARCHAR(64) NOT NULL DEFAULT '',
+  user_agent VARCHAR(255) NOT NULL DEFAULT '',
+  geo_hint VARCHAR(64) NOT NULL DEFAULT '',
+  success TINYINT NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_login_log_user (username, created_at)
+);
+
+CREATE TABLE IF NOT EXISTS sys_account_cancel (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(64) NOT NULL,
+  reason VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(16) NOT NULL DEFAULT 'pending',
+  admin_note VARCHAR(255) NOT NULL DEFAULT '',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at DATETIME NULL,
+  KEY idx_cancel_user (username, status)
+);
+-- 业务试用账号首次登录须改密
+UPDATE sys_user SET must_change_password=1 WHERE username='user' AND IFNULL(super_admin,0)=0;
+-- 种子账号一律免激活闸（新注册仍走默认未激活）
+UPDATE sys_user SET email_activated=1;
+
+-- 强制公告确认 / 广告位多槽
+CREATE TABLE IF NOT EXISTS sys_notice_ack (
+  notice_id BIGINT NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  acked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (notice_id, username),
+  KEY idx_notice_ack_user (username)
+);
+
+CREATE TABLE IF NOT EXISTS sys_banner (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  slot VARCHAR(32) NOT NULL DEFAULT 'home',
+  title VARCHAR(128) NOT NULL DEFAULT '',
+  lead_text VARCHAR(255) NOT NULL DEFAULT '',
+  image_url VARCHAR(512) NOT NULL DEFAULT '',
+  link_url VARCHAR(512) NOT NULL DEFAULT '',
+  sort_order INT NOT NULL DEFAULT 0,
+  enabled TINYINT NOT NULL DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_banner_slot (slot, enabled, sort_order)
+);
+
+INSERT INTO sys_banner (slot, title, lead_text, image_url, link_url, sort_order, enabled)
+SELECT 'home', '欢迎使用', '系统已就绪，可开始浏览业务入口。', '', '/notices', 0, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM sys_banner WHERE slot='home' AND title='欢迎使用');
+
+-- 简易站点访问量（按日）
+CREATE TABLE IF NOT EXISTS sys_site_stat (
+  day_key VARCHAR(10) NOT NULL,
+  pv INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (day_key)
+);
+
 CREATE TABLE IF NOT EXISTS follow_contact (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   archive_id BIGINT NOT NULL,
@@ -138,3 +224,16 @@ CREATE TABLE IF NOT EXISTS follow_stage (
 );
 -- dual-role: disable orphan subadmin seed
 UPDATE sys_user SET enabled=0, staff_post='', staff_kind='' WHERE username='subadmin' AND IFNULL(super_admin,0)=0;
+
+-- 空封面时补默认图（customer）
+UPDATE `customer` SET cover_url = ELT(1 + MOD(GREATEST(id, 1) - 1, 8),
+  '/uploads/demo/cover-01.jpg',
+  '/uploads/demo/cover-02.jpg',
+  '/uploads/demo/cover-03.jpg',
+  '/uploads/demo/cover-04.jpg',
+  '/uploads/demo/cover-05.jpg',
+  '/uploads/demo/cover-06.jpg',
+  '/uploads/demo/cover-07.jpg',
+  '/uploads/demo/cover-08.jpg'
+)
+WHERE cover_url IS NULL OR TRIM(cover_url) = '';

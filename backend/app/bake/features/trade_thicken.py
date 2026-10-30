@@ -132,13 +132,16 @@ def ensure_trade_archive_columns(
     *,
     domain: str | None,
     item_table: str | None,
+    gates: dict[str, bool] | None = None,
 ) -> str:
-    """SHOP 包邮门槛列；非本组原样返回。"""
+    """SHOP 包邮门槛列；开题扫到包邮才注入（与 cartFreeShip 同口径）。"""
     import re
 
     from app.bake.sql.fragments import _CREATE_TABLE_RE, _inject_missing_columns
 
     if (domain or "") != "DOM-SHOP":
+        return sql
+    if not (gates or {}).get("cartFreeShip"):
         return sql
     t = (item_table or "").strip()
     if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
@@ -293,11 +296,18 @@ CREATE TABLE IF NOT EXISTS order_ship_node (
 """
 
 
-def ensure_order_ship_node_sql(sql: str, *, domain: str | None) -> str:
-    """SHOP 物流进度手填子表；禁止 JSON 列。"""
+def ensure_order_ship_node_sql(
+    sql: str,
+    *,
+    domain: str | None,
+    gates: dict[str, bool] | None = None,
+) -> str:
+    """SHOP 物流进度手填子表；开题扫到物流进度才建表。"""
     import re
 
     if (domain or "") != "DOM-SHOP":
+        return sql
+    if not (gates or {}).get("shipNodes"):
         return sql
     if re.search(
         r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?order_ship_node`?\b", sql
@@ -323,8 +333,9 @@ def ensure_catalog_thicken_sql(
     *,
     domain: str | None,
     item_table: str | None,
+    gates: dict[str, bool] | None = None,
 ) -> str:
-    """T-09 商品侧：上下架定时列、预售说明、到货订阅表、评价晒图追评、留言挂商品。"""
+    """T-09 商品侧：B 档列/表跟扫词；好评晒图追评为 A 壳。"""
     import re
 
     from app.bake.sql.fragments import _CREATE_TABLE_RE, _inject_missing_columns
@@ -332,22 +343,33 @@ def ensure_catalog_thicken_sql(
     d = domain or ""
     if d not in ("DOM-SHOP", "DOM-FOOD"):
         return sql
+    g = gates or {}
 
     it = (item_table or "").strip()
     item_ok = bool(it and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", it))
+    want_shelf = bool(g.get("shelfSchedule"))
+    want_presale = d == "DOM-SHOP" and bool(g.get("presaleNote"))
+    want_item_qa = d == "DOM-SHOP" and bool(g.get("itemQa"))
+    # 好评率是 A 壳：未显式关则注入晒图/追评列
+    want_review_extras = g.get("goodRate", True)
 
     def repl(m: re.Match[str]) -> str:
         head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
         tl = table.lower()
         if item_ok and tl == it.lower():
-            cols: list[tuple[str, str]] = [
-                ("shelf_on", "DATETIME NULL"),
-                ("shelf_off", "DATETIME NULL"),
-            ]
-            if d == "DOM-SHOP":
+            cols: list[tuple[str, str]] = []
+            if want_shelf:
+                cols.extend(
+                    [
+                        ("shelf_on", "DATETIME NULL"),
+                        ("shelf_off", "DATETIME NULL"),
+                    ]
+                )
+            if want_presale:
                 cols.append(("presale_note", "VARCHAR(255) DEFAULT ''"))
-            body = _inject_missing_columns(body, cols)
-        if tl == "order_review":
+            if cols:
+                body = _inject_missing_columns(body, cols)
+        if want_review_extras and tl == "order_review":
             body = _inject_missing_columns(
                 body,
                 [
@@ -356,7 +378,7 @@ def ensure_catalog_thicken_sql(
                     ("follow_at", "DATETIME NULL"),
                 ],
             )
-        if tl == "sys_guestbook":
+        if want_item_qa and tl == "sys_guestbook":
             body = _inject_missing_columns(
                 body,
                 [("item_id", "BIGINT NULL")],
@@ -371,8 +393,12 @@ def ensure_catalog_thicken_sql(
         return f"{head}{body}{tail}"
 
     out = _CREATE_TABLE_RE.sub(repl, sql)
-    if d == "DOM-SHOP" and not re.search(
-        r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?stock_notify`?\b", out
+    if (
+        d == "DOM-SHOP"
+        and g.get("stockNotify")
+        and not re.search(
+            r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?stock_notify`?\b", out
+        )
     ):
         out = out.rstrip() + "\n" + _STOCK_NOTIFY_DDL
     return out
@@ -1226,6 +1252,77 @@ TRADE_B_ALIGN_RULES: list[tuple[str, frozenset[str], TradeScanFn]] = [
     ("itemQa", frozenset({"DOM-SHOP"}), _body_re(_ITEM_QA_RE)),
     ("shelfSchedule", frozenset({"DOM-SHOP", "DOM-FOOD"}), _body_re(_SHELF_SCHEDULE_RE)),
 ]
+
+
+def resolve_trade_sql_gates(
+    domain: str,
+    *,
+    title: str = "",
+    proposal_text: str = "",
+) -> dict[str, bool]:
+    """SQL 注入闸：B 档与 TRADE_B_ALIGN_RULES 同口径；A 壳列单独钉 True。
+
+    禁止 SQL 侧再写第二套扫词。engine_sql / ensure_* 只读本字典。
+    """
+    d = (domain or "").strip()
+    out: dict[str, bool] = {}
+    if d not in TRADE_DOMAINS:
+        return out
+    spec = {"title": title or "", "domain": d}
+    body = proposal_text or ""
+    for key, domains, scan_fn in TRADE_B_ALIGN_RULES:
+        if d not in domains:
+            continue
+        out[key] = bool(scan_fn(spec, body))
+    # A 壳：订单部分发货（SHOP）；好评晒图列（SHOP/FOOD）
+    if d == "DOM-SHOP":
+        out["partialShip"] = True
+        out["goodRate"] = True
+    elif d == "DOM-FOOD":
+        out["goodRate"] = True
+    return out
+
+
+_TRADE_ORDER_EXTRA_DDL: dict[str, tuple[str, str]] = {
+    "share_token": ("share_token", "VARCHAR(16) DEFAULT ''"),
+    "warranty_until": ("warranty_until", "DATE NULL"),
+    "partial_ship": ("partial_ship", "TINYINT NOT NULL DEFAULT 0"),
+    "receive_verified_at": ("receive_verified_at", "DATETIME NULL"),
+    "invoice_title": ("invoice_title", "VARCHAR(128) DEFAULT ''"),
+    "invoice_status": ("invoice_status", "VARCHAR(16) DEFAULT ''"),
+    "packaging_fee_yuan": (
+        "packaging_fee_yuan",
+        "DECIMAL(10,2) NOT NULL DEFAULT 0",
+    ),
+}
+
+
+def trade_order_extra_columns_for(
+    domain: str,
+    gates: dict[str, bool] | None,
+) -> list[tuple[str, str]]:
+    """按闸返回订单表交易加厚列；FOOD 包装费走 ensure_food_thicken_sql。"""
+    d = (domain or "").strip()
+    if d not in ("DOM-SHOP", "DOM-FOOD"):
+        return []
+    g = gates or {}
+    cols: list[tuple[str, str]] = []
+    if g.get("partialShip"):
+        cols.append(_TRADE_ORDER_EXTRA_DDL["partial_ship"])
+    if g.get("orderShare"):
+        cols.append(_TRADE_ORDER_EXTRA_DDL["share_token"])
+    if g.get("warranty"):
+        cols.append(_TRADE_ORDER_EXTRA_DDL["warranty_until"])
+    if g.get("receiveCode"):
+        cols.append(_TRADE_ORDER_EXTRA_DDL["receive_verified_at"])
+    if g.get("invoiceTitle") or g.get("invoiceStatus"):
+        cols.append(_TRADE_ORDER_EXTRA_DDL["invoice_title"])
+        cols.append(_TRADE_ORDER_EXTRA_DDL["invoice_status"])
+    # SHOP 包装费 B 档；FOOD 壳底列在 ensure_food_thicken_sql
+    if d == "DOM-SHOP" and g.get("packagingFee"):
+        cols.append(_TRADE_ORDER_EXTRA_DDL["packaging_fee_yuan"])
+    return cols
+
 
 # A 壳底白名单（摘录）：门禁不要求开题写出；灰区人工定
 TRADE_A_SHELL_WHITELIST: frozenset[str] = frozenset(

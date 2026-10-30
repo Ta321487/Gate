@@ -587,7 +587,8 @@ def domain_sql(
         archetypes=arches_for_sql,
         title=title or "",
     )
-    loyalty_on = bool(set(caps) & set(LOYALTY_CAPS))
+    # 忠诚度按 cap 拆列：order_lines 默认 wallet ≠ 整包灌积分/会员/券
+    loyalty_caps = {c for c in caps if c in LOYALTY_CAPS}
     # 预约评价开关：优先 bake 传入；否则回落域默认 schema
     resv_flags: dict = {}
     if isinstance(reservation_flags, dict) and reservation_flags:
@@ -603,14 +604,26 @@ def domain_sql(
                     resv_flags = ent
         except Exception:
             pass
-    # 有子管/岗位任命的域保留 staff 列；预约/订单履约列按域拆分；忠诚度按能力
+    from app.bake.features.trade_thicken import (
+        resolve_trade_sql_gates,
+        trade_order_extra_columns_for,
+    )
+
+    trade_sql_gates = resolve_trade_sql_gates(
+        domain or "",
+        title=title or "",
+        proposal_text=proposal_text or "",
+    )
+    trade_extra_cols = trade_order_extra_columns_for(domain or "", trade_sql_gates)
+    # staff / 履约按域；忠诚度按 cap；交易加厚跟扫词；售后宽列交易三域 A 壳
     text = ensure_shared_sql_columns(
         text,
         domain=domain or "",
         archetypes=arches_for_sql,
         staff=True,
-        loyalty=loyalty_on,
+        loyalty_caps=loyalty_caps,
         reservation_flags=resv_flags,
+        trade_extra_columns=trade_extra_cols,
     )
     runtime = ((DOMAINS.get(domain) or {}).get("runtime") or {})
     resolved_ticket = ticket_table or runtime.get("ticket_table")
@@ -718,8 +731,11 @@ def domain_sql(
         text,
         domain=domain or "",
         item_table=resolved_item,
+        gates=trade_sql_gates,
     )
-    text = ensure_order_ship_node_sql(text, domain=domain or "")
+    text = ensure_order_ship_node_sql(
+        text, domain=domain or "", gates=trade_sql_gates
+    )
     text = ensure_cinema_thicken_sql(
         text,
         domain=domain or "",
@@ -1196,6 +1212,7 @@ def domain_sql(
         text,
         domain=domain or "",
         item_table=resolved_item,
+        gates=trade_sql_gates,
     )
     text = ensure_stock_io_sql(
         text,

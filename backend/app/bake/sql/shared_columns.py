@@ -131,29 +131,45 @@ SYS_USER_STAFF_COLUMNS: list[tuple[str, str]] = [
     ("staff_kind", "VARCHAR(16) DEFAULT ''"),
 ]
 
+# 与 fragments.py 对齐：按 cap 拆列（wallet 默认 ≠ 整包灌积分/会员/券）
+SYS_USER_LOYALTY_BY_CAP: dict[str, list[tuple[str, str]]] = {
+    "wallet": [("balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0")],
+    "points": [("points", "INT NOT NULL DEFAULT 0")],
+    "member_tier": [("member_tier", "VARCHAR(32) DEFAULT ''")],
+    "spend_discount": [("spend_total_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0")],
+}
+ORDER_LOYALTY_BY_CAP: dict[str, list[tuple[str, str]]] = {
+    "wallet": [("pay_balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0")],
+    "points": [("points_earned", "INT NOT NULL DEFAULT 0")],
+    "spend_discount": [("discount_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0")],
+    "coupon": [("coupon_code", "VARCHAR(32) DEFAULT ''")],
+}
 SYS_USER_LOYALTY_COLUMNS: list[tuple[str, str]] = [
-    ("balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
-    ("points", "INT NOT NULL DEFAULT 0"),
-    ("member_tier", "VARCHAR(32) DEFAULT ''"),
-    ("spend_total_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
+    c for cols in SYS_USER_LOYALTY_BY_CAP.values() for c in cols
 ]
-
 ORDER_LOYALTY_COLUMNS: list[tuple[str, str]] = [
-    ("discount_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
-    ("pay_balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
-    ("points_earned", "INT NOT NULL DEFAULT 0"),
-    ("coupon_code", "VARCHAR(32) DEFAULT ''"),
+    c for cols in ORDER_LOYALTY_BY_CAP.values() for c in cols
 ]
 
-ORDER_REFUND_COLUMNS: list[tuple[str, str]] = [
+ORDER_LIFECYCLE_COLUMNS: list[tuple[str, str]] = [
+    ("completed_at", "DATETIME NULL"),
+]
+ORDER_REFUND_CORE_COLUMNS: list[tuple[str, str]] = [
     ("refund_status", "VARCHAR(16) DEFAULT ''"),
     ("refund_reason", "VARCHAR(255) DEFAULT ''"),
     ("refund_at", "DATETIME NULL"),
+    ("refund_requested_at", "DATETIME NULL"),
+]
+ORDER_REFUND_EXTRA_COLUMNS: list[tuple[str, str]] = [
     ("refund_type", "VARCHAR(32) DEFAULT ''"),
     ("refund_tracking_no", "VARCHAR(64) DEFAULT ''"),
-    ("refund_requested_at", "DATETIME NULL"),
-    ("completed_at", "DATETIME NULL"),
 ]
+ORDER_REFUND_COLUMNS: list[tuple[str, str]] = (
+    list(ORDER_REFUND_CORE_COLUMNS)
+    + list(ORDER_REFUND_EXTRA_COLUMNS)
+    + list(ORDER_LIFECYCLE_COLUMNS)
+)
+_TRADE_REFUND_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"})
 
 ORDER_TRADE_EXTRA_COLUMNS: list[tuple[str, str]] = [
     ("share_token", "VARCHAR(16) DEFAULT ''"),
@@ -182,10 +198,44 @@ CREATE TABLE IF NOT EXISTS user_ledger (
 """
 
 _SYS_USER_LOYALTY_NAMES = {n.lower() for n, _ in SYS_USER_LOYALTY_COLUMNS}
-
 _ORDER_LOYALTY_NAMES = {n.lower() for n, _ in ORDER_LOYALTY_COLUMNS}
-
+_ORDER_REFUND_NAMES = {n.lower() for n, _ in ORDER_REFUND_COLUMNS}
 _ORDER_TRADE_EXTRA_NAMES = {n.lower() for n, _ in ORDER_TRADE_EXTRA_COLUMNS}
+
+
+def _loyalty_caps_set(
+    loyalty: bool,
+    loyalty_caps: set[str] | frozenset[str] | None,
+) -> set[str]:
+    if loyalty_caps is not None:
+        return {str(c).strip() for c in loyalty_caps if str(c).strip()}
+    if loyalty:
+        return {"wallet", "points", "member_tier", "spend_discount", "coupon"}
+    return set()
+
+
+def loyalty_user_columns_for(caps: set[str]) -> list[tuple[str, str]]:
+    cols: list[tuple[str, str]] = []
+    for key in ("wallet", "points", "member_tier", "spend_discount"):
+        if key in caps:
+            cols.extend(SYS_USER_LOYALTY_BY_CAP[key])
+    return cols
+
+
+def loyalty_order_columns_for(caps: set[str]) -> list[tuple[str, str]]:
+    cols: list[tuple[str, str]] = []
+    for key in ("wallet", "points", "spend_discount", "coupon"):
+        if key in caps:
+            cols.extend(ORDER_LOYALTY_BY_CAP[key])
+    return cols
+
+
+def order_refund_columns_for(domain: str) -> list[tuple[str, str]]:
+    """交易三域售后 A 壳全列；其它有单域只保留 completed_at。"""
+    if (domain or "").strip() in _TRADE_REFUND_DOMAINS:
+        return list(ORDER_REFUND_COLUMNS)
+    return list(ORDER_LIFECYCLE_COLUMNS)
+
 
 def order_fulfill_columns_for(
     domain: str,
@@ -211,6 +261,7 @@ def order_fulfill_columns_for(
     # 其他带订单的域：按商城履约，不含餐饮口味/预约外键
     return list(ORDER_ADDRESS_COLUMNS) + list(ORDER_SHOP_FULFILL_COLUMNS)
 
+
 RESERVATION_RATING_COLUMNS: list[tuple[str, str]] = [
     ("rating", "INT NULL"),
     ("rating_remark", "VARCHAR(255) NOT NULL DEFAULT ''"),
@@ -219,6 +270,7 @@ RESERVATION_RATING_COLUMNS: list[tuple[str, str]] = [
 
 _RESERVATION_RATING_NAMES = {n.lower() for n, _ in RESERVATION_RATING_COLUMNS}
 
+
 def ensure_shared_sql_columns(
     sql: str,
     *,
@@ -226,29 +278,38 @@ def ensure_shared_sql_columns(
     archetypes: list[str] | None = None,
     staff: bool = True,
     loyalty: bool = False,
+    loyalty_caps: set[str] | frozenset[str] | None = None,
     reservation_flags: dict | None = None,
+    trade_extra_columns: list[tuple[str, str]] | None = None,
 ) -> str:
     """对 reservation / 订单表 / sys_user 补齐共享列。
 
     预约/订单履约列均按 domain（及 GENERIC 的 archetype）注入并剔除跨域字段。
+    交易加厚列由调用方按扫词闸传入 trade_extra_columns。
+    忠诚度列按 cap 拆：仅 wallet 默认时不灌 points/会员/券列。
+    售后宽列：交易三域 A 壳全套；其它有单域只保留 completed_at。
     """
+    caps = _loyalty_caps_set(loyalty, loyalty_caps)
+    user_loyalty_cols = loyalty_user_columns_for(caps)
+    order_loyalty_cols = loyalty_order_columns_for(caps)
+    refund_cols = order_refund_columns_for(domain)
+    want_ledger = "wallet" in caps
+
     resv_cols = list(RESERVATION_COLUMNS_BY_DOMAIN.get(domain or "", []))
     resv_allow = {n.lower() for n, _ in resv_cols}
-    # 评价列：开则注入并加入 allow，关则从 known 剔除（避免脏列残留）
     rf = reservation_flags if isinstance(reservation_flags, dict) else {}
     if rf.get("allowRating"):
         resv_cols = list(resv_cols) + list(RESERVATION_RATING_COLUMNS)
         resv_allow |= _RESERVATION_RATING_NAMES
     known_resv = _RESERVATION_EXTRA_NAMES | _RESERVATION_RATING_NAMES
     order_fulfill = order_fulfill_columns_for(domain, archetypes)
+    trade_extra = list(trade_extra_columns or [])
     order_allow = {n.lower() for n, _ in order_fulfill} | {
-        n.lower() for n, _ in ORDER_REFUND_COLUMNS
+        n.lower() for n, _ in refund_cols
+    } | {n.lower() for n, _ in order_loyalty_cols} | {
+        n.lower() for n, _ in trade_extra
     }
-    extra_trade = (domain or "") in ("DOM-SHOP", "DOM-FOOD")
-    if extra_trade:
-        order_allow |= _ORDER_TRADE_EXTRA_NAMES
-    if loyalty:
-        order_allow |= _ORDER_LOYALTY_NAMES
+    user_loyalty_allow = {n.lower() for n, _ in user_loyalty_cols}
 
     def repl(m: re.Match[str]) -> str:
         head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
@@ -263,34 +324,34 @@ def ensure_shared_sql_columns(
             body = _prune_columns(
                 body,
                 allow=order_allow,
-                known=_ORDER_FULFILL_NAMES | _ORDER_LOYALTY_NAMES | _ORDER_TRADE_EXTRA_NAMES,
+                known=(
+                    _ORDER_FULFILL_NAMES
+                    | _ORDER_LOYALTY_NAMES
+                    | _ORDER_REFUND_NAMES
+                    | _ORDER_TRADE_EXTRA_NAMES
+                ),
             )
-            cols = list(order_fulfill) + list(ORDER_REFUND_COLUMNS)
-            if extra_trade:
-                cols = cols + list(ORDER_TRADE_EXTRA_COLUMNS)
-            if loyalty:
-                cols = list(order_fulfill) + list(ORDER_LOYALTY_COLUMNS) + list(
-                    ORDER_REFUND_COLUMNS
-                )
-                if extra_trade:
-                    cols = cols + list(ORDER_TRADE_EXTRA_COLUMNS)
+            cols = list(order_fulfill) + list(refund_cols)
+            if order_loyalty_cols:
+                cols = cols + list(order_loyalty_cols)
+            if trade_extra:
+                cols = cols + list(trade_extra)
             body = _inject_missing_columns(body, cols)
         elif t == "sys_user":
-            if not loyalty:
-                body = _prune_columns(
-                    body, allow=set(), known=_SYS_USER_LOYALTY_NAMES
-                )
+            body = _prune_columns(
+                body, allow=user_loyalty_allow, known=_SYS_USER_LOYALTY_NAMES
+            )
             cols: list[tuple[str, str]] = []
             if staff:
                 cols.extend(SYS_USER_STAFF_COLUMNS)
-            if loyalty:
-                cols.extend(SYS_USER_LOYALTY_COLUMNS)
+            if user_loyalty_cols:
+                cols.extend(user_loyalty_cols)
             if cols:
                 body = _inject_missing_columns(body, cols)
         return f"{head}{body}{tail}"
 
     out = _CREATE_TABLE_RE.sub(repl, sql)
-    if not loyalty:
+    if not want_ledger:
         out = re.sub(
             r"CREATE TABLE IF NOT EXISTS\s+`?user_ledger`?\s*\((?:.|\n)*?\);\s*",
             "",
