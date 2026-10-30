@@ -26,6 +26,27 @@
 8. **可交互控件**：**C0～C5 已齐**；`BASELINE_KNOWN_CONTROLS` 空。  
 9. **全域 UI 诊断**：**68 域双 OK**（`docs/ui-domain-diagnosis.md`）。
 
+### 本会话（2026-10-28）· 论文图 ELK 初局（碎另案 m · E-R/类图）
+
+- **主题**：E-R/类图换引擎 → **修工厂**（少去 draw.io；控制台拖=正式路径）。
+- **口径**：初局 `pyelk` layered（禁全环）；零交叉不硬保证；拖拽钉框、**不重跑 ELK**；失败不回退环排。
+- **已做**：`layout_elk.py`；E-R `_layout_entities` / 类图 `attach_layout` 走 ELK；`_apply_manual_*` 钉框；invariants + parked **m** 已改；文案去「零交叉精炼」。
+- **测试**：`test_schema_er_layout.py` + `test_schema_classes.py` 绿。
+- **余债**：模块/序列/活动等图种仍属 **m**；`class_layout` 旧竞赛代码仍残留、主路径已不走。
+- **提交**：已拆主题推送（ELK / 忠诚度拆列 / 工作台种子与农产封面 / 出包占用与门禁 / 支付文案 QA / 交接）。
+
+### 本会话（2026-10-28）· 碎另案 i 补漏
+
+- **主题**：工作台空图空表补漏 → **修工厂**。
+- **已做**：`DOM-CARRENT` 预约/订单三态+日期；`DOM-SHOP` 基线模板四态；跨域测扩 CARRENT/SHOP 基线。
+- **说明**：单据域主体此前已修；内容/档案向域 KPI 靠目录种子，不造假订单。农产封面去 twemoji，走 `/uploads/demo/cover-NN.jpg`。
+
+### 本会话（2026-10-28）· 碎另案 l
+
+- **主题**：开题未扫中勿硬落 SQL 列（全局）→ **修工厂**。
+- **已做**：`ensure_shared_sql_columns` 按 `loyalty_caps` 拆列；交易三域售后宽列 / 其它有单域只 `completed_at`；`engine_sql` 传 cap 集合；golden SQL 重生；`test_shared_sql_loyalty_split` + golden + trade thicken **48 passed**。
+- **余债**：FOOD/预约 thicken A 壳整包另刀；parked **l** 标已修。
+
 ### 本会话（2026-10-27）· 任务日志按次切段
 
 - **主题**：控制台 job.log 按 RUN 切段（多次出包不糊一条河）→ **修工厂**。
