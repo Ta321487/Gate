@@ -408,11 +408,17 @@ def _bake_project_body(
             prune_student_pack,
             scan_forbidden_island_files,
         )
-        from app.services.runtime import detach_frontend_deps
+        from app.services.project_disk import release_workspace_locks
 
-        # 预览/vite 句柄常短锁 Vue；裁剪前先卸联接，降低 WinError 32
+        # 预览 JVM / vite 常锁 Store·Vue；裁剪前松锁，失败时错误带嫌疑进程
         try:
-            detach_frontend_deps(dest)
+            lock_notes = release_workspace_locks(dest)
+            if lock_notes:
+                import logging
+
+                logging.getLogger("app.bake").info(
+                    "pre_prune_locks %s", lock_notes
+                )
         except Exception:  # noqa: BLE001
             pass
 

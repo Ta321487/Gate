@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import logging
+import re
 import shutil
+import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -12,6 +15,25 @@ from app.models import Project
 from app.services import runtime as rt
 
 logger = logging.getLogger(__name__)
+
+# 常见占锁进程名（Windows 预览 JVM / 前端 / IDE）；CIM 匹配时去 .exe 再比
+_LOCK_SUSPECT_BASENAMES = frozenset(
+    {
+        "java",
+        "javaw",
+        "node",
+        "vite",
+        "mvn",
+        "idea64",
+        "code",
+        "cursor",
+        "clion64",
+        "devenv",
+        "eclipse",
+        "studio64",
+        "gradle",
+    }
+)
 
 #: bake 进行中标记：孤儿清理不得删带此文件的工作区（对账额度清盘会误伤正在出包的目录）
 BAKE_IN_PROGRESS_REL = Path(".factory") / "bake_in_progress"
@@ -60,6 +82,198 @@ def orphan_workspace_protected(
     return age < grace
 
 
+def _is_sharing_violation_text(text: str) -> bool:
+    t = text or ""
+    return (
+        "WinError 32" in t
+        or "另一个程序正在使用此文件" in t
+        or "being used by another process" in t.lower()
+    )
+
+
+def _is_sharing_violation(err: BaseException | None) -> bool:
+    if err is None:
+        return False
+    if isinstance(err, OSError):
+        # WinError 32 = sharing violation；Errno 13 偶发只读/拒删
+        if getattr(err, "winerror", None) == 32:
+            return True
+        if err.errno in {13, 11}:  # EACCES / EAGAIN
+            return True
+    return _is_sharing_violation_text(str(err))
+
+
+def path_from_os_error(err: BaseException | None) -> Path | None:
+    """从 OSError/PermissionError 抽出被锁路径（filename 或文案里的盘符路径）。"""
+    if err is None:
+        return None
+    fn = getattr(err, "filename", None)
+    if isinstance(fn, (str, bytes)) and fn:
+        try:
+            return Path(fn if isinstance(fn, str) else fn.decode("utf-8", "replace"))
+        except OSError:
+            pass
+    text = str(err)
+    # Windows: ...: 'D:\...\file.java' 或 "...file.java"
+    m = re.search(r"""['"]([A-Za-z]:\\[^'"]+)['"]""", text)
+    if m:
+        return Path(m.group(1))
+    m = re.search(r"""['"](/[^'"]+)['"]""", text)
+    if m:
+        return Path(m.group(1))
+    return None
+
+
+def _workspace_needle(path: Path) -> str:
+    """匹配用：优先工作区根（…/workspace/gf-xxx），否则整路径。"""
+    try:
+        target = str(path.resolve())
+    except OSError:
+        target = str(path)
+    parts = Path(target).parts
+    try:
+        wi = next(i for i, p in enumerate(parts) if p.lower() == "workspace")
+        if wi + 1 < len(parts):
+            return str(Path(*parts[: wi + 2]))
+    except StopIteration:
+        pass
+    return target
+
+
+def _suspect_lock_holders(path: Path, *, limit: int = 6) -> list[str]:
+    """尽量列出可能占着该路径的本机进程（Windows：CIM；其它平台空）。
+
+    不依赖 handle.exe / 管理员；查不到不编造。
+    匹配命令行含工作区根，或含被锁文件名（IDE 单开文件时常只有文件名）。
+    """
+    if sys.platform != "win32":
+        return []
+    needle = _workspace_needle(path)
+    leaf = path.name if path.name else ""
+    needle_ps = needle.replace("'", "''")
+    leaf_ps = leaf.replace("'", "''")
+    names_ps = ",".join(f"'{n}'" for n in sorted(_LOCK_SUSPECT_BASENAMES))
+    script = (
+        f"$n = '{needle_ps}'.ToLower();\n"
+        f"$leaf = '{leaf_ps}'.ToLower();\n"
+        f"$names = @({names_ps});\n"
+        "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |\n"
+        "  Where-Object {\n"
+        "    $base = ([string]$_.Name) -replace '\\.exe$','';\n"
+        "    if ($names -notcontains $base.ToLower()) { return $false }\n"
+        "    $cl = ([string]$_.CommandLine).ToLower()\n"
+        "    if (-not $cl) { return $false }\n"
+        "    if ($n -and $cl.Contains($n)) { return $true }\n"
+        "    if ($leaf -and $leaf.Length -ge 6 -and $cl.Contains($leaf)) { return $true }\n"
+        "    return $false\n"
+        "  } |\n"
+        f"  Select-Object -First {int(limit)} |\n"
+        "  ForEach-Object {\n"
+        "    $bn = ([string]$_.Name) -replace '\\.exe$','';\n"
+        "    Write-Output ($bn + ' pid=' + $_.ProcessId)\n"
+        "  }\n"
+    )
+    try:
+        proc = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                script,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=8,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    out: list[str] = []
+    for line in (proc.stdout or "").splitlines():
+        line = line.strip()
+        if line:
+            out.append(line)
+    return out[:limit]
+
+
+def format_file_busy_error(
+    path: Path,
+    err: BaseException | None,
+    *,
+    action: str = "删除",
+) -> str:
+    """给人看的占用失败说明：步骤语义 + 文件 + 嫌疑进程 + 怎么重试。"""
+    leaf = path.name or str(path)
+    try:
+        shown = str(path.resolve())
+    except OSError:
+        shown = str(path)
+    # 截短超长路径，中间用 …
+    if len(shown) > 120:
+        shown = shown[:48] + "…" + shown[-48:]
+    holders = _suspect_lock_holders(path)
+    parts = [
+        f"工作区文件被占用，无法{action}",
+        f"文件 {leaf}",
+        f"路径 {shown}",
+    ]
+    if holders:
+        parts.append("可能占用进程：" + "；".join(holders))
+    else:
+        parts.append(
+            "未查到命令行含本工作区的 java/node/IDE（仍可能是编辑器打开该文件、杀毒扫描或已退出残留句柄）"
+        )
+    parts.append(
+        "请先停本机预览（后端 Java / 前端 Vite），关闭 IDE 里该文件标签后，点「从失败步骤重试」"
+    )
+    if err is not None:
+        parts.append(f"系统原文：{err}")
+    return " · ".join(parts)
+
+
+def humanize_job_exception(exc: BaseException | str) -> str:
+    """任务失败文案：占用类 OSError 补进程线索；已格式化的 RuntimeError 原样保留。"""
+    if isinstance(exc, str):
+        text = exc.strip() or "未知错误"
+        if _is_sharing_violation_text(text) and "工作区文件被占用" not in text:
+            path = path_from_os_error(OSError(text)) or Path(".")
+            return format_file_busy_error(path, OSError(text), action="读写")
+        return text
+
+    text = str(exc).strip() or "未知错误"
+    if "工作区文件被占用" in text:
+        return text
+    if _is_sharing_violation(exc) or _is_sharing_violation_text(text):
+        path = path_from_os_error(exc) or Path(".")
+        action = "删除" if ("无法删除" in text or "unlink" in text.lower()) else "读写"
+        return format_file_busy_error(path, exc, action=action)
+    return text
+
+
+def release_workspace_locks(workspace: Path) -> list[str]:
+    """出包裁剪前尽量松锁：卸前端联接；记录仍占着工作区的嫌疑进程（不擅自杀 IDE）。"""
+    ws = Path(workspace)
+    notes: list[str] = []
+    try:
+        rt.detach_frontend_deps(ws)
+        notes.append("detach_frontend_deps")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("detach_frontend_deps failed ws=%s: %s", ws, e)
+        notes.append(f"detach_frontend_deps_fail:{e}")
+    holders = _suspect_lock_holders(ws)
+    if holders:
+        notes.append("suspects=" + ",".join(holders))
+        logger.warning(
+            "workspace still has suspect lock holders before prune ws=%s %s",
+            ws,
+            holders,
+        )
+    return notes
+
+
 def remove_tree_reliable(
     path: Path, *, retries: int = 8, delay: float = 0.25
 ) -> None:
@@ -81,6 +295,8 @@ def remove_tree_reliable(
             return
         time.sleep(delay)
     if path.exists():
+        if _is_sharing_violation(last_err):
+            raise RuntimeError(format_file_busy_error(path, last_err, action="删除"))
         raise RuntimeError(f"无法删除 {path}: {last_err or '目录仍存在'}")
 
 def remove_project_zips(project_id: str, zip_path: str | None) -> None:

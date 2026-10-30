@@ -142,11 +142,16 @@ def _clear_stale_zip_ready(project: Project) -> bool:
         return True
     return False
 
-def sync_checklist_from_workspace(project: Project) -> bool:
+def sync_checklist_from_workspace(
+    project: Project, *, force: bool = False
+) -> bool:
     """工作区存在则重算 checklist / gates；缺失时仍收敛陈旧 zip_ready。
 
     若交付复审存有 last_qa，重挂到 gates（与验圈同口径），避免刷新后 p3q/挡包消失。
     复审进行中且尚未验圈通过时，只降不升 zip_ready（保留进入复审/跑 QA 的锁包意图）。
+
+    force=False（默认）：投影输入签名未变则跳过 gates 重算——详情页也会走本函数，
+    避免每次打开项目都全量扫盘卡到前端 60s timeout。
     """
     if not project.workspace_path:
         return _clear_stale_zip_ready(project)
@@ -157,6 +162,11 @@ def sync_checklist_from_workspace(project: Project) -> bool:
     # 生成中勿与 Job 抢写同一行 gates/checklist（列表轮询会触发）；仅关掉误亮的 zip
     if generating:
         return _clear_stale_zip_ready(project)
+    if not force and ws.is_dir():
+        signature = _projection_input_signature(project, ws)
+        if _checklist_sig.get(project.id) == signature:
+            _checklist_list_at[project.id] = time.monotonic()
+            return False
     from app.services.delivery_review import (
         apply_qa_to_gates,
         get_review_state,
@@ -205,14 +215,21 @@ def sync_checklist_from_workspace(project: Project) -> bool:
         zip_changed = True
         reset_delivery_mark(project)
     if project.checklist == new_checklist and project.gates == new_gates and not zip_changed:
+        # 仍刷新签名，避免详情反复全量扫
+        if ws.is_dir():
+            _checklist_sig[project.id] = _projection_input_signature(project, ws)
+            _checklist_list_at[project.id] = time.monotonic()
         return False
     project.checklist = new_checklist
     project.gates = new_gates
     touch_json_fields(project, "checklist", "gates")
+    if ws.is_dir():
+        _checklist_sig[project.id] = _projection_input_signature(project, ws)
+        _checklist_list_at[project.id] = time.monotonic()
     return True
 
 # 运行态/checklist 投影由 runtime_reconcile 后台写库；列表与 /stats 只读。
-# 短 TTL：生成任务自己会写 gates；挡住后台连扫。详情页仍当场重扫。
+# 短 TTL：生成任务自己会写 gates；挡住后台连扫。详情与列表共用签名跳过，避免反复全量扫。
 # reconcile_lock：后台对账与（若有）其它写投影路径互斥，避免双写打架。
 _CHECKLIST_LIST_TTL_SEC = 20.0
 

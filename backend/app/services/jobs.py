@@ -85,10 +85,15 @@ def resume_step_index(steps: list[dict[str, Any]] | None) -> int:
 
 
 def _short_error(exc: BaseException | str, *, limit: int = 280) -> str:
-    text = str(exc).strip() or "未知错误"
-    text = " ".join(text.split())
-    if len(text) > limit:
-        return text[: limit - 1] + "…"
+    """任务失败短文案；占用类自动补「谁可能占着」与重试指引（可略长于 limit）。"""
+    from app.services.project_disk import humanize_job_exception
+
+    text = humanize_job_exception(exc)
+    text = " ".join(text.split()) or "未知错误"
+    # 占用说明含路径与进程，280 会砍掉「怎么重试」；给足篇幅
+    cap = 520 if "工作区文件被占用" in text else limit
+    if len(text) > cap:
+        return text[: cap - 1] + "…"
     return text
 
 
@@ -525,17 +530,17 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     },
                 )
                 await set_step(2, "done", f"{meta} · 写入={written_n}")
-                # 填岛可能回带未挂岛源码 / 工厂注记；门禁前先幂等收口
-                try:
-                    from app.bake.pack_prune import heal_student_pack_before_gates
+                # 填岛可能回带未挂岛源码 / 工厂注记；门禁前先幂等收口（失败禁止装绿）
+                from app.bake.pack_prune import heal_student_pack_before_gates
 
+                try:
                     await asyncio.to_thread(
                         heal_student_pack_before_gates,
                         workspace,
                         dict(project.spec or {}),
                     )
                 except Exception as he:  # noqa: BLE001
-                    await append_log(project.id, f"pack_heal after fill · {he}")
+                    raise RuntimeError(f"学生包收口失败（填岛后裁剪）：{he}") from he
                 await asyncio.sleep(0.2)
 
             # 4 构建验证 + Fix Agent（编译中通过 meta 刷新子进度文案）
@@ -557,7 +562,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     raise RuntimeError(build_meta or "构建验证失败")
                 await set_step(3, "done", build_meta)
                 # Fix Agent 可能为消编译红从骨架回拷胖件；评门禁前再收口一次
-                # 岛裁 / 布局回拷分拆：一处失败不挡另一处；最终仍以 evaluate 内同序收口为准
+                # evaluate 只评不改盘，收口必须在此完成（详情投影也会调 evaluate，禁止塞进门禁）
                 from app.bake.layout_heal import heal_layout_companions_from_baseline
                 from app.bake.pack_prune import (
                     heal_student_pack_before_gates,
@@ -570,7 +575,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         heal_student_pack_before_gates, workspace, spec_heal
                     )
                 except Exception as he:  # noqa: BLE001
-                    await append_log(project.id, f"pack_heal after fix · {he}")
+                    raise RuntimeError(f"学生包收口失败（编译后裁剪）：{he}") from he
                 try:
                     await asyncio.to_thread(
                         heal_layout_companions_from_baseline, workspace
@@ -579,18 +584,33 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         scrub_factory_notes_in_workspace, workspace
                     )
                 except Exception as he:  # noqa: BLE001
-                    await append_log(project.id, f"layout_heal after fix · {he}")
+                    raise RuntimeError(f"学生包收口失败（布局/注记）：{he}") from he
                 await asyncio.sleep(0.2)
 
-            # 5 gates（只传 spec 快照，勿把 ORM 丢进线程）
-            if from_step <= 4:
+            # 5 gates：整段跑或续跑直打包前都必须过机闸+QA（关 LLM / 异常不得装绿放行）
+            if from_step <= 4 or from_step == 5:
+                if from_step == 5:
+                    await append_log(
+                        project.id,
+                        "续跑打包前强制复检门禁 · 禁止跳过质量红解锁 ZIP",
+                    )
                 await set_step(4, "run", "门禁验收")
+                # 支付等脏文案先洗再评；洗失败 = 生成失败
+                from app.services.student_copy import scrub_project_student_copy
+
+                try:
+                    await asyncio.to_thread(scrub_project_student_copy, project)
+                    flag_modified(project, "spec")
+                    flag_modified(project, "gates")
+                    flag_modified(project, "checklist")
+                except Exception as se:  # noqa: BLE001
+                    raise RuntimeError(f"出包前学生文案清洗失败：{se}") from se
+
                 gate_spec = dict(project.spec or {})
                 gates = await asyncio.to_thread(evaluate_workspace_gates, workspace, gate_spec)
                 project.gates = {k: v for k, v in gates.items() if k != "checklist"}
                 project.checklist = gates.get("checklist") or []
 
-                qa_ok = True
                 try:
                     qa = await run_qa_agent(
                         db,
@@ -599,17 +619,29 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         workspace=workspace,
                         spec=project.spec,
                     )
-                    apply_qa_to_gates(gates, qa)
-                    project.gates = {k: v for k, v in gates.items() if k != "checklist"}
-                    qa_ok = bool(qa.get("ok"))
-                    await append_log(
-                        project.id,
-                        f"QA · ok={qa_ok} · {qa.get('summary', '')[:120]}",
-                    )
                 except Exception as qe:  # noqa: BLE001
-                    await append_log(project.id, f"QA skip · {qe}")
+                    await append_log(project.id, f"QA fail · {qe}")
+                    qa = {
+                        "ok": False,
+                        "mode": "failed",
+                        "summary": f"QA 执行失败，禁止放行 · {qe}",
+                        "findings": [
+                            {
+                                "level": "error",
+                                "msg": str(qe)[:200],
+                                "where": "qa",
+                            }
+                        ],
+                    }
+                apply_qa_to_gates(gates, qa)
+                project.gates = {k: v for k, v in gates.items() if k != "checklist"}
+                await append_log(
+                    project.id,
+                    f"QA · ok={bool(qa.get('ok'))} · mode={qa.get('mode') or '?'} · "
+                    f"{str(qa.get('summary') or '')[:120]}",
+                )
 
-                if not gates.get("overall"):
+                if not gates.get("overall") or not gates.get("zip_allowed"):
                     detail = _gate_fail_summary(gates)
                     await set_step(4, "fail", detail)
                     job.status = JobStatus.failed.value
@@ -644,6 +676,12 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                         legacy.unlink()
                     except OSError:
                         pass
+                g_final = project.gates if isinstance(project.gates, dict) else {}
+                if not g_final.get("overall") or not g_final.get("zip_allowed"):
+                    detail = _gate_fail_summary(g_final)
+                    raise RuntimeError(
+                        f"打包前门禁未放行，禁止 SUCCESS · {detail}"
+                    )
                 await asyncio.to_thread(finalize_pack, project, workspace, zip_path, is_repack=False)
                 flag_modified(project, "delivery_review")
                 project.zip_path = str(zip_path)
@@ -660,6 +698,13 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 project.zip_ready = True
                 project.status = ProjectStatus.generated.value
                 await set_step(5, "done", zip_path.name)
+
+            g_ok = project.gates if isinstance(project.gates, dict) else {}
+            if from_step <= 5 and (
+                not g_ok.get("overall") or not g_ok.get("zip_allowed")
+            ):
+                detail = _gate_fail_summary(g_ok)
+                raise RuntimeError(f"门禁未放行，禁止 SUCCESS · {detail}")
 
             job.status = JobStatus.success.value
             job.progress = 100

@@ -552,6 +552,19 @@ def verify_round(
     """重跑门禁 + 单调性；更新 project gates/checklist。"""
     spec = dict(project.spec or {})
     st = get_review_state(project)
+    # 写路径：先收口再评（evaluate 本身不改盘）
+    try:
+        from app.bake.layout_heal import heal_layout_companions_from_baseline
+        from app.bake.pack_prune import (
+            heal_student_pack_before_gates,
+            scrub_factory_notes_in_workspace,
+        )
+
+        heal_student_pack_before_gates(workspace, spec)
+        heal_layout_companions_from_baseline(workspace)
+        scrub_factory_notes_in_workspace(workspace)
+    except Exception:  # noqa: BLE001
+        logger.exception("delivery verify heal failed project=%s", project.id)
     gates = evaluate_workspace_gates(workspace, spec)
     last_qa = st.get("last_qa")
     if isinstance(last_qa, dict) and last_qa:

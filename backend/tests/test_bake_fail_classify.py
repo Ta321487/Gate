@@ -51,6 +51,12 @@ class BakeFailClassifyTests(unittest.TestCase):
             ("persistence=mybatis 包仍含 JdbcSupport", "BAKE_PERSISTENCE"),
             ("Spring Security 叠层缺少: foo", "BAKE_ADDON_SECURITY"),
             ("pack_prune 后仍残留未挂岛文件", "BAKE_PACK_LEAN"),
+            (
+                "[WinError 32] 另一个程序正在使用此文件，进程无法访问。: "
+                "'D:\\\\ws\\\\RentalBondStore.java'",
+                "BAKE_FILE_LOCK",
+            ),
+            ("工作区文件被占用，无法读写 · 文件 x.java", "BAKE_FILE_LOCK"),
             ("填岛合并失败", "FILL_MERGE"),
             ("骨架不完整", "BUILD_SKELETON"),
             ("编译失败 · [ERROR] ...", "BUILD_COMPILE"),
