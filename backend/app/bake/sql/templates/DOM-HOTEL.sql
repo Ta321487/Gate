@@ -158,12 +158,18 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 3, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 3, 0);
 INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, guest_name, guest_count) VALUES
-(1, 1, 'user', 'confirmed', '吴旅客', '吴旅客', 2);
-UPDATE resource_slot SET booked = 1 WHERE id = 1;
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservation_id) VALUES
-(1, 'user', 'confirmed', 268.00, 'reservation:1', 1);
+(1, 1, 'user', 'confirmed', '吴旅客', '吴旅客', 2),
+(2, 2, 'user', 'pending', '待确认入住', '吴旅客', 1),
+(3, 5, 'user', 'completed', '已离店', '李旅客', 2);
+UPDATE resource_slot SET booked = 1 WHERE id IN (1, 2);
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservation_id, created_at, completed_at) VALUES
+(1, 'user', 'confirmed', 268.00, 'reservation:1', 1, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
+(2, 'user', 'pending', 268.00, 'reservation:2', 2, DATE_SUB(NOW(), INTERVAL 0 DAY), NULL),
+(3, 'user', 'completed', 328.00, 'reservation:3', 3, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY));
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '标准双床房', 268.00, 1);
+(1, 1, 1, '标准双床房', 268.00, 1),
+(2, 2, 1, '标准双床房', 268.00, 1),
+(3, 3, 2, '舒适大床房', 328.00, 1);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '客房预订', '选择房型与入住时段预订；预约成功即生成订单，前台办理入住与离店。', 'admin', '酒店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='客房预订');

@@ -127,8 +127,14 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '商城开业', '欢迎选购；下单请选择收货地址或到店自提。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
--- 主路径样例：待确认订单（库存已按 1 件预扣）
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 29.90, '请确认后发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
+-- 工作台 KPI/趋势：四态 + 日期散开（场景皮可再覆盖）
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type, created_at, completed_at) VALUES
+(1, 'user', 'pending', 29.90, '请确认后发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家', DATE_SUB(NOW(), INTERVAL 0 DAY), NULL),
+(2, 'user', 'confirmed', 39.90, '已接单备货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家', DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
+(3, 'user', 'shipped', 49.90, '已发货。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家', DATE_SUB(NOW(), INTERVAL 2 DAY), NULL),
+(4, 'user', 'completed', 59.90, '已签收。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY));
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '日用收纳盒', 29.90, 1);
+(1, 1, 1, '日用收纳盒', 29.90, 1),
+(2, 2, 1, '日用收纳盒', 39.90, 1),
+(3, 3, 1, '日用收纳盒', 49.90, 1),
+(4, 4, 1, '日用收纳盒', 59.90, 1);

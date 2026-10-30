@@ -33,12 +33,12 @@ def test_cover_url_round_robin():
 
 def test_ensure_demo_cover_urls_sql_updates_empty():
     out = ensure_demo_cover_urls_sql(_SHOP_DDL, item_table="product")
-    assert "gf demo covers for product" in out
+    assert "-- 空封面时补默认图（product）" in out
     assert "UPDATE `product` SET cover_url = ELT" in out
     assert "/uploads/demo/cover-01.jpg" in out
     # 幂等
     again = ensure_demo_cover_urls_sql(out, item_table="product")
-    assert again.count("gf demo covers for product") == 1
+    assert again.count("-- 空封面时补默认图（product）") == 1
 
 
 def test_ensure_skips_when_no_cover_column():
@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS biz_item (
   title VARCHAR(200) NOT NULL
 );
 """
-    assert "gf demo covers" not in ensure_demo_cover_urls_sql(ddl, item_table="biz_item")
+    assert "空封面时补默认图" not in ensure_demo_cover_urls_sql(
+        ddl, item_table="biz_item"
+    )
 
 
 def test_collect_refs_includes_sql_and_standard_covers():
@@ -86,5 +88,28 @@ def test_domain_sql_shop_gets_cover_update():
         title="超新农产品销售网站",
         proposal_text="农产品商城上下架订单",
     )
-    assert "gf demo covers for product" in sql
+    assert "-- 空封面时补默认图（product）" in sql
     assert "/uploads/demo/cover-01.jpg" in sql
+    assert "twemoji@" not in sql
+    assert "jsdmirror.com/gh/twitter" not in sql
+
+
+def test_farm_and_fitness_no_emoji_product_covers():
+    """农产/方木货架封面走本地 uploads，禁止种子写死 twemoji。"""
+    cases = (
+        ("超新农产品销售网站", "农产品商城上下架订单购物车"),
+        ("方木健身用品电商平台", "健身器材哑铃杠铃商城购物车下单"),
+    )
+    for title, body in cases:
+        sql = domain_sql(
+            "DOM-SHOP",
+            "cover_skin",
+            "ARCH-TRADE",
+            archetypes=["ARCH-TRADE"],
+            capabilities=["archive", "order_lines"],
+            title=title,
+            proposal_text=body,
+        )
+        assert "twemoji@" not in sql, title
+        assert "jsdmirror.com/gh/twitter" not in sql, title
+        assert "/uploads/demo/cover-01.jpg" in sql, title

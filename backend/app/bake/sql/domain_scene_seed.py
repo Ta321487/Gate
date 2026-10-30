@@ -80,6 +80,114 @@ _CARPASS_ENTERPRISE_USER = (
 )
 
 
+def _workbench_orders_sql(
+    specs: list[tuple[int, int, str, float | str, str, str]],
+    *,
+    contact: str = "王先生",
+    phone: str = "13800000002",
+    address: str = "示例小区 3 栋 1201",
+    delivery: str = "配送到家",
+    username: str = "user",
+    taste_by_oid: dict[int, str] | None = None,
+) -> str:
+    """多态订单种子：pending/confirmed/shipped/completed + 日期，工作台 KPI/趋势不空。
+
+    specs: (order_id, item_id, title, price, status, remark)
+    taste_by_oid：点餐域附带 taste_note 列。
+    """
+    day_by_status = {
+        "pending": 0,
+        "confirmed": 1,
+        "shipped": 2,
+        "completed": 4,
+    }
+    tastes = taste_by_oid or {}
+    with_taste = taste_by_oid is not None
+    order_rows: list[str] = []
+    line_rows: list[str] = []
+    for oid, iid, title, price, status, remark in specs:
+        st = (status or "pending").strip()
+        day = day_by_status.get(st, 1)
+        title_s = str(title).replace("'", "''")
+        remark_s = str(remark).replace("'", "''")
+        contact_s = contact.replace("'", "''")
+        address_s = address.replace("'", "''")
+        delivery_s = delivery.replace("'", "''")
+        user_s = username.replace("'", "''")
+        created = f"DATE_SUB(NOW(), INTERVAL {day} DAY)"
+        if st == "completed":
+            done = f"DATE_SUB(NOW(), INTERVAL {max(day - 1, 0)} DAY)"
+        else:
+            done = "NULL"
+        base = (
+            f"({oid}, '{user_s}', '{st}', {price}, '{remark_s}', '{contact_s}', "
+            f"'{phone}', '{address_s}', '{delivery_s}'"
+        )
+        if with_taste:
+            taste_s = str(tastes.get(oid, "")).replace("'", "''")
+            order_rows.append(f"{base}, '{taste_s}', {created}, {done})")
+        else:
+            order_rows.append(f"{base}, {created}, {done})")
+        line_rows.append(
+            f"({oid}, {oid}, {iid}, '{title_s}', {price}, 1)"
+        )
+    if with_taste:
+        order_head = (
+            "INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, "
+            "receiver_name, receiver_phone, address_line, delivery_type, taste_note, "
+            "created_at, completed_at) VALUES\n"
+        )
+    else:
+        order_head = (
+            "INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, "
+            "receiver_name, receiver_phone, address_line, delivery_type, created_at, "
+            "completed_at) VALUES\n"
+        )
+    return (
+        order_head
+        + ",\n".join(order_rows)
+        + ";\n"
+        "INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) "
+        "VALUES\n"
+        + ",\n".join(line_rows)
+        + ";\n"
+    )
+
+
+# 商城皮沿用旧名
+_shop_workbench_orders_sql = _workbench_orders_sql
+
+
+def _workbench_tickets_sql(
+    rows: list[tuple[int, str, str, str, int, int, str, str, str, str]],
+) -> str:
+    """报修/工单多态种子：pending / approved / returned（+ 可选 rejected）。
+
+    rows: (id, username, title, location, type_id, room_id, status, priority, phone, remark)
+    """
+    line_rows: list[str] = []
+    for tid, uname, title, loc, type_id, room_id, status, priority, phone, remark in rows:
+        line_rows.append(
+            "("
+            f"{tid}, '{str(uname).replace(chr(39), chr(39)+chr(39))}', "
+            f"'{str(title).replace(chr(39), chr(39)+chr(39))}', "
+            f"'{str(loc).replace(chr(39), chr(39)+chr(39))}', "
+            f"{type_id}, {room_id}, '{status}', '{priority}', "
+            f"'{str(phone).replace(chr(39), chr(39)+chr(39))}', "
+            f"'{str(remark).replace(chr(39), chr(39)+chr(39))}'"
+            ")"
+        )
+    return (
+        "INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, "
+        "status, priority, contact_phone, remark) VALUES\n"
+        + ",\n".join(line_rows)
+        + ";\n"
+    )
+
+
+
+# 社会零售等皮见后文 SHOP_*
+
 _ATTEND_CAMPUS = """\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '学工主管', '13800000000', '{}', 1, 0, 1),
@@ -366,7 +474,9 @@ INSERT IGNORE INTO endpoint (id, building_id, code) VALUES (1, 1, '1201'), (2, 1
 INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES (1, '内网', 1), (2, '终端', 2), (3, '打印机', 3);
 
 INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
-(1, 'user', 'A座1208无法连接内网', '办公区 1208', 1, 2, 'pending', '普通', '13800000002', '网线已插好，指示灯不亮。');
+(1, 'user', 'A座1208无法连接内网', '办公区 1208', 1, 2, 'pending', '普通', '13800000002', '网线已插好，指示灯不亮。'),
+(2, 'user', '打印机卡纸', '办公区 1201', 3, 1, 'approved', '普通', '13800000002', '已派工处理中。'),
+(3, 'user', '终端蓝屏重启', '办公区 1208', 2, 2, 'returned', '普通', '13800000002', '已重装驱动办结。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请写明办公区、终端与故障现象并上传截图，运维将尽快受理。', 'admin', '运维主管'
@@ -528,8 +638,10 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 3, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 3, 0);
 INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, patient_name, visit_type, symptom_note) VALUES
-(1, 1, 'patient', 'confirmed', '', '钱女士', '初诊', '豆豆皮肤过敏复诊');
-UPDATE resource_slot SET booked = 1 WHERE id = 1;
+(1, 1, 'patient', 'confirmed', '', '钱女士', '初诊', '豆豆皮肤过敏复诊'),
+(2, 2, 'patient', 'pending', '', '钱女士', '复诊', '待确认'),
+(3, 5, 'patient', 'completed', '', '钱女士', '复诊', '已就诊');
+UPDATE resource_slot SET booked = 1 WHERE id IN (1, 2);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '挂号须知', '号源有限；请填写宠物昵称与就诊人；按时到诊；就诊完成后由前台办结。', 'admin', '宠物医院主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='挂号须知');
@@ -563,8 +675,10 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 3, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 3, 0);
 INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, patient_name, visit_type, symptom_note) VALUES
-(1, 1, 'patient', 'confirmed', '', '钱女士', '首针', 'HPV九价第一针');
-UPDATE resource_slot SET booked = 1 WHERE id = 1;
+(1, 1, 'patient', 'confirmed', '', '钱女士', '首针', 'HPV九价第一针'),
+(2, 2, 'patient', 'pending', '', '钱女士', '第二针', '待确认'),
+(3, 5, 'patient', 'completed', '', '钱女士', '流感', '已接种');
+UPDATE resource_slot SET booked = 1 WHERE id IN (1, 2);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '预约须知', '请按时到点接种；取消请提前释放号源。', 'admin', '接种点主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='预约须知' OR title='挂号须知');
@@ -598,8 +712,10 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 8, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 8, 0);
 INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, preferred_stylist) VALUES
-(1, 1, 'user', 'confirmed', '', '力量教练甲');
-UPDATE resource_slot SET booked = 1 WHERE id = 1;
+(1, 1, 'user', 'confirmed', '', '力量教练甲'),
+(2, 2, 'user', 'pending', '', '力量教练甲'),
+(3, 9, 'user', 'completed', '', '瑜伽教练');
+UPDATE resource_slot SET booked = 1 WHERE id IN (1, 2);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '健身预约', '请选择课程与时段到馆；迟到可能需改约。', 'admin', '场馆主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='健身预约' OR title='服务预约');
@@ -625,7 +741,8 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (4, 2, '2026-09-21 14:00:00', '2026-09-21 15:00:00', 1, 0);
 INSERT IGNORE INTO reservation (id, slot_id, username, status, remark) VALUES
 (1, 1, 'user', 'confirmed', ''),
-(2, 3, 'user', 'confirmed', '');
+(2, 3, 'user', 'pending', ''),
+(3, 2, 'user', 'completed', '');
 UPDATE resource_slot SET booked = 1 WHERE id IN (1, 3);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '约拍预约', '请选择摄影师、套餐和时段。', 'admin', '门店主管'
@@ -748,7 +865,9 @@ INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
 (1, '水电', 1), (2, '公共设施', 2), (3, '门禁', 3), (4, '投诉建议', 4);
 
 INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
-(1, 'user', '学生公寓3号楼405灯不亮', '学生公寓3号楼 405', 1, 1, 'pending', '普通', '13800000002', '卫生间灯具不亮，已换保险丝无效。');
+(1, 'user', '学生公寓3号楼405灯不亮', '学生公寓3号楼 405', 1, 1, 'pending', '普通', '13800000002', '卫生间灯具不亮，已换保险丝无效。'),
+(2, 'user', '406水龙头漏水', '学生公寓3号楼 406', 1, 2, 'approved', '普通', '13800000002', '维修中。'),
+(3, 'user', '教学楼A门禁刷卡失败', '教学楼A 201', 3, 3, 'returned', '普通', '13800000002', '已更换读卡器。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请填写公寓楼栋房号与故障描述，物业将尽快受理。投诉建议请选对应类型。', 'admin', '物业主管'
@@ -1131,7 +1250,9 @@ INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
 (1, '路灯', 1), (2, '井盖', 2), (3, '市政设施', 3), (4, '其他', 4);
 
 INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
-(1, 'user', '东区一街路灯不亮', '东区一街 路灯12', 1, 1, 'pending', '普通', '13800000002', '夜间整段不亮，影响通行。');
+(1, 'user', '东区一街路灯不亮', '东区一街 路灯12', 1, 1, 'pending', '普通', '13800000002', '夜间整段不亮，影响通行。'),
+(2, 'user', '西区二路井盖松动', '西区二路 井盖A3', 2, 2, 'approved', '普通', '13800000002', '已围挡待换。'),
+(3, 'user', '路灯08灯罩破损', '西区二路 路灯08', 1, 3, 'returned', '普通', '13800000002', '已更换灯罩。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请写明片区路段与设施位置并上传现场照片，市政将尽快受理。', 'admin', '市政主管'
@@ -1153,7 +1274,9 @@ INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
 (1, '噪音扰民', 1), (2, '环境卫生', 2), (3, '服务态度', 3), (4, '其他投诉', 4);
 
 INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
-(1, 'user', 'A栋夜间装修噪音', 'A 栋 101', 1, 1, 'pending', '普通', '13800000002', '连续三天夜间施工，请核实劝阻。');
+(1, 'user', 'A栋夜间装修噪音', 'A 栋 101', 1, 1, 'pending', '普通', '13800000002', '连续三天夜间施工，请核实劝阻。'),
+(2, 'user', '楼道堆物占道', 'A 栋 102', 2, 2, 'approved', '普通', '13800000002', '已约谈清理中。'),
+(3, 'user', '客服态度投诉', 'B 栋 201', 3, 3, 'returned', '普通', '13800000002', '已回访办结。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '投诉须知', '请如实填写地址与诉求描述，物业将尽快受理办结。', 'admin', '物业主管'
@@ -1175,7 +1298,9 @@ INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES
 (1, '退换货', 1), (2, '维修咨询', 2), (3, '服务投诉', 3), (4, '其他售后', 4);
 
 INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
-(1, 'user', '城东门店退换货咨询', '城东门店 柜台1', 1, 1, 'pending', '普通', '13800000002', '到货外观破损，申请换货。');
+(1, 'user', '城东门店退换货咨询', '城东门店 柜台1', 1, 1, 'pending', '普通', '13800000002', '到货外观破损，申请换货。'),
+(2, 'user', '维修进度催问', '城东门店 柜台2', 2, 2, 'approved', '普通', '13800000002', '维修中已回电。'),
+(3, 'user', '服务投诉已处理', '城西网点 自提点', 3, 3, 'returned', '普通', '13800000002', '已赔付办结。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '售后须知', '请写明网点与问题描述并上传凭证，客服将尽快受理。', 'admin', '客服主管'
@@ -1197,7 +1322,9 @@ INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES
 (1, '定期保养', 1), (2, '故障维修', 2), (3, '备件更换', 3), (4, '其他维保', 4);
 
 INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
-(1, 'user', '机房UPS-01异响告警', '机房区 UPS-01', 2, 1, 'pending', '紧急', '13800000002', '夜间告警灯闪烁，请上门排查。');
+(1, 'user', '机房UPS-01异响告警', '机房区 UPS-01', 2, 1, 'pending', '紧急', '13800000002', '夜间告警灯闪烁，请上门排查。'),
+(2, 'user', '空调-02定期保养', '机房区 空调-02', 1, 2, 'approved', '普通', '13800000002', '保养进行中。'),
+(3, 'user', '打印-03更换硒鼓', '办公区 打印-03', 3, 3, 'returned', '普通', '13800000002', '备件已换办结。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '维保须知', '请写明设备区域、资产编号与现象并上传照片，维保将尽快受理。', 'admin', '维保主管'
@@ -1257,8 +1384,10 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 1, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 1, 0);
 INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, subject, party_size) VALUES
-(1, 1, 'user', 'confirmed', '', '教研例会', 4);
-UPDATE resource_slot SET booked = 1 WHERE id = 1;
+(1, 1, 'user', 'confirmed', '', '教研例会', 4),
+(2, 2, 'user', 'pending', '', '答辩排练', 6),
+(3, 5, 'user', 'completed', '', '系务会议', 8);
+UPDATE resource_slot SET booked = 1 WHERE id IN (1, 2);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '会议室预约须知', '请按预约时段使用并按时离开；可取消释放名额。', 'admin', '后勤主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='会议室预约须知');
@@ -1424,20 +1553,22 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (11, 3, '2026-09-20 14:00:00', '2026-09-20 15:00:00', 1, 0),
 (12, 3, '2026-09-20 15:00:00', '2026-09-20 16:00:00', 1, 0);
 INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, plate_no) VALUES
-(1, 1, 'user', 'confirmed', '', '粤A12345');
-UPDATE resource_slot SET booked = 1 WHERE id = 1;
+(1, 1, 'user', 'confirmed', '', '粤A12345'),
+(2, 2, 'user', 'pending', '', '粤A12345'),
+(3, 5, 'user', 'completed', '', '粤A67890');
+UPDATE resource_slot SET booked = 1 WHERE id IN (1, 2);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '校园车位预约', '预约成功后请按时入场；取消后释放车位时段。访客请选访客身份。', 'admin', '后勤主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='校园车位预约' OR title='车位预约');
 """
 
 # 高校食堂：模板默认社会餐饮；食堂档整块替换（窗口/宿舍地址）
-_FOOD_CANTEEN = """\
+_FOOD_CANTEEN = f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '食堂主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '档口店员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '食堂主管', '13800000000', '{{}}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '档口店员', '13800000001', '{{}}', 0, 1, 1),
 ('user', 'user123', 'user', '用餐者甲', '13800000002',
- '{"realName":"李同学","email":"li@demo.edu","gender":"女","receiverName":"李同学","pickupType":"堂食","preferredStore":"窗口A","memberNo":"S20260002"}',
+ '{{"realName":"李同学","email":"li@demo.edu","gender":"女","receiverName":"李同学","pickupType":"堂食","preferredStore":"窗口A","memberNo":"S20260002"}}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -1456,19 +1587,25 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '食堂点餐', '下单后到对应窗口取餐；外卖请选宿舍地址。', 'admin', '食堂主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='食堂点餐' OR title='点餐须知');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type, taste_note) VALUES
-(1, 'user', 'pending', 18.00, '窗口A取餐', '李同学', '13800000002', '学生公寓 3 号楼 405', '堂食', '不辣');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '红烧肉套餐', 18.00, 1);
-"""
+{_workbench_orders_sql(
+    [
+        (1, 1, "红烧肉套餐", 18.00, "pending", "窗口A取餐"),
+        (2, 2, "番茄鸡蛋面", 12.00, "confirmed", "窗口B已接单"),
+        (3, 3, "豆浆油条", 8.00, "shipped", "早餐配送中"),
+        (4, 4, "柠檬茶", 6.00, "completed", "已取餐"),
+    ],
+    contact="李同学",
+    address="学生公寓 3 号楼 405",
+    delivery="堂食",
+    taste_by_oid={1: "不辣", 2: "少油", 3: "", 4: "少冰"},
+)}"""
 
-# 社会零售兜底（无行业词时）
-_SHOP_RETAIL = """\
+_SHOP_RETAIL = f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '商城主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '订单管理员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '商城主管', '13800000000', '{{}}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '订单管理员', '13800000001', '{{}}', 0, 1, 1),
 ('user', 'user123', 'user', '买家甲', '13800000002',
- '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
+ '{{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -1487,11 +1624,12 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '商城开业', '欢迎下单；支付完成后可在订单页查看进度。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 99.00, '工作日送达。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '热销爆款套装', 99.00, 1);
-"""
+{_shop_workbench_orders_sql([
+    (1, 1, "热销爆款套装", 99.00, "pending", "工作日送达。"),
+    (2, 2, "日用收纳盒", 29.90, "shipped", "收纳盒已发出。"),
+    (3, 3, "通用配件包", 19.90, "completed", "配件已签收。"),
+    (4, 4, "家用小工具", 39.00, "confirmed", "请确认后发货。"),
+])}"""
 
 def _shop_retail_seed_for(catalog_kind: str) -> str:
     """retail 或 retail_* 软皮种子；壳仍走零售交易路径。"""
@@ -1518,22 +1656,48 @@ def _shop_retail_seed_for(catalog_kind: str) -> str:
         f"({i}, '{title}', '{price}', '{sku}', {cid}, {50 + i * 5}, 'available')"
         for i, (title, price, sku, cid, _note) in enumerate(pack.skus, start=1)
     )
-    first_title, first_price, _sku, _cid, _n = pack.skus[0]
-    order_status = "confirmed" if pack.gift_line_custom else "pending"
-    order_remark = (
-        "刻字：张三；宋体 / 红色 / 大号" if pack.gift_line_custom else "请确认后发货。"
-    )
+    skus = pack.skus
+    # 至少 4 态订单；SKU 不足则循环取
+    statuses = ("pending", "shipped", "completed", "confirmed")
+    demo_specs: list[tuple[int, int, str, float | str, str, str]] = []
+    for i, st in enumerate(statuses, start=1):
+        title, price, _sku, _cid, _n = skus[(i - 1) % len(skus)]
+        iid = ((i - 1) % len(skus)) + 1
+        if pack.gift_line_custom and i == 1:
+            remark = "刻字：张三；宋体 / 红色 / 大号"
+        elif st == "pending":
+            remark = "请确认后发货。"
+        elif st == "shipped":
+            remark = f"{title[:8]}已发出。"
+        elif st == "completed":
+            remark = "已签收。"
+        else:
+            remark = "商家已接单。"
+        demo_specs.append((i, iid, title, price, st, remark))
     if pack.gift_line_custom:
-        line_sql = (
-            "INSERT IGNORE INTO order_line "
+        # 首单保留定制列；同 INSERT 其余行定制列置空
+        first_title, first_price, _s, _c, _n = skus[0]
+        ft = first_title.replace("'", "''")
+        order_only = _shop_workbench_orders_sql(demo_specs).split(
+            "INSERT IGNORE INTO order_line", 1
+        )[0]
+        line_rows = [
+            f"(1, 1, 1, '{ft}', {first_price}, 1, '张三', '宋体 / 红色 / 大号')"
+        ]
+        for oid, iid, title, price, _st, _rm in demo_specs[1:]:
+            ts = str(title).replace("'", "''")
+            line_rows.append(
+                f"({oid}, {oid}, {iid}, '{ts}', {price}, 1, '', '')"
+            )
+        orders_sql = (
+            order_only
+            + "INSERT IGNORE INTO order_line "
             "(id, order_id, item_id, title, price_yuan, qty, custom_text, spec_choice) VALUES\n"
-            f"(1, 1, 1, '{first_title}', {first_price}, 1, '张三', '宋体 / 红色 / 大号');"
+            + ",\n".join(line_rows)
+            + ";\n"
         )
     else:
-        line_sql = (
-            "INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES\n"
-            f"(1, 1, 1, '{first_title}', {first_price}, 1);"
-        )
+        orders_sql = _shop_workbench_orders_sql(demo_specs)
     return f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
 ('admin', 'admin123', 'admin', '{admin_name}', '13800000000', '{{}}', 1, 0, 1),
@@ -1555,10 +1719,7 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '{notice_title}', '{notice_body}', 'admin', '{admin_name}'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='{notice_title}');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', '{order_status}', {first_price}, '{order_remark}', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
-{line_sql}
-"""
+{orders_sql}"""
 
 
 def _shop_mp_retail_seed_for(catalog_kind: str) -> str:
@@ -1589,21 +1750,34 @@ def _shop_mp_retail_seed_for(catalog_kind: str) -> str:
     o2 = next((s for s in skus if s[3] != 1), skus[min(1, len(skus) - 1)])
     o3 = next((s for s in skus if s is not o1 and s is not o2), skus[-1])
     o4 = next((s for s in skus if s[3] == 1 and s is not o1), o1)
-    lines = [
+    demo_specs = [
         (1, 1, o1[0], o1[1], "confirmed", f"{o1[0][:8]}请加固包装。"),
-        (2, next(i for i, s in enumerate(skus, 1) if s is o2), o2[0], o2[1], "completed", "已签收。"),
-        (3, next(i for i, s in enumerate(skus, 1) if s is o3), o3[0], o3[1], "pending", "待付款。"),
-        (4, next(i for i, s in enumerate(skus, 1) if s is o4), o4[0], o4[1], "shipped", "已发出。"),
+        (
+            2,
+            next(i for i, s in enumerate(skus, 1) if s is o2),
+            o2[0],
+            o2[1],
+            "completed",
+            "已签收。",
+        ),
+        (
+            3,
+            next(i for i, s in enumerate(skus, 1) if s is o3),
+            o3[0],
+            o3[1],
+            "pending",
+            "待付款。",
+        ),
+        (
+            4,
+            next(i for i, s in enumerate(skus, 1) if s is o4),
+            o4[0],
+            o4[1],
+            "shipped",
+            "已发出。",
+        ),
     ]
-    order_sql = ",\n".join(
-        f"({oid}, 'user', '{st}', {price}, '{rmk}', '王先生', '13800000002', "
-        f"'示例小区 3 栋 1201', '配送到家')"
-        for oid, _iid, _t, price, st, rmk in lines
-    )
-    line_sql = ",\n".join(
-        f"({oid}, {oid}, {iid}, '{title}', {price}, 1)"
-        for oid, iid, title, price, _st, _rmk in lines
-    )
+    orders_sql = _shop_workbench_orders_sql(demo_specs)
     promo_title = pack.mp_promo_title.replace("'", "''")
     promo_body = pack.mp_promo_body.replace("'", "''")
     notice_t = pack.mp_notice_title.replace("'", "''")
@@ -1642,10 +1816,7 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='{notice_t}' OR
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audit_status, submitter_username)
 SELECT '{promo_title}', '{promo_body}', 'subadmin', '{shop_a.name}', 'pending', 'subadmin'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='{promo_title}');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-{order_sql};
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-{line_sql};
+{orders_sql}
 INSERT IGNORE INTO order_review (id, order_id, username, rating, body, created_at) VALUES
 (1, 2, 'user', 5, '质量不错，物流及时。', NOW());
 
@@ -1669,18 +1840,18 @@ INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, s
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '水果'), (2, '蔬菜'), (3, '粮油');
--- 封面：国内 jsDelivr 镜像 cdn.jsdmirror.com（免 VPN；勿用百度临时图链）
-INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, region, harvest_on, cover_url, owner_username) VALUES
-(1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f34e.png', 'subadmin'),
-(2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f353.png', 'subadmin'),
-(3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 0 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f96c.png', 'subadmin'),
-(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 6 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f33e.png', 'subadmin'),
-(5, '红富士苹果', '72.00', '10 斤装', 1, 30, 'available', '家庭装，同果园直供。', '山东烟台', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f34e.png', 'subadmin'),
-(6, '赣南脐橙', '32.00', '5 斤装', 1, 45, 'available', '皮薄多汁，现摘现发。', '江西赣州', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f34a.png', 'subadmin'),
-(7, '阳光玫瑰葡萄', '48.00', '盒装 1kg', 1, 28, 'available', '脆甜无籽，冷藏保存。', '云南建水', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f347.png', 'subadmin'),
-(8, '有机土豆', '12.80', '2.5kg', 2, 70, 'available', '沙面适中，适合炖煮。', '内蒙古乌兰察布', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 4 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f954.png', 'subadmin'),
-(9, '胡萝卜', '9.90', '1kg', 2, 55, 'available', '根粗色匀，煲汤凉拌均可。', '山东潍坊', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f955.png', 'subadmin'),
-(10, '东北黄豆', '22.00', '2kg', 3, 48, 'available', '颗粒饱满，打豆浆或炖菜。', '黑龙江绥化', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f330.png', 'subadmin');
+-- 封面空着：由 ensure_demo_cover_urls_sql 补 /uploads/demo/cover-NN.jpg（禁 twemoji）
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, region, harvest_on, owner_username) VALUES
+(1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'subadmin'),
+(2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d'), 'subadmin'),
+(3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 0 DAY), '%Y-%m-%d'), 'subadmin'),
+(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 6 DAY), '%Y-%m-%d'), 'subadmin'),
+(5, '红富士苹果', '72.00', '10 斤装', 1, 30, 'available', '家庭装，同果园直供。', '山东烟台', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'subadmin'),
+(6, '赣南脐橙', '32.00', '5 斤装', 1, 45, 'available', '皮薄多汁，现摘现发。', '江西赣州', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 DAY), '%Y-%m-%d'), 'subadmin'),
+(7, '阳光玫瑰葡萄', '48.00', '盒装 1kg', 1, 28, 'available', '脆甜无籽，冷藏保存。', '云南建水', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d'), 'subadmin'),
+(8, '有机土豆', '12.80', '2.5kg', 2, 70, 'available', '沙面适中，适合炖煮。', '内蒙古乌兰察布', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 4 DAY), '%Y-%m-%d'), 'subadmin'),
+(9, '胡萝卜', '9.90', '1kg', 2, 55, 'available', '根粗色匀，煲汤凉拌均可。', '山东潍坊', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'subadmin'),
+(10, '东北黄豆', '22.00', '2kg', 3, 48, 'available', '颗粒饱满，打豆浆或炖菜。', '黑龙江绥化', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 DAY), '%Y-%m-%d'), 'subadmin');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
@@ -1711,12 +1882,12 @@ INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VA
 (9, 8, 9, '胡萝卜', 9.90, 1);
 """
 
-_SHOP_PRINT = """\
+_SHOP_PRINT = f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '文印店长', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '店员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '文印店长', '13800000000', '{{}}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '店员', '13800000001', '{{}}', 0, 1, 1),
 ('user', 'user123', 'user', '顾客甲', '13800000002',
- '{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"到店自取","receiverName":"王同学","receiveAddress":"文印店前台"}',
+ '{{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"到店自取","receiverName":"王同学","receiveAddress":"文印店前台"}}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -1735,18 +1906,24 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '文印须知', '下单后到店取件或约定配送。', 'admin', '文印店长'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='文印须知' OR title='商城开业');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 25.00, '胶装蓝色封面，今晚取。', '王同学', '13800000002', '文印店前台自取', '到店自取');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 2, '毕业论文胶装', 25.00, 1);
-"""
+{_shop_workbench_orders_sql(
+    [
+        (1, 2, "毕业论文胶装", 25.00, "pending", "胶装蓝色封面，今晚取。"),
+        (2, 1, "A4 黑白单面（50 页）", 5.00, "shipped", "黑白件已出，可来取。"),
+        (3, 3, "彩打封面（10 张）", 12.00, "completed", "彩打封面已取走。"),
+        (4, 4, "A4 复印纸（500 张）", 28.00, "confirmed", "复印纸已备好。"),
+    ],
+    contact="王同学",
+    address="文印店前台自取",
+    delivery="到店自取",
+)}"""
 
-_SHOP_FLOWERS = """\
+_SHOP_FLOWERS = f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '花店主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '店员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '花店主管', '13800000000', '{{}}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '店员', '13800000001', '{{}}', 0, 1, 1),
 ('user', 'user123', 'user', '买家甲', '13800000002',
- '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
+ '{{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -1765,18 +1942,19 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '花店须知', '鲜花与特产下单后由店员确认配送。', 'admin', '花店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='花店须知' OR title='商城开业');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 68.00, '周六上午送达。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '康乃馨花束（11 枝）', 68.00, 1);
-"""
+{_shop_workbench_orders_sql([
+    (1, 1, "康乃馨花束（11 枝）", 68.00, "pending", "周六上午送达。"),
+    (2, 2, "向日葵桌花", 88.00, "shipped", "向日葵已发出。"),
+    (3, 3, "绿萝盆栽", 39.00, "completed", "绿萝已签收。"),
+    (4, 4, "本地蜂蜜礼盒", 58.00, "confirmed", "蜂蜜礼盒备货中。"),
+])}"""
 
-_SHOP_ERRAND = """\
+_SHOP_ERRAND = f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '跑腿调度', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '跑腿员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '跑腿调度', '13800000000', '{{}}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '跑腿员', '13800000001', '{{}}', 0, 1, 1),
 ('user', 'user123', 'user', '下单同学', '13800000002',
- '{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"宿舍配送","receiverName":"王同学","receiveAddress":"学生公寓 3 号楼 405"}',
+ '{{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"宿舍配送","receiverName":"王同学","receiveAddress":"学生公寓 3 号楼 405"}}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -1795,18 +1973,24 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '跑腿须知', '代买代取下单后由跑腿员接单送达；请填写送达地点与联系方式。', 'admin', '跑腿调度'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='跑腿须知' OR title='商城开业');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 22.00, '红烧肉套餐，少辣，送到 405。', '王同学', '13800000002', '学生公寓 3 号楼 405', '宿舍配送');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '食堂代买套餐（含跑腿费）', 22.00, 1);
-"""
+{_shop_workbench_orders_sql(
+    [
+        (1, 1, "食堂代买套餐（含跑腿费）", 22.00, "pending", "红烧肉套餐，少辣，送到 405。"),
+        (2, 2, "超市代买日用品", 15.00, "shipped", "日用品配送中。"),
+        (3, 3, "东门驿站代取件", 8.00, "completed", "快递已送到宿舍。"),
+        (4, 4, "打印店代取资料", 6.00, "confirmed", "打印店资料已接单。"),
+    ],
+    contact="王同学",
+    address="学生公寓 3 号楼 405",
+    delivery="宿舍配送",
+)}"""
 
-_SHOP_POINTS = """\
+_SHOP_POINTS = f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '积分商城主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '订单管理员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '积分商城主管', '13800000000', '{{}}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '订单管理员', '13800000001', '{{}}', 0, 1, 1),
 ('user', 'user123', 'user', '会员甲', '13800000002',
- '{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"到店自提","receiverName":"王同学","receiveAddress":"学生活动中心"}',
+ '{{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"到店自提","receiverName":"王同学","receiveAddress":"学生活动中心"}}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -1825,19 +2009,25 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '积分兑换须知', '兑换下单后由管理员确认发放；积分扣减以系统账户为准。', 'admin', '积分商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='积分兑换须知' OR title='商城开业');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 0.00, '兑换帆布袋，活动中心自提。', '王同学', '13800000002', '学生活动中心兑换点', '到店自提');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '校徽帆布袋（500 积分）', 0.00, 1);
-"""
+{_shop_workbench_orders_sql(
+    [
+        (1, 1, "校徽帆布袋（500 积分）", 0.00, "pending", "兑换帆布袋，活动中心自提。"),
+        (2, 2, "保温杯（800 积分）", 0.00, "shipped", "保温杯待发放。"),
+        (3, 3, "打印券 20 页（200 积分）", 0.00, "completed", "打印券已发放。"),
+        (4, 4, "体育馆次卡（1200 积分）", 0.00, "confirmed", "次卡兑换已确认。"),
+    ],
+    contact="王同学",
+    address="学生活动中心兑换点",
+    delivery="到店自提",
+)}"""
 
 # 校园二手：成色列由 apply 注入；种子含校内二手货
-_SHOP_CAMPUS = """\
+_SHOP_CAMPUS = f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '商城主管', '13800000000', '{}', 1, 0, 1),
-('subadmin', 'sub123', 'admin', '订单管理员', '13800000001', '{}', 0, 1, 1),
+('admin', 'admin123', 'admin', '商城主管', '13800000000', '{{}}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '订单管理员', '13800000001', '{{}}', 0, 1, 1),
 ('user', 'user123', 'user', '买家甲', '13800000002',
- '{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"到店自提","receiverName":"王同学","receiveAddress":"学生公寓 3 号楼","pickupPoint":"东门驿站"}',
+ '{{"realName":"王同学","email":"wang@demo.edu","gender":"男","deliveryType":"到店自提","receiverName":"王同学","receiveAddress":"学生公寓 3 号楼","pickupPoint":"东门驿站"}}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
 
@@ -1856,11 +2046,17 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '校园商城', '校内闲置流转；请如实填写成色与自提点。', 'admin', '商城主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='校园商城' OR title='商城开业');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'pending', 35.00, '教材两本，宿舍自提。', '王同学', '13800000002', '学生公寓 3 号楼 405', '到店自提');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '高等数学上下册', 35.00, 1);
-"""
+{_shop_workbench_orders_sql(
+    [
+        (1, 1, "高等数学上下册", 35.00, "pending", "教材两本，宿舍自提。"),
+        (2, 2, "机械键盘", 199.00, "shipped", "键盘已备好，可来取。"),
+        (3, 3, "桌面台灯", 59.90, "completed", "台灯已取走。"),
+        (4, 4, "无线鼠标", 89.00, "confirmed", "鼠标已确认，待自提。"),
+    ],
+    contact="王同学",
+    address="学生公寓 3 号楼 405",
+    delivery="到店自提",
+)}"""
 
 
 def _shop_sql_condition_grade(sql: str, *, campus: bool) -> str:
@@ -2012,18 +2208,18 @@ UPDATE sys_user SET staff_post='shop_merchant', staff_kind='clerk', role='admin'
 WHERE username IN ('subadmin', 'merchant_b');
 
 INSERT IGNORE INTO category (id, name) VALUES (1, '水果'), (2, '蔬菜'), (3, '粮油');
--- 封面：国内 jsDelivr 镜像 cdn.jsdmirror.com（免 VPN；勿用百度临时图链）
-INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, region, harvest_on, cover_url, owner_username) VALUES
-(1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f34e.png', 'subadmin'),
-(2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f353.png', 'merchant_b'),
-(3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 0 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f96c.png', 'subadmin'),
-(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 6 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f33e.png', 'merchant_b'),
-(5, '红富士苹果', '72.00', '10 斤装', 1, 30, 'available', '家庭装，同果园直供。', '山东烟台', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f34e.png', 'subadmin'),
-(6, '赣南脐橙', '32.00', '5 斤装', 1, 45, 'available', '皮薄多汁，现摘现发。', '江西赣州', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f34a.png', 'subadmin'),
-(7, '阳光玫瑰葡萄', '48.00', '盒装 1kg', 1, 28, 'available', '脆甜无籽，冷藏保存。', '云南建水', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f347.png', 'merchant_b'),
-(8, '有机土豆', '12.80', '2.5kg', 2, 70, 'available', '沙面适中，适合炖煮。', '内蒙古乌兰察布', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 4 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f954.png', 'subadmin'),
-(9, '胡萝卜', '9.90', '1kg', 2, 55, 'available', '根粗色匀，煲汤凉拌均可。', '山东潍坊', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f955.png', 'merchant_b'),
-(10, '东北黄豆', '22.00', '2kg', 3, 48, 'available', '颗粒饱满，打豆浆或炖菜。', '黑龙江绥化', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 DAY), '%Y-%m-%d'), 'https://cdn.jsdmirror.com/gh/twitter/twemoji@14.0.2/assets/72x72/1f330.png', 'merchant_b');
+-- 封面空着：由 ensure_demo_cover_urls_sql 补 /uploads/demo/cover-NN.jpg（禁 twemoji）
+INSERT IGNORE INTO product (id, title, author, isbn, category_id, stock, status, seller_note, region, harvest_on, owner_username) VALUES
+(1, '红富士苹果', '39.90', '5 斤装', 1, 50, 'available', '脆甜多汁，适合鲜食与礼盒。', '山东烟台', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'subadmin'),
+(2, '应季草莓', '28.00', '盒装 500g', 1, 35, 'available', '当季鲜摘，建议冷藏保存。', '辽宁丹东', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d'), 'merchant_b'),
+(3, '有机生菜', '8.50', '约 300g/份', 2, 60, 'available', '叶嫩清香，适合沙拉与火锅。', '本地基地', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 0 DAY), '%Y-%m-%d'), 'subadmin'),
+(4, '五常大米', '68.00', '5kg 真空袋', 3, 40, 'available', '东北五常产区，常温阴凉存放。', '黑龙江五常', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 6 DAY), '%Y-%m-%d'), 'merchant_b'),
+(5, '红富士苹果', '72.00', '10 斤装', 1, 30, 'available', '家庭装，同果园直供。', '山东烟台', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'subadmin'),
+(6, '赣南脐橙', '32.00', '5 斤装', 1, 45, 'available', '皮薄多汁，现摘现发。', '江西赣州', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 DAY), '%Y-%m-%d'), 'subadmin'),
+(7, '阳光玫瑰葡萄', '48.00', '盒装 1kg', 1, 28, 'available', '脆甜无籽，冷藏保存。', '云南建水', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d'), 'merchant_b'),
+(8, '有机土豆', '12.80', '2.5kg', 2, 70, 'available', '沙面适中，适合炖煮。', '内蒙古乌兰察布', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 4 DAY), '%Y-%m-%d'), 'subadmin'),
+(9, '胡萝卜', '9.90', '1kg', 2, 55, 'available', '根粗色匀，煲汤凉拌均可。', '山东潍坊', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 DAY), '%Y-%m-%d'), 'merchant_b'),
+(10, '东北黄豆', '22.00', '2kg', 3, 48, 'available', '颗粒饱满，打豆浆或炖菜。', '黑龙江绥化', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 5 DAY), '%Y-%m-%d'), 'merchant_b');
 
 INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line, tag, is_default) VALUES
 (1, 'user', '王先生', '13800000002', '示例小区 3 栋 1201', '家', 1),
@@ -2068,17 +2264,17 @@ SELECT 'subadmin', '烟台果园店', '申请上架金秋促销活动，请平�
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='subadmin' AND body LIKE '申请上架金秋%');
 """
 
-_SHOP_MP_RETAIL = """\
+_SHOP_MP_RETAIL = f"""\
 INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
-('admin', 'admin123', 'admin', '平台管理员', '13800000000', '{}', 1, 0, 1),
+('admin', 'admin123', 'admin', '平台管理员', '13800000000', '{{}}', 1, 0, 1),
 ('subadmin', 'sub123', 'admin', '日用优选店', '13800000001',
- '{"shopName":"日用优选店","shopIntro":"百货日用","shopPhone":"13800000001"}',
+ '{{"shopName":"日用优选店","shopIntro":"百货日用","shopPhone":"13800000001"}}',
  0, 1, 1),
 ('merchant_b', 'mer123', 'admin', '数码配件店', '13800000012',
- '{"shopName":"数码配件店","shopIntro":"手机周边","shopPhone":"13800000012"}',
+ '{{"shopName":"数码配件店","shopIntro":"手机周边","shopPhone":"13800000012"}}',
  0, 1, 1),
 ('user', 'user123', 'user', '买家甲', '13800000002',
- '{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}',
+ '{{"realName":"王先生","email":"wang@demo.com","gender":"男","deliveryType":"配送到家","receiverName":"王先生","receiveAddress":"示例小区 3 栋 1201"}}',
  0, 1, 1)
 ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json),
  enabled=VALUES(enabled);
@@ -2101,15 +2297,12 @@ INSERT IGNORE INTO user_address (id, username, contact_name, phone, address_line
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audit_status, submitter_username)
 SELECT '商城开业', '多店入驻；下单后可在订单页查看进度。', 'admin', '平台管理员', 'approved', ''
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='商城开业');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(1, 'user', 'confirmed', 29.90, '', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
-(2, 'user', 'shipped', 59.00, '保温杯已发出。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家'),
-(3, 'user', 'pending', 19.90, '待付款。', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '日用收纳盒', 29.90, 1),
-(2, 2, 3, '保温杯 500ml', 59.00, 1),
-(3, 3, 4, '手机支架', 19.90, 1);
-
+{_shop_workbench_orders_sql([
+    (1, 1, "日用收纳盒", 29.90, "confirmed", "请加固包装。"),
+    (2, 3, "保温杯 500ml", 59.00, "shipped", "保温杯已发出。"),
+    (3, 4, "手机支架", 19.90, "pending", "待付款。"),
+    (4, 2, "蓝牙耳机套装", 129.00, "completed", "耳机已签收。"),
+])}
 INSERT INTO sys_guestbook (username, nickname, body, channel)
 SELECT 'user', '买家甲', '收货地址能否修改？', 'user'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_guestbook WHERE username='user' AND body LIKE '收货地址%');
@@ -2141,11 +2334,17 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (7, 2, '2026-09-23 12:00:00', '2026-09-23 18:00:00', 2, 0),
 (8, 2, '2026-09-24 12:00:00', '2026-09-24 18:00:00', 2, 0);
 INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, guest_name, guest_count, stay_from, stay_to, care_ids) VALUES
-(1, 1, 'user', 'confirmed', '', '豆豆', 1, '2026-09-21', '2026-09-24', '1');
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservation_id) VALUES
-(1, 'user', 'confirmed', 240.00, 'reservation:1', 1);
+(1, 1, 'user', 'confirmed', '', '豆豆', 1, '2026-09-21', '2026-09-24', '1'),
+(2, 5, 'user', 'pending', '', '球球', 1, '2026-09-22', '2026-09-23', ''),
+(3, 4, 'user', 'completed', '', '豆豆', 1, '2026-09-10', '2026-09-12', '1');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservation_id, created_at, completed_at) VALUES
+(1, 'user', 'confirmed', 240.00, 'reservation:1', 1, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
+(2, 'user', 'pending', 120.00, 'reservation:2', 2, DATE_SUB(NOW(), INTERVAL 0 DAY), NULL),
+(3, 'user', 'completed', 160.00, 'reservation:3', 3, DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY));
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '小单间', 80.00, 3);
+(1, 1, 1, '小单间', 80.00, 3),
+(2, 2, 2, '大单间', 120.00, 1),
+(3, 3, 1, '小单间', 80.00, 2);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '寄养预约', '选择寄养位和日期。金额按天数计算。', 'admin', '寄养主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='寄养预约' OR title='客房预订');

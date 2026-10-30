@@ -141,7 +141,13 @@ INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '点餐须知', '支持堂食/自取/外卖；外卖请选地址并填写口味备注。', 'admin', '门店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='点餐须知');
 -- 主路径样例：待出餐订单
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type, taste_note) VALUES
-(1, 'user', 'pending', 18.00, '少油少盐', '李女士', '13800000002', '示例小区 5 号楼 302', '外卖配送', '微辣');
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type, taste_note, created_at, completed_at) VALUES
+(1, 'user', 'pending', 18.00, '少油少盐', '李女士', '13800000002', '示例小区 5 号楼 302', '外卖配送', '微辣', DATE_SUB(NOW(), INTERVAL 0 DAY), NULL),
+(2, 'user', 'confirmed', 12.00, '尽快送达', '李女士', '13800000002', '示例小区 5 号楼 302', '外卖配送', '少油', DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
+(3, 'user', 'shipped', 8.00, '放门口即可', '李女士', '13800000002', '示例小区 5 号楼 302', '外卖配送', '', DATE_SUB(NOW(), INTERVAL 2 DAY), NULL),
+(4, 'user', 'completed', 6.00, '已取', '李女士', '13800000002', '示例小区 5 号楼 302', '外卖配送', '少冰', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY));
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '红烧肉套餐', 18.00, 1);
+(1, 1, 1, '红烧肉套餐', 18.00, 1),
+(2, 2, 2, '番茄鸡蛋面', 12.00, 1),
+(3, 3, 3, '豆浆油条', 8.00, 1),
+(4, 4, 4, '柠檬茶', 6.00, 1);

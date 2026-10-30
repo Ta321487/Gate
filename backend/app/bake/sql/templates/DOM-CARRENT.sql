@@ -155,12 +155,18 @@ INSERT IGNORE INTO resource_slot (id, item_id, start_at, end_at, capacity, booke
 (8, 3, '2026-09-21 09:00:00', '2026-09-22 09:00:00', 2, 0),
 (9, 3, '2026-09-22 09:00:00', '2026-09-23 09:00:00', 2, 0);
 INSERT IGNORE INTO reservation (id, slot_id, username, status, remark, guest_name, guest_count) VALUES
-(1, 1, 'user', 'confirmed', '周租客', '周租客', 1);
-UPDATE resource_slot SET booked = 1 WHERE id = 1;
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservation_id) VALUES
-(1, 'user', 'confirmed', 168.00, 'reservation:1', 1);
+(1, 1, 'user', 'confirmed', '周租客', '周租客', 1),
+(2, 4, 'user', 'pending', '待门店确认', '周租客', 1),
+(3, 7, 'user', 'completed', '已还车', '李租客', 2);
+UPDATE resource_slot SET booked = 1 WHERE id IN (1, 2);
+INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, reservation_id, created_at, completed_at) VALUES
+(1, 'user', 'confirmed', 168.00, 'reservation:1', 1, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
+(2, 'user', 'pending', 228.00, 'reservation:2', 2, DATE_SUB(NOW(), INTERVAL 0 DAY), NULL),
+(3, 'user', 'completed', 258.00, 'reservation:3', 3, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY));
 INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(1, 1, 1, '大众朗逸 自动挡', 168.00, 1);
+(1, 1, 1, '大众朗逸 自动挡', 168.00, 1),
+(2, 2, 2, '丰田卡罗拉 双擎', 228.00, 1),
+(3, 3, 3, '比亚迪秦 PLUS EV', 258.00, 1);
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '汽车租赁', '选择车型与租期下单；下单成功即生成订单，门店办理取车与还车。', 'admin', '门店主管'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='汽车租赁');

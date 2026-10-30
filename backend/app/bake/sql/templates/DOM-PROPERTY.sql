@@ -109,9 +109,11 @@ INSERT IGNORE INTO ticket_type (id, name, sort_no) VALUES
 (1, '水电', 1), (2, '公共设施', 2), (3, '门禁', 3),
 (4, '投诉建议', 4), (5, '路灯井盖', 5), (6, '市政设施', 6);
 
--- 主路径样例：待审工单
+-- 主路径样例：多态工单（工作台 pending/处理中/已办结）
 INSERT IGNORE INTO ticket (id, username, title, location, type_id, room_id, status, priority, contact_phone, remark) VALUES
-(1, 'user', 'A栋101卫生间渗水', 'A 栋 101', 1, 1, 'pending', '普通', '13800000002', '楼上渗水，请上门查看。');
+(1, 'user', 'A栋101卫生间渗水', 'A 栋 101', 1, 1, 'pending', '普通', '13800000002', '楼上渗水，请上门查看。'),
+(2, 'user', 'B栋201门禁失灵', 'B 栋 201', 3, 3, 'approved', '普通', '13800000002', '维修进行中。'),
+(3, 'user', '楼道灯管更换', 'A 栋 102', 2, 2, 'returned', '普通', '13800000002', '已更换办结。');
 
 INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
 SELECT '报修须知', '请填写楼栋房号与故障描述，物业将尽快受理。投诉建议请选对应类型。', 'admin', '物业管理员'
