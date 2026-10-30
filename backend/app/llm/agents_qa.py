@@ -307,6 +307,44 @@ def _honesty_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
     return findings
 
 
+# 支付渠道口口径：无余额/模拟/不对接划界却点名支付宝/微信 → 结构闸 error（关 LLM QA 也挡包）
+_PAY_CHANNEL_IN_COPY = re.compile(r"支付宝|微信支付|微信\s*支付")
+_PAY_HONEST_SCOPE = re.compile(
+    r"余额|模拟|不对接|不接入|演示支付|系统内|账户扣款|扣减.{0,6}余额"
+)
+_PAY_CHANNEL_DENIED = re.compile(
+    r"不(对接|接入|支持|开通).{0,12}(支付宝|微信)|非真支付|假的就行"
+)
+
+
+def _payment_copy_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
+    """demoPayHint 等把支付宝/微信写成下单渠道且无诚实划界 → error。"""
+    findings: list[dict[str, str]] = []
+    labels = ctx.get("labels") if isinstance(ctx.get("labels"), dict) else {}
+    caps = {str(c) for c in (ctx.get("capabilities") or []) if c}
+    # 真支付能力岛若将来挂上可放行；现网无第三方渠道 cap
+    if caps & {"wechat_pay", "alipay", "third_party_pay"}:
+        return findings
+    for key, val in labels.items():
+        if not isinstance(val, str) or not val.strip():
+            continue
+        if not _PAY_CHANNEL_IN_COPY.search(val):
+            continue
+        if _PAY_HONEST_SCOPE.search(val) or _PAY_CHANNEL_DENIED.search(val):
+            continue
+        findings.append(
+            {
+                "level": "error",
+                "msg": (
+                    f"labels.{key} 将支付宝/微信写成本期支付能力，"
+                    "但未见余额/模拟/不对接划界（capabilities 亦无真支付渠道）"
+                ),
+                "where": f"schema.labels.{key}",
+            }
+        )
+    return findings
+
+
 def _structural_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
     """本地确定性检查（不依赖 LLM）。"""
     findings: list[dict[str, str]] = []
@@ -339,6 +377,7 @@ def _structural_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
                 "where": "frontend/src/views/NoticeDetail.vue",
             }
         )
+    findings.extend(_payment_copy_findings(ctx))
     findings.extend(_honesty_findings(ctx))
     findings.extend(_lexicon_findings(ctx))
     return findings

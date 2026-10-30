@@ -82,7 +82,7 @@
           账户余额 ¥{{ Number(account.balanceYuan || 0).toFixed(2) }}
           <el-button link type="primary" class="recharge-link" @click="openRecharge">充值</el-button>
         </div>
-        <div v-if="demoPay" class="loy-line muted">支付宝 / 微信在线支付</div>
+        <div v-if="demoPay" class="loy-line muted">在线支付（账户余额）</div>
         <div v-if="pointsOn" class="loy-line">积分 {{ account.points || 0 }}</div>
         <div v-if="tierOn && account.memberTierLabel" class="loy-line">会员 {{ account.memberTierLabel }}</div>
       </template>

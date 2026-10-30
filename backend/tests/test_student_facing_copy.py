@@ -83,7 +83,22 @@ class StudentFacingCopyTests(unittest.TestCase):
         )
         hint = ((spec.get("schema") or {}).get("labels") or {}).get("demoPayHint") or ""
         self.assertNotIn("不对接", hint)
+        self.assertNotIn("支付宝", hint)
+        self.assertNotIn("微信", hint)
+        self.assertIn("余额", hint)
         self.assertFalse(factory_ui_polluted(hint))
+
+    def test_scrub_rewrites_legacy_alipay_wechat_pay_hint(self) -> None:
+        """旧「请选支付宝或微信…」无余额口径 → 洗成账户余额扣款说明。"""
+        from app.bake.domain_schema import scrub_schema_student_copy
+
+        clean = scrub_schema_student_copy(
+            {"labels": {"demoPayHint": "请选择支付宝或微信支付完成下单。"}}
+        )
+        hint = (clean.get("labels") or {}).get("demoPayHint") or ""
+        self.assertNotIn("支付宝", hint)
+        self.assertNotIn("微信", hint)
+        self.assertIn("余额", hint)
 
     def test_scrub_strips_legacy_factory_leads(self) -> None:
         dirty = {

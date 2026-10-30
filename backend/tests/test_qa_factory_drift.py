@@ -370,6 +370,50 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         )
         self.assertTrue(any("错域实体词" in str(f.get("msg")) for f in warn), warn)
 
+    def test_payment_copy_blocks_fallback_qa_without_llm(self) -> None:
+        """关 LLM QA 时，支付宝/微信下单句仍须结构闸 error 挡包（农产续跑装绿回归）。"""
+        from app.llm.agents_qa import _fallback_qa, _payment_copy_findings
+
+        dirty = {
+            "labels": {
+                "demoPayHint": "请选择支付宝或微信支付完成下单。",
+                "appName": "农产商城",
+                "noticePageTitle": "公告",
+            },
+            "capabilities": ["wallet", "order"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "",
+            "domain": "DOM-SHOP",
+        }
+        hits = _payment_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        report = _fallback_qa(dirty)
+        self.assertFalse(report.get("ok"), report)
+        self.assertEqual(report.get("mode"), "fallback")
+
+        clean = {
+            **dirty,
+            "labels": {
+                **dirty["labels"],
+                "demoPayHint": "请选择支付方式并输入支付密码，费用从账户余额扣除。",
+            },
+        }
+        self.assertFalse(_payment_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+        honest = {
+            **dirty,
+            "labels": {
+                **dirty["labels"],
+                "demoPayHint": "选择支付宝或微信并输入支付密码，扣减账户余额。",
+            },
+        }
+        self.assertFalse(_payment_copy_findings(honest))
+
 
 if __name__ == "__main__":
     unittest.main()

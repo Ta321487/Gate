@@ -973,8 +973,8 @@ _LABEL_FALLBACKS: dict[str, str] = {
     "dmMerchantPeerPlaceholder": "选择买家账号",
     "dmMerchantEmptyPeers": "暂无会话，买家发起咨询后会出现在这里；也可点「新建」选买家。",
     "dmMerchantEmptyChat": "选择左侧会话，或新建联系买家。",
-    # 清洗回退句必须干净（骨架/builders 可脏；学生包点「洗文案」靠此落净）
-    "demoPayHint": "请选择支付宝或微信支付完成下单。",
+    # 清洗回退句必须干净：勿写支付宝/微信当真渠道（wallet 只扣余额；QA 会追问）
+    "demoPayHint": "请选择支付方式并输入支付密码，费用从账户余额扣除。",
     "authLead": _AUTH_LEAD_FALLBACK,
     "noticePageLead": "通知与须知，点击条目阅读全文。",
     "messagesPageLead": "审核结果与系统通知。",
@@ -1104,7 +1104,10 @@ def scrub_schema_student_copy(schema: dict[str, Any]) -> dict[str, Any]:
         if key == "guestbookPageLead" and shop_cs:
             fb = "有问题可向平台留言，我们会尽快回复。"
         if isinstance(val, str):
-            if factory_ui_polluted(val) or _FACTORY_PAREN_RE.search(val):
+            # 旧 bake 把支付宝/微信写成「本期支付能力」→ QA 红；无余额口径则整句回退
+            if key == "demoPayHint" and re.search(r"支付宝|微信支付", val) and "余额" not in val:
+                labels[key] = fb or _LABEL_FALLBACKS["demoPayHint"]
+            elif factory_ui_polluted(val) or _FACTORY_PAREN_RE.search(val):
                 labels[key] = scrub_factory_ui_text(val, fallback=fb or "欢迎使用。")
         elif isinstance(val, list):
             new_list = []
