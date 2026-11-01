@@ -47,6 +47,7 @@
 | [staff-posts-cross-domain.md](./staff-posts-cross-domain.md) | 跨域通用岗位 · 岗↔界面审计 | 梳理表 |
 | [immersion-corners.md](./immersion-corners.md) | 沉浸感边角（毕设加分，非门禁） | 非强制清单 |
 | [surface-lexicon-design.md](./surface-lexicon-design.md) | 话术层（Surface Lexicon）设计与批次 | 设计稿；批 A/B/C 已落地见 HANDOFF |
+| [role-boundary-copy-batch.md](./role-boundary-copy-batch.md) | **换开题抗性诚实账** + **角色边界（L4）**按域族收成结构闸 | 批次册 · §0 常读；交易 R-TRADE-01 已齐；L2/L5 仍是长尾 |
 
 ## 答辩 PPT
 

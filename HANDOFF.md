@@ -26,14 +26,43 @@
 8. **可交互控件**：**C0～C5 已齐**；`BASELINE_KNOWN_CONTROLS` 空。  
 9. **全域 UI 诊断**：**68 域双 OK**（`docs/ui-domain-diagnosis.md`）。
 
+### 本会话（2026-11-01）· 角色边界文案按域族收（批次册）· **换对话入口**
+
+> **老板离场口径**：同题再 bake，**不许**再因同一句 `ordersAdminLead`（发货/物流塞进管理员）红掉。其它洞另说，禁止轻飘保证「整包永远绿」。
+
+- **主题**：`p3q`「管理员 lead 写成商家发货」→ **修工厂**；批次册 + 换开题抗性诚实账。
+- **已做（已核对，未 git commit）**：
+  - `builders_slot`：`ordersAdminLead`=全平台监督；`ordersStaffLead`=本店发货物流售后
+  - `agents_qa._marketplace_role_copy_findings`：多店 + admin lead 含「发货|物流」→ **error**（关 LLM 也挡）
+  - 册：[`docs/role-boundary-copy-batch.md`](./docs/role-boundary-copy-batch.md)（§0 L0～L7；R-TRADE-01 已齐）
+  - 验：多店 schema 结构闸 **0 error**；`test_marketplace_schema_flag` + `test_marketplace_admin_order_lead_blocks_merchant_ops` **绿**
+- **同题再 bake**：本条 error **不应复发**。`p3q` 若仍红，必是**另一条** finding（LLM 长尾 / 别族）→ 收进工厂闸，禁止只擦包。结构层现有 1 条 **warn**（admin 有 category 菜单但 entityKeys 无 category）不挡包，勿当本洞回潮。
+- **工作区**：本片改动与 Unsplash/E-R 等其它脏文件**混在未提交里**；新对话若要保全，先让人下令 **只提交本片**（builders_slot / agents_qa / 两测 / role-boundary 册 / README·HANDOFF 相关行）。
+- **下一步（新对话主片候选）**：① 人下令则 commit 本片；② 清 `trade` R-TRADE-02～05；③ 或老板带新 `p3q` 红栈 → 修工厂。**勿**宣称 L4 全组已齐 / 明年可撒手。
+
+### 本会话（2026-11-01）· Unsplash 题槽灌库（消抖）
+
+- **主题**：大陆无魔法时 Unsplash 抖动 → **修工厂**（出包读盘，外网只灌库）。
+- **口径**：共用 `unsplash_fetch`（重试 + 可选 `UNSPLASH_HTTP_PROXY` + 本机 auth/portal 缓存）；确认匹配时 `atmosphere_prefetch` 短窗灌库，**失败不挡确认**；结果进 `spec.atmosphere`。
+- **运营台**：Unsplash 页显示代理/缓存张数与提示。
+- **测试**：`test_unsplash_fetch` + `test_atmosphere_prefetch` **9 passed**。
+- **下一步（未做）**：开题关键词合题检索；确认失败硬闸（无代理会卡死，暂不做）；国内图源另案。
+
+### 本会话（2026-10-31）· E-R 几何外页（碎另案 m）
+
+- **主题**：直线咋拖都交叉 → **修工厂**（禁实体全环）。
+- **口径**：ELK layered 摆框不变；直线真交叉的联系进**外页弯线**（绕布局包围弧）；内页直线零交叉。
+- **已做**：`_partition_geometric_outer`；`render_er_svg` 接回外弧；`test_schema_er_layout` 钉 K5/hub。
+- **测试**：`test_schema_er_layout` + `test_schema_er_labels` **17 passed**。
+- **用法**：控制台重新生成 E-R 总图（或重 bake 材料）才看见；旧 SVG 不会自动变。
+
 ### 本会话（2026-10-28）· 论文图 ELK 初局（碎另案 m · E-R/类图）
 
 - **主题**：E-R/类图换引擎 → **修工厂**（少去 draw.io；控制台拖=正式路径）。
-- **口径**：初局 `pyelk` layered（禁全环）；零交叉不硬保证；拖拽钉框、**不重跑 ELK**；失败不回退环排。
-- **已做**：`layout_elk.py`；E-R `_layout_entities` / 类图 `attach_layout` 走 ELK；`_apply_manual_*` 钉框；invariants + parked **m** 已改；文案去「零交叉精炼」。
-- **测试**：`test_schema_er_layout.py` + `test_schema_classes.py` 绿。
-- **余债**：模块/序列/活动等图种仍属 **m**；`class_layout` 旧竞赛代码仍残留、主路径已不走。
-- **提交**：已拆主题推送（ELK / 忠诚度拆列 / 工作台种子与农产封面 / 出包占用与门禁 / 支付文案 QA / 交接）。
+- **口径**：初局 `pyelk` layered（禁全环）；拖拽钉框、**不重跑 ELK**；失败不回退环排。
+- **已做**：`layout_elk.py`；E-R / 类图走 ELK；invariants + parked **m**。
+- **余债**：模块/序列/活动等图种仍属 **m**；`class_layout` 旧竞赛残留。
+- **续**：2026-10-31 已接几何外页（见上节）。
 
 ### 本会话（2026-10-28）· 碎另案 i 补漏
 

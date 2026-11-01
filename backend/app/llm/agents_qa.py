@@ -345,6 +345,35 @@ def _payment_copy_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
     return findings
 
 
+# 多店：管理员订单页不得写商家发货/物流职责（与 proposal 角色树对齐）
+_MERCHANT_OPS_IN_ADMIN_ORDER = re.compile(r"发货|物流")
+
+
+def _marketplace_role_copy_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
+    """shopMarketplace 时 ordersAdminLead 若写发货/物流 → error（关 LLM 也挡）。"""
+    findings: list[dict[str, str]] = []
+    schema = ctx.get("schema") if isinstance(ctx.get("schema"), dict) else {}
+    if not schema.get("shopMarketplace"):
+        return findings
+    labels = ctx.get("labels") if isinstance(ctx.get("labels"), dict) else {}
+    lead = str(labels.get("ordersAdminLead") or "").strip()
+    if not lead or not _MERCHANT_OPS_IN_ADMIN_ORDER.search(lead):
+        return findings
+    findings.append(
+        {
+            "level": "error",
+            "msg": (
+                "labels.ordersAdminLead 写「"
+                f"{lead.rstrip('。')}」，"
+                "把商家运营职责放到管理员订单页；"
+                "与多店管理员仅做全平台订单与售后监督相冲突"
+            ),
+            "where": "schema.labels.ordersAdminLead",
+        }
+    )
+    return findings
+
+
 def _structural_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
     """本地确定性检查（不依赖 LLM）。"""
     findings: list[dict[str, str]] = []
@@ -378,6 +407,7 @@ def _structural_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
             }
         )
     findings.extend(_payment_copy_findings(ctx))
+    findings.extend(_marketplace_role_copy_findings(ctx))
     findings.extend(_honesty_findings(ctx))
     findings.extend(_lexicon_findings(ctx))
     return findings

@@ -64,6 +64,12 @@ class ShopMarketplaceSchemaTests(unittest.TestCase):
         self.assertNotIn("预约", str(labels.get("messagesPageLead") or ""))
         self.assertEqual(labels.get("guestbookGuestCta"), "登录后发表留言")
         self.assertEqual(labels.get("noticeGuestCta"), "登录后查看更多活动")
+        # 管理员=全平台监督；发货/物流归商家（ordersStaffLead）
+        admin_lead = str(labels.get("ordersAdminLead") or "")
+        self.assertIn("全平台", admin_lead)
+        self.assertNotRegex(admin_lead, r"发货|物流")
+        staff_lead = str(labels.get("ordersStaffLead") or "")
+        self.assertRegex(staff_lead, r"发货|物流")
         content = next(
             (
                 m

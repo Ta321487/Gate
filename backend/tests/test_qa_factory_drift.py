@@ -414,6 +414,42 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         }
         self.assertFalse(_payment_copy_findings(honest))
 
+    def test_marketplace_admin_order_lead_blocks_merchant_ops(self) -> None:
+        """多店 ordersAdminLead 写发货/物流 → 结构闸 error（不靠 LLM 碰运气）。"""
+        from app.llm.agents_qa import _fallback_qa, _marketplace_role_copy_findings
+
+        dirty = {
+            "schema": {"shopMarketplace": True},
+            "labels": {
+                "ordersAdminLead": "处理发货、物流与售后申请。",
+                "appName": "多店商城",
+                "noticePageTitle": "活动公告",
+            },
+            "capabilities": ["order"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "管理员仅做全平台订单与售后监督",
+            "domain": "DOM-SHOP",
+        }
+        hits = _marketplace_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertTrue(any("ordersAdminLead" in str(f.get("msg")) for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        clean = {
+            **dirty,
+            "labels": {
+                **dirty["labels"],
+                "ordersAdminLead": "查看全平台订单与售后，必要时介入处理。",
+                "ordersStaffLead": "处理本店发货、物流与售后申请。",
+            },
+        }
+        self.assertFalse(_marketplace_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
 
 if __name__ == "__main__":
     unittest.main()
