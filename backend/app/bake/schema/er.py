@@ -45,6 +45,8 @@ from app.bake.schema.er_svg import (
     _book_embedding,
     _circular_crossings,
     _layout_entities,
+    _partition_geometric_outer,
+    _straight_layout_crossings,
     _two_page_partition,
     render_er_svg,
 )
@@ -81,5 +83,7 @@ __all__ = [
     "_book_embedding",
     "_circular_crossings",
     "_layout_entities",
+    "_partition_geometric_outer",
+    "_straight_layout_crossings",
     "_two_page_partition",
 ]

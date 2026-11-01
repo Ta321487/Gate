@@ -1,4 +1,4 @@
-"""陈氏 E-R：ELK layered 初局坐标 + SVG 渲染（禁全环默认）。"""
+"""陈氏 E-R：ELK layered 初局坐标 + 几何外页弯线（禁实体全环）。"""
 
 from __future__ import annotations
 
@@ -530,6 +530,50 @@ def _try_hub_layout(
     return None
 
 
+def _partition_geometric_outer(
+    pos: dict[str, tuple[float, float]],
+    edges: list[tuple[str, str]],
+) -> set[tuple[str, str]]:
+    """ELK 坐标上贪心拆页：短弦优先直线；与已有直线真交叉则进外页。
+
+    不移动实体、不围环；外页仅改画线路径。
+    """
+    scored: list[tuple[float, tuple[str, str]]] = []
+    for a, b in _undirected_pairs(edges):
+        if a not in pos or b not in pos or a == b:
+            continue
+        pa, pb = pos[a], pos[b]
+        scored.append((math.hypot(pb[0] - pa[0], pb[1] - pa[1]), (a, b)))
+    scored.sort(key=lambda t: (t[0], t[1][0], t[1][1]))
+    inner: list[tuple[str, str]] = []
+    outer: set[tuple[str, str]] = set()
+    for _len, e in scored:
+        ea, eb = pos[e[0]], pos[e[1]]
+        if all(
+            not _segments_proper_cross(ea, eb, pos[f[0]], pos[f[1]]) for f in inner
+        ):
+            inner.append(e)
+        else:
+            outer.add(e)
+    return outer
+
+
+def _layout_hull(
+    pos: dict[str, tuple[float, float]],
+) -> tuple[float, float, float]:
+    """实体包围中心 + 外接半径（外页弧的虚拟圆心/半径，实体本身不落环）。"""
+    if not pos:
+        return 0.0, 0.0, 120.0
+    xs = [p[0] for p in pos.values()]
+    ys = [p[1] for p in pos.values()]
+    cx = (min(xs) + max(xs)) / 2.0
+    cy = (min(ys) + max(ys)) / 2.0
+    r = 0.0
+    for x, y in pos.values():
+        r = max(r, math.hypot(x - cx, y - cy))
+    return cx, cy, max(r, 80.0)
+
+
 def _layout_entities(
     names: list[str],
     edges: list[tuple[str, str]],
@@ -539,11 +583,12 @@ def _layout_entities(
     *,
     entity_hw: dict[str, float] | None = None,
 ) -> tuple[list[str], dict[str, tuple[float, float]], set[tuple[str, str]]]:
-    """实体坐标：ELK layered 分层（禁全环）。outer 恒为空——联系一律直线过菱形。
+    """实体坐标：ELK layered 分层（禁全环）。
 
-    cx/cy/ring_r 保留兼容旧调用；分层结果会再平移到画布，不必以环心为原点。
+    返回的 outer 为几何上直线会交叉、须走外页弯线的无向对。
+    cx/cy/ring_r 保留兼容旧调用；分层结果再平移，实体不围环。
     """
-    del ring_r
+    _ = ring_r
     names = list(names)
     if not names:
         return [], {}, set()
@@ -568,11 +613,12 @@ def _layout_entities(
     try:
         laid = layout_graph(nodes, elk_edges)
     except ElkLayoutError:
-        # 显式失败：禁止静默退回全环。调用方/接口应看到异常；此处保底网格以便单测不崩。
+        # 显式失败：禁止静默退回全环。保底网格以便单测不崩。
         pos = {
             n: (cx + (i % 4) * 180.0, cy + (i // 4) * 100.0) for i, n in enumerate(names)
         }
-        return names, pos, set()
+        order = list(names)
+        return order, pos, _partition_geometric_outer(pos, edges)
 
     positions = laid.get("positions") or {}
     pos: dict[str, tuple[float, float]] = {}
@@ -586,9 +632,9 @@ def _layout_entities(
         if n not in pos:
             pos[n] = (cx + (i % 4) * 180.0, cy + (i // 4) * 100.0)
 
-    # 按 x 再 y 排序，便于稳定输出
     order = sorted(names, key=lambda n: (pos[n][0], pos[n][1], n))
-    return order, pos, set()
+    outer = _partition_geometric_outer(pos, edges)
+    return order, pos, outer
 
 
 def _pair_offset(lp: tuple[float, float], rp: tuple[float, float], index: int, total: int) -> tuple[float, float]:
@@ -768,17 +814,25 @@ def render_er_svg(
     max_cloud = max(clouds.values()) if clouds else 80
     n = len(names)
 
-    # 总图：ELK 分层；分图单实体仍居中
+    # 总图：ELK 分层 + 几何外页；分图单实体仍居中
+    outer_pairs: set[tuple[str, str]] = set()
     if show_attrs or n <= 1:
         order = list(names)
         entity_pos = {names[0]: (0.0, 0.0)} if names else {}
     else:
-        order, entity_pos, _outer = _layout_entities(
+        order, entity_pos, outer_pairs = _layout_entities(
             names, edges, 0.0, 0.0, 0.0, entity_hw=entity_hw
         )
 
-    # 画布：按实体包围盒 + 属性云 / 菱形余量，禁止再按环半径撑圆画布
-    pad = 72.0 if show_attrs else _ELK_PAD
+    hull_cx, hull_cy, hull_r = _layout_hull(entity_pos)
+    outer_nest_pad = 0.0
+    if outer_pairs and n > 1:
+        outer_nest_pad = (
+            hull_r * 0.55 + 100.0 + max(0, len(outer_pairs) - 1) * _OUTER_NEST_GAP
+        )
+
+    # 画布：实体包围盒 + 属性云 + 外页弧余量（实体仍分层，不撑成圆环排位）
+    pad = (72.0 if show_attrs else _ELK_PAD) + (12.0 if outer_pairs else 0.0)
     if entity_pos:
         xs = [p[0] for p in entity_pos.values()]
         ys = [p[1] for p in entity_pos.values()]
@@ -786,15 +840,16 @@ def render_er_svg(
         min_y, max_y = min(ys), max(ys)
     else:
         min_x = max_x = min_y = max_y = 0.0
-    # 预留属性椭圆与联系菱形
-    margin = max_cloud + 48.0
+    margin = max_cloud + 48.0 + outer_nest_pad
     shift_x = pad + margin - min_x
     shift_y = pad + margin - min_y
     entity_pos = {k: (x + shift_x, y + shift_y) for k, (x, y) in entity_pos.items()}
+    cx = hull_cx + shift_x
+    cy = hull_cy + shift_y
+    ring_r = hull_r + 28.0
     w = int(max_x - min_x + 2 * (pad + margin))
     h = int(max_y - min_y + 2 * (pad + margin))
     w, h = max(w, 360), max(h, 280)
-    cx, cy = w / 2.0, h / 2.0
     ordered_tables = [by_name[nm] for nm in order if nm in by_name]
 
     # 同对联系计数，便于垂线错开
@@ -806,6 +861,29 @@ def render_er_svg(
     for pk in pair_keys:
         pair_totals[pk] = pair_totals.get(pk, 0) + 1
     pair_seen: dict[tuple[str, str], int] = {}
+
+    def _span_of(pk: tuple[str, str]) -> int:
+        if pk[0] not in entity_pos or pk[1] not in entity_pos:
+            return 0
+        # 外页嵌套：按弦长粗排，短的靠内层
+        p0, p1 = entity_pos[pk[0]], entity_pos[pk[1]]
+        return int(math.hypot(p1[0] - p0[0], p1[1] - p0[1]))
+
+    outer_sorted = sorted(outer_pairs, key=lambda e: (_span_of(e), e))
+    outer_nest: dict[tuple[str, str], int] = {e: i for i, e in enumerate(outer_sorted)}
+    outer_fan: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for e in outer_sorted:
+        if e not in outer_fan[e[0]]:
+            outer_fan[e[0]].append(e)
+        if e not in outer_fan[e[1]]:
+            outer_fan[e[1]].append(e)
+
+    def _need_inset(ent: str, pk: tuple[str, str]) -> bool:
+        group = outer_fan.get(ent) or []
+        if len(group) <= 1:
+            return False
+        my_nest = outer_nest.get(pk, 0)
+        return any(outer_nest.get(o, 0) > my_nest for o in group if o != pk)
 
     edge_parts: list[str] = []
     node_parts: list[str] = []
@@ -820,7 +898,7 @@ def render_er_svg(
         L = math.hypot(dx, dy) or 1.0
         return px - dy / L * 12, py + dx / L * 12
 
-    # 联系：分层布局下一律直线过菱形（可交叉；控制台拖开）
+    # 联系：内页直线；外页绕布局包围弧（实体不落环）
     for ri, r in enumerate(relations):
         lp = entity_pos.get(r["left"])
         rp = entity_pos.get(r["right"])
@@ -832,6 +910,7 @@ def render_er_svg(
         pk = pair_keys[ri]
         pi = pair_seen.get(pk, 0)
         pair_seen[pk] = pi + 1
+        use_outer = pk in outer_pairs
 
         hw1 = entity_hw.get(r["left"], 40)
         hw2 = entity_hw.get(r["right"], 40)
@@ -839,25 +918,68 @@ def render_er_svg(
         dw = max(36.0, _text_w(rel_label, 12) / 2 + 16)
         dh = 22.0
 
-        ox, oy = _pair_offset(lp, rp, pi, pair_totals[pk])
-        mx = (lp[0] + rp[0]) / 2 + ox
-        my = (lp[1] + rp[1]) / 2 + oy
-        e1 = _rect_edge(lp[0], lp[1], mx, my, hw1, ENTITY_HH)
-        d1 = _diamond_edge(mx, my, dw, dh, lp[0], lp[1])
-        d2 = _diamond_edge(mx, my, dw, dh, rp[0], rp[1])
-        e2 = _rect_edge(rp[0], rp[1], mx, my, hw2, ENTITY_HH)
-        edge_parts.append(
-            f'<line class="er-edge" data-from="{_esc(left_id)}" data-to="{_esc(rel_id)}" '
-            f'x1="{e1[0]:.1f}" y1="{e1[1]:.1f}" x2="{d1[0]:.1f}" y2="{d1[1]:.1f}" '
-            f'stroke="#000" stroke-width="1" fill="none"/>'
-        )
-        edge_parts.append(
-            f'<line class="er-edge" data-from="{_esc(rel_id)}" data-to="{_esc(right_id)}" '
-            f'x1="{d2[0]:.1f}" y1="{d2[1]:.1f}" x2="{e2[0]:.1f}" y2="{e2[1]:.1f}" '
-            f'stroke="#000" stroke-width="1" fill="none"/>'
-        )
-        c1 = _card_pos(e1, d1)
-        c2 = _card_pos(e2, d2)
+        if use_outer:
+            nest = outer_nest.get(pk, 0)
+            inset1 = 0.10 if _need_inset(r["left"], pk) else 0.0
+            inset2 = 0.10 if _need_inset(r["right"], pk) else 0.0
+            arc_pts, (mx, my) = _outer_arc_polyline(
+                lp, rp, cx, cy, ring_r, nest, inset1=inset1, inset2=inset2
+            )
+            if pair_totals[pk] > 1:
+                ox, oy = _pair_offset(arc_pts[0], arc_pts[-1], pi, pair_totals[pk])
+                mx += ox
+                my += oy
+            e1, _a1 = _outward_rect_port(lp[0], lp[1], cx, cy, hw1, ENTITY_HH)
+            e2, _a2 = _outward_rect_port(rp[0], rp[1], cx, cy, hw2, ENTITY_HH)
+            mid = len(arc_pts) // 2
+            left_chain = [e1, *arc_pts[: mid + 1]]
+            d1 = _diamond_edge(mx, my, dw, dh, left_chain[-1][0], left_chain[-1][1])
+            left_chain.append(d1)
+            right_chain = [
+                _diamond_edge(mx, my, dw, dh, arc_pts[mid][0], arc_pts[mid][1]),
+                *arc_pts[mid:],
+                e2,
+            ]
+            for i in range(len(left_chain) - 1):
+                x1, y1 = left_chain[i]
+                x2, y2 = left_chain[i + 1]
+                edge_parts.append(
+                    f'<line class="er-edge" data-from="{_esc(left_id)}" data-to="{_esc(rel_id)}" '
+                    f'data-route="outer" '
+                    f'x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
+                    f'stroke="#000" stroke-width="1" fill="none"/>'
+                )
+            for i in range(len(right_chain) - 1):
+                x1, y1 = right_chain[i]
+                x2, y2 = right_chain[i + 1]
+                edge_parts.append(
+                    f'<line class="er-edge" data-from="{_esc(rel_id)}" data-to="{_esc(right_id)}" '
+                    f'data-route="outer" '
+                    f'x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
+                    f'stroke="#000" stroke-width="1" fill="none"/>'
+                )
+            c1 = _card_pos(e1, arc_pts[0])
+            c2 = _card_pos(e2, arc_pts[-1])
+        else:
+            ox, oy = _pair_offset(lp, rp, pi, pair_totals[pk])
+            mx = (lp[0] + rp[0]) / 2 + ox
+            my = (lp[1] + rp[1]) / 2 + oy
+            e1 = _rect_edge(lp[0], lp[1], mx, my, hw1, ENTITY_HH)
+            d1 = _diamond_edge(mx, my, dw, dh, lp[0], lp[1])
+            d2 = _diamond_edge(mx, my, dw, dh, rp[0], rp[1])
+            e2 = _rect_edge(rp[0], rp[1], mx, my, hw2, ENTITY_HH)
+            edge_parts.append(
+                f'<line class="er-edge" data-from="{_esc(left_id)}" data-to="{_esc(rel_id)}" '
+                f'x1="{e1[0]:.1f}" y1="{e1[1]:.1f}" x2="{d1[0]:.1f}" y2="{d1[1]:.1f}" '
+                f'stroke="#000" stroke-width="1" fill="none"/>'
+            )
+            edge_parts.append(
+                f'<line class="er-edge" data-from="{_esc(rel_id)}" data-to="{_esc(right_id)}" '
+                f'x1="{d2[0]:.1f}" y1="{d2[1]:.1f}" x2="{e2[0]:.1f}" y2="{e2[1]:.1f}" '
+                f'stroke="#000" stroke-width="1" fill="none"/>'
+            )
+            c1 = _card_pos(e1, d1)
+            c2 = _card_pos(e2, d2)
 
         diamond = (
             f"{mx:.1f},{my - dh:.1f} {mx + dw:.1f},{my:.1f} "

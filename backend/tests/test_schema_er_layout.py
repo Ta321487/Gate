@@ -1,12 +1,17 @@
-"""E-R 总图布局：ELK layered 初局；禁全环；拖拽路径不重排。"""
+"""E-R 总图布局：ELK layered 初局；禁全环；直线交叉进外页。"""
 
 from __future__ import annotations
 
-import math
 import unittest
 from pathlib import Path
 
-from app.bake.schema.er import _layout_entities, load_schema_model, render_er_svg
+from app.bake.schema.er import (
+    _layout_entities,
+    _partition_geometric_outer,
+    _straight_layout_crossings,
+    load_schema_model,
+    render_er_svg,
+)
 from app.bake.schema.layout_elk import is_approx_circular, layout_graph
 
 
@@ -22,16 +27,56 @@ class ErLayoutTests(unittest.TestCase):
         self.assertGreater(max(xs) - min(xs), 200.0)
         self.assertFalse(is_approx_circular(pos))
 
-    def test_k5_not_circular(self) -> None:
+    def test_k5_not_circular_and_outer_clears_straight_cross(self) -> None:
         names = ["a", "b", "c", "d", "e"]
-        edges = [
-            (a, b)
-            for i, a in enumerate(names)
-            for b in names[i + 1 :]
-        ]
+        edges = [(a, b) for i, a in enumerate(names) for b in names[i + 1 :]]
         _order, pos, outer = _layout_entities(names, edges, 0.0, 0.0, 220.0)
-        self.assertEqual(outer, set())
         self.assertFalse(is_approx_circular(pos, min_n=5))
+        # K5 直线必有交叉 → 外页非空；内页直线应零交叉
+        self.assertTrue(outer)
+        undirected = []
+        for a, b in edges:
+            k = (a, b) if a <= b else (b, a)
+            if k not in outer:
+                undirected.append(k)
+        self.assertEqual(_straight_layout_crossings(pos, undirected), 0)
+        # 拆页函数与 layout 一致
+        self.assertEqual(_partition_geometric_outer(pos, edges), outer)
+
+    def test_hub_shopish_renders_outer_route(self) -> None:
+        """用户中心辐射图：SVG 须出现外页弧标记，且实体不围环。"""
+        names = [
+            "user",
+            "order",
+            "product",
+            "msg",
+            "fav",
+            "addr",
+            "ledger",
+            "review",
+        ]
+        edges = [("user", x) for x in names[1:]]
+        edges += [("order", "product"), ("order", "review"), ("product", "fav")]
+        model = {
+            "tables": [{"name": n, "label": n, "columns": []} for n in names],
+            "relations": [
+                {
+                    "name": f"r{i}",
+                    "label": f"联{i}",
+                    "left": a,
+                    "right": b,
+                    "card_left": "1",
+                    "card_right": "n",
+                }
+                for i, (a, b) in enumerate(edges)
+            ],
+        }
+        _o, pos, outer = _layout_entities(names, edges, 0.0, 0.0, 200.0)
+        self.assertFalse(is_approx_circular(pos))
+        svg = render_er_svg(model, mode="total")
+        self.assertIn('data-kind="entity"', svg)
+        if outer:
+            self.assertIn('data-route="outer"', svg)
 
     def test_render_total_svg_has_entities(self) -> None:
         model = {
@@ -89,10 +134,19 @@ class ErLayoutTests(unittest.TestCase):
                 if x.get("left") in names and x.get("right") in names
             ]
             _o, pos, outer = _layout_entities(names, edges, 0.0, 0.0, 200.0)
-            self.assertEqual(outer, set())
             self.assertFalse(
                 is_approx_circular(pos),
                 f"{wp.name} layout looks circular",
+            )
+            undirected = []
+            for a, b in edges:
+                k = (a, b) if a <= b else (b, a)
+                if k not in outer:
+                    undirected.append(k)
+            self.assertEqual(
+                _straight_layout_crossings(pos, undirected),
+                0,
+                f"{wp.name} inner straight edges still cross",
             )
             checked += 1
             if checked >= 3:
