@@ -609,6 +609,39 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         project.match_confirmed = True
         project.match_locked = True
         project.status = ProjectStatus.ready.value
+        # 确认瞬间短窗灌本机氛围缓存；失败不挡确认（无代理时常连不上）
+        try:
+            from app.bake.atmosphere_prefetch import (
+                apply_atmosphere_to_spec,
+                prefetch_match_atmosphere,
+            )
+
+            atm = await asyncio.to_thread(
+                prefetch_match_atmosphere,
+                project.domain,
+                project.theme,
+            )
+            project.spec = apply_atmosphere_to_spec(
+                project.spec if isinstance(project.spec, dict) else {},
+                atm,
+            )
+            if atm.get("auth_real"):
+                logger.info(
+                    "atmosphere prefetch ok project=%s domain=%s real=%s portal=%s",
+                    project.id,
+                    project.domain,
+                    atm.get("auth_real"),
+                    atm.get("portal_slides"),
+                )
+            else:
+                logger.warning(
+                    "atmosphere prefetch no real photo project=%s domain=%s "
+                    "(bake 将用色板或旧缓存；可配 UNSPLASH_HTTP_PROXY)",
+                    project.id,
+                    project.domain,
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("atmosphere prefetch skipped: %s", e)
 
     await db.commit()
     await db.refresh(project)

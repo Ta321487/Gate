@@ -43,24 +43,36 @@ from app.api.system_router import router  # noqa: E402
 
 @router.get("/unsplash", response_model=UnsplashSettings, tags=["Unsplash"], summary="读取 Unsplash 配置")
 async def get_unsplash():
+    from app.bake.unsplash_fetch import status_payload
+
     s = get_settings()
     key = (s.unsplash_access_key or "").strip()
+    st = status_payload()
     return UnsplashSettings(
         key_configured=bool(key),
         key_masked=mask_key(key, env_name="UNSPLASH_ACCESS_KEY"),
+        proxy_configured=bool(st.get("proxy_configured")),
+        vault_auth_heroes=int(st.get("vault_auth_heroes") or 0),
+        vault_portal_banners=int(st.get("vault_portal_banners") or 0),
+        hints=list(st.get("hints") or []),
+        hint=str(st.get("hint") or ""),
     )
 
 
 @router.post("/unsplash/test", response_model=ApiOk, tags=["Unsplash"], summary="测试 Unsplash 连通")
 async def test_unsplash():
-    """探测 Access Key：GET /photos（公开列表，无需检索词）。"""
+    """探测 Access Key：GET /photos（公开列表，无需检索词）。走与 bake 相同的代理配置。"""
     s = get_settings()
     key = (s.unsplash_access_key or "").strip()
     if not key:
-        return ApiOk(ok=False, message="未配置 UNSPLASH_ACCESS_KEY")
+        return ApiOk(
+            ok=False,
+            message="未配置 UNSPLASH_ACCESS_KEY。无 Key 时出包会用色板图，不是实拍。",
+        )
+    proxy = (getattr(s, "unsplash_http_proxy", None) or "").strip()
     t0 = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=15, proxy=proxy or None) as client:
             r = await client.get(
                 "https://api.unsplash.com/photos",
                 params={"per_page": 1},
@@ -76,7 +88,20 @@ async def test_unsplash():
             return ApiOk(ok=False, message=f"配额或权限不足 · {ms} ms")
         if r.status_code >= 400:
             return ApiOk(ok=False, message=f"HTTP {r.status_code} · {ms} ms")
-        return ApiOk(ok=True, message=f"延迟 {ms} ms · 检索可用", data={"latency_ms": ms})
+        tip = "连通正常；成功拉过的图会进本机缓存，之后出包可读缓存少抖。"
+        if proxy:
+            tip += " 已走 UNSPLASH_HTTP_PROXY。"
+        return ApiOk(
+            ok=True,
+            message=f"延迟 {ms} ms · {tip}",
+            data={"latency_ms": ms, "proxy": bool(proxy)},
+        )
     except Exception as e:  # noqa: BLE001
-        return ApiOk(ok=False, message=str(e))
+        return ApiOk(
+            ok=False,
+            message=(
+                f"连通失败：{e}。"
+                "可配 UNSPLASH_HTTP_PROXY 后重试；已有本机缓存的题仍可出实图。"
+            ),
+        )
 

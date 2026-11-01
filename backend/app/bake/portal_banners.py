@@ -7,15 +7,15 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from app.bake.auth_hero import (
-    _FALLBACK_PHOTOS,
-    _download,
-    _search_photo_urls,
-    build_query,
-)
+from app.bake.auth_hero import _FALLBACK_PHOTOS, build_query
+from app.bake import unsplash_fetch as uf
 from app.core.config import get_settings
 
 log = logging.getLogger("gf.portal_banners")
+
+# 兼容旧测 monkeypatch；实现落在 unsplash_fetch
+_download = uf.download_image
+_search_photo_urls = uf.search_photo_urls
 
 # 默认抽几帧：过少轮播显得空；过多拖 bake / 占磁盘
 PORTAL_BANNER_COUNT = 5
@@ -459,11 +459,11 @@ def _pick_portal_ids(domain: str, theme: str, count: int = PORTAL_BANNER_COUNT) 
 
 
 def _download_portal_photo(pid: str, dest: Path, *, timeout: float = 4.0) -> bool:
-    url = (
-        f"https://images.unsplash.com/photo-{pid}"
-        f"?auto=format&fit=crop&w=1800&h=720&q=80"
+    return _download(
+        uf.direct_photo_url(pid, width=1800, height=720),
+        dest,
+        timeout=timeout,
     )
-    return _download(url, dest, timeout=timeout)
 
 
 def _content_md5(path: Path) -> str:
@@ -488,8 +488,6 @@ def fetch_portal_banners(
     settings = get_settings()
     public = workspace / "frontend" / "public" / "portal-banners"
     public.mkdir(parents=True, exist_ok=True)
-    cache_dir = settings.cache_dir / "portal-banners"
-    cache_dir.mkdir(parents=True, exist_ok=True)
 
     # 清掉旧轮播，避免残留 1.jpg/3.jpg 缺号或旧重复图
     for old in public.glob("*.jpg"):
@@ -507,6 +505,49 @@ def fetch_portal_banners(
     used_hashes: set[str] = set()
     net_fail = 0
 
+    def _try_slot_from_cache_or_net(
+        *,
+        cache_name: str,
+        fetch,
+    ) -> bool:
+        """命中本机缓存或短窗拉取；成功追加一张 slide。fetch(dest)->bool。"""
+        nonlocal net_fail
+        if len(slides) >= count or len(slides) >= len(captions):
+            return False
+        slot = len(slides) + 1
+        dest = public / f"{slot}.jpg"
+        cache_path = uf.cache_file(
+            "portal-banners", cache_name, cache_dir=settings.cache_dir
+        )
+        ok = uf.cache_read(cache_path, dest)
+        if not ok:
+            if net_fail >= 4:
+                log.warning("portal banner network aborted after failures (%s)", domain)
+                return False
+            ok = bool(fetch(dest))
+            if ok and dest.is_file():
+                uf.cache_write(cache_path, dest)
+            else:
+                net_fail += 1
+                dest.unlink(missing_ok=True)
+                return True  # 继续尝试下一候选
+        if not ok or not dest.is_file() or dest.stat().st_size < uf.MIN_IMAGE_BYTES:
+            dest.unlink(missing_ok=True)
+            return True
+        digest = _content_md5(dest)
+        if not digest or digest in used_hashes:
+            dest.unlink(missing_ok=True)
+            log.warning("portal banner skip duplicate image for %s", domain)
+            return True
+        used_hashes.add(digest)
+        cap = captions[len(slides)]
+        slides.append({
+            "src": f"/portal-banners/{slot}.jpg",
+            "title": cap["title"],
+            "lead": cap["lead"],
+        })
+        return True
+
     # 有 Key：先批量检索，按结果逐张下载（每帧不同图）
     api_urls: list[str] = []
     if key:
@@ -517,94 +558,25 @@ def fetch_portal_banners(
     for img_url in api_urls:
         if len(slides) >= count or len(slides) >= len(captions):
             break
-        slot = len(slides) + 1
-        dest = public / f"{slot}.jpg"
-        cache_key = hashlib.md5(f"portal-api|{domain}|{theme}|{img_url}".encode()).hexdigest()[:16]
-        cache_file = cache_dir / f"{domain}-{cache_key}.jpg".replace("/", "_")
-        ok = False
-        if cache_file.is_file() and cache_file.stat().st_size > 2000:
-            try:
-                dest.write_bytes(cache_file.read_bytes())
-                ok = True
-            except OSError:
-                ok = False
-        elif net_fail >= 4:
-            log.warning("portal banner network aborted after failures (%s)", domain)
+        if net_fail >= 4:
             break
-        else:
-            ok = _download(img_url, dest, timeout=4.0)
-            if ok and dest.is_file():
-                try:
-                    cache_file.write_bytes(dest.read_bytes())
-                except OSError:
-                    pass
-            else:
-                net_fail += 1
-                dest.unlink(missing_ok=True)
-                continue
-
-        if not ok or not dest.is_file() or dest.stat().st_size < 2000:
-            dest.unlink(missing_ok=True)
-            continue
-        digest = _content_md5(dest)
-        if not digest or digest in used_hashes:
-            dest.unlink(missing_ok=True)
-            log.warning("portal banner skip duplicate api image for %s", domain)
-            continue
-        used_hashes.add(digest)
-        cap = captions[len(slides)]
-        slides.append({
-            "src": f"/portal-banners/{slot}.jpg",
-            "title": cap["title"],
-            "lead": cap["lead"],
-        })
+        ck = uf.cache_key_hash("portal-api", domain, theme, img_url)
+        _try_slot_from_cache_or_net(
+            cache_name=f"{domain}-{ck}.jpg",
+            fetch=lambda dest, u=img_url: _download(u, dest, timeout=4.0),
+        )
 
     # 不足再用固定 photo id 补齐（仍去重）
     for pid in candidates:
         if len(slides) >= count or len(slides) >= len(captions):
             break
-        slot = len(slides) + 1
-        dest = public / f"{slot}.jpg"
-        cache_key = hashlib.md5(f"portal|{domain}|{theme}|{pid}".encode()).hexdigest()[:16]
-        cache_file = cache_dir / f"{domain}-{cache_key}.jpg".replace("/", "_")
-        ok = False
-        if cache_file.is_file() and cache_file.stat().st_size > 2000:
-            try:
-                dest.write_bytes(cache_file.read_bytes())
-                ok = True
-            except OSError:
-                ok = False
-        elif net_fail >= 4:
-            log.warning("portal banner network aborted after failures (%s)", domain)
+        if net_fail >= 4:
             break
-        else:
-            ok = _download_portal_photo(pid, dest, timeout=4.0)
-            if ok and dest.is_file():
-                try:
-                    cache_file.write_bytes(dest.read_bytes())
-                except OSError:
-                    pass
-            else:
-                net_fail += 1
-                dest.unlink(missing_ok=True)
-                continue
-
-        if not ok or not dest.is_file() or dest.stat().st_size < 2000:
-            dest.unlink(missing_ok=True)
-            continue
-
-        digest = _content_md5(dest)
-        if not digest or digest in used_hashes:
-            dest.unlink(missing_ok=True)
-            log.warning("portal banner skip duplicate image for %s (%s)", domain, pid)
-            continue
-        used_hashes.add(digest)
-        cap = captions[len(slides)]
-        slides.append({
-            "src": f"/portal-banners/{slot}.jpg",
-            "title": cap["title"],
-            "lead": cap["lead"],
-        })
+        ck = uf.cache_key_hash("portal", domain, theme, pid)
+        _try_slot_from_cache_or_net(
+            cache_name=f"{domain}-{ck}.jpg",
+            fetch=lambda dest, p=pid: _download_portal_photo(p, dest, timeout=4.0),
+        )
 
     # 外网不足：按 themes.css 色板本地补齐（同域不同 slot 构图有差，配色跟 theme）
     filled_local = 0

@@ -465,7 +465,7 @@ flowchart TB
 |---|---|---|
 | DeepSeek API | 匹配推荐、填岛、标签、QA、Fix、样例题 | 无 Key 仍可 bake：业务岛走确定性填充 |
 | Gemini API（可选） | 与 DeepSeek 并存，可双开，优先一家失败自动换 | 单开时按 `LLM_PROVIDER` / 运营台开关 |
-| Unsplash | 登录氛围图、门户轮播 | 按 `themes.css` 色板本地生成 |
+| Unsplash | 登录氛围图、门户轮播（共用 `unsplash_fetch`；优先本机缓存；可选 `UNSPLASH_HTTP_PROXY`） | 缓存未命中且外网失败 → 按 `themes.css` 色板本地生成 |
 | MySQL | 学生库必用；工厂元库可选 | 工厂元库退化为 SQLite `data/factory.db` |
 
 ---

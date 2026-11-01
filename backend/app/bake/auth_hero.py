@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
-import urllib.error
-import urllib.parse
-import urllib.request
 from pathlib import Path
 
-from app.core.config import get_settings
 from app.bake.domain_skin import auth_hero_query_for
+from app.bake import unsplash_fetch as uf
+from app.core.config import get_settings
 
 log = logging.getLogger("gf.auth_hero")
+
+# 兼容旧测：仍可 monkeypatch 本模块名；实现落在 unsplash_fetch
+_download = uf.download_image
+_search_photo_urls = uf.search_photo_urls
 
 # 主题气质（取 id 后缀 / 关键词）
 _THEME_MOOD: dict[str, str] = {
@@ -182,77 +183,6 @@ def _pick_fallback_id(domain: str, theme: str) -> str:
     return photos[h % len(photos)]
 
 
-def _download(url: str, dest: Path, timeout: float = 8.0) -> bool:
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "thesis-harbor/1 auth-hero"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = resp.read()
-            ctype = (resp.headers.get("Content-Type") or "").lower()
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
-        log.warning("auth hero download failed: %s (%s)", url[:80], e)
-        return False
-    if len(data) < 2000:
-        return False
-    is_jpeg = data[:3] == b"\xff\xd8\xff"
-    is_png = data[:8] == b"\x89PNG\r\n\x1a\n"
-    if "image" not in ctype and not (is_jpeg or is_png):
-        return False
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(data)
-    return True
-
-
-def _search_photo_urls(
-    query: str,
-    access_key: str,
-    *,
-    limit: int = 5,
-    page: int = 1,
-    orientation: str = "landscape",
-    timeout: float = 8.0,
-) -> list[str]:
-    """Unsplash Search API：返回去重后的图片 URL 列表（不下载）。"""
-    limit = max(1, min(int(limit or 1), 30))
-    qs = urllib.parse.urlencode(
-        {
-            "query": query,
-            "per_page": limit,
-            "page": max(1, int(page or 1)),
-            "orientation": orientation,
-        }
-    )
-    api = f"https://api.unsplash.com/search/photos?{qs}"
-    req = urllib.request.Request(
-        api,
-        headers={
-            "Authorization": f"Client-ID {access_key}",
-            "Accept-Version": "v1",
-            "User-Agent": "thesis-harbor/1 unsplash",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-    except Exception as e:  # noqa: BLE001
-        log.warning("unsplash api search failed: %s", e)
-        return []
-    out: list[str] = []
-    seen: set[str] = set()
-    for item in payload.get("results") or []:
-        urls = item.get("urls") or {}
-        img = urls.get("regular") or urls.get("full") or urls.get("small")
-        if not img or img in seen:
-            continue
-        seen.add(img)
-        out.append(img)
-        if len(out) >= limit:
-            break
-    return out
-
-
 def _fetch_via_api(query: str, access_key: str, dest: Path) -> bool:
     for img in _search_photo_urls(query, access_key, limit=5):
         if _download(img, dest):
@@ -262,11 +192,7 @@ def _fetch_via_api(query: str, access_key: str, dest: Path) -> bool:
 
 def _fetch_fallback_photo(domain: str, theme: str, dest: Path) -> bool:
     pid = _pick_fallback_id(domain, theme)
-    url = (
-        f"https://images.unsplash.com/photo-{pid}"
-        f"?auto=format&fit=crop&w=1600&h=900&q=80"
-    )
-    return _download(url, dest)
+    return _download(uf.direct_photo_url(pid, width=1600, height=900), dest)
 
 
 def _fetch_local_atmosphere(domain: str, theme: str, dest: Path) -> bool:
@@ -282,19 +208,19 @@ def fetch_auth_hero(workspace: Path, domain: str, theme: str) -> bool:
     """
     写入 workspace/frontend/public/auth-hero.jpg。
     成功 True；失败不抛，bake 继续。
-    顺序：缓存 → Unsplash API → Unsplash 直链 → 主题色本地生成。
+    顺序：本机缓存 → Unsplash API → Unsplash 直链 → 主题色本地生成。
     """
     settings = get_settings()
     public = workspace / "frontend" / "public"
     dest = public / "auth-hero.jpg"
-    cache_dir = settings.cache_dir / "auth-heroes"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_key = hashlib.md5(f"{domain}|{theme}".encode()).hexdigest()[:16]
-    cache_file = cache_dir / f"{domain}-{theme}-{cache_key}.jpg".replace("/", "_")
+    cache_key = uf.cache_key_hash(domain, theme)
+    cache_file = uf.cache_file(
+        "auth-heroes",
+        f"{domain}-{theme}-{cache_key}.jpg",
+        cache_dir=settings.cache_dir,
+    )
 
-    if cache_file.is_file() and cache_file.stat().st_size > 2000:
-        public.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(cache_file.read_bytes())
+    if uf.cache_read(cache_file, dest):
         log.info("auth hero cache hit → %s", dest)
         return True
 
@@ -315,12 +241,9 @@ def fetch_auth_hero(workspace: Path, domain: str, theme: str) -> bool:
         if ok:
             source = "local-theme"
     if ok and dest.is_file():
-        # 仅缓存外网图；本地生成另有 local-atmosphere 缓存，避免把本地图当成 Unsplash 命中
+        # 仅缓存外网图；本地生成另有 local-atmosphere 缓存
         if source.startswith("unsplash"):
-            try:
-                cache_file.write_bytes(dest.read_bytes())
-            except OSError:
-                pass
+            uf.cache_write(cache_file, dest)
         log.info("auth hero saved (%s / %s): %s", source or "?", query, dest)
         return True
     log.warning("auth hero skipped for %s / %s", domain, theme)

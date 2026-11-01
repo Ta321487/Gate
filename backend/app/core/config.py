@@ -46,6 +46,8 @@ class Settings(BaseSettings):
 
     # 登录氛围图（可选；无 Key / 外网失败时按 themes.css 色板本地生成）
     unsplash_access_key: str = Field(default="", alias="UNSPLASH_ACCESS_KEY")
+    # 仅工厂拉 Unsplash 用；可填公司跳板，不进学生 ZIP
+    unsplash_http_proxy: str = Field(default="", alias="UNSPLASH_HTTP_PROXY")
 
     gf_backend_port_start: int = Field(default=9100, alias="GF_BACKEND_PORT_START")
     gf_backend_port_end: int = Field(default=9120, alias="GF_BACKEND_PORT_END")

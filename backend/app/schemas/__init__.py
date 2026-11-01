@@ -450,9 +450,15 @@ class UnsplashSettings(BaseModel):
 
     key_configured: bool = Field(description="是否已配置 Access Key")
     key_masked: str = Field(description="Key 掩码")
+    proxy_configured: bool = Field(
+        default=False, description="是否已配置 UNSPLASH_HTTP_PROXY"
+    )
+    vault_auth_heroes: int = Field(default=0, description="本机登录氛围图缓存张数")
+    vault_portal_banners: int = Field(default=0, description="本机门户轮播缓存张数")
+    hints: list[str] = Field(default_factory=list, description="运营提示条目")
     hint: str = Field(
-        default="环境变量 UNSPLASH_ACCESS_KEY；外网失败时按 themes.css 色板本地生成登录图/轮播",
-        description="配置说明",
+        default="",
+        description="配置说明（多条合成）",
     )
 
 
