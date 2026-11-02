@@ -179,8 +179,19 @@ def attach_order_extras_schema(schema: dict[str, Any], caps: list[str], *, timeo
 
     ensure_menu(user, "order_reviews", {"key": "order_reviews", "label": "我的评价"}, before_key="my_orders")
     ensure_menu(admin, "order_reviews", {"key": "order_reviews", "label": "评价管理"}, before_key="orders")
+    # 买家 vs 总管/商家：勿共用「我的评价」口吻（L4；merchant_ops 进评价菜单会红）
     labels.setdefault("orderReviewPageTitle", "我的评价")
     labels.setdefault("orderReviewPageLead", "对已完成订单进行星级与文字评价。")
+    labels.setdefault("orderReviewAdminPageTitle", "评价管理")
+    labels.setdefault(
+        "orderReviewAdminPageLead",
+        "查看全盘评价，必要时删除不当内容。",
+    )
+    labels.setdefault("orderReviewStaffPageTitle", "评价管理")
+    labels.setdefault(
+        "orderReviewStaffPageLead",
+        "查看评价并回复买家。",
+    )
     ents = schema.setdefault("entities", {})
     ents.setdefault(
         "orderReview",

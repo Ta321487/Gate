@@ -9,6 +9,27 @@ from app.bake.schema.shells import (
     slot_shell_schema,
 )
 
+
+def _stamp_reserve_role_leads(
+    schema: dict[str, Any],
+    *,
+    resv_admin: str,
+    resv_staff: str,
+    order_admin: str | None = None,
+    order_staff: str | None = None,
+) -> dict[str, Any]:
+    """预约组：总管 vs 前台/店员订单·预约页 lead（L4）。"""
+    labels = dict(schema.get("labels") or {})
+    labels["reservationsAdminLead"] = resv_admin
+    labels["reservationsStaffLead"] = resv_staff
+    if order_admin:
+        labels["ordersAdminLead"] = order_admin
+    if order_staff:
+        labels["ordersStaffLead"] = order_staff
+    schema["labels"] = labels
+    return schema
+
+
 def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """校园二手 / 行业货皮 / 社会零售：成色仅 campus；货名跟 scene seed。"""
     from app.bake.scene_scan import scan_shop_marketplace, shop_product_kind
@@ -154,14 +175,20 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
                 "买家选购下单，商家入驻开店，平台统一监管；"
                 "平台管理员为系统预制账号，不开放自助注册。"
             )
+            notice_title = "农产活动"
+            notice_body = "多店助农入驻；下单后可在订单页查看进度。"
         elif pack is not None:
             brow, lead = pack.mp_eyebrow, pack.mp_lead
+            notice_title, notice_body = pack.mp_notice_title, pack.mp_notice_body
         else:
             brow = "多商家商城"
             lead = (
                 "买家选购下单，商家入驻开店，平台统一监管；"
                 "平台管理员为系统预制账号，不开放自助注册。"
             )
+            # 勿沿用单店「管理员确认发货」——多店发货归商家
+            notice_title = "商城开业"
+            notice_body = "多店入驻；下单后可在订单页查看进度。"
     schema = order_shell_schema(
         title,
         domain="DOM-SHOP",
@@ -256,6 +283,10 @@ def _shop_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         labels["messagesPageLead"] = "新订单、售后与系统通知。"
         labels["orderReviewPageTitle"] = "我的评价"
         labels["orderReviewPageLead"] = "对已完成订单进行星级与文字评价。"
+        labels["orderReviewAdminPageTitle"] = "评价管理"
+        labels["orderReviewAdminPageLead"] = "查看全平台评价，必要时删除不当内容。"
+        labels["orderReviewStaffPageTitle"] = "评价管理"
+        labels["orderReviewStaffPageLead"] = "查看本店评价并回复买家。"
         labels["usersAdminLead"] = "管理买家账号，审核商家入驻申请。"
         # 管理员=全平台监督；发货/物流是商家运营，勿写进 ordersAdminLead（交付质量会红）
         labels["ordersAdminLead"] = "查看全平台订单与售后，必要时介入处理。"
@@ -341,6 +372,13 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     labels = dict(schema.get("labels") or {})
     labels["orderFulfillColumnLabel"] = "配送"
     labels["orderShipFieldLabel"] = "取餐码"
+    # 主管=全场监督；接单/出餐归档口或店员（勿写进 ordersAdminLead）
+    if canteen:
+        labels["ordersAdminLead"] = "查看全食堂订单与退单，必要时介入处理。"
+        labels["ordersStaffLead"] = "处理本档口接单、出餐与配送状态。"
+    else:
+        labels["ordersAdminLead"] = "查看全店订单与退单，必要时介入处理。"
+        labels["ordersStaffLead"] = "处理本店接单、出餐与配送状态。"
     schema["labels"] = labels
     return schema
 
@@ -438,7 +476,7 @@ def _meeting_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
     p = meeting_label_pack(meeting_product_kind(title, proposal_text))
     noun, remark, admin, sub = p["noun"], p["remark"], p["admin"], p["sub"]
-    return slot_shell_schema(
+    schema = slot_shell_schema(
         title,
         domain="DOM-MEETING",
         user_role_id="user",
@@ -471,6 +509,11 @@ def _meeting_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         reserve_remark_label=remark,
         complete_verb="完成使用",
         completed_label="已完成",
+    )
+    return _stamp_reserve_role_leads(
+        schema,
+        resv_admin=f"查看全场预约，维护{noun}与开放时段。",
+        resv_staff="审批预约、签到核销与超时催办。",
     )
 
 def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -571,7 +614,11 @@ def _hospital_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     resv_ent["visitTypeOptions"] = visit_opts
     resv_ent["visitTypeDefault"] = default_visit
     resv_ent["symptomNoteLabel"] = symptom_lab
-    return schema
+    return _stamp_reserve_role_leads(
+        schema,
+        resv_admin=f"查看全院{resv}，维护{noun}与号源时段。",
+        resv_staff=f"核销{resv}、登记到诊与办结。",
+    )
 
 def _parking_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """车位：校园 vs 商场/小区车场（同 _food_schema 分支）。"""
@@ -609,7 +656,7 @@ def _parking_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         menu_u, points_mid, reg = "选车位", "车位检索", "注册后可预约车位"
         notice = "预约成功后请按时入场；取消后释放车位时段。"
         notice_t = "车位预约"
-    return slot_shell_schema(
+    schema = slot_shell_schema(
         title,
         domain="DOM-PARKING",
         user_role_id="user",
@@ -642,6 +689,11 @@ def _parking_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         reserve_remark_label="车牌号",
         complete_verb="登记入场",
         completed_label="已入场",
+    )
+    return _stamp_reserve_role_leads(
+        schema,
+        resv_admin=f"查看全场预约，维护{archive_lab}与开放时段。",
+        resv_staff="审批预约、登记入场与核销。",
     )
 
 def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -693,7 +745,12 @@ def _salon_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         allow_rating=True,
     )
     schema["entities"]["reservation"]["stylistLabel"] = p["stylist_label"]
-    return schema
+    return _stamp_reserve_role_leads(
+        schema,
+        resv_admin=f"查看全店预约，维护{noun}与排班。",
+        resv_staff="核销预约、前台办结与改约处理。",
+    )
+
 
 def _carrent_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     schema = slot_shell_schema(
@@ -760,7 +817,13 @@ def _carrent_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     resv_ent = schema["entities"]["reservation"]
     resv_ent["guestNameLabel"] = "驾驶人"
     resv_ent["guestCountLabel"] = "用车人数"
-    return schema
+    return _stamp_reserve_role_leads(
+        schema,
+        resv_admin="查看全店租约，维护车型与库存。",
+        resv_staff="审核租约、办理取车还车与定金核对。",
+        order_admin="查看全店订单与租约，必要时介入处理。",
+        order_staff="办理取车、还车与现场核销。",
+    )
 
 
 def _hotel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
@@ -859,7 +922,13 @@ def _hotel_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             elif field.get("key") == "stock":
                 field["label"] = "可寄养数"
         resv_ent["guestNameLabel"] = "宠物名"
-        labels["orderFulfillHint"] = "金额按日价乘以天数。前台办理入住和离店。"
+        labels["orderFulfillHint"] = "金额按日价乘以天数。前台办理入住和离店，无物流发货。"
         schema["labels"] = labels
-    return schema
+    return _stamp_reserve_role_leads(
+        schema,
+        resv_admin="查看全店预订，维护房型与可售日历。",
+        resv_staff="确认预订、办理入住离店与签到核销。",
+        order_admin="查看全店订单与预订，必要时介入处理。",
+        order_staff="办理入住、离店与现场核销。",
+    )
 

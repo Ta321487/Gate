@@ -20,6 +20,7 @@
       >{{ instrumentFeeExportLabel }}</el-button>
       <el-button @click="openGenerate">生成时段</el-button>
     </div>
+    <p v-if="pageLead" class="page-lead">{{ pageLead }}</p>
     <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="id" label="编号" width="70" />
@@ -297,6 +298,16 @@ const stylistShort = computed(() => {
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
 const allowRating = computed(() => !!getSchema()?.entities?.reservation?.allowRating)
 const labels = computed(() => getSchema()?.labels || {})
+/** 总管看监督句，前台/店员看一线核销句（labels 由 bake 写入） */
+const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+const pageLead = computed(() => {
+  const lab = labels.value || {}
+  const adminLead = String(lab.reservationsAdminLead || '').trim()
+  const staffLead = String(lab.reservationsStaffLead || '').trim()
+  if (!adminLead && !staffLead) return ''
+  if (isSuper.value) return adminLead || staffLead
+  return staffLead || adminLead
+})
 const checkInLabel = computed(() => labels.value.checkInLabel || '签到')
 const lateFlagLabel = computed(() => labels.value.lateFlagLabel || '迟到')
 const waitlistPromoteTitle = computed(() => labels.value.waitlistPromoteTitle || '候补已转正')
@@ -953,6 +964,7 @@ onMounted(load)
 
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+.page-lead { margin: 0 0 10px; color: var(--portal-muted, #606266); font-size: 13px; }
 .table-ops { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .ops-empty { color: var(--el-text-color-placeholder, #c0c4cc); font-size: 13px; padding: 0 4px; }

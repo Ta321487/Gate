@@ -2,7 +2,7 @@
 
 > **本文只负责**：① 把「换开题还会不会年年磨」说清楚（难度诚实账）；② 按 `DOMAIN_GROUPS` **一组一轮**收「提案角色树 ↔ 页面/菜单/`labels.*`」这一族，并收成**结构闸**。  
 > **不负责**：密功能四件套（地图 §1.x / thicken 已收口档案）；跨域招牌词词表正文（[`surface-lexicon-design.md`](./surface-lexicon-design.md) / `domain_vocab.py`）；布局/控件闸细则；交付审计小卡写法（[`delivery-audit-rules.md`](./delivery-audit-rules.md)）。  
-> **状态**：**进行中** · 难度账常读；交易组多店订单 lead 已钉（R-TRADE-01）；角色族其余组待收。  
+> **状态**：**L4 十组已齐** · 难度账常读；`trade`～`fallback` **已齐**；未知口语/L5 仍长尾。  
 > **索引**：[README.md](./README.md) · 组真源 `backend/app/bake/domains.py` → `DOMAIN_GROUPS` / `AUDIT_GROUP_CANARIES` · 结构闸家 `backend/app/llm/agents_qa.py`。
 
 ---
@@ -178,16 +178,16 @@
 
 | 序 | gid | 组名 | 金丝雀 | 状态 | 本轮邻域建议 | 已收条目 | 备注 |
 |----|-----|------|--------|------|--------------|----------|------|
-| 1 | `trade` | 交易 | DOM-SHOP 校园二手商城 | **进行中** | 多店商城；DOM-FOOD 档口 | R-TRADE-01 | CINEMA 禁物流叙事已有皮约束，仍要回归；多店交点最脏 |
-| 2 | `reserve` | 预约 | DOM-MEETING | 待收 | HOTEL / CARRENT | — | 重点：`orderFulfillHint`、禁发货物流 |
-| 3 | `borrow` | 借用/占用 | DOM-LIBRARY | 待收 | EQUIP / PARCEL | — | hold/取书/额度勿串他域页 |
-| 4 | `ticket` | 报修/工单 | DOM-DORM | 待收 | PROPERTY | — | 工单态 vs 商城订单口吻 |
-| 5 | `follow` | 跟进 | DOM-INTERN | 待收 | CRM / EVENT | — | 与 lexicon「分级/分类」分工：本册只管角色句 |
-| 6 | `approve` | 审批/填报 | DOM-SEAL | 待收 | EXPENSE（多级审） | — | 总管 vs 承办岗 lead |
-| 7 | `apply` | 报名/申请 | DOM-ACTIVITY | 待收 | COURSE | — | 报名态 vs 审批态 |
-| 8 | `content` | 内容 | DOM-FORUM | 待收 | MEDIA | — | 审核下架 vs 作者编辑 |
-| 9 | `interact` | 互动/匹配 | DOM-SURVEY | 待收 | DATING / EXAM | — | 未挂能力勿宣称 |
-| 10 | `fallback` | 兜底 | DOM-GENERIC | 待收 | — | — | 轻扫；错绑开题另案 |
+| 1 | `trade` | 交易 | DOM-SHOP 校园二手商城 | **已齐** | 多店商城；DOM-FOOD 档口 | R-TRADE-01～05 | 本组 L4 条目已闸；未知口语仍依赖 p3q/LLM；L5 材料另册 |
+| 2 | `reserve` | 预约 | DOM-MEETING | **已齐** | HOTEL / CARRENT | R-RESERVE-01～02 | 本组 L4 已闸；INSTRUMENT 跟进皮未拆 lead；未知口语仍依赖 p3q/LLM |
+| 3 | `borrow` | 借用/占用 | DOM-LIBRARY | **已齐** | EQUIP / PARCEL | R-BORROW-01～02 | 本组 L4 已闸；未知口语仍依赖 p3q/LLM |
+| 4 | `ticket` | 报修/工单 | DOM-DORM | **已齐** | PROPERTY / IT | R-TICKET-01～02 | 本组 L4 已闸；未知口语仍依赖 p3q/LLM |
+| 5 | `follow` | 跟进 | DOM-INTERN | **已齐** | CRM / EVENT | R-FOLLOW-01～02 | 本组 L4 已闸；分级/分类归 lexicon；未知口语仍依赖 p3q/LLM |
+| 6 | `approve` | 审批/填报 | DOM-SEAL | **已齐** | EXPENSE（多级审） | R-APPROVE-01～02 | 本组 L4 已闸；未知口语仍依赖 p3q/LLM |
+| 7 | `apply` | 报名/申请 | DOM-ACTIVITY | **已齐** | COURSE / LOST / TOUR | R-APPLY-01～02 | 本组 L4 已闸；未知口语仍依赖 p3q/LLM |
+| 8 | `content` | 内容 | DOM-FORUM | **已齐** | MEDIA / MUSIC / BLOG / DOCLIB | R-CONTENT-01～02 | 本组 L4 已闸；未知口语仍依赖 p3q/LLM |
+| 9 | `interact` | 互动/匹配 | DOM-SURVEY | **已齐** | DATING / EXAM / MUTUAL / CARPOOL / TIMEBANK | R-INTERACT-01～02 | 本组 L4 已闸；未挂能力假宣称仍靠诚实闸/p3q；L5 |
+| 10 | `fallback` | 兜底 | DOM-GENERIC | **已齐** | FLOW/TRADE/RESERVE 壳 | R-FALLBACK-01～02 | 本组 L4 已闸；错绑开题另案；未知口语仍依赖 p3q/LLM |
 
 ---
 
@@ -198,24 +198,93 @@
 | id | 洞 | 收法 | 闸 / 测 | 状态 |
 |----|----|------|---------|------|
 | **R-TRADE-01** | 多店 `ordersAdminLead` 写「处理发货、物流与售后」= 商家活塞进管理员 | `builders_slot`：admin=全平台监督；`ordersStaffLead`=本店发货物流售后 | `_marketplace_role_copy_findings`；`test_shop_marketplace` + `test_qa_factory_drift` | **已齐** · 同题重 bake **不得**再因本句红；若仍红必是别条 finding |
-| R-TRADE-02 | 订单页是否按角色露出 Admin/Staff lead | 基线 `OrdersAdmin` 挂 lead（超管 vs 商家） | layout 对口面 + 文案断言 | 待收 |
-| R-TRADE-03 | FOOD 档口：主管 lead 是否写成档口接单发餐 | `_food_schema` / 角色树对账；必要时结构闸 | 待写测 | 待收 |
-| R-TRADE-04 | 单店 notice「管理员确认发货」在**误扫成多店**时是否与角色树冲突 | 扫词回归 + 多店 notice 口径 | 与 `scan_shop_marketplace` 同批想 | 待收 |
-| R-TRADE-05 | CINEMA/非物流壳：模块文案是否仍写发货 | 已有 `skin_invariants`；本轮只回归 | `test_domain_skin_leak` 等 | 待收（回归） |
+| **R-TRADE-02** | 订单页是否按角色露出 Admin/Staff lead | 基线 `OrdersAdmin`：`marketplace` 下超管→`ordersAdminLead`、商家→`ordersStaffLead`（`page-lead`） | `test_orders_admin_role_leads_by_super` | **已齐** |
+| **R-TRADE-03** | FOOD 档口：主管 lead 是否写成档口接单发餐 | `_food_schema` 拆 Admin/Staff lead；`OrdersAdmin` 按超管露出；`_food_role_copy_findings` | `test_food_canteen_vs_restaurant` + `test_food_admin_order_lead_blocks_stall_ops` | **已齐** |
+| **R-TRADE-04** | 单店 notice「管理员确认发货」在扫成多店时与角色树冲突 | `_shop_schema` 多店改用 `mp_notice_*` / 默认多店句；闸挡残留 | `test_marketplace_schema_flag` + `test_marketplace_notice_blocks_admin_ship_copy` | **已齐** |
+| **R-TRADE-05** | CINEMA/非物流壳：模块文案是否仍写发货 | 已有 `skin_invariants` + cinema fulfillMode；本轮钉回归断言 | `test_cinema_not_logistics_ship_copy` + skin leak 矩阵 | **已齐** |
 
-**trade 组已知未挡（迁已齐前必留句）**：Staff lead 未挂页；档口角色未闸；误扫多店 notice；材料图 L5 不在本条范围。
+**trade 组已知未挡**：本组 L4 条目已闸；未知口语仍依赖 p3q/LLM；材料图 L5 不在本条范围。**禁止**说「换开题都没事了」。
 
-### 4.2 reserve（预约）— 待开轮
+### 4.2 reserve（预约）
 
-| id | 洞（预置关注） | 收法（原则） | 状态 |
-|----|----------------|--------------|------|
-| R-RESERVE-01 | HOTEL/CARRENT/CINEMA 履约句串「发货/物流」 | 沿用/补 `orderFulfillHint` + invariants | 待收 |
-| R-RESERVE-02 | 前台/店员 vs 总管预约页 lead 串台 | *AdminLead / *StaffLead 拆句 + 闸 | 待收 |
+| id | 洞 | 收法 | 闸 / 测 | 状态 |
+|----|----|------|---------|------|
+| **R-RESERVE-01** | HOTEL/CARRENT/CINEMA 履约句串「发货/物流」 | `orderFulfillHint` 保留「无物流发货」；寄养皮补否定句；`skin_invariants` + `_reserve_fulfill_copy_findings` | `test_reserve_fulfill_blocks_ship_copy` + skin leak | **已齐** |
+| **R-RESERVE-02** | 前台/店员 vs 总管预约页 lead 串台 | `_stamp_reserve_role_leads`（MEETING/HOSPITAL/PARKING/SALON/HOTEL/CARRENT）；`ReservationsAdmin` 按超管挂 lead；HOTEL/CARRENT 兼 orders*Lead | `test_reserve_role_leads_meeting_hotel_carrent` + `test_reservations_admin_role_leads_by_super` | **已齐** |
 
-### 4.3～4.10 其余组
+**reserve 组已知未挡**：`DOM-INSTRUMENT` 跟进皮未拆 lead；材料图 L5；未知口语仍依赖 p3q/LLM。**禁止**说「换开题都没事了」。
 
-开轮时用 §2 清单填「洞」表，行格式同 §4.1；**不要**预先空编几十条假洞。  
-开轮也不要写「本组应该挺简单」——没扫就没有抗性评级。
+### 4.3 borrow（借用/占用）
+
+| id | 洞 | 收法 | 闸 / 测 | 状态 |
+|----|----|------|---------|------|
+| **R-BORROW-01** | hold/取书/借阅额度串到设备·驿站等邻域 | `_borrow_role_copy_findings`：非 LIBRARY 禁 `allowBookHold`/`hold_ready`/`bookHold*`/`待取书`/`借阅额度` | `test_borrow_hold_leak_and_role_leads` | **已齐** |
+| **R-BORROW-02** | 总管 vs 馆员/店员单据页 lead 未挂 | `ensure_borrow_role_leads`；`TicketsAdmin` / `TicketRecordsAdmin` 按超管露出 | `test_borrow_role_leads_library_equip_parcel` + `test_tickets_admin_role_leads_by_super` | **已齐** |
+
+**borrow 组已知未挡**：未知口语仍依赖 p3q/LLM；材料图 L5。**禁止**说「换开题都没事了」。
+
+### 4.4 ticket（报修/工单）
+
+| id | 洞 | 收法 | 闸 / 测 | 状态 |
+|----|----|------|---------|------|
+| **R-TICKET-01** | 工单文案串商城「发货/物流/购物车」 | `_ticket_role_copy_findings` 挡 labels/verbs | `test_ticket_repair_blocks_shop_copy_and_needs_leads` | **已齐** |
+| **R-TICKET-02** | 总管 vs 楼管/调度/运维 lead | `ensure_repair_role_leads`；待审/记录页已按超管挂（借用组同页） | `test_ticket_repair_role_leads_dorm_property_it` | **已齐** |
+
+**ticket 组已知未挡**：未知口语仍依赖 p3q/LLM；材料图 L5。**禁止**说「换开题都没事了」。
+
+### 4.5 follow（跟进）
+
+| id | 洞 | 收法 | 闸 / 测 | 状态 |
+|----|----|------|---------|------|
+| **R-FOLLOW-01** | 跟进页串商城/借阅口吻 | `_follow_role_copy_findings` | `test_follow_blocks_foreign_copy_and_needs_leads` | **已齐** |
+| **R-FOLLOW-02** | 总管 vs 辅导员/专员 lead | `ensure_follow_role_leads`（INTERN/CRM/EVENT/ATTEND/FUND/RECRUIT/GRADE/LISTING）；待审页已挂 | `test_follow_role_leads_intern_crm_event` | **已齐** |
+
+**follow 组已知未挡**：分级/分类口径归 lexicon（L3）；未知口语仍依赖 p3q/LLM；L5。**禁止**说「换开题都没事了」。
+
+### 4.6 approve（审批/填报）
+
+| id | 洞 | 收法 | 闸 / 测 | 状态 |
+|----|----|------|---------|------|
+| **R-APPROVE-01** | 审批页串商城/借阅口吻 | `_approve_role_copy_findings` | `test_approve_blocks_foreign_copy_and_needs_leads` | **已齐** |
+| **R-APPROVE-02** | 总管 vs 承办岗 lead | `ensure_approve_role_leads`（SEAL/EXPENSE 等 23 域）；待审页已挂 | `test_approve_role_leads_seal_expense` | **已齐** |
+
+**approve 组已知未挡**：未知口语仍依赖 p3q/LLM；L5。**禁止**说「换开题都没事了」。
+
+### 4.7 apply（报名/申请）
+
+| id | 洞 | 收法 | 闸 / 测 | 状态 |
+|----|----|------|---------|------|
+| **R-APPLY-01** | 报名页串商城/借阅口吻 | `_apply_role_copy_findings` | `test_apply_blocks_foreign_copy_and_needs_leads` | **已齐** |
+| **R-APPLY-02** | 总管 vs 助理 lead | `ensure_apply_role_leads`（ACTIVITY/LOST/COURSE/TOUR）；待审页已挂 | `test_apply_role_leads_activity_course` | **已齐** |
+
+**apply 组已知未挡**：未知口语仍依赖 p3q/LLM；L5。**禁止**说「换开题都没事了」。
+
+### 4.8 content（内容/媒资/社区）
+
+| id | 洞 | 收法 | 闸 / 测 | 状态 |
+|----|----|------|---------|------|
+| **R-CONTENT-01** | 内容页串商城/借阅/报名口吻 | `_content_role_copy_findings` | `test_content_blocks_foreign_copy_and_needs_leads` | **已齐** |
+| **R-CONTENT-02** | 站长审核下架 vs 版主/运营 lead | `ensure_content_role_leads`（FORUM/MEDIA/MUSIC/BLOG/DOCLIB）；待审页已挂 | `test_content_role_leads_forum_media` | **已齐** |
+
+**content 组已知未挡**：MEDIA 等无岗位域 lead 已预置但闸仅在有 `staff_posts` 时强检；作者编辑 vs 站长下架口语长尾仍依赖 p3q/LLM；L5。**禁止**说「换开题都没事了」。
+
+### 4.9 interact（互动/匹配）
+
+| id | 洞 | 收法 | 闸 / 测 | 状态 |
+|----|----|------|---------|------|
+| **R-INTERACT-01** | 互动页串商城/借阅/报名口吻 | `_interact_role_copy_findings` | `test_interact_blocks_foreign_copy_and_needs_leads` | **已齐** |
+| **R-INTERACT-02** | 总管 vs 一线（联谊/秘书/对接/核销）lead | `ensure_interact_role_leads`（9 域）；待审页已挂 | `test_interact_role_leads_dating_survey` | **已齐** |
+
+**interact 组已知未挡**：EXAM/SURVEY/VOTE 无岗位域 lead 已预置但闸仅在有 `staff_posts` 时强检；「未挂能力勿宣称」仍靠既有诚实闸 + p3q；L5。**禁止**说「换开题都没事了」。
+
+### 4.10 fallback（兜底）
+
+| id | 洞 | 收法 | 闸 / 测 | 状态 |
+|----|----|------|---------|------|
+| **R-FALLBACK-01** | 交易壳公告「管理员确认发货」= 总管串一线；lead 串借阅/报修等行业口吻 | `notice_body` 改办理员履约；`_fallback_role_copy_findings` 挡总管发货与行业专名 | `test_fallback_blocks_admin_ship_and_needs_leads` | **已齐** |
+| **R-FALLBACK-02** | FLOW/TRADE/RESERVE 有岗位却缺 Admin/Staff lead | `ensure_fallback_role_leads`（按实体路径拆 tickets*/orders*/reservations*）；`finalize_generic_schema` 出口挂 | `test_fallback_role_leads_generic_paths` | **已齐** |
+
+**fallback 组已知未挡**：错绑开题另案；CRUD 空岗不强制 lead；未知口语仍依赖 p3q/LLM；L5。**禁止**说「换开题都没事了」。
 
 ---
 

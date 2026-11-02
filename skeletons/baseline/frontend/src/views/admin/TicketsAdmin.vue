@@ -10,6 +10,7 @@
     <div class="toolbar">
       <el-alert type="info" :closable="false" show-icon :title="todoHint" />
     </div>
+    <p v-if="pageLead" class="page-lead">{{ pageLead }}</p>
     <div
       v-if="approveSurface === 'inboxsteps' && approveInboxStats"
       class="approve-inbox-bar"

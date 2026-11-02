@@ -134,6 +134,237 @@ class DomainSkinLeakRegressionTests(unittest.TestCase):
         self.assertEqual((order.get("verbs") or {}).get("ship"), "办理入住")
         self.assertNotIn("物流", str(order))
 
+    def test_cinema_not_logistics_ship_copy(self) -> None:
+        """R-TRADE-05：影院履约勿串商城发货/物流叙事。"""
+        s = build_domain_schema("影院选座购票", "DOM-CINEMA")
+        order = (s.get("entities") or {}).get("order") or {}
+        self.assertEqual(order.get("fulfillMode"), "cinema")
+        self.assertEqual((order.get("verbs") or {}).get("ship"), "出票")
+        self.assertNotRegex(str(order.get("verbs") or {}), r"发货|物流")
+        hint = str((s.get("labels") or {}).get("orderFulfillHint") or "")
+        self.assertIn("无物流发货", hint)
+
+    def test_reserve_role_leads_meeting_hotel_carrent(self) -> None:
+        """R-RESERVE-01/02：预约组拆 Admin/Staff lead；HOTEL/CARRENT 禁发货串台。"""
+        meeting = build_domain_schema(
+            "会议室分时预约管理系统", "DOM-MEETING", proposal_text=""
+        )
+        mlab = meeting.get("labels") or {}
+        self.assertIn("全场", str(mlab.get("reservationsAdminLead") or ""))
+        self.assertRegex(str(mlab.get("reservationsStaffLead") or ""), r"审批|核销")
+
+        hotel = build_domain_schema("酒店客房预订系统", "DOM-HOTEL")
+        hlab = hotel.get("labels") or {}
+        self.assertIn("全店", str(hlab.get("reservationsAdminLead") or ""))
+        self.assertRegex(str(hlab.get("reservationsStaffLead") or ""), r"入住|离店")
+        self.assertNotRegex(str(hlab.get("ordersAdminLead") or ""), r"发货|物流")
+        self.assertIn("无物流发货", str(hlab.get("orderFulfillHint") or ""))
+        boarding = build_domain_schema(
+            "宠物寄养管理系统", "DOM-HOTEL", proposal_text="寄养位按日预订"
+        )
+        self.assertIn(
+            "无物流发货",
+            str((boarding.get("labels") or {}).get("orderFulfillHint") or ""),
+        )
+
+        carrent = build_domain_schema("汽车租赁管理系统", "DOM-CARRENT")
+        clab = carrent.get("labels") or {}
+        self.assertIn("全店", str(clab.get("reservationsAdminLead") or ""))
+        self.assertRegex(str(clab.get("reservationsStaffLead") or ""), r"取车|还车")
+        self.assertNotRegex(str(clab.get("ordersAdminLead") or ""), r"发货|物流")
+        issues = check_schema_skin_leaks(hotel, domain="DOM-HOTEL")
+        self.assertEqual(issues, [])
+        issues = check_schema_skin_leaks(carrent, domain="DOM-CARRENT")
+        self.assertEqual(issues, [])
+
+    def test_reservations_admin_role_leads_by_super(self) -> None:
+        """R-RESERVE-02：预约页按超管/前台挂 Admin vs Staff lead。"""
+        root = Path(__file__).resolve().parents[2] / "skeletons" / "baseline"
+        text = (
+            root / "frontend/src/views/admin/ReservationsAdmin.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("reservationsAdminLead", text)
+        self.assertIn("reservationsStaffLead", text)
+        self.assertIn("page-lead", text)
+        self.assertIn("pageLead", text)
+        self.assertIn("superAdmin", text)
+        self.assertRegex(text, r"if\s*\(\s*isSuper\.value\s*\)\s*return\s+adminLead")
+
+    def test_borrow_role_leads_library_equip_parcel(self) -> None:
+        """R-BORROW-01/02：图书/设备/驿站拆单据 lead；设备不得挂取书预约。"""
+        library = build_domain_schema("图书借阅管理系统", "DOM-LIBRARY")
+        llab = library.get("labels") or {}
+        self.assertIn("全馆", str(llab.get("ticketsAdminLead") or ""))
+        self.assertRegex(str(llab.get("ticketsStaffLead") or ""), r"借还|催还|柜台")
+
+        equip = build_domain_schema("实验室设备借用系统", "DOM-EQUIP")
+        elab = equip.get("labels") or {}
+        self.assertIn("全室", str(elab.get("ticketsAdminLead") or ""))
+        self.assertNotRegex(
+            str(elab.get("ticketsAdminLead") or "") + str(elab.get("ticketsStaffLead") or ""),
+            r"待取书|索书号|借阅额度",
+        )
+        et = (equip.get("entities") or {}).get("ticket") or {}
+        self.assertFalse(et.get("allowBookHold"))
+        self.assertNotIn("hold_ready", et.get("states") or {})
+
+        parcel = build_domain_schema("校园快递驿站系统", "DOM-PARCEL")
+        plab = parcel.get("labels") or {}
+        self.assertIn("全站", str(plab.get("ticketsAdminLead") or ""))
+        self.assertRegex(str(plab.get("ticketsStaffLead") or ""), r"核销|取件")
+
+    def test_tickets_admin_role_leads_by_super(self) -> None:
+        """R-BORROW-02：待审/记录页按超管挂 Admin vs Staff lead。"""
+        root = Path(__file__).resolve().parents[2] / "skeletons" / "baseline"
+        for rel in (
+            "frontend/src/views/admin/TicketsAdmin.setup.js",
+            "frontend/src/views/admin/TicketRecordsAdmin.setup.js",
+        ):
+            text = (root / rel).read_text(encoding="utf-8")
+            self.assertIn("ticketsAdminLead", text, msg=rel)
+            self.assertIn("ticketsStaffLead", text, msg=rel)
+            self.assertIn("pageLead", text, msg=rel)
+            self.assertIn("superAdmin", text, msg=rel)
+
+    def test_ticket_repair_role_leads_dorm_property_it(self) -> None:
+        """R-TICKET-01/02：报修组拆 lead；文案不含商城发货口吻。"""
+        for domain, title, admin_needle, staff_needle in (
+            ("DOM-DORM", "学生宿舍报修管理系统", "全楼", r"受理|派单"),
+            ("DOM-PROPERTY", "小区物业报修系统", "全盘", r"受理|调度|派单"),
+            ("DOM-IT", "校园运维报修系统", "全站", r"受理|接单"),
+        ):
+            with self.subTest(domain=domain):
+                schema = build_domain_schema(title, domain)
+                lab = schema.get("labels") or {}
+                admin = str(lab.get("ticketsAdminLead") or "")
+                staff = str(lab.get("ticketsStaffLead") or "")
+                self.assertIn(admin_needle, admin)
+                self.assertRegex(staff, staff_needle)
+                blob = admin + staff + str(lab.get("authLead") or "")
+                self.assertNotRegex(blob, r"发货|物流|购物车|商城")
+
+    def test_follow_role_leads_intern_crm_event(self) -> None:
+        """R-FOLLOW-01/02：跟进组拆 lead；不含商城/借阅串台。"""
+        for domain, title, admin_needle, staff_needle in (
+            ("DOM-INTERN", "顶岗实习岗位建档与每周周报导师审阅", "全员", r"周报|催交"),
+            ("DOM-CRM", "客户关系跟进管理系统", "全盘", r"跟进|催办"),
+            ("DOM-EVENT", "社区公共卫生事件应急上报系统", "全盘", r"随访|催办"),
+        ):
+            with self.subTest(domain=domain):
+                schema = build_domain_schema(title, domain)
+                lab = schema.get("labels") or {}
+                admin = str(lab.get("ticketsAdminLead") or "")
+                staff = str(lab.get("ticketsStaffLead") or "")
+                self.assertIn(admin_needle, admin)
+                self.assertRegex(staff, staff_needle)
+                blob = admin + staff
+                self.assertNotRegex(blob, r"发货|物流|购物车|待取书|借阅额度")
+
+    def test_approve_role_leads_seal_expense(self) -> None:
+        """R-APPROVE-01/02：审批组拆 lead；不含商城串台。"""
+        for domain, title, admin_needle, staff_needle in (
+            ("DOM-SEAL", "公文用章审批管理系统", "全盘", r"用章|核验|办结"),
+            ("DOM-EXPENSE", "差旅报销多级审批系统", "全盘", r"初审|审批|完结"),
+        ):
+            with self.subTest(domain=domain):
+                schema = build_domain_schema(title, domain)
+                lab = schema.get("labels") or {}
+                admin = str(lab.get("ticketsAdminLead") or "")
+                staff = str(lab.get("ticketsStaffLead") or "")
+                self.assertIn(admin_needle, admin)
+                self.assertRegex(staff, staff_needle)
+                blob = admin + staff
+                self.assertNotRegex(blob, r"发货|物流|购物车|待取书|借阅额度")
+
+    def test_apply_role_leads_activity_course(self) -> None:
+        """R-APPLY-01/02：报名组拆 lead；不含商城串台。"""
+        for domain, title, admin_needle, staff_needle in (
+            ("DOM-ACTIVITY", "校园活动报名管理系统", "全盘", r"报名|签到|取消"),
+            ("DOM-COURSE", "学生选课申请管理系统", "全盘", r"选课|退选|催办"),
+        ):
+            with self.subTest(domain=domain):
+                schema = build_domain_schema(title, domain)
+                lab = schema.get("labels") or {}
+                admin = str(lab.get("ticketsAdminLead") or "")
+                staff = str(lab.get("ticketsStaffLead") or "")
+                self.assertIn(admin_needle, admin)
+                self.assertRegex(staff, staff_needle)
+                blob = admin + staff
+                self.assertNotRegex(blob, r"发货|物流|购物车|待取书|借阅额度")
+
+    def test_content_role_leads_forum_media(self) -> None:
+        """R-CONTENT-01/02：内容组拆 lead；不含商城串台。"""
+        for domain, title, admin_needle, staff_needle in (
+            ("DOM-FORUM", "校园论坛发帖回帖管理系统", "全盘", r"审核|违规|催办"),
+            ("DOM-MEDIA", "校园媒资点播管理系统", "全盘", r"上下架|媒资|催办"),
+        ):
+            with self.subTest(domain=domain):
+                schema = build_domain_schema(title, domain)
+                lab = schema.get("labels") or {}
+                admin = str(lab.get("ticketsAdminLead") or "")
+                staff = str(lab.get("ticketsStaffLead") or "")
+                self.assertIn(admin_needle, admin)
+                self.assertRegex(staff, staff_needle)
+                blob = admin + staff
+                self.assertNotRegex(blob, r"发货|物流|购物车|待取书|借阅额度|报名名额")
+
+    def test_interact_role_leads_dating_survey(self) -> None:
+        """R-INTERACT-01/02：互动组拆 lead；不含商城串台。"""
+        for domain, title, admin_needle, staff_needle in (
+            ("DOM-DATING", "校园交友匹配管理系统", "全盘", r"牵线|反馈|催办"),
+            ("DOM-SURVEY", "问卷调查管理系统", "全盘", r"回收|催答|统计"),
+        ):
+            with self.subTest(domain=domain):
+                schema = build_domain_schema(title, domain)
+                lab = schema.get("labels") or {}
+                admin = str(lab.get("ticketsAdminLead") or "")
+                staff = str(lab.get("ticketsStaffLead") or "")
+                self.assertIn(admin_needle, admin)
+                self.assertRegex(staff, staff_needle)
+                blob = admin + staff
+                self.assertNotRegex(blob, r"发货|物流|购物车|待取书|借阅额度|报名名额")
+
+    def test_fallback_role_leads_generic_paths(self) -> None:
+        """R-FALLBACK-01/02：GENERIC 按路径拆 lead；交易壳勿写管理员发货。"""
+        from app.bake.domain_schema import build_domain_schema
+
+        flow = build_domain_schema(
+            "业务申请审核系统",
+            "DOM-GENERIC",
+            archetype="ARCH-FLOW",
+            archetypes=["ARCH-FLOW"],
+        )
+        lab = flow.get("labels") or {}
+        self.assertIn("全盘", str(lab.get("ticketsAdminLead") or ""))
+        self.assertRegex(str(lab.get("ticketsStaffLead") or ""), r"审核|催办|办结")
+
+        trade = build_domain_schema(
+            "校园二手交易系统",
+            "DOM-GENERIC",
+            archetype="ARCH-TRADE",
+            archetypes=["ARCH-TRADE"],
+        )
+        tlab = trade.get("labels") or {}
+        self.assertIn("全盘", str(tlab.get("ordersAdminLead") or ""))
+        self.assertRegex(str(tlab.get("ordersStaffLead") or ""), r"履约|发货|自提")
+        seed_body = str((trade.get("seeds") or {}).get("noticeBody") or "")
+        self.assertNotIn("管理员确认发货", seed_body)
+        self.assertNotRegex(
+            str(tlab.get("ordersAdminLead") or ""), r"确认发货|处理发货"
+        )
+
+        reserve = build_domain_schema(
+            "会议室预约系统",
+            "DOM-GENERIC",
+            archetype="ARCH-RESERVE",
+            archetypes=["ARCH-RESERVE"],
+        )
+        rlab = reserve.get("labels") or {}
+        self.assertIn("全盘", str(rlab.get("reservationsAdminLead") or ""))
+        self.assertRegex(
+            str(rlab.get("reservationsStaffLead") or ""), r"预约|催到|办结"
+        )
+
     def test_forum_no_default_dm_recommend(self) -> None:
         caps = DOMAIN_CAPABILITIES["DOM-FORUM"]
         self.assertNotIn("dm", caps)

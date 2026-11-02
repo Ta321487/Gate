@@ -7,6 +7,7 @@
       <el-button type="primary" @click="load">查询</el-button>
       <el-button :disabled="!list.length" @click="exportCsv">导出 CSV</el-button>
     </div>
+    <p v-if="pageLead" class="page-lead">{{ pageLead }}</p>
     <p v-if="isCinema && ticketRefundCutoffHint" class="muted">{{ ticketRefundCutoffHint }}</p>
     <div class="table-scroll">
     <el-table :data="list" stripe>
@@ -437,6 +438,16 @@ const completeVerb = computed(() => {
   return '完成'
 })
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+/** 多店/食堂：超管看监督句，商家·档口看一线履约句（labels 由 bake 写入） */
+const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+const pageLead = computed(() => {
+  const labels = getSchema()?.labels || {}
+  const adminLead = String(labels.ordersAdminLead || '').trim()
+  const staffLead = String(labels.ordersStaffLead || '').trim()
+  if (!adminLead && !staffLead) return ''
+  if (isSuper.value) return adminLead || staffLead
+  return staffLead || adminLead
+})
 const thicken = computed(() => getSchema()?.tradeThicken || {})
 const changeAddressOn = computed(() => !!thicken.value.changeAddress)
 const changeAddressLabel = computed(() => getSchema()?.labels?.changeAddressLabel || '修改地址')
@@ -927,6 +938,7 @@ onMounted(load)
 
 <style scoped>
 .toolbar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.page-lead { margin: 0 0 10px; color: var(--portal-muted, #606266); font-size: 13px; }
 .muted { color: var(--el-text-color-secondary); font-size: 13px; margin: 0 0 12px; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .ops-empty { color: var(--el-text-color-placeholder, #c0c4cc); font-size: 13px; padding: 0 4px; }

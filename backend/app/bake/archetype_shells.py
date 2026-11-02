@@ -626,7 +626,8 @@ def build_generic_shell_schema(
             auth_points=["验证码登录", f"{noun}浏览", "购物车与订单"],
             register_hint="注册后即可使用",
             notice_title="使用须知",
-            notice_body=f"本系统用于{noun}相关业务；下单后由管理员确认发货或自提。",
+            # 履约归办理员；勿写「管理员确认发货」（L4 角色串台）
+            notice_body=f"本系统用于{noun}相关业务；下单后由办理员确认履约或自提。",
             notice_page_title="公告",
         )
     else:
@@ -721,7 +722,7 @@ def finalize_generic_schema(
         schema, "DOM-GENERIC", title=title, proposal_text=proposal_text
     )
     primary = arches[0] if arches else "ARCH-CRUD"
-    return attach_staff_posts(
+    schema = attach_staff_posts(
         schema,
         "DOM-GENERIC",
         primary,
@@ -729,6 +730,9 @@ def finalize_generic_schema(
         proposal_text=proposal_text,
         title=title,
     )
+    from app.bake.features.fallback_role_leads import ensure_fallback_role_leads
+
+    return ensure_fallback_role_leads(schema, domain="DOM-GENERIC")
 
 
 def apply_generic_shell(

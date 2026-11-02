@@ -159,6 +159,21 @@ def build_domain_schema(
     from app.bake.features.temporal_field import apply_soft_calendar_types
 
     apply_soft_calendar_types(schema, proposal_text)
+    from app.bake.features.apply_role_leads import ensure_apply_role_leads
+    from app.bake.features.approve_role_leads import ensure_approve_role_leads
+    from app.bake.features.borrow_role_leads import ensure_borrow_role_leads
+    from app.bake.features.content_role_leads import ensure_content_role_leads
+    from app.bake.features.follow_role_leads import ensure_follow_role_leads
+    from app.bake.features.interact_role_leads import ensure_interact_role_leads
+    from app.bake.features.repair_role_leads import ensure_repair_role_leads
+
+    ensure_borrow_role_leads(schema, domain=domain)
+    ensure_repair_role_leads(schema, domain=domain)
+    ensure_follow_role_leads(schema, domain=domain)
+    ensure_approve_role_leads(schema, domain=domain)
+    ensure_apply_role_leads(schema, domain=domain)
+    ensure_content_role_leads(schema, domain=domain)
+    ensure_interact_role_leads(schema, domain=domain)
     return schema
 
 

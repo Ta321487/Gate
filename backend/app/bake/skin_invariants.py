@@ -35,19 +35,37 @@ def check_schema_skin_leaks(
     if "dm" not in caps and labels.get("dmPageTitle"):
         issues.append("无 dm 能力却有 dmPageTitle")
 
+    def _positive_ship_or_logistics(text: str) -> bool:
+        """含发货/物流，且不是「无物流发货」类否定口径。"""
+        cleaned = (
+            str(text or "")
+            .replace("无物流发货", "")
+            .replace("无物流", "")
+            .replace("无发货", "")
+        )
+        return "发货" in cleaned or "物流" in cleaned
+
     # 客房订单必须 stay，禁止物流皮
     if "order_lines" in caps and dom == "DOM-HOTEL":
         if order.get("fulfillMode") != "stay":
             issues.append("DOM-HOTEL 订单 fulfillMode 须为 stay")
-        if "物流" in str(order):
-            issues.append("DOM-HOTEL 订单文案不得含「物流」")
+        if "物流" in str(order) or str(order.get("verbs", {}).get("ship") or "") == "发货":
+            issues.append("DOM-HOTEL 订单文案不得含「物流/发货」")
+        if _positive_ship_or_logistics(str(labels.get("orderFulfillHint") or "")):
+            issues.append("DOM-HOTEL orderFulfillHint 仍含发货/物流叙事")
+        if _positive_ship_or_logistics(str(labels.get("ordersAdminLead") or "")):
+            issues.append("DOM-HOTEL ordersAdminLead 不得写发货/物流")
 
     # 租车订单必须 rental，禁止物流皮
     if "order_lines" in caps and dom == "DOM-CARRENT":
         if order.get("fulfillMode") != "rental":
             issues.append("DOM-CARRENT 订单 fulfillMode 须为 rental")
-        if "物流" in str(order):
-            issues.append("DOM-CARRENT 订单文案不得含「物流」")
+        if "物流" in str(order) or str(order.get("verbs", {}).get("ship") or "") == "发货":
+            issues.append("DOM-CARRENT 订单文案不得含「物流/发货」")
+        if _positive_ship_or_logistics(str(labels.get("orderFulfillHint") or "")):
+            issues.append("DOM-CARRENT orderFulfillHint 仍含发货/物流叙事")
+        if _positive_ship_or_logistics(str(labels.get("ordersAdminLead") or "")):
+            issues.append("DOM-CARRENT ordersAdminLead 不得写发货/物流")
 
     # 影院选座订单必须 cinema，禁止物流皮
     if "order_lines" in caps and dom == "DOM-CINEMA":
@@ -55,6 +73,8 @@ def check_schema_skin_leaks(
             issues.append("DOM-CINEMA 订单 fulfillMode 须为 cinema")
         if "物流" in str(order) or str(order.get("verbs", {}).get("ship") or "") == "发货":
             issues.append("DOM-CINEMA 订单不得用物流/发货叙事")
+        if _positive_ship_or_logistics(str(labels.get("orderFulfillHint") or "")):
+            issues.append("DOM-CINEMA orderFulfillHint 仍含发货/物流叙事")
 
     # 拼车 peer 收件箱不得残留互选「志愿」铅字
     if dom == "DOM-CARPOOL":

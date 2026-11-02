@@ -37,6 +37,16 @@ const route = useRoute()
 const ticket = ticketCopy()
 const archive = archiveCopy()
 const labels = computed(() => getSchema()?.labels || {})
+/** 借用组等：总管看监督句，馆员/店员看一线核销句 */
+const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+const pageLead = computed(() => {
+  const lab = labels.value || {}
+  const adminLead = String(lab.ticketsAdminLead || '').trim()
+  const staffLead = String(lab.ticketsStaffLead || '').trim()
+  if (!adminLead && !staffLead) return ''
+  if (isSuper.value) return adminLead || staffLead
+  return staffLead || adminLead
+})
 const verbs = computed(() => ticket.verbs || {})
 const states = computed(() => ticket.states || {})
 function statusLabel(row) {

@@ -1,5 +1,6 @@
 <template>
   <div>
+    <p v-if="pageLead" class="page-lead">{{ pageLead }}</p>
     <div class="table-scroll">
     <el-table :data="list" stripe>
       <el-table-column prop="orderId" label="订单" width="90" />
@@ -75,6 +76,16 @@ const replyText = ref('')
 const current = reactive({ id: null, body: '' })
 const canDelete = computed(() => localStorage.getItem('superAdmin') === 'true')
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
+/** 超管看平台监督句，商家/办理员看回复句（勿回落到买家「我的评价」） */
+const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+const pageLead = computed(() => {
+  const labels = getSchema()?.labels || {}
+  const adminLead = String(labels.orderReviewAdminPageLead || '').trim()
+  const staffLead = String(labels.orderReviewStaffPageLead || '').trim()
+  if (!adminLead && !staffLead) return ''
+  if (isSuper.value) return adminLead || staffLead
+  return staffLead || adminLead
+})
 
 async function load() {
   const res = await http.get('/api/order-reviews', {
@@ -112,6 +123,12 @@ onMounted(load)
 </script>
 
 <style scoped>
+.page-lead {
+  margin: 0 0 12px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .quote {
   margin: 0 0 12px;

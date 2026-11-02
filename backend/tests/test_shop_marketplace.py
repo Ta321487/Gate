@@ -70,6 +70,10 @@ class ShopMarketplaceSchemaTests(unittest.TestCase):
         self.assertNotRegex(admin_lead, r"发货|物流")
         staff_lead = str(labels.get("ordersStaffLead") or "")
         self.assertRegex(staff_lead, r"发货|物流")
+        # R-TRADE-04：多店 notice 不得残留单店「管理员确认发货」
+        notice_body = str((schema.get("seeds") or {}).get("noticeBody") or "")
+        self.assertNotRegex(notice_body, r"管理员确认发货|由管理员确认发货")
+        self.assertIn("多店", notice_body)
         content = next(
             (
                 m
@@ -529,6 +533,27 @@ class ShopMarketplaceUxGuardTests(unittest.TestCase):
         self.assertIn("formatOrderLine", orders)
         self.assertIn("（¥${yuan}）", orders)
         self.assertNotIn("${x.title}×${x.qty}¥", orders)
+
+    def test_orders_admin_role_leads_by_super(self) -> None:
+        """R-TRADE-02：多店订单页按超管/商家挂 Admin vs Staff lead。"""
+        orders = (
+            self.root / "frontend/src/views/admin/OrdersAdmin.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ordersAdminLead", orders)
+        self.assertIn("ordersStaffLead", orders)
+        self.assertIn("page-lead", orders)
+        self.assertIn("pageLead", orders)
+        self.assertIn("superAdmin", orders)
+        self.assertIn("labels.ordersAdminLead", orders)
+        self.assertIn("labels.ordersStaffLead", orders)
+        self.assertRegex(
+            orders,
+            r"if\s*\(\s*isSuper\.value\s*\)\s*return\s+adminLead",
+        )
+        self.assertRegex(
+            orders,
+            r"return\s+staffLead\s*\|\|\s*adminLead",
+        )
 
     def test_archive_admin_shelf_status_not_duplicated(self) -> None:
         archive_admin = vue_src((

@@ -336,6 +336,17 @@ const todoHint = computed(() => {
   return twoLevel.value ? `${base} · 二级审批（终审需总管）` : base
 })
 
+/** 借用组等：总管看监督句，馆员/店员看一线核销句 */
+const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+const pageLead = computed(() => {
+  const lab = labels.value || {}
+  const adminLead = String(lab.ticketsAdminLead || '').trim()
+  const staffLead = String(lab.ticketsStaffLead || '').trim()
+  if (!adminLead && !staffLead) return ''
+  if (isSuper.value) return adminLead || staffLead
+  return staffLead || adminLead
+})
+
 const list = ref([])
 const total = ref(0)
 const page = ref(1)

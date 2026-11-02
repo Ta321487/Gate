@@ -435,6 +435,16 @@ class SceneScanContractTests(unittest.TestCase):
         )
         self.assertEqual(canteen["labels"].get("authEyebrow"), "食堂点餐")
         self.assertEqual(canteen["roles"]["staff_posts"][0]["label"], "档口店员")
+        # R-TRADE-03：主管监督 ≠ 档口接单出餐
+        canteen_admin = str(canteen["labels"].get("ordersAdminLead") or "")
+        self.assertIn("全食堂", canteen_admin)
+        self.assertNotRegex(canteen_admin, r"接单|出餐|发餐")
+        canteen_staff = str(canteen["labels"].get("ordersStaffLead") or "")
+        self.assertRegex(canteen_staff, r"接单|出餐")
+        rest_admin = str(schema["labels"].get("ordersAdminLead") or "")
+        self.assertIn("全店", rest_admin)
+        self.assertNotRegex(rest_admin, r"接单|出餐|发餐")
+        self.assertRegex(str(schema["labels"].get("ordersStaffLead") or ""), r"接单|出餐")
         canteen_sql = domain_sql(
             "DOM-FOOD",
             "thesis_test",

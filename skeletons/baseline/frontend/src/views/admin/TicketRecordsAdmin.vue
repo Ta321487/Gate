@@ -1,5 +1,6 @@
 <template>
   <div>
+    <p v-if="pageLead" class="page-lead">{{ pageLead }}</p>
     <div class="toolbar">
       <el-select v-model="status" clearable placeholder="全部状态" style="width:140px" @change="onFilter">
         <el-option v-for="(lab, key) in states" :key="key" :label="lab" :value="key" />
