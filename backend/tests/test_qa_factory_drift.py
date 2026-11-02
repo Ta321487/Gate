@@ -450,6 +450,714 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         self.assertFalse(_marketplace_role_copy_findings(clean))
         self.assertTrue(_fallback_qa(clean).get("ok"))
 
+    def test_order_review_blocks_buyer_copy_for_merchant(self) -> None:
+        """merchant_ops + order_review：缺商家评价导语或写买家口径 → error。"""
+        from app.llm.agents_qa import _fallback_qa, _order_review_role_copy_findings
+
+        dirty = {
+            "schema": {
+                "shopMarketplace": True,
+                "roles": {
+                    "staff_posts": [
+                        {
+                            "id": "merchant",
+                            "label": "商家",
+                            "kind": "clerk",
+                            "packs": ["merchant_ops"],
+                        }
+                    ]
+                },
+            },
+            "labels": {
+                "orderReviewPageTitle": "我的评价",
+                "orderReviewPageLead": "对已完成订单进行星级与文字评价。",
+                "appName": "农产品商城",
+                "noticePageTitle": "活动公告",
+            },
+            "capabilities": ["order", "order_review"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "商家端评价回复",
+            "domain": "DOM-SHOP",
+        }
+        hits = _order_review_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertTrue(
+            any("orderReviewStaffPageLead" in str(f.get("where")) for f in hits), hits
+        )
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        clean = {
+            **dirty,
+            "labels": {
+                **dirty["labels"],
+                "orderReviewAdminPageLead": "查看全平台评价，必要时删除不当内容。",
+                "orderReviewStaffPageLead": "查看本店评价并回复买家。",
+            },
+        }
+        self.assertFalse(_order_review_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_order_review_llm_warn_filtered_when_staff_leads_present(self) -> None:
+        """已有商家/总管评价导语时，LLM 再报买家键不匹配 → 噪声滤掉（warn 挡包场景）。"""
+        from app.llm.agents_qa import _filter_findings, _is_noise_finding
+
+        ctx = {
+            "labels": {
+                "orderReviewPageTitle": "我的评价",
+                "orderReviewPageLead": "对已完成订单进行星级与文字评价。",
+                "orderReviewAdminPageLead": "查看全平台评价，必要时删除不当内容。",
+                "orderReviewStaffPageLead": "查看本店评价并回复买家。",
+            },
+            "entityKeys": [],
+            "menuKeys": {},
+            "staffPackMenus": {},
+            "traits": {},
+            "files": {},
+        }
+        msg = (
+            "merchant_ops 包含 order_reviews，开题也明确商家端评价回复，"
+            "但现有 orderReviewPageTitle/orderReviewPageLead 只有买家口径"
+            "「我的评价/对已完成订单进行星级与文字评价」，"
+            "商家进入该菜单会看到不匹配文案。"
+            "建议按角色补充商家「评价管理/回复评价」标题与引导。"
+        )
+        self.assertTrue(_is_noise_finding(msg, ctx, where="schema.labels"))
+        kept = _filter_findings(
+            [{"level": "warn", "msg": msg, "where": "schema.labels.orderReviewPageLead"}],
+            ctx,
+        )
+        self.assertEqual(kept, [])
+
+        # 真缺商家导语时不得滤
+        missing_ctx = {
+            **ctx,
+            "labels": {
+                "orderReviewPageTitle": "我的评价",
+                "orderReviewPageLead": "对已完成订单进行星级与文字评价。",
+            },
+        }
+        self.assertFalse(_is_noise_finding(msg, missing_ctx))
+
+    def test_qa_filters_pure_polish_suggestions(self) -> None:
+        """纯润色建议滤掉；带「缺失/不匹配」的真报保留。"""
+        from app.llm.agents_qa import _filter_findings, _is_noise_finding
+
+        ctx = {
+            "labels": {},
+            "entityKeys": ["order"],
+            "menuKeys": {},
+            "staffPackMenus": {},
+            "traits": {},
+            "files": {},
+        }
+        self.assertTrue(
+            _is_noise_finding("建议优化订单页措辞，体验上可以更好。", ctx)
+        )
+        self.assertFalse(
+            _is_noise_finding(
+                "缺 labels.ordersStaffLead，商家订单页文案不匹配。",
+                ctx,
+            )
+        )
+        kept = _filter_findings(
+            [
+                {"level": "warn", "msg": "不妨润色一下公告标题。", "where": "labels"},
+                {
+                    "level": "warn",
+                    "msg": "菜单有 order_reviews 却缺失商家评价导语。",
+                    "where": "labels",
+                },
+                {
+                    "level": "warn",
+                    "msg": "公告语气可以更专业一些。",
+                    "where": "labels.noticePageLead",
+                },
+            ],
+            ctx,
+        )
+        self.assertEqual(len(kept), 1)
+        self.assertIn("缺失", kept[0]["msg"])
+
+    def test_qa_llm_warn_requires_program_impact(self) -> None:
+        """LLM warn 须带影响程序信号；口味类直接丢。"""
+        from app.llm.agents_qa import _filter_findings, _llm_finding_affects_program
+
+        self.assertFalse(_llm_finding_affects_program("标题用词不够贴切。"))
+        self.assertTrue(
+            _llm_finding_affects_program(
+                "商家菜单已挂 order_reviews，却缺失 labels.orderReviewStaffPageLead。"
+            )
+        )
+        kept = _filter_findings(
+            [
+                {"level": "warn", "msg": "标题用词不够贴切。", "where": "labels"},
+                {
+                    "level": "error",
+                    "msg": "capabilities 未挂支付却宣称已对接微信支付。",
+                    "where": "README",
+                },
+            ],
+            {
+                "labels": {},
+                "entityKeys": [],
+                "menuKeys": {},
+                "staffPackMenus": {},
+                "traits": {},
+                "files": {},
+            },
+        )
+        self.assertEqual(len(kept), 1)
+        self.assertIn("微信支付", kept[0]["msg"])
+
+    def test_marketplace_notice_blocks_admin_ship_copy(self) -> None:
+        """多店 seeds.noticeBody 写「管理员确认发货」→ 结构闸 error。"""
+        from app.llm.agents_qa import _fallback_qa, _marketplace_role_copy_findings
+
+        dirty = {
+            "schema": {
+                "shopMarketplace": True,
+                "seeds": {"noticeBody": "下单后由管理员确认发货或自提。"},
+            },
+            "labels": {
+                "ordersAdminLead": "查看全平台订单与售后，必要时介入处理。",
+                "appName": "多店商城",
+                "noticePageTitle": "活动公告",
+            },
+            "capabilities": ["order"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "商家入驻；平台监督",
+            "domain": "DOM-SHOP",
+        }
+        hits = _marketplace_role_copy_findings(dirty)
+        self.assertTrue(any("noticeBody" in str(f.get("where")) for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        clean = {
+            **dirty,
+            "schema": {
+                "shopMarketplace": True,
+                "seeds": {"noticeBody": "多店入驻；下单后可在订单页查看进度。"},
+            },
+        }
+        self.assertFalse(_marketplace_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_food_admin_order_lead_blocks_stall_ops(self) -> None:
+        """DOM-FOOD ordersAdminLead 写接单/出餐 → 结构闸 error（不靠 LLM）。"""
+        from app.llm.agents_qa import _fallback_qa, _food_role_copy_findings
+
+        dirty = {
+            "schema": {"domain": "DOM-FOOD"},
+            "labels": {
+                "ordersAdminLead": "处理本档口接单、出餐与配送状态。",
+                "appName": "食堂点餐",
+                "noticePageTitle": "食堂公告",
+            },
+            "capabilities": ["order"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "主管监督全食堂订单；档口接单出餐",
+            "domain": "DOM-FOOD",
+        }
+        hits = _food_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertTrue(any("ordersAdminLead" in str(f.get("msg")) for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        clean = {
+            **dirty,
+            "labels": {
+                **dirty["labels"],
+                "ordersAdminLead": "查看全食堂订单与退单，必要时介入处理。",
+                "ordersStaffLead": "处理本档口接单、出餐与配送状态。",
+            },
+        }
+        self.assertFalse(_food_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_reserve_fulfill_blocks_ship_copy(self) -> None:
+        """stay/rental/cinema：履约 hint / 主管 lead 写发货 → 结构闸 error。"""
+        from app.llm.agents_qa import _fallback_qa, _reserve_fulfill_copy_findings
+
+        dirty = {
+            "schema": {
+                "entities": {
+                    "order": {
+                        "fulfillMode": "stay",
+                        "verbs": {"ship": "发货", "complete": "完成"},
+                    }
+                }
+            },
+            "labels": {
+                "orderFulfillHint": "下单后发货配送到客房。",
+                "ordersAdminLead": "处理发货与物流。",
+                "appName": "酒店",
+                "noticePageTitle": "入住须知",
+            },
+            "capabilities": ["order_lines"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "客房预订",
+            "domain": "DOM-HOTEL",
+        }
+        hits = _reserve_fulfill_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        clean = {
+            **dirty,
+            "schema": {
+                "entities": {
+                    "order": {
+                        "fulfillMode": "stay",
+                        "verbs": {"ship": "办理入住", "complete": "办理离店"},
+                    }
+                }
+            },
+            "labels": {
+                **dirty["labels"],
+                "orderFulfillHint": "客房订单随预订生成；前台办理入住/离店，无物流发货。",
+                "ordersAdminLead": "查看全店订单与预订，必要时介入处理。",
+            },
+        }
+        self.assertFalse(_reserve_fulfill_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_borrow_hold_leak_and_role_leads(self) -> None:
+        """非图书借用域挂待取书 → error；缺 tickets*Lead → error。"""
+        from app.llm.agents_qa import _borrow_role_copy_findings, _fallback_qa
+
+        dirty_hold = {
+            "schema": {
+                "roles": {"staff_posts": [{"id": "keeper", "label": "器材管理员"}]},
+                "entities": {
+                    "ticket": {
+                        "allowBookHold": True,
+                        "states": {"pending": "待审", "hold_ready": "待取书"},
+                    }
+                },
+            },
+            "labels": {
+                "ticketsAdminLead": "查看全室借用与额度，必要时介入处理。",
+                "ticketsStaffLead": "审批借用、发放归还验收与催还。",
+                "appName": "设备借用",
+                "noticePageTitle": "公告",
+            },
+            "capabilities": ["ticket_flow"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "设备借用",
+            "domain": "DOM-EQUIP",
+        }
+        hits = _borrow_role_copy_findings(dirty_hold)
+        self.assertTrue(any("取书" in str(f.get("msg")) for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty_hold).get("ok"))
+
+        missing_leads = {
+            **dirty_hold,
+            "schema": {
+                "roles": {"staff_posts": [{"id": "keeper", "label": "器材管理员"}]},
+                "entities": {"ticket": {"states": {"pending": "待审"}}},
+            },
+            "labels": {
+                "appName": "设备借用",
+                "noticePageTitle": "公告",
+            },
+        }
+        hits2 = _borrow_role_copy_findings(missing_leads)
+        self.assertTrue(any("ticketsAdminLead" in str(f.get("where")) for f in hits2), hits2)
+
+        clean = {
+            **missing_leads,
+            "labels": {
+                "ticketsAdminLead": "查看全室借用与额度，必要时介入处理。",
+                "ticketsStaffLead": "审批借用、发放归还验收与催还。",
+                "appName": "设备借用",
+                "noticePageTitle": "公告",
+            },
+        }
+        self.assertFalse(_borrow_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_ticket_repair_blocks_shop_copy_and_needs_leads(self) -> None:
+        """报修组：商城发货口吻 → error；缺 tickets*Lead → error。"""
+        from app.llm.agents_qa import _fallback_qa, _ticket_role_copy_findings
+
+        dirty = {
+            "schema": {
+                "roles": {"staff_posts": [{"id": "dorm_mgr", "label": "楼管"}]},
+                "entities": {
+                    "ticket": {
+                        "verbs": {
+                            "apply": "提交报修",
+                            "approve": "发货",
+                            "reject": "驳回",
+                            "return": "完成",
+                        }
+                    }
+                },
+            },
+            "labels": {
+                "ticketsAdminLead": "处理发货与物流售后。",
+                "ticketsStaffLead": "受理报修、派单跟进与办结。",
+                "appName": "宿舍报修",
+                "noticePageTitle": "报修须知",
+            },
+            "capabilities": ["ticket_flow"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "宿舍报修",
+            "domain": "DOM-DORM",
+        }
+        hits = _ticket_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        missing = {
+            **dirty,
+            "schema": {
+                "roles": {"staff_posts": [{"id": "dorm_mgr", "label": "楼管"}]},
+                "entities": {
+                    "ticket": {
+                        "verbs": {
+                            "apply": "提交报修",
+                            "approve": "受理",
+                            "reject": "驳回",
+                            "return": "完成",
+                        }
+                    }
+                },
+            },
+            "labels": {"appName": "宿舍报修", "noticePageTitle": "报修须知"},
+        }
+        hits2 = _ticket_role_copy_findings(missing)
+        self.assertTrue(any("ticketsAdminLead" in str(f.get("where")) for f in hits2), hits2)
+
+        clean = {
+            **missing,
+            "labels": {
+                "ticketsAdminLead": "查看全楼报修工单，维护楼栋与类型，必要时介入处理。",
+                "ticketsStaffLead": "受理报修、派单跟进与办结。",
+                "appName": "宿舍报修",
+                "noticePageTitle": "报修须知",
+            },
+        }
+        self.assertFalse(_ticket_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_follow_blocks_foreign_copy_and_needs_leads(self) -> None:
+        """跟进组：商城/借阅口吻 → error；缺 tickets*Lead → error。"""
+        from app.llm.agents_qa import _fallback_qa, _follow_role_copy_findings
+
+        dirty = {
+            "schema": {
+                "roles": {"staff_posts": [{"id": "intern_tutor", "label": "实习辅导员"}]},
+                "entities": {"ticket": {"verbs": {"apply": "提交周报"}}},
+            },
+            "labels": {
+                "ticketsAdminLead": "处理发货与物流。",
+                "ticketsStaffLead": "审阅周报、催交与退回修改。",
+                "appName": "顶岗实习",
+                "noticePageTitle": "实习须知",
+            },
+            "capabilities": ["ticket_flow"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "实习周报",
+            "domain": "DOM-INTERN",
+        }
+        hits = _follow_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        missing = {
+            **dirty,
+            "labels": {"appName": "顶岗实习", "noticePageTitle": "实习须知"},
+        }
+        hits2 = _follow_role_copy_findings(missing)
+        self.assertTrue(any("ticketsAdminLead" in str(f.get("where")) for f in hits2), hits2)
+
+        clean = {
+            **missing,
+            "labels": {
+                "ticketsAdminLead": "查看全员周报与实习岗位，必要时介入处理。",
+                "ticketsStaffLead": "审阅周报、催交与退回修改。",
+                "appName": "顶岗实习",
+                "noticePageTitle": "实习须知",
+            },
+        }
+        self.assertFalse(_follow_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_approve_blocks_foreign_copy_and_needs_leads(self) -> None:
+        """审批组：商城口吻 → error；缺 tickets*Lead → error。"""
+        from app.llm.agents_qa import _approve_role_copy_findings, _fallback_qa
+
+        dirty = {
+            "schema": {
+                "roles": {"staff_posts": [{"id": "seal_clerk", "label": "用章管理员"}]},
+                "entities": {"ticket": {"verbs": {"apply": "提交用章"}}},
+            },
+            "labels": {
+                "ticketsAdminLead": "处理发货与物流。",
+                "ticketsStaffLead": "受理用章、核验材料与办结。",
+                "appName": "用章审批",
+                "noticePageTitle": "用章须知",
+            },
+            "capabilities": ["ticket_flow"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "用章审批",
+            "domain": "DOM-SEAL",
+        }
+        hits = _approve_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        missing = {
+            **dirty,
+            "labels": {"appName": "用章审批", "noticePageTitle": "用章须知"},
+        }
+        hits2 = _approve_role_copy_findings(missing)
+        self.assertTrue(any("ticketsAdminLead" in str(f.get("where")) for f in hits2), hits2)
+
+        clean = {
+            **missing,
+            "labels": {
+                "ticketsAdminLead": "查看全盘用章申请，维护规则，必要时介入处理。",
+                "ticketsStaffLead": "受理用章、核验材料与办结。",
+                "appName": "用章审批",
+                "noticePageTitle": "用章须知",
+            },
+        }
+        self.assertFalse(_approve_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_apply_blocks_foreign_copy_and_needs_leads(self) -> None:
+        """报名组：商城口吻 → error；缺 tickets*Lead → error。"""
+        from app.llm.agents_qa import _apply_role_copy_findings, _fallback_qa
+
+        dirty = {
+            "schema": {
+                "roles": {"staff_posts": [{"id": "assistant", "label": "活动助理"}]},
+                "entities": {"ticket": {"verbs": {"apply": "报名"}}},
+            },
+            "labels": {
+                "ticketsAdminLead": "处理发货与物流。",
+                "ticketsStaffLead": "审核报名、签到催办与取消处理。",
+                "appName": "活动报名",
+                "noticePageTitle": "报名须知",
+            },
+            "capabilities": ["ticket_flow"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "活动报名",
+            "domain": "DOM-ACTIVITY",
+        }
+        hits = _apply_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        missing = {
+            **dirty,
+            "labels": {"appName": "活动报名", "noticePageTitle": "报名须知"},
+        }
+        hits2 = _apply_role_copy_findings(missing)
+        self.assertTrue(any("ticketsAdminLead" in str(f.get("where")) for f in hits2), hits2)
+
+        clean = {
+            **missing,
+            "labels": {
+                "ticketsAdminLead": "查看全盘活动报名，维护名额与规则，必要时介入处理。",
+                "ticketsStaffLead": "审核报名、签到催办与取消处理。",
+                "appName": "活动报名",
+                "noticePageTitle": "报名须知",
+            },
+        }
+        self.assertFalse(_apply_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_content_blocks_foreign_copy_and_needs_leads(self) -> None:
+        """内容组：商城口吻 → error；缺 tickets*Lead → error。"""
+        from app.llm.agents_qa import _content_role_copy_findings, _fallback_qa
+
+        dirty = {
+            "schema": {
+                "roles": {"staff_posts": [{"id": "moderator", "label": "版主"}]},
+                "entities": {"ticket": {"verbs": {"apply": "跟帖"}}},
+            },
+            "labels": {
+                "ticketsAdminLead": "处理发货与物流。",
+                "ticketsStaffLead": "审核回复、处理违规与催办。",
+                "appName": "校园论坛",
+                "noticePageTitle": "站内公告",
+            },
+            "capabilities": ["ticket_flow", "content"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "校园论坛",
+            "domain": "DOM-FORUM",
+        }
+        hits = _content_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        missing = {
+            **dirty,
+            "labels": {"appName": "校园论坛", "noticePageTitle": "站内公告"},
+        }
+        hits2 = _content_role_copy_findings(missing)
+        self.assertTrue(any("ticketsAdminLead" in str(f.get("where")) for f in hits2), hits2)
+
+        clean = {
+            **missing,
+            "labels": {
+                "ticketsAdminLead": "查看全盘主帖与回复，维护版规，必要时下架与介入处理。",
+                "ticketsStaffLead": "审核回复、处理违规与催办。",
+                "appName": "校园论坛",
+                "noticePageTitle": "站内公告",
+            },
+        }
+        self.assertFalse(_content_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_interact_blocks_foreign_copy_and_needs_leads(self) -> None:
+        """互动组：商城口吻 → error；缺 tickets*Lead → error。"""
+        from app.llm.agents_qa import _interact_role_copy_findings, _fallback_qa
+
+        dirty = {
+            "schema": {
+                "roles": {"staff_posts": [{"id": "matchmaker", "label": "联谊辅导员"}]},
+                "entities": {"ticket": {"verbs": {"apply": "牵线"}}},
+            },
+            "labels": {
+                "ticketsAdminLead": "处理发货与物流。",
+                "ticketsStaffLead": "审核牵线、反馈结果与催办。",
+                "appName": "校园交友",
+                "noticePageTitle": "牵线须知",
+            },
+            "capabilities": ["ticket_flow", "dm"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "校园交友",
+            "domain": "DOM-DATING",
+        }
+        hits = _interact_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        missing = {
+            **dirty,
+            "labels": {"appName": "校园交友", "noticePageTitle": "牵线须知"},
+        }
+        hits2 = _interact_role_copy_findings(missing)
+        self.assertTrue(any("ticketsAdminLead" in str(f.get("where")) for f in hits2), hits2)
+
+        clean = {
+            **missing,
+            "labels": {
+                "ticketsAdminLead": "查看全盘牵线申请，维护规范，必要时介入处理。",
+                "ticketsStaffLead": "审核牵线、反馈结果与催办。",
+                "appName": "校园交友",
+                "noticePageTitle": "牵线须知",
+            },
+        }
+        self.assertFalse(_interact_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
+    def test_fallback_blocks_admin_ship_and_needs_leads(self) -> None:
+        """兜底组：管理员确认发货 → error；缺路径 lead → error。"""
+        from app.llm.agents_qa import _fallback_qa, _fallback_role_copy_findings
+
+        dirty = {
+            "schema": {
+                "roles": {"staff_posts": [{"id": "order_clerk", "label": "订单办理员"}]},
+                "entities": {"order": {"states": {"pending": "待确认"}}},
+                "seeds": {
+                    "noticeTitle": "使用须知",
+                    "noticeBody": "下单后由管理员确认发货或自提。",
+                },
+            },
+            "labels": {
+                "ordersAdminLead": "管理员确认发货与物流。",
+                "ordersStaffLead": "确认履约、发货或自提与售后办理。",
+                "appName": "通用交易",
+                "noticePageTitle": "公告",
+            },
+            "capabilities": ["cart_order"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "通用交易",
+            "domain": "DOM-GENERIC",
+        }
+        hits = _fallback_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        missing = {
+            **dirty,
+            "schema": {
+                "roles": {"staff_posts": [{"id": "clerk", "label": "审核员"}]},
+                "entities": {"ticket": {"verbs": {"apply": "提交申请"}}},
+                "seeds": {"noticeTitle": "须知", "noticeBody": "请按时办理。"},
+            },
+            "labels": {"appName": "业务申请", "noticePageTitle": "公告"},
+        }
+        hits2 = _fallback_role_copy_findings(missing)
+        self.assertTrue(
+            any("ticketsAdminLead" in str(f.get("where")) for f in hits2), hits2
+        )
+
+        clean = {
+            **missing,
+            "labels": {
+                "ticketsAdminLead": "查看全盘申请，维护规则，必要时介入处理。",
+                "ticketsStaffLead": "审核申请、催办与办结。",
+                "appName": "业务申请",
+                "noticePageTitle": "公告",
+            },
+        }
+        self.assertFalse(_fallback_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
 
 if __name__ == "__main__":
     unittest.main()
