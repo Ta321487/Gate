@@ -1248,23 +1248,8 @@ def _strip_type_usages(text: str, type_name: str) -> str:
     ):
         text = _replace_type_calls(text, type_name, meth, "false")
 
-    # WeighSaleStore.priceLine(...) 赋值 → item
-    assign_pl = re.compile(
-        rf"Map<\s*String\s*,\s*Object\s*>\s+(\w+)\s*=\s*{fqn}\.priceLine\s*\("
-    )
-    while True:
-        m = assign_pl.search(text)
-        if not m:
-            break
-        end = _skip_balanced(text, m.end() - 1)
-        if end < 0:
-            break
-        k = end
-        while k < len(text) and text[k] in " \t":
-            k += 1
-        if k < len(text) and text[k] == ";":
-            k += 1
-        text = text[: m.start()] + f"Map<String, Object> {m.group(1)} = item;" + text[k:]
+    # WeighSaleStore.priceLine：禁止抹成「priced = item」（档案无 lineYuan，下单 NPE）。
+    # OrderStore 已用 priceLineOf：enabled()→false 后死分支 return priceLine 再被换成 null。
     text = _replace_type_calls(text, type_name, "priceLine", "null")
 
     # 三元：false ? … : fallback → fallback

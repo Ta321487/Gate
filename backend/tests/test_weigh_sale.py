@@ -65,6 +65,25 @@ def test_weigh_price_next_day_and_payout() -> None:
         assert "次日达只能选明天" in src
 
 
+def test_order_store_price_line_of_survives_weigh_prune() -> None:
+    """未挂称重时 prune 不得把行计价抹成档案行（无 lineYuan → 下单 NPE）。"""
+    from app.bake.pack_prune import _strip_type_usages
+
+    root = __import__("pathlib").Path(__file__).resolve().parents[2]
+    src = (
+        root
+        / "skeletons/baseline/backend/src/main/java/com/thesis/capability/OrderStore.java"
+    ).read_text(encoding="utf-8")
+    assert "priceLineOf" in src
+    assert "Map<String, Object> priced = WeighSaleStore.priceLine" not in src
+    i = src.index("public static Map<String, Object> priceLineOf")
+    j = src.index("public static List<Map<String, Object>> listCart", i)
+    stripped = _strip_type_usages(src[i:j], "WeighSaleStore")
+    assert "WeighSaleStore" not in stripped
+    assert "priced = item" not in stripped
+    assert 'out.put("lineYuan"' in stripped
+
+
 def test_plain_shop_and_fresh_skin_stay_off() -> None:
     plain = domain_sql("DOM-SHOP", "t", title="日用百货商城", proposal_text="购物车下单。")
     assert "weight_qty" not in plain

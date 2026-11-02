@@ -108,6 +108,25 @@ public final class OrderStore {
         return ArchiveStore.effectiveUnitPrice(item);
     }
 
+    /**
+     * 行计价快照（unit / qty / weight / lineYuan）。
+     * 称重岛开启时委托 WeighSaleStore；未开或出包 prune 掉称重后走件数×单价，
+     * 禁止把 priceLine 抹成档案行本身（档案无 lineYuan，下单会 NPE）。
+     */
+    public static Map<String, Object> priceLineOf(Map<String, Object> item, int qty, Map<String, Object> extra) {
+        if (WeighSaleStore.enabled()) {
+            return WeighSaleStore.priceLine(item, qty, extra);
+        }
+        double unit = item == null ? 0 : unitPriceOf(item);
+        int q = Math.max(qty, 0);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("unit", unit);
+        out.put("qty", q);
+        out.put("weight", null);
+        out.put("lineYuan", round2(unit * q));
+        return out;
+    }
+
     public static List<Map<String, Object>> listCart(String username) {
         requireEnabled();
         List<Map<String, Object>> raw = mapper().selectCart(CART, username);
@@ -434,8 +453,8 @@ public final class OrderStore {
             BlindBoxStore.assertPurchasable(itemId);
             ConsignStore.assertOnSale(itemId);
         BuybackStore.assertListed(itemId);
-            Map<String, Object> priced = WeighSaleStore.priceLine(item, qty, extraForItem(lineExtras, itemId));
-            total += ((Number) priced.get("lineYuan")).doubleValue();
+            Map<String, Object> priced = priceLineOf(item, qty, extraForItem(lineExtras, itemId));
+            total += toDouble(priced.get("lineYuan"));
         }
         double subtotal = round2(total);
         Map<String, Object> windowSnap = null;
@@ -626,9 +645,9 @@ public final class OrderStore {
                 int qty = ((Number) line.get("qty")).intValue();
                 Map<String, Object> item = ArchiveStore.getItemRaw(itemId);
                 Map<String, Object> extra = extraForItem(lineExtras, itemId);
-                Map<String, Object> priced = WeighSaleStore.priceLine(item, qty, extra);
-                int lineQty = ((Number) priced.get("qty")).intValue();
-                insertOrderLine(orderId, itemId, ArchiveStore.lineTitleWithSpec(item), ((Number) priced.get("unit")).doubleValue(), lineQty, extra);
+                Map<String, Object> priced = priceLineOf(item, qty, extra);
+                int lineQty = priced.get("qty") instanceof Number n ? n.intValue() : qty;
+                insertOrderLine(orderId, itemId, ArchiveStore.lineTitleWithSpec(item), toDouble(priced.get("unit")), lineQty, extra);
                 WeighSaleStore.saveWeight(orderId, itemId, priced.get("weight"));
                 if (useQuota) {
                     ArchiveStore.adjustStock(itemId, -lineQty);

@@ -187,12 +187,24 @@ class PackPruneTests(unittest.TestCase):
         self.assertIn("java.util.Set.of()", out2)
         self.assertNotIn("false", out2.split("onDuty")[1][:40])
 
-        weigh = (
-            "Map<String, Object> priced = WeighSaleStore.priceLine("
-            "item, qty, extraForItem(lineExtras, itemId));\n"
-        )
+        # 称重未开：priceLineOf 内 if(enabled) 死掉后仍走件数×单价，禁止抹成 priced=item
+        weigh = """
+        public static Map priceLineOf(Map item, int qty, Map extra) {
+            if (WeighSaleStore.enabled()) {
+                return WeighSaleStore.priceLine(item, qty, extra);
+            }
+            double unit = unitPriceOf(item);
+            Map out = new java.util.LinkedHashMap();
+            out.put("lineYuan", unit * qty);
+            return out;
+        }
+        Map priced = priceLineOf(item, qty, extra);
+"""
         out3 = _strip_type_usages(weigh, "WeighSaleStore")
-        self.assertEqual(out3.strip(), "Map<String, Object> priced = item;")
+        self.assertNotIn("WeighSaleStore", out3)
+        self.assertNotIn("priced = item", out3)
+        self.assertIn("priceLineOf(item, qty, extra)", out3)
+        self.assertIn('out.put("lineYuan"', out3)
 
         seat = """
         String st = "x";
