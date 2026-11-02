@@ -26,19 +26,60 @@
 8. **可交互控件**：**C0～C5 已齐**；`BASELINE_KNOWN_CONTROLS` 空。  
 9. **全域 UI 诊断**：**68 域双 OK**（`docs/ui-domain-diagnosis.md`）。
 
-### 本会话（2026-11-01）· 角色边界文案按域族收（批次册）· **换对话入口**
+### 本会话（2026-11-03）· 农产下单 NPE · Map.get→doubleValue
+
+- **站队**：**修工厂**（探针：超新农产品商城 `gf-20261102-235812`）。
+- **根因**：未挂 `weigh_sale` 时 prune 把 `WeighSaleStore.priceLine(...)` 抹成 `priced = item`；档案行无 `lineYuan`，结算 `((Number) priced.get("lineYuan")).doubleValue()` NPE。
+- **已做（已 commit）**：三骨架 `OrderStore.priceLineOf`（称重开则委托，否则件数×单价）；`pack_prune` 去掉「抹成 item」；钉测 `test_order_store_price_line_of_survives_weigh_prune` + strip 用例；当面工作区已补同一计价并重编。
+- **测**：pack_prune strip / weigh_sale 相关绿。
+- **你这边**：新包重 bake；当面农产预览若后端已起，可再走一遍「确认支付并下单」。
+
+### 本会话（2026-11-02）· 热修 · QA 只报影响程序的问题
+
+- **站队**：**修工厂**。
+- **口径**：LLM warn/error 必须命中「影响程序/演示」信号（缺 labels、串台、假宣称、空壳等）；口味/建议类丢掉。
+- **已做（已 commit）**：`_SYS` + `_PROGRAM_IMPACT_RE` 过滤；评价双口径误报仍滤；temperature 0.1。
+- **测**：program-impact / 润色 / 评价误报 绿。
+- **你这边**：工厂吃新代码后重跑交付质量摘要。
+
+### 本会话（2026-11-02）· 角色边界 · fallback 收齐 · **L4 十组完**
+
+- **站队**：**修工厂**（L4 · `fallback`）。
+- **已做（已 commit）**：R-FALLBACK-01～02；L4 十组全齐。
+- **续**：见上节热修；本片已随主题拆提交推送。
+
+### 本会话（2026-11-02）· 角色边界 · interact / content / apply 等已齐
+
+- 见册 `docs/role-boundary-copy-batch.md` §3～§4；本轮末组见上节。
+
+### 本会话（2026-11-02）· 角色边界 · borrow 组收齐
+
+- **站队**：**修工厂**（L4 · `borrow`）。
+- **已做（已 commit）**：R-BORROW-01～02；`borrow` **已齐**。
+- **续**：见上节 `ticket`。
+
+### 本会话（2026-11-02）· 角色边界 · reserve 组收齐
+
+- **站队**：**修工厂**（L4 · `reserve`）。
+- **已做（已 commit）**：R-RESERVE-01～02；`reserve` **已齐**。
+- **已知未挡**：INSTRUMENT 未拆 lead；未知口语；L5。
+- **续**：见上节 `borrow`。
+
+### 本会话（2026-11-01）· 角色边界 · trade 组收齐（R-TRADE-02～05）
+
+- **站队**：**修工厂**（L4 按域族收）。
+- **已做（已 commit）**：02～05（订单页 lead / FOOD / 多店 notice / CINEMA 回归）；`trade` **已齐**。
+- **已知未挡**：未知口语仍依赖 p3q/LLM；L5。
+- **续**：见上节 `reserve`。
+
+### 本会话（2026-11-01）· 角色边界文案按域族收（批次册）· R-TRADE-01
 
 > **老板离场口径**：同题再 bake，**不许**再因同一句 `ordersAdminLead`（发货/物流塞进管理员）红掉。其它洞另说，禁止轻飘保证「整包永远绿」。
 
 - **主题**：`p3q`「管理员 lead 写成商家发货」→ **修工厂**；批次册 + 换开题抗性诚实账。
-- **已做（已核对，未 git commit）**：
-  - `builders_slot`：`ordersAdminLead`=全平台监督；`ordersStaffLead`=本店发货物流售后
-  - `agents_qa._marketplace_role_copy_findings`：多店 + admin lead 含「发货|物流」→ **error**（关 LLM 也挡）
-  - 册：[`docs/role-boundary-copy-batch.md`](./docs/role-boundary-copy-batch.md)（§0 L0～L7；R-TRADE-01 已齐）
-  - 验：多店 schema 结构闸 **0 error**；`test_marketplace_schema_flag` + `test_marketplace_admin_order_lead_blocks_merchant_ops` **绿**
-- **同题再 bake**：本条 error **不应复发**。`p3q` 若仍红，必是**另一条** finding（LLM 长尾 / 别族）→ 收进工厂闸，禁止只擦包。结构层现有 1 条 **warn**（admin 有 category 菜单但 entityKeys 无 category）不挡包，勿当本洞回潮。
-- **工作区**：本片改动与 Unsplash/E-R 等其它脏文件**混在未提交里**；新对话若要保全，先让人下令 **只提交本片**（builders_slot / agents_qa / 两测 / role-boundary 册 / README·HANDOFF 相关行）。
-- **下一步（新对话主片候选）**：① 人下令则 commit 本片；② 清 `trade` R-TRADE-02～05；③ 或老板带新 `p3q` 红栈 → 修工厂。**勿**宣称 L4 全组已齐 / 明年可撒手。
+- **已做（已核对并 commit）**：`builders_slot` lead 拆句；`_marketplace_role_copy_findings`；册 §0 + R-TRADE-01。
+- **同题再 bake**：本条 error **不应复发**。若仍红必是别条 finding。
+- **续**：见上节 trade 02～05 已收；本片已随主题拆提交推送。
 
 ### 本会话（2026-11-01）· Unsplash 题槽灌库（消抖）
 
