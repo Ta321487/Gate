@@ -224,19 +224,26 @@ def resolve_slots(
     proposal_text: str = "",
     allowed_texts: Iterable[str] | None = None,
 ) -> dict[str, str]:
-    """四级解析：开题抽取 → 域词表/域默认 override → 通用兜底。
+    """解析：开题簇词 → 域 preset/实体原文 →（仅空槽时）再考虑通用兜底。
 
     ``category_axis`` 只跟随开题的**簇词**，域限定前缀保留（客户分级 + 开题「评级」
     → 客户评级）；轴名不含簇词（专有轴名）时不做抽取，避免造词。
+    有域原文时**不**用 ``SLOT_FALLBACKS`` 的「分类/记录」覆盖；仅槽位全空且开题
+    也无簇词时才落光杆兜底（避免 ``{category_axis}`` 残句），不当作展示越权默认。
     """
     _ = domain  # 域身份已经在 preset/overrides 里体现；签名保留供调用方语义自述
     slots = preset_slots(preset if isinstance(preset, dict) else {})
     texts = list(allowed_texts or ())
     for slot, cluster in SLOT_CLUSTERS.items():
-        base = str(slots.get(slot) or "").strip() or SLOT_FALLBACKS[slot]
+        base = str(slots.get(slot) or "").strip()
         allowed = allowed_cluster_words(slot, texts)
-        allowed.add(base)
+        if base:
+            allowed.add(base)
         if slot == "category_axis":
+            if not base:
+                picked = _proposal_pick(proposal_text or "", slot, set(cluster))
+                slots[slot] = picked or SLOT_FALLBACKS[slot]
+                continue
             prefix, tail = _split_axis(base, cluster)
             if not tail:
                 slots[slot] = base
@@ -247,6 +254,10 @@ def resolve_slots(
             continue
         if slot == "ticket_noun" and copy_authoritative_noun(preset):
             slots[slot] = base  # 域话术已写明复合名词（归寝登记），材料通用词不得覆盖
+            continue
+        if not base:
+            picked = _proposal_pick(proposal_text or "", slot, set(cluster) | allowed)
+            slots[slot] = picked or SLOT_FALLBACKS[slot]
             continue
         picked = _proposal_pick(proposal_text or "", slot, allowed)
         slots[slot] = picked or base

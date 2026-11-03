@@ -54,9 +54,17 @@ class SlotResolutionTests(unittest.TestCase):
         self.assertEqual(schema["lex"]["category_axis"], "客户分级")
 
     def test_unknown_slot_value_is_not_invented(self):
+        """无域轴名、开题无簇词：才落光杆兜底；有域原文时不得用「分类」覆盖。"""
         preset = {"archive_label": "案件", "archive_fields": [], "ticket_label": "跟进单"}
-        lex = resolve_slots(preset, proposal_text="案件台账管理")  # 材料无簇词 → 通用兜底
-        self.assertEqual(lex["category_axis"], "分类")
+        lex = resolve_slots(preset, proposal_text="案件台账管理")
+        self.assertEqual(lex["category_axis"], "分类")  # 槽全空才兜底
+        preset_axis = {
+            "archive_label": "客户",
+            "archive_fields": [{"key": "category", "label": "客户分级"}],
+            "ticket_label": "跟进单",
+        }
+        lex2 = resolve_slots(preset_axis, proposal_text="人脸识别门禁系统")
+        self.assertEqual(lex2["category_axis"], "客户分级")  # 保留域原文，不用「分类」盖
 
     def test_fill_slots_replaces_only_declared_tokens(self):
         obj = {"lead": "按{category_axis}浏览{archive_plural}。", "keep": "原样"}
