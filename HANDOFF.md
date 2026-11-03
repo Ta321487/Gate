@@ -26,6 +26,16 @@
 8. **可交互控件**：**C0～C5 已齐**；`BASELINE_KNOWN_CONTROLS` 空。  
 9. **全域 UI 诊断**：**68 域双 OK**（`docs/ui-domain-diagnosis.md`）。
 
+### 本会话（2026-11-04）· 模块图「文案红」可诊断
+
+- **站队**：**修工厂**（L0 闸体验；不做可编辑页）。
+- **原因**：闸红时卡禁打开；未列 findings；图缓存不跟 `modules.py`，重载像没修。
+- **已做**：文案红仍可打开；卡/弹窗工厂提示 + findings；`force` 绕过缓存；红时禁导出。
+- **假绿收口**：未拉图不得「可导出」→「待核验」；进论文材料页 `ensureModulesMeta` 预检闸；真红才「文案红」、真绿才「可导出」。
+- **Overrides 计划**：[`docs/pack-overrides.md`](./docs/pack-overrides.md)——八张可细调、重 bake 重放；**§6 UI 已定稿**（文字优先、保存后出图必变、闸走现网文案红、findings 仅加 `source`）；等人令 `做 P0`。
+- **你这边**：Overrides 说 `做 P0` 再开工。
+- **已推送**（文案红 UX + Overrides 计划册等同批主题拆分提交）。
+
 ### 本会话（2026-11-03）· 农产下单 NPE · Map.get→doubleValue
 
 - **站队**：**修工厂**（探针：超新农产品商城 `gf-20261102-235812`）。
