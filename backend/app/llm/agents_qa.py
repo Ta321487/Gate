@@ -16,6 +16,7 @@ from app.llm.client import (
     chat,
     format_usage_detail,
 )
+from app.llm.temperature import temperature_for
 
 _SYS = (
     "你是毕设交付 QA Agent（Drift/Consistency）。"
@@ -1485,7 +1486,9 @@ async def run_qa_agent(
         {"role": "system", "content": _SYS},
         {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
     ]
-    res = await chat(rt, messages, json_mode=True, temperature=0.1, timeout=120.0)
+    res = await chat(
+        rt, messages, json_mode=True, temperature=temperature_for("qa_report"), timeout=120.0
+    )
     append_deepseek_log(project_id, f"qa ok={res.ok} {format_usage_detail(res)}")
 
     if not res.ok or not res.data:

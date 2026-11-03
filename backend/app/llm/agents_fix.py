@@ -51,6 +51,7 @@ from app.llm.client import (
     format_usage_detail,
     monthly_tokens_used,
 )
+from app.llm.temperature import temperature_for
 
 # mvn/javac：[ERROR] path/File.java:[行,列] 文案  或  File.java:行:列: 文案
 _JAVAC_LOCUS_RE = re.compile(
@@ -218,7 +219,9 @@ async def run_fix_agent(
                 ),
             },
         ]
-        res = await chat(rt, messages, json_mode=True, temperature=0.1)
+        res = await chat(
+            rt, messages, json_mode=True, temperature=temperature_for("job_fix")
+        )
         total_tokens += res.tokens
         append_deepseek_log(
             project_id,

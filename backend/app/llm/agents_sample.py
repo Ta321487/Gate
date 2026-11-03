@@ -50,6 +50,7 @@ from app.llm.client import (
     format_usage_detail,
     monthly_tokens_used,
 )
+from app.llm.temperature import temperature_for
 
 async def run_sample_proposal_agent(
     db: AsyncSession,
@@ -89,7 +90,13 @@ async def run_sample_proposal_agent(
             ),
         },
     ]
-    res = await chat(rt, messages, json_mode=False, temperature=0.55, timeout=120.0)
+    res = await chat(
+        rt,
+        messages,
+        json_mode=False,
+        temperature=temperature_for("sample_proposal"),
+        timeout=120.0,
+    )
     await record_call(
         db,
         project_id=_SAMPLE_PROPOSAL_PID,

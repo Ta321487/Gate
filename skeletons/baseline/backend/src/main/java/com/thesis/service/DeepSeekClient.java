@@ -56,6 +56,12 @@ public final class DeepSeekClient {
     }
 
     /**
+     * 学生包客服/导购对话温度（工厂口径 lively 档 0.5～0.7）。
+     * 与工厂 ``app.llm.temperature.TEMP_LIVELY_CHAT`` 对齐；勿降到 0（话术会像复读机）。
+     */
+    public static final double CHAT_TEMPERATURE = 0.7;
+
+    /**
      * @param messages 每项含 role/content（system|user|assistant）
      * @return 助手文本；失败返回 null
      */
@@ -68,7 +74,7 @@ public final class DeepSeekClient {
                     .build();
             DeepSeekChatOptions options = DeepSeekChatOptions.builder()
                     .model(model())
-                    .temperature(0.7)
+                    .temperature(CHAT_TEMPERATURE)
                     .build();
             DeepSeekChatModel chatModel = DeepSeekChatModel.builder()
                     .deepSeekApi(api)

@@ -23,6 +23,7 @@ from app.llm.client import (
     record_call,
 )
 from app.llm.runtime import LlmRuntime
+from app.llm.temperature import temperature_for
 
 _QUOTE_RE = re.compile(r"「([^」]+)」")
 
@@ -133,7 +134,13 @@ async def polish_usecase_description(
             "content": json.dumps(payload, ensure_ascii=False),
         },
     ]
-    res = await chat(rt, messages, json_mode=False, temperature=0.3, timeout=60.0)
+    res = await chat(
+        rt,
+        messages,
+        json_mode=False,
+        temperature=temperature_for("usecase_prose"),
+        timeout=60.0,
+    )
     accepted = accept_polished_description(
         (res.text or "").strip(),
         draft=draft,

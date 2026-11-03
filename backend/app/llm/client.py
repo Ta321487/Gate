@@ -464,10 +464,18 @@ async def chat(
     messages: list[dict[str, str]],
     *,
     json_mode: bool = False,
-    temperature: float = 0.3,
+    temperature: float | None = None,
     timeout: float = 90.0,
 ) -> ChatResult:
-    """按启用链调用：优先厂商失败或 JSON 不可用时自动换下一家。"""
+    """按启用链调用：优先厂商失败或 JSON 不可用时自动换下一家。
+
+    ``temperature`` 按任务传入；缺省走 ``temperature.TEMP_DEFAULT``（结构化档）。
+    档位真源：``app.llm.temperature``（deterministic / lively / creative）。
+    """
+    from app.llm.temperature import TEMP_DEFAULT
+
+    if temperature is None:
+        temperature = TEMP_DEFAULT
     chain = rt.endpoint_chain()
     if not chain:
         return ChatResult(

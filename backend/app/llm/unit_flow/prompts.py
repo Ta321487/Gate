@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from app.llm.agents_common import _LABEL_KEYS
+from app.llm.temperature import temperature_for_unit
 from app.llm.unit_flow.context_budget import prepare_unit_user_payload
 from app.llm.unit_flow.models import DeliveryPlan, TaskUnit, UnitKind
 
@@ -16,10 +17,11 @@ def build_unit_messages(
     *,
     repair_messages: list[dict[str, str]] | None = None,
 ) -> tuple[list[dict[str, str]], float]:
-    """返回 (messages, temperature)。"""
+    """返回 (messages, temperature)。温度见 ``app.llm.temperature``。"""
     frozen = plan.frozen
     excerpt = plan.proposal_excerpt
     repair_messages = repair_messages or []
+    temp = temperature_for_unit(unit.kind)
 
     if unit.kind == UnitKind.island_labels:
         sys = (
@@ -42,7 +44,6 @@ def build_unit_messages(
             },
             budget_chars=unit.budget_chars,
         )
-        temp = 0.35
     elif unit.kind == UnitKind.island_seeds:
         sys = (
             "你是毕设港 Island Seed Agent。只输出 JSON："
@@ -63,7 +64,6 @@ def build_unit_messages(
             },
             budget_chars=unit.budget_chars,
         )
-        temp = 0.35
     elif unit.kind == UnitKind.island_entities:
         sys = (
             "你是毕设港 Island Entity Agent。只输出 JSON："
@@ -80,7 +80,6 @@ def build_unit_messages(
             },
             budget_chars=unit.budget_chars,
         )
-        temp = 0.35
     elif unit.kind == UnitKind.island_roles:
         sys = (
             "你是毕设港 Island Roles Agent。只输出 JSON："
@@ -98,7 +97,6 @@ def build_unit_messages(
             },
             budget_chars=unit.budget_chars,
         )
-        temp = 0.35
     elif unit.kind == UnitKind.er_labels:
         sys = (
             "你是毕设港 ER Label Agent。只输出 JSON：\n"
@@ -114,7 +112,6 @@ def build_unit_messages(
             "title": frozen.title,
             "gaps": unit.payload.get("gaps"),
         }
-        temp = 0.2
     elif unit.kind == UnitKind.module_labels:
         sys = (
             "你是毕设港 Module Label Agent。只输出 JSON："
@@ -132,7 +129,6 @@ def build_unit_messages(
             },
             budget_chars=unit.budget_chars,
         )
-        temp = 0.2
     elif unit.kind == UnitKind.testcase_labels:
         sys = (
             "你是毕设港 Testcase Label Agent。只输出 JSON：\n"
@@ -152,7 +148,6 @@ def build_unit_messages(
             },
             budget_chars=unit.budget_chars,
         )
-        temp = 0.2
     elif unit.kind == UnitKind.ppt_page:
         role = str(unit.payload.get("role") or "bullets")
         sys = (
@@ -185,7 +180,6 @@ def build_unit_messages(
             },
             budget_chars=unit.budget_chars,
         )
-        temp = 0.25
     else:
         raise ValueError(f"unknown unit kind: {unit.kind}")
 

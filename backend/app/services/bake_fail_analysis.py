@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.client import chat
 from app.llm.runtime import load_llm_runtime
+from app.llm.temperature import temperature_for
 from app.models import Job, JobKind, JobStatus, Project
 from app.services.bake_fail_classify import (
     CODES,
@@ -388,7 +389,13 @@ async def classify_assist(
             ),
         },
     ]
-    res = await chat(rt, messages, json_mode=True, temperature=0.1, timeout=60.0)
+    res = await chat(
+        rt,
+        messages,
+        json_mode=True,
+        temperature=temperature_for("bake_fail_classify"),
+        timeout=60.0,
+    )
     if not res.ok:
         raise RuntimeError(res.error or "类型建议生成失败，请稍后重试")
     data = res.data if isinstance(res.data, dict) else {}
@@ -501,7 +508,13 @@ async def create_fix_draft(
             ),
         },
     ]
-    res = await chat(rt, messages, json_mode=True, temperature=0.0, timeout=90.0)
+    res = await chat(
+        rt,
+        messages,
+        json_mode=True,
+        temperature=temperature_for("bake_fail_hint"),
+        timeout=90.0,
+    )
     if not res.ok:
         raise RuntimeError(res.error or "处理建议生成失败，请稍后重试")
     data = res.data if isinstance(res.data, dict) else {}

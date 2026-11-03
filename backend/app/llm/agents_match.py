@@ -50,6 +50,7 @@ from app.llm.client import (
     format_usage_detail,
     monthly_tokens_used,
 )
+from app.llm.temperature import temperature_for
 
 async def run_upload_cluster_agent(
     db: AsyncSession,
@@ -96,7 +97,9 @@ async def run_upload_cluster_agent(
             "content": f"共 {len(profiles)} 份材料（索引从 0）：\n\n{blob}",
         },
     ]
-    res = await chat(rt, messages, json_mode=True, temperature=0.05, timeout=90.0)
+    res = await chat(
+        rt, messages, json_mode=True, temperature=temperature_for("upload_cluster"), timeout=90.0
+    )
     await record_call(
         db,
         project_id=plan_id,
@@ -159,7 +162,9 @@ async def run_match_agent(
             ),
         },
     ]
-    res = await chat(rt, messages, json_mode=True, temperature=0.1, timeout=120.0)
+    res = await chat(
+        rt, messages, json_mode=True, temperature=temperature_for("match_recommend"), timeout=120.0
+    )
     await record_call(
         db,
         project_id=project_id,
@@ -231,7 +236,9 @@ async def run_spec_agent(
             ),
         },
     ]
-    res = await chat(rt, messages, json_mode=True, temperature=0.2)
+    res = await chat(
+        rt, messages, json_mode=True, temperature=temperature_for("parse_spec")
+    )
     await record_call(
         db,
         project_id=project_id,
