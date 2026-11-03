@@ -69,6 +69,46 @@ class ModuleDiagramTests(unittest.TestCase):
         walk(model["root"])
         return labels
 
+    def test_parse_division_without_wei_and_chapter_glue(self) -> None:
+        """样例腔「功能模块划分：」+ 章头粘连不得抽空或把「（二）主要功能」当身份。"""
+        text = (
+            "（二）主要功能\n"
+            "读者功能模块划分：\n"
+            "登录注册与个人中心模块【注册登录】、馆藏检索模块【书名检索】、"
+            "借阅模块【提交申请】。\n"
+            "图书馆管理人员功能模块划分：\n"
+            "登录模块、图书管理模块、借阅审核模块。"
+        )
+        secs = parse_identity_modules(text)
+        labs = [s["label"] for s in secs]
+        self.assertEqual(labs, ["读者", "图书馆管理人员"])
+        self.assertTrue(all("主要功能" not in x for x in labs))
+        reader = [m["label"] for m in secs[0]["modules"]]
+        self.assertIn("登录注册与个人中心模块", reader)
+        self.assertIn("馆藏检索模块", reader)
+
+    def test_parse_fenwei_and_include_variants(self) -> None:
+        """分为 / 主要包括 等常见段头须能抽身份。"""
+        text = (
+            "买家功能模块分为：浏览模块、下单模块。"
+            "店长主要包含：商品管理模块以及订单管理模块。"
+        )
+        secs = parse_identity_modules(text)
+        labs = [s["label"] for s in secs]
+        self.assertIn("买家", labs)
+        self.assertIn("店长", labs)
+
+    def test_material_weak_warning_when_enum_unparsed(self) -> None:
+        """有枚举腔但身份头被噪声弄丢时 → 菜单兜底且带 parse_warnings。"""
+        schema = self._shop_schema()
+        # 段头在，但身份被「系统」排除 → 抽空
+        text = "系统功能模块划分为：登录注册模块、商品模块、订单模块。"
+        model = module_model(schema, proposal_text=text, layout="identity")
+        self.assertEqual(model.get("leaf_source"), "schema")
+        warns = model.get("parse_warnings") or []
+        self.assertTrue(warns)
+        self.assertIn("菜单兜底", (model.get("leaf_source_note") or ""))
+
     def test_parse_shop_identity_enum(self) -> None:
         secs = parse_identity_modules(_SHOP_ENUM)
         labs = [s["label"] for s in secs]
@@ -307,7 +347,8 @@ class ModuleDiagramTests(unittest.TestCase):
         )
         self.assertEqual(model["layout"], "identity")
         self.assertEqual(model["leaf_source"], "materials")
-        self.assertEqual(model["leaf_source_note"], _ALIGNED_LEAF_NOTE)
+        # 对齐注必在；开题多项未交付时可能附加「解析偏弱」warning 注
+        self.assertIn(_ALIGNED_LEAF_NOTE, model.get("leaf_source_note") or "")
         branches = {c["label"]: c for c in model["root"]["children"]}
         self.assertIn("用户", branches)
         self.assertIn("管理员", branches)

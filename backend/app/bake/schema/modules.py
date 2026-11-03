@@ -26,9 +26,11 @@ DEFAULT_MODULE_LAYOUT = "identity"
 
 _SCHEMA_LEAF_NOTE = "以下模块名由交付菜单推断，非开题原文，仅供参考"
 _ALIGNED_LEAF_NOTE = "已按交付菜单过滤开题枚举；未交付模块不进图"
+_MATERIAL_WEAK_NOTE = "模块图枚举解析偏弱，部分命名已用菜单兜底（交付菜单仍为真源）"
 
-# 材料枚举：{身份}功能模块划分为：… / {身份}端主要包括：… 等
+# 材料枚举：{身份}功能模块划分为：… / {身份}功能模块划分：… / 分为|包括|包含…
 # 冒号可缺：任务书常写「划分为登录注册模块、…」无「：」
+# 长词在前，避免「划分为」被「划分」先吃掉留下「为」
 _IDENTITY_SECTION_RE = re.compile(
     r"(?P<label>"
     r"[^\s：:，,。；;\n]{1,16}?"
@@ -36,10 +38,13 @@ _IDENTITY_SECTION_RE = re.compile(
     r"(?:端)?"
     r"(?:"
     r"功能模块划分为|"
-    r"功能模块(?:主要)?(?:包括|包含|如下|为)|"
-    r"功能(?:主要)?(?:包括|包含|如下|划分为|为)|"
+    r"功能模块划分|"
+    r"功能模块(?:主要)?(?:包括|包含|如下|分为|为)|"
+    r"功能(?:主要)?(?:包括|包含|如下|划分为|分为|为)|"
     r"模块划分为|"
-    r"主要功能(?:模块)?(?:包括|包含|如下|为)"
+    r"模块分为|"
+    r"主要功能(?:模块)?(?:包括|包含|如下|分为|为)|"
+    r"主要(?:包括|包含|含有)"
     r")"
     r"[：:]?\s*",
 )
@@ -347,12 +352,30 @@ def normalize_module_layout(layout: str | None) -> str:
 
 
 def _strip_identity_head(raw: str) -> str:
+    """剥系统口吻与章头粘连（去空白后「（二）主要功能读者」→「读者」）。"""
     lab = (raw or "").strip()
     lab = re.sub(r"^(?:本系统|系统的|系统|本)", "", lab)
+    for _ in range(4):
+        nxt = re.sub(r"^[（(][一二三四五六七八九十百零〇\d]+[）)]", "", lab)
+        nxt = re.sub(r"^[一二三四五六七八九十]+、", "", nxt)
+        nxt = re.sub(r"^\d+[.\．、]", "", nxt)
+        nxt = re.sub(
+            r"^(?:研究内容与拟实现功能|拟实现功能|研究内容|主要功能)",
+            "",
+            nxt,
+        )
+        nxt = nxt.strip("的之 \t")
+        if nxt == lab:
+            break
+        lab = nxt
     for suf in ("功能模块", "功能", "模块", "端"):
         if lab.endswith(suf) and len(lab) > len(suf):
             lab = lab[: -len(suf)]
-    return lab.strip("的之 \t") or (raw or "").strip()
+    lab = lab.strip("的之 \t")
+    # 章头没剥净的不进身份框
+    if any(t in lab for t in ("主要功能", "研究内容", "拟实现")):
+        return ""
+    return lab or (raw or "").strip()
 
 
 def _remap_end_jargon(label: str, schema: dict[str, Any] | None) -> str:
@@ -484,13 +507,15 @@ def _truncate_module_enum_body(body: str) -> str:
 
 
 def _is_leaked_section_module_label(name: str) -> bool:
-    """下一段「…功能模块划分为…」未切开时会整句进叶子；一律丢掉。"""
+    """下一段「…功能模块划分(为)…」未切开时会整句进叶子；一律丢掉。"""
     s = name or ""
     return any(
         t in s
         for t in (
             "功能模块划分为",
+            "功能模块划分",
             "模块划分为",
+            "模块分为",
             "功能模块包括",
             "功能主要包括",
             "主要功能包括",
@@ -1207,9 +1232,25 @@ def _align_material_modules_to_menus(
     role_lab: str = "",
 ) -> list[dict[str, Any]]:
     """开题一级模块 ∩ 交付 menus；命名跟开题，缺的用菜单补上；出列表前短签化。"""
+    aligned, _stats = _align_material_modules_to_menus_with_stats(
+        material_mods, side=side, menus=menus, role_lab=role_lab
+    )
+    return aligned
+
+
+def _align_material_modules_to_menus_with_stats(
+    material_mods: list[dict[str, Any]],
+    *,
+    side: str,
+    menus: list[Any],
+    role_lab: str = "",
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """同 :func:`_align_material_modules_to_menus`，并返回材料对齐覆盖统计。"""
     menu_items = _side_menu_items(menus)
     covered: set[str] = set()
     out: list[dict[str, Any]] = []
+    eligible = 0
+    kept = 0
 
     for mod in material_mods:
         if not isinstance(mod, dict):
@@ -1223,26 +1264,55 @@ def _align_material_modules_to_menus(
         details = [str(d).strip() for d in (mod.get("details") or []) if str(d).strip()]
         if _is_auth_module_label(lab):
             out.append({"label": lab, "details": details})
+            kept += 1
+            eligible += 1
             continue
+        eligible += 1
         # 只按一级模块名对齐交付；细节里的「商品/订单」等词不得把评价/支付等幽灵挂进来
         keys = _menu_keys_for_module_text(lab, menu_items)
         if not keys:
             continue
         covered.update(keys)
         out.append({"label": lab, "details": details})
+        kept += 1
 
     if side == "user" and not any(_is_auth_module_label(str(m.get("label") or "")) for m in out):
         out.insert(0, {"label": "登录注册模块", "details": []})
     elif side == "admin" and not any(_is_auth_module_label(str(m.get("label") or "")) for m in out):
         out.insert(0, {"label": "登录模块", "details": []})
 
+    menu_pad = 0
     for raw in menu_items:
         key = str(raw.get("key") or "").strip()
         if not key or key in covered:
             continue
         covered.add(key)
+        menu_pad += 1
         out.append({"label": _format_menu_module_label(_menu_label(raw)), "details": []})
-    return _polish_identity_modules(out, role_lab=role_lab, menu_items=menu_items)
+    polished = _polish_identity_modules(out, role_lab=role_lab, menu_items=menu_items)
+    return polished, {"eligible": eligible, "kept": kept, "menu_pad": menu_pad}
+
+
+def _proposal_looks_like_identity_enum(text: str) -> bool:
+    """正文是否像「身份→模块枚举」段（用同一套段头正则）。"""
+    if not (text or "").strip():
+        return False
+    flat = re.sub(r"\s+", "", text)
+    return _IDENTITY_SECTION_RE.search(flat) is not None
+
+
+def _attach_material_parse_warnings(
+    model: dict[str, Any],
+    warnings: list[dict[str, str]],
+) -> dict[str, Any]:
+    """解析偏弱 → warning（不红 label_gate）；写入 parse_warnings + 提示注。"""
+    if not warnings:
+        return model
+    model["parse_warnings"] = list(warnings)
+    prev = str(model.get("leaf_source_note") or "").strip()
+    note = _MATERIAL_WEAK_NOTE
+    model["leaf_source_note"] = f"{prev}；{note}" if prev else note
+    return model
 
 
 def _model_from_parsed_identities(
@@ -1403,7 +1473,17 @@ def _model_by_identity(
         schema, title=title, expand_details=expand_details
     )
     sections = parse_identity_modules(proposal_text, schema=schema)
+    parse_warnings: list[dict[str, str]] = []
+    looks_enum = _proposal_looks_like_identity_enum(proposal_text)
     if not sections:
+        if looks_enum:
+            parse_warnings.append(
+                {
+                    "kind": "parse_empty",
+                    "detail": "开题含身份模块枚举段头，但未抽出可用一级模块，已用菜单兜底",
+                }
+            )
+            return _attach_material_parse_warnings(base, parse_warnings)
         return base
 
     roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
@@ -1415,6 +1495,7 @@ def _model_by_identity(
 
     used: set[int] = set()
     aligned: list[dict[str, Any]] = []
+    weak_cover = False
 
     if has_user:
         role_lab = _identity_label_from_slot(roles, "user")
@@ -1423,18 +1504,17 @@ def _model_by_identity(
         )
         if sec:
             branch_lab = str(sec.get("label") or role_lab).strip() or role_lab
-            aligned.append(
-                {
-                    "label": branch_lab,
-                    "modules": _align_material_modules_to_menus(
-                        list(sec.get("modules") or []),
-                        side="user",
-                        menus=user_menus,
-                        role_lab=branch_lab,
-                    ),
-                }
+            mods, stats = _align_material_modules_to_menus_with_stats(
+                list(sec.get("modules") or []),
+                side="user",
+                menus=user_menus,
+                role_lab=branch_lab,
             )
+            if stats["eligible"] >= 4 and stats["kept"] * 2 < stats["eligible"]:
+                weak_cover = True
+            aligned.append({"label": branch_lab, "modules": mods})
         else:
+            weak_cover = True
             aligned.append(
                 {
                     "label": role_lab,
@@ -1464,18 +1544,17 @@ def _model_by_identity(
         )
         if sec:
             branch_lab = str(sec.get("label") or role_lab).strip() or role_lab
-            aligned.append(
-                {
-                    "label": branch_lab,
-                    "modules": _align_material_modules_to_menus(
-                        list(sec.get("modules") or []),
-                        side="admin",
-                        menus=admin_menus,
-                        role_lab=branch_lab,
-                    ),
-                }
+            mods, stats = _align_material_modules_to_menus_with_stats(
+                list(sec.get("modules") or []),
+                side="admin",
+                menus=admin_menus,
+                role_lab=branch_lab,
             )
+            if stats["eligible"] >= 4 and stats["kept"] * 2 < stats["eligible"]:
+                weak_cover = True
+            aligned.append({"label": branch_lab, "modules": mods})
         else:
+            weak_cover = True
             aligned.append(
                 {
                     "label": role_lab,
@@ -1486,7 +1565,23 @@ def _model_by_identity(
             )
 
     if not aligned:
+        if looks_enum:
+            parse_warnings.append(
+                {
+                    "kind": "align_empty",
+                    "detail": "开题枚举未能对齐到交付身份枝，已用菜单兜底",
+                }
+            )
+            return _attach_material_parse_warnings(base, parse_warnings)
         return base
+
+    if weak_cover:
+        parse_warnings.append(
+            {
+                "kind": "weak_cover",
+                "detail": "开题枚举对齐交付菜单偏少，缺项已用菜单名补齐",
+            }
+        )
 
     model = _model_from_parsed_identities(
         aligned,
@@ -1495,7 +1590,7 @@ def _model_by_identity(
         leaf_source="materials",
     )
     model["capabilities"] = list(schema.get("capabilities") or [])
-    return model
+    return _attach_material_parse_warnings(model, parse_warnings)
 
 
 def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
@@ -1607,7 +1702,7 @@ def audit_module_model(model: dict[str, Any] | None) -> list[dict[str, str]]:
             add("suffix", role_lab, lab, "叶子仍带「模块/功能」尾")
         if lab.endswith("等"):
             add("etc", role_lab, lab, "叶子以「等」收尾")
-        if "以及" in lab or "划分为" in lab:
+        if "以及" in lab or "划分为" in lab or "功能模块划分" in lab:
             add("glue", role_lab, lab, "并列/段头未切开")
         if role_lab and _branch_is_identity_role(role_lab):
             for pref in _role_prefix_candidates(role_lab):

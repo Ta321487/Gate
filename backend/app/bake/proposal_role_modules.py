@@ -113,7 +113,7 @@ def _shop_tree(ctx: dict[str, str]) -> list[RoleTree]:
     admin = ctx["admin"]
     return [
         _role(
-            f"{user}功能模块划分",
+            f"{user}功能模块划分为",
             [
                 _m(
                     "登录注册模块",
@@ -150,7 +150,7 @@ def _shop_tree(ctx: dict[str, str]) -> list[RoleTree]:
             ],
         ),
         _role(
-            f"{merchant}功能模块划分",
+            f"{merchant}功能模块划分为",
             [
                 _m("登录注册模块", "注册、登录、修改密码"),
                 _m(
@@ -177,7 +177,7 @@ def _shop_tree(ctx: dict[str, str]) -> list[RoleTree]:
             ],
         ),
         _role(
-            f"{admin}功能模块划分",
+            f"{admin}功能模块划分为",
             [
                 _m("登录模块", "登录与修改密码"),
                 _m("用户管理模块", "全平台用户查询与启用停用"),
@@ -204,7 +204,7 @@ def _food_tree(ctx: dict[str, str]) -> list[RoleTree]:
     rider = ctx.get("worker", "配送员")
     return [
         _role(
-            f"{user}功能模块划分",
+            f"{user}功能模块划分为",
             [
                 _auth_profile("收货/取餐地址"),
                 _m("菜品模块", "分类浏览搜索、查看详情与库存、加入购物车、查看评价"),
@@ -221,7 +221,7 @@ def _food_tree(ctx: dict[str, str]) -> list[RoleTree]:
             ],
         ),
         _role(
-            f"{merchant}功能模块划分",
+            f"{merchant}功能模块划分为",
             [
                 _m("登录与店铺模块", "登录、档口/店铺信息编辑"),
                 _m("菜品管理模块", "菜品新增编辑、上下架、库存维护"),
@@ -233,14 +233,14 @@ def _food_tree(ctx: dict[str, str]) -> list[RoleTree]:
             ],
         ),
         _role(
-            f"{rider}功能模块划分",
+            f"{rider}功能模块划分为",
             [
                 _m("登录模块", "登录与个人资料"),
                 _m("配送任务模块", "领取/查看配送单、确认取餐与送达"),
             ],
         ),
         _role(
-            f"{admin}功能模块划分",
+            f"{admin}功能模块划分为",
             [
                 _m("登录模块", "登录与修改密码"),
                 _m("用户与档口管理模块", f"用户管理；{merchant}审核与启用"),
@@ -278,7 +278,7 @@ def _repair_tree(ctx: dict[str, str]) -> list[RoleTree]:
         user_mods.append(_m("留言反馈模块", "与管理员沟通；意见反馈与在线留言"))
 
     roles: list[RoleTree] = [
-        _role(f"{user}功能模块划分", user_mods),
+        _role(f"{user}功能模块划分为", user_mods),
     ]
     if want_worker:
         worker_mods = [
@@ -287,7 +287,7 @@ def _repair_tree(ctx: dict[str, str]) -> list[RoleTree]:
         ]
         if want_roster:
             worker_mods.append(_m("排班查看模块", "查看维修排班与值班表"))
-        roles.append(_role(f"{worker}功能模块划分", worker_mods))
+        roles.append(_role(f"{worker}功能模块划分为", worker_mods))
 
     admin_mods = [
         _m("登录模块", "登录与修改密码"),
@@ -315,14 +315,14 @@ def _repair_tree(ctx: dict[str, str]) -> list[RoleTree]:
             ),
         ]
     )
-    roles.append(_role(f"{admin}功能模块划分", admin_mods))
+    roles.append(_role(f"{admin}功能模块划分为", admin_mods))
     return roles
 
 
 def _library_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("馆藏检索模块", "按书名/作者/分类检索，查看馆藏与可借状态"),
@@ -333,7 +333,7 @@ def _library_tree(ctx: dict[str, str]) -> list[RoleTree]:
             ),
             _m("公告与留言模块", "查阅公告"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("图书档案模块", "图书增删改查、分类、库存册数"),
@@ -385,19 +385,19 @@ def _borrow_like(
     ]
     if admin_extras:
         a[3:3] = admin_extras
-    return _dual(f"{user}功能模块划分", u, f"{admin}功能模块划分", a)
+    return _dual(f"{user}功能模块划分为", u, f"{admin}功能模块划分为", a)
 
 
 def _asset_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         _ticket_user(
             apply_label="物资领用申请模块",
             apply_detail="选择物资与数量提交领用申请，查看审批与出库进度",
             mine_detail="我的领用单、驳回原因与历史记录",
         ),
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         _ticket_admin(
             audit_label="领用审批与出入库模块",
             audit_detail="审批领用、出库入库、库存预警与入出库统计",
@@ -410,7 +410,7 @@ def _asset_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _crm_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("客户档案模块", "建档、编辑客户资料与标签"),
@@ -418,7 +418,7 @@ def _crm_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("我的客户模块", "按跟进状态筛选本人负责客户"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("客户与线索管理模块", "全量客户/线索查询、分配与审核关键变更"),
@@ -431,13 +431,13 @@ def _crm_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _event_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         _ticket_user(
             apply_label="事件上报模块",
             apply_detail="填写事件类型与说明上报，可附图片；查看排查与处置进度",
             mine_detail="本人上报记录与闭环状态",
         ),
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         _ticket_admin(
             audit_label="事件处置模块",
             audit_detail="审核、排查、晨午检类台账、处置闭环",
@@ -450,13 +450,13 @@ def _event_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _attend_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         _ticket_user(
             apply_label="请假销假模块",
             apply_detail="提交请假/销假申请，查看审批结果；可补卡申请",
             mine_detail="请假记录、班次与汇总查阅",
         ),
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         _ticket_admin(
             audit_label="假勤审批模块",
             audit_detail="请假销假审批、补卡处理、班次与汇总",
@@ -547,7 +547,7 @@ def _apply_flow_tree(
         ]
     )
     a.extend(_notice_guestbook_stats_admin())
-    return _dual(f"{user}功能模块划分", u, f"{admin}功能模块划分", a)
+    return _dual(f"{user}功能模块划分为", u, f"{admin}功能模块划分为", a)
 
 
 def _fund_tree(ctx: dict[str, str]) -> list[RoleTree]:
@@ -887,7 +887,7 @@ def _contract_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _activity_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("活动浏览报名模块", "浏览活动、报名/取消、候补（材料写到则启用）"),
@@ -895,7 +895,7 @@ def _activity_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("评价与支付模块", "活动评价；系统内缴费（模拟支付）"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m(
@@ -911,14 +911,14 @@ def _activity_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _course_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("选课模块", "选课、退改、冲突提示、候补（材料写到则启用）"),
             _m("我的课表模块", "已选课程与课表查阅"),
             _m("公告与留言模块", "查阅选课须知；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("课程与名额模块", "开课、名额、审核退改、候补处理"),
@@ -931,7 +931,7 @@ def _course_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _lost_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("失物登记模块", "登记失物/招领信息，上传图片说明"),
@@ -939,7 +939,7 @@ def _lost_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("我的登记模块", "本人发布与认领进度"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("招领审核模块", "审核登记、认领、归还办结；领养/捐赠细档"),
@@ -952,7 +952,7 @@ def _lost_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _tour_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("线路浏览报名模块", "浏览线路、报名、取消"),
@@ -960,7 +960,7 @@ def _tour_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("我的行程模块", "报名状态、出团信息、评价"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("线路与报名管理模块", "发布线路、审核报名、出团、取消处理"),
@@ -996,7 +996,7 @@ def _reserve_tree(
     ]
     if extras_admin:
         a[2:2] = extras_admin
-    return _dual(f"{user}功能模块划分", u, f"{admin}功能模块划分", a)
+    return _dual(f"{user}功能模块划分为", u, f"{admin}功能模块划分为", a)
 
 
 def _hotel_tree(ctx: dict[str, str]) -> list[RoleTree]:
@@ -1049,7 +1049,7 @@ def _salon_tree(ctx: dict[str, str]) -> list[RoleTree]:
     worker = ctx.get("worker", "技师")
     return [
         _role(
-            f"{user}功能模块划分",
+            f"{user}功能模块划分为",
             [
                 _auth_profile(),
                 _m("项目预约模块", "选择项目/技师/时段预约、取消、支付（模拟）"),
@@ -1059,14 +1059,14 @@ def _salon_tree(ctx: dict[str, str]) -> list[RoleTree]:
             ],
         ),
         _role(
-            f"{worker}功能模块划分",
+            f"{worker}功能模块划分为",
             [
                 _m("登录模块", "登录与资料"),
                 _m("我的排班与预约模块", "查看排班与当日预约单"),
             ],
         ),
         _role(
-            f"{admin}功能模块划分",
+            f"{admin}功能模块划分为",
             [
                 _m("登录模块", "登录与修改密码"),
                 _m("项目与技师管理模块", "项目、技师档案与排班（材料写到则启用）"),
@@ -1091,7 +1091,7 @@ def _carrent_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _forum_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("发帖回帖模块", "发帖、回帖、编辑删除本人内容"),
@@ -1099,7 +1099,7 @@ def _forum_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("举报模块", "举报不当内容（材料写到则启用）"),
             _m("公告查阅模块", "查看公告"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("内容审核模块", "审帖、删帖、下架；禁言（材料写到则启用）"),
@@ -1114,7 +1114,7 @@ def _media_tree(ctx: dict[str, str]) -> list[RoleTree]:
     """主路径：浏览 → 播放 → 收藏。留言=guestbook；条下评论扫词开。"""
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("影音浏览播放模块", "分类浏览、检索、播放片源"),
@@ -1124,7 +1124,7 @@ def _media_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("公告查阅模块", "查看系统公告与资源上新须知"),
             _m("留言反馈模块", "向管理员留言并查看回复（≠ 片下评论）"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("片库与分类维护模块", "片库增删改、分类维护、上下架"),
@@ -1138,7 +1138,7 @@ def _music_tree(ctx: dict[str, str]) -> list[RoleTree]:
     """主路径：浏览 → 点播 → 收藏夹。留言=guestbook；条下评论扫词开。"""
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("曲库点播模块", "分类检索、点播试听"),
@@ -1148,7 +1148,7 @@ def _music_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("公告查阅模块", "查看系统公告与上新须知"),
             _m("留言反馈模块", "向管理员留言并查看回复（≠ 曲下评论）"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("曲库与分类维护模块", "曲目增删改、分类维护、上下架"),
@@ -1162,7 +1162,7 @@ def _blog_tree(ctx: dict[str, str]) -> list[RoleTree]:
     """主路径：浏览 → 阅读 → 收藏。留言=guestbook；条下评论扫词开。"""
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("专栏阅读模块", "按专栏分类浏览与检索文章、阅读正文"),
@@ -1172,7 +1172,7 @@ def _blog_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("公告查阅模块", "查看系统公告"),
             _m("留言反馈模块", "向管理员留言并查看回复（≠ 文下评论）"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("文章与专栏维护模块", "文章增删改、专栏分类、上下架"),
@@ -1185,14 +1185,14 @@ def _blog_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _exam_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("在线考试模块", "参加考试、交卷、查看成绩与错题本"),
             _m("练习模块", "题库练习（若开放）"),
             _m("公告与留言模块", "查阅考试须知；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("题库组卷模块", "题目维护、组卷、发布考试"),
@@ -1205,13 +1205,13 @@ def _exam_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _survey_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("问卷填写模块", "填写问卷、提交、查看是否已填"),
             _m("公告查阅模块", "查看通知"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("问卷发布模块", "设计发布问卷、回收统计、导出"),
@@ -1223,13 +1223,13 @@ def _survey_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _vote_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("投票模块", "查看候选项、投票、查看公示"),
             _m("公告查阅模块", "查看评选公告"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("评选管理模块", "配置候选项、计票、公示结果"),
@@ -1241,14 +1241,14 @@ def _vote_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _doclib_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("资料浏览下载模块", "分类检索、下载、查看下载台账"),
             _m("上传投稿模块", "上传资料并等待审核"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("文库管理模块", "审核上下架、分类、下载台账"),
@@ -1260,7 +1260,7 @@ def _doclib_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _dating_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile("相亲资料完善"),
             _m("资料筛选配对模块", "按条件筛选、发起配对意向"),
@@ -1268,7 +1268,7 @@ def _dating_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("举报模块", "举报不当用户或内容（材料写到则启用）"),
             _m("公告查阅模块", "查看公告"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("资料审核模块", "审核用户资料与配对记录"),
@@ -1282,14 +1282,14 @@ def _dating_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _recruit_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile("简历资料"),
             _m("岗位浏览投递模块", "浏览岗位、投递简历、查看进度"),
             _m("我的投递模块", "初筛/面试/录用状态查询"),
             _m("公告与留言模块", "查阅招聘公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("岗位管理模块", "发布岗位、上下架"),
@@ -1302,14 +1302,14 @@ def _recruit_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _intern_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("岗位绑定模块", "选择/绑定实习岗位"),
             _m("周报模块", "提交周报、查看签核意见；电子签（材料写到则启用）"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("岗位与学生管理模块", "岗位维护、学生绑定"),
@@ -1322,14 +1322,14 @@ def _intern_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _grade_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("成绩查询模块", "查询已发布成绩及课内名次"),
             _m("成绩申诉模块", "对成绩提出申诉并跟踪"),
             _m("公告查阅模块", "查看成绩发布公告"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("成绩录入复核模块", "录入分数、按课程排名、导出 CSV"),
@@ -1342,13 +1342,13 @@ def _grade_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _parcel_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("到件查询取件模块", "查询到件、取件码核销、滞留催领提醒"),
             _m("公告与留言模块", "查阅公告"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m(
@@ -1364,7 +1364,7 @@ def _parcel_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _cinema_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("排片选座模块", "选影片场次、选座、下单"),
@@ -1372,7 +1372,7 @@ def _cinema_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("我的订单模块", "订单与影票查询"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("排片影厅管理模块", "影片、场次、座位图维护"),
@@ -1385,14 +1385,14 @@ def _cinema_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _carpool_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("行程发布预约模块", "发布行程或预约座位、成行确认、取消"),
             _m("评价模块", "行程结束后互评"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("行程审核管理模块", "审核行程、处理纠纷取消、查看评价"),
@@ -1405,14 +1405,14 @@ def _mutual_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     peer = ctx.get("peer", "对方用户")
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("志愿填报模块", f"填报志愿/意向，与{peer}双边确认"),
             _m("匹配结果模块", "查看匹配/组队结果与名额状态"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("双选审核模块", "审核确认、名额调控、调剂"),
@@ -1425,7 +1425,7 @@ def _mutual_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _timebank_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("服务发布兑换模块", "发布服务、兑换时长、完成确认"),
@@ -1433,7 +1433,7 @@ def _timebank_tree(ctx: dict[str, str]) -> list[RoleTree]:
             _m("我的时长模块", "时长收支明细"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("服务审核模块", "审核服务与兑换、处理评价"),
@@ -1445,14 +1445,14 @@ def _timebank_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _listing_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("房源浏览模块", "检索浏览房源详情"),
             _m("发布与带看模块", "发布房源、预约带看、留言咨询"),
             _m("公告查阅模块", "查看公告"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("房源审核模块", "审核上下架、处理带看与留言"),
@@ -1464,14 +1464,14 @@ def _listing_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _club_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("社团注册加入模块", "申请建社/加入、成员信息"),
             _m("活动与经费模块", "社团活动报名、经费申请进度"),
             _m("公告与留言模块", "查阅公告；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("社团审批模块", "注册审批、成员与活动审批、经费审核"),
@@ -1493,14 +1493,14 @@ def _instrument_tree(ctx: dict[str, str]) -> list[RoleTree]:
 def _labsafe_tree(ctx: dict[str, str]) -> list[RoleTree]:
     user, admin = ctx["user"], ctx["admin"]
     return _dual(
-        f"{user}功能模块划分",
+        f"{user}功能模块划分为",
         [
             _auth_profile(),
             _m("准入申请模块", "提交准入材料、参加培训/考试、查看许可有效期"),
             _m("我的许可模块", "许可状态与到期提醒"),
             _m("公告与留言模块", "查阅安全须知；留言反馈"),
         ],
-        f"{admin}功能模块划分",
+        f"{admin}功能模块划分为",
         [
             _m("登录模块", "登录与修改密码"),
             _m("准入审核模块", "材料审核、培训考试结果、许可发放与到期管理"),
@@ -1521,7 +1521,7 @@ def _generic_from_features(pack: dict[str, Any], ctx: dict[str, str]) -> list[Ro
         _m("业务管理模块", "审核办理与基础数据维护"),
         *_notice_guestbook_stats_admin()[:2],
     ]
-    return _dual(f"{user}功能模块划分", u_mods, f"{admin}功能模块划分", a_mods)
+    return _dual(f"{user}功能模块划分为", u_mods, f"{admin}功能模块划分为", a_mods)
 
 
 _DOMAIN_BUILDERS: dict[str, Any] = {
@@ -1646,7 +1646,7 @@ def _normalize_pack_tree(raw: list[Any], ctx: dict[str, str]) -> list[RoleTree]:
     for block in raw:
         if not isinstance(block, dict):
             continue
-        title = _fmt(str(block.get("title") or "功能模块划分"), ctx)
+        title = _fmt(str(block.get("title") or "功能模块划分为"), ctx)
         mods_raw = block.get("modules") or []
         mods: list[Module] = []
         for m in mods_raw:
@@ -1693,7 +1693,7 @@ def render_role_modules_block(
     """渲染「（二）主要功能」下的角色模块树正文。"""
     parts: list[str] = []
     for role in roles:
-        title = str(role.get("title") or "功能模块划分")
+        title = str(role.get("title") or "功能模块划分为")
         lines = [f"{title}："]
         mods = list(role.get("modules") or [])
         chunks = [f"{name}【{detail}】" for name, detail in mods]
@@ -1718,7 +1718,9 @@ def roles_para_from_tree(roles: list[RoleTree], pack: dict[str, Any]) -> str:
     names = []
     for r in roles:
         t = str(r.get("title") or "")
-        if t.endswith("功能模块划分"):
+        if t.endswith("功能模块划分为"):
+            names.append(t[: -len("功能模块划分为")])
+        elif t.endswith("功能模块划分"):
             names.append(t[: -len("功能模块划分")])
         elif t:
             names.append(t)
