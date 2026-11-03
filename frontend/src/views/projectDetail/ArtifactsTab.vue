@@ -263,14 +263,16 @@
                           <strong>{{ card.title }}</strong>
                           <span
                             class="pill"
-                            :class="artifactsFrozen ? 'pill-amber' : (thesisCardOk(card) ? 'pill-green' : (card.id === 'modules' && modulesOk && !modulesLabelOk ? 'pill-amber' : 'pill-neutral'))"
+                            :class="artifactsFrozen ? 'pill-amber' : (thesisCardOk(card) ? 'pill-green' : (card.id === 'modules' && modulesLabelRed ? 'pill-amber' : 'pill-neutral'))"
                           >
                             {{
                               artifactsFrozen
                                 ? '生成中'
-                                : (card.id === 'modules' && modulesOk && !modulesLabelOk
+                                : (card.id === 'modules' && modulesLabelRed
                                   ? '文案红'
-                                  : (thesisCardOk(card) ? '可导出' : (p.workspace_path ? '待生成' : '未生成')))
+                                  : (card.id === 'modules' && modulesLabelPending
+                                    ? '待核验'
+                                    : (thesisCardOk(card) ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))))
                             }}
                           </span>
                         </div>
@@ -278,12 +280,22 @@
                         <n-button
                           size="small"
                           type="primary"
-                          :disabled="!thesisCardOk(card) || artifactsFrozen"
+                          :disabled="!thesisCardOpenable(card) || artifactsFrozen"
                           :loading="card.loading"
-                          :title="artifactsFrozen ? artifactsFrozenReason : undefined"
+                          :title="artifactsFrozen ? artifactsFrozenReason : (card.id === 'modules' && modulesLabelRed ? '文案红仍可打开：看 findings 与工厂提示' : undefined)"
                           @click="card.open"
                         >{{ card.action }}</n-button>
                       </div>
+                    </div>
+                    <div v-if="g.id === 'design' && modulesLabelRed" class="banner fail" style="margin:12px 0 0">
+                      <h4>工厂提示 · 功能模块图文案红</h4>
+                      <p class="small">
+                        叶子短签未过闸（散文/超长/「模块」尾/角色前缀等），不当可贴论文图发出。
+                        打开模块图看 findings → 修工厂
+                        <code>backend/app/bake/schema/modules.py</code>
+                        清洗（勿只擦本包 SVG）→ 热重载后端后点「重新加载」强制重算。
+                        仅当交付菜单 / domain.schema 叶子本身错了才重 bake。
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -629,7 +641,7 @@ const {
   loadArtifactView, loadError, loadErrorCode, loadLog, loadSchema, logFilter, logLoading, logReqSeq,
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
-  modulesLayout, modulesMeta, modulesOk, modulesLabelOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
+  modulesLayout, modulesMeta, modulesOk, modulesLabelOk, modulesLabelPending, modulesLabelRed, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openArchitecture, openClasses, openSequences, openActivities, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
@@ -650,8 +662,15 @@ const {
 
 function thesisCardOk(card) {
   if (!card) return false
-  if (card.id === 'modules') return !!modulesLabelOk.value
+  if (card.id === 'modules') return !!modulesOk.value && !!modulesLabelOk.value
   return !!modulesOk.value
+}
+
+/** 文案红仍可打开诊断；可导出仍看 thesisCardOk */
+function thesisCardOpenable(card) {
+  if (!card) return false
+  if (card.id === 'modules') return !!modulesOk.value
+  return thesisCardOk(card)
 }
 
 const thesisGroups = computed(() => [

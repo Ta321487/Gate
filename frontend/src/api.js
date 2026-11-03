@@ -100,9 +100,13 @@ export const api = {
     }),
   putErLabels: (id, body) => http.put(`/projects/${id}/schema/er-labels`, body),
   putErView: (id, body) => http.put(`/projects/${id}/schema/er-view`, body),
-  getModules: (id, { layout = 'identity', expandDetails = false } = {}) =>
+  getModules: (id, { layout = 'identity', expandDetails = false, force = false } = {}) =>
     http.get(`/projects/${id}/schema/modules`, {
-      params: { layout, expand_details: expandDetails },
+      params: {
+        layout,
+        expand_details: expandDetails,
+        ...(force ? { force: true } : {}),
+      },
     }),
   getArchitecture: (id) => http.get(`/projects/${id}/schema/architecture`),
   architectureSvgUrl: (id) => `/api/projects/${id}/schema/architecture.svg`,

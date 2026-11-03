@@ -263,6 +263,10 @@ async def get_modules(
     project_id: str,
     layout: str = Query("identity", description="identity=按身份 · biz=按业务"),
     expand_details: bool = Query(False, description="展开【】（）内细节为下一层"),
+    force: bool = Query(
+        False,
+        description="强制重算（绕过图缓存；修 modules.py 清洗后须 true）",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """按身份（材料优先）或按业务推导功能模块树；响应含 ``svg``（单请求）。"""
@@ -284,6 +288,7 @@ async def get_modules(
         layout=layout,
         expand_details=expand_details,
         proposal_text=prop,
+        force=force,
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
@@ -295,6 +300,7 @@ async def download_modules_svg(
     project_id: str,
     layout: str = Query("identity", description="identity=按身份 · biz=按业务"),
     expand_details: bool = Query(False, description="展开【】（）内细节为下一层"),
+    force: bool = Query(False, description="强制重算（绕过图缓存）"),
     db: AsyncSession = Depends(get_db),
 ):
     from fastapi.responses import Response
@@ -319,6 +325,7 @@ async def download_modules_svg(
         layout=layout_n,
         expand_details=expand_details,
         proposal_text=prop,
+        force=force,
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")

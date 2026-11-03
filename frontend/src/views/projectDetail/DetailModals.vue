@@ -160,6 +160,7 @@
         :expand-details="modulesExpandDetails"
         :source-note="modulesMeta?.leaf_source_note || ''"
         :label-gate-ok="modulesMeta?.label_gate?.ok !== false"
+        :label-gate-findings="modulesLabelFindings"
         :loading="modLoading"
         @update:layout="onModulesLayout"
         @update:expand-details="onModulesExpandDetails"
@@ -319,7 +320,7 @@ const {
   loadArtifactView, loadError, loadErrorCode, loadLog, loadSchema, logFilter, logLoading, logReqSeq,
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings,   modDownloadBase, modLayoutKey, modLoading, modSvgSource,
-  modulesExpandDetails, modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
+  modulesExpandDetails, modulesLayout, modulesMeta, modulesOk, modulesLabelFindings, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, onUsecaseActor, openArchitecture, openClasses, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, openSequences, onSeqApplySelection, onSeqDiagramIndex, openActivities, onActApplySelection, onActDiagramIndex, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,

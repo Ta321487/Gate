@@ -1403,8 +1403,10 @@ const {
 
 async function loadArtifactView() {
   if (artifactView.value === 'api') await loadApis()
-  else if (artifactView.value === 'db' || artifactView.value === 'thesis') await loadSchema()
-  else if (artifactView.value === 'ppt') await loadPptDeck()
+  else if (artifactView.value === 'db' || artifactView.value === 'thesis') {
+    await loadSchema()
+    if (artifactView.value === 'thesis') await ensureModulesMeta()
+  } else if (artifactView.value === 'ppt') await loadPptDeck()
   else {
     // 门禁数据已在项目上；顺带预热 schema
     await loadSchema()
@@ -1413,8 +1415,10 @@ async function loadArtifactView() {
 
 function onArtifactView(name) {
   if (name === 'api') loadApis()
-  else if (name === 'db' || name === 'thesis') loadSchema()
-  else if (name === 'ppt') loadPptDeck()
+  else if (name === 'db' || name === 'thesis') {
+    loadSchema()
+    if (name === 'thesis') ensureModulesMeta()
+  } else if (name === 'ppt') loadPptDeck()
 }
 
 function isApiCollapsed(name) {
@@ -1571,12 +1575,25 @@ const erDownloadBase = computed(() => {
 })
 
 const modulesOk = computed(() => !!modulesMeta.value?.root || !!schema.value)
-/** 功能模块图叶子文案机器闸；红则模块图不当「可导出」 */
+/** 已拉过图且闸绿才算可导出；未核验 ≠ 绿 */
 const modulesLabelOk = computed(() => {
   const m = modulesMeta.value
   if (!m?.root) return false
   if (m.label_gate && m.label_gate.ok === false) return false
   return true
+})
+/** 工作区在、尚未拉过模块图——灰「待核验」，禁止假绿 */
+const modulesLabelPending = computed(
+  () => !!p.value?.workspace_path && !modulesMeta.value?.root,
+)
+/** 已拉过图且闸红——材料卡「文案红」、弹窗工厂提示 */
+const modulesLabelRed = computed(() => {
+  const m = modulesMeta.value
+  return !!m?.root && m?.label_gate?.ok === false
+})
+const modulesLabelFindings = computed(() => {
+  const raw = modulesMeta.value?.label_gate?.findings
+  return Array.isArray(raw) ? raw : []
 })
 
 const modDownloadBase = computed(() => {
@@ -1599,13 +1616,36 @@ async function fetchModSvg() {
 }
 
 
-async function openModules() {
-  if (!p.value || modLoading.value || artifactsFrozen.value) return
+/** 材料页预检 label_gate：有工作区且未拉过图时拉一次（不弹窗） */
+async function ensureModulesMeta({ force = false } = {}) {
+  if (!p.value?.workspace_path || artifactsFrozen.value) return
+  if (modulesMeta.value?.root && !force) return
+  if (modLoading.value) return
   modLoading.value = true
   try {
     modulesMeta.value = await api.getModules(p.value.id, {
       layout: modulesLayout.value,
       expandDetails: modulesExpandDetails.value,
+      force,
+    })
+    modSvgSource.value = svgFromPack(modulesMeta.value)
+  } catch {
+    // 预检失败保持待核验，不打断材料页
+  } finally {
+    modLoading.value = false
+  }
+}
+
+async function openModules() {
+  if (!p.value || modLoading.value || artifactsFrozen.value) return
+  modLoading.value = true
+  try {
+    // 曾文案红则强制重算（图缓存只跟 schema/spec，不跟 modules.py）
+    const force = modulesLabelRed.value
+    modulesMeta.value = await api.getModules(p.value.id, {
+      layout: modulesLayout.value,
+      expandDetails: modulesExpandDetails.value,
+      force,
     })
     modSvgSource.value = svgFromPack(modulesMeta.value)
     modLayoutKey.value += 1
@@ -1621,9 +1661,11 @@ async function reloadModSvg() {
   if (!p.value || modLoading.value) return
   modLoading.value = true
   try {
+    // 重新加载一律 force：修工厂清洗后须绕过磁盘缓存
     modulesMeta.value = await api.getModules(p.value.id, {
       layout: modulesLayout.value,
       expandDetails: modulesExpandDetails.value,
+      force: true,
     })
     modSvgSource.value = svgFromPack(modulesMeta.value)
     modLayoutKey.value += 1
@@ -2793,6 +2835,10 @@ onUnmounted(() => {
     modulesMeta,
     modulesOk,
     modulesLabelOk,
+    modulesLabelPending,
+    modulesLabelRed,
+    modulesLabelFindings,
+    ensureModulesMeta,
     narrativeDualText,
     normalizeStepStatus,
     onArchDomChange,

@@ -19,10 +19,36 @@
         <span class="mod-zoom-label">{{ Math.round(scale * 100) }}%</span>
         <n-button size="small" @click="zoomIn">放大</n-button>
         <n-button size="small" @click="resetView">重置视口</n-button>
-        <n-button size="small" :loading="loading" @click="$emit('reload')">重新加载</n-button>
-        <n-button size="small" type="primary" :loading="busy" @click="copyPng">复制图片</n-button>
-        <n-button size="small" type="primary" secondary :loading="busy" @click="downloadPng">下载 PNG</n-button>
-        <n-button size="small" quaternary @click="downloadSvg">下载矢量源</n-button>
+        <n-button
+          size="small"
+          :loading="loading"
+          :title="labelGateBad ? '强制重算（绕过图缓存；修 modules.py 后必点）' : '重新加载'"
+          @click="$emit('reload')"
+        >重新加载</n-button>
+        <n-button
+          size="small"
+          type="primary"
+          :loading="busy"
+          :disabled="labelGateBad"
+          :title="labelGateBad ? '文案红不可导出，先按工厂提示修闸' : undefined"
+          @click="copyPng"
+        >复制图片</n-button>
+        <n-button
+          size="small"
+          type="primary"
+          secondary
+          :loading="busy"
+          :disabled="labelGateBad"
+          :title="labelGateBad ? '文案红不可导出，先按工厂提示修闸' : undefined"
+          @click="downloadPng"
+        >下载 PNG</n-button>
+        <n-button
+          size="small"
+          quaternary
+          :disabled="labelGateBad"
+          :title="labelGateBad ? '文案红不可导出，先按工厂提示修闸' : undefined"
+          @click="downloadSvg"
+        >下载矢量源</n-button>
       </div>
     </div>
     <p class="small muted mod-hint mb-8">
@@ -40,6 +66,22 @@
       class="small mod-hint mb-8 mod-source-note"
       :class="labelGateBad ? 'mod-warn' : 'muted'"
     >{{ sourceNote }}</p>
+    <div v-if="labelGateBad" class="banner fail mod-gate-banner mb-8">
+      <h4>工厂提示 · 文案红</h4>
+      <p class="small">
+        叶子短签未过闸，勿当可贴论文图发出。修工厂
+        <code>backend/app/bake/schema/modules.py</code>
+        清洗（勿只擦本包 SVG）→ 热重载后端 → 点「重新加载」强制重算缓存。
+        仅交付菜单 / domain.schema 叶子本身错时才重 bake。
+      </p>
+      <ul v-if="findingRows.length" class="small mod-findings">
+        <li v-for="(row, i) in findingRows" :key="i">
+          <strong>{{ row.kindZh }}</strong>
+          · {{ row.branch || '（根）' }} → 「{{ row.label || '（空）' }}」
+          <span class="muted">{{ row.detail }}</span>
+        </li>
+      </ul>
+    </div>
     <div
       ref="frameRef"
       class="mod-frame"
@@ -73,12 +115,34 @@ const props = defineProps({
   sourceNote: { type: String, default: '' },
   /** 叶子文案机器闸：false 时提示加红 */
   labelGateOk: { type: Boolean, default: true },
+  /** label_gate.findings：kind/branch/label/detail */
+  labelGateFindings: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['reload', 'update:layout', 'update:expandDetails'])
 
 const labelGateBad = computed(() => props.labelGateOk === false)
+
+const KIND_ZH = {
+  empty: '空叶子',
+  prose: '散文/泄漏',
+  suffix: '模块/功能尾',
+  etc: '「等」收尾',
+  glue: '并列未切开',
+  role_prefix: '复读角色前缀',
+  too_long: '超长',
+}
+
+const findingRows = computed(() => {
+  const list = Array.isArray(props.labelGateFindings) ? props.labelGateFindings : []
+  return list.slice(0, 30).map((f) => ({
+    kindZh: KIND_ZH[f?.kind] || f?.kind || '闸红',
+    branch: String(f?.branch || '').trim(),
+    label: String(f?.label || '').trim(),
+    detail: String(f?.detail || '').trim(),
+  }))
+})
 
 const PNG_SCALE = 2.5
 const frameRef = ref(null)
@@ -317,6 +381,22 @@ function downloadSvg() {
 }
 .mod-warn {
   color: #c45c26;
+}
+.mod-gate-banner {
+  margin: 0;
+}
+.mod-gate-banner code {
+  font-size: 0.92em;
+}
+.mod-findings {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+  max-height: 9.5em;
+  overflow: auto;
+  line-height: 1.45;
+}
+.mod-findings li + li {
+  margin-top: 4px;
 }
 .mod-frame {
   flex: 1;
