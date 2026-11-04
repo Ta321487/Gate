@@ -198,9 +198,18 @@
             <strong>{{ displayConf.toFixed(2) }}</strong>
             <span v-if="deviant" class="small muted">已偏离推荐 · 原置信度 {{ (p.confidence || 0).toFixed(2) }}</span>
           </div>
-          <div class="override-banner" :class="{ show: unlocked || deviant || matchPath.needs_path_ack, danger: deviant || matchPath.needs_path_ack }">
+          <div
+            class="override-banner"
+            :class="{
+              show: unlocked || deviant || matchPath.needs_path_ack || needsDomainAck,
+              danger: deviant || matchPath.needs_path_ack || needsDomainAck,
+            }"
+          >
             <template v-if="matchPath.needs_path_ack">
               开题未写清「谁怎么用」：请解锁选择主路径入口，或确认时勾选「主路径已核对」。
+            </template>
+            <template v-else-if="needsDomainAck">
+              匹配置信度偏低或为通用壳：请对照开题核清领域后再勾选「已人工核域」。
             </template>
             <template v-else-if="deviant">
               当前与系统推荐不一致，请确认后再生成。
@@ -280,12 +289,21 @@
         <template v-if="matchPath.entry_label"> · {{ matchPath.entry_label }}</template>
         <span v-if="matchPath.needs_path_ack" class="path-weak">（开题依据弱，必勾）</span>
       </n-checkbox>
+      <n-checkbox
+        v-if="needsDomainAck"
+        v-model:checked="ackDomainReview"
+        :disabled="p.match_confirmed"
+        style="display:block;margin-top:10px"
+      >
+        已人工核域：对照开题确认当前领域与主路径理解正确
+        <span class="path-weak">（低置信或通用壳，必勾）</span>
+      </n-checkbox>
     </div>
     <div class="row mt-16">
       <n-button
         type="primary"
         size="large"
-        :disabled="!ack || p.match_confirmed || (matchPath.needs_path_ack && !ackMainPath)"
+        :disabled="!ack || p.match_confirmed || (matchPath.needs_path_ack && !ackMainPath) || (needsDomainAck && !ackDomainReview)"
         :loading="matchBusy"
         @click="confirmMatch"
       >
@@ -305,7 +323,7 @@ const GENERIC_SHELL_TIP =
   '禁止为「看起来更行业」而静默改 Dom 标签冒充具名域；行业词浅替换只改可见文案，不改 domain。'
 
 const {
-  FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,
+  FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath, ackDomainReview, needsDomainAck,
   alreadyBaked, apiCopyText, apiGroupCopyText, apiQuery, apiSmokeBusy, apiSmokeFactoryHint, apiSmokeResult, apiSurface,
   apis, applyFillSnapshot, archDomainDeviant, archOptions, artifactLoading, artifactView, artifactsFrozen, artifactsFrozenReason,
   authEntryDisplay, backendAddr, canDownload, canDownloadAndDeliver, canMarkDelivered, canMarkReady, canUndoDelivery, cancelCurrent,
@@ -358,8 +376,8 @@ const preBakeRisks = computed(() => {
   if (deviant.value) {
     lines.push('当前选择已偏离系统推荐：确认后将按所选配置出包，请核对双显差异。')
   }
-  if ((displayConf.value ?? p.value?.confidence ?? 1) < 0.75) {
-    lines.push('匹配置信度偏低：请优先核对领域与主路径，确认后再启动生成。')
+  if (needsDomainAck.value) {
+    lines.push('匹配置信度偏低或为通用壳：请勾选「已人工核域」后再确认。')
   }
   return lines
 })

@@ -142,6 +142,7 @@ const form = reactive({
 })
 const ack = ref(false)
 const ackMainPath = ref(false)
+const ackDomainReview = ref(false)
 const unlocked = ref(false)
 const currentJob = ref(null)
 const pdCtx = {
@@ -591,6 +592,12 @@ const recommendedArchesText = computed(() => {
   return labels.join(' + ')
 })
 const displayConf = computed(() => (deviant.value ? 0.41 : (p.value?.confidence || 0)))
+/** 低置信 / 通用壳：确认前须勾「已人工核域」（阈值 0.75，与后端 needs_domain_ack 对齐） */
+const needsDomainAck = computed(() => {
+  const conf = Number(displayConf.value ?? 1)
+  const dom = form.domain || p.value?.domain || ''
+  return conf < 0.75 || dom === 'DOM-GENERIC'
+})
 const matchPillClass = computed(() => {
   if (deviant.value) return 'pill-red'
   if (unlocked.value) return 'pill-amber'
@@ -1156,6 +1163,7 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
       unlocked.value = !p.value.match_locked
       ack.value = p.value.match_confirmed
       ackMainPath.value = p.value.match_confirmed
+      ackDomainReview.value = p.value.match_confirmed
     }
     // 仅进入/切项目时同步主 tab；轮询禁止强切，否则无法停在日志页
     if (syncTab) tab.value = defaultTabForStatus(p.value.status)
@@ -2221,6 +2229,7 @@ async function resetMatch() {
     unlocked.value = false
     ack.value = false
     ackMainPath.value = false
+    ackDomainReview.value = false
     message.success('已恢复推荐')
   } finally {
     matchBusy.value = false
@@ -2259,6 +2268,7 @@ async function onArchDomChange() {
     form.entry = p.value.spec?.match_path?.entry || ''
     ack.value = false
     ackMainPath.value = false
+    ackDomainReview.value = false
   } catch {
     form.archetype = p.value.archetype
     form.domain = p.value.domain
@@ -2297,6 +2307,7 @@ async function onPathChange() {
     form.entry = p.value.spec?.match_path?.entry || form.entry
     ack.value = false
     ackMainPath.value = false
+    ackDomainReview.value = false
   } catch {
     form.scene = p.value.spec?.match_path?.scene || form.scene
     form.entry = p.value.spec?.match_path?.entry || form.entry
@@ -2358,6 +2369,10 @@ async function confirmMatch() {
     message.warning('请先勾选「主路径已核对」，或解锁后选择入口')
     return
   }
+  if (needsDomainAck.value && !ackDomainReview.value) {
+    message.warning('匹配置信度偏低或为通用壳，请勾选「已人工核域」后再确认')
+    return
+  }
   if (deviant.value) {
     const ok = await confirm('当前已偏离系统推荐。确认仍按当前骨架、领域、身份入口与持久层生成？', {
       title: '偏离推荐确认',
@@ -2371,6 +2386,7 @@ async function confirmMatch() {
       confirm: true,
       ack: true,
       ack_main_path: Boolean(ackMainPath.value || !matchPath.value.needs_path_ack),
+      ack_domain_review: Boolean(ackDomainReview.value || !needsDomainAck.value),
     })
     unlocked.value = false
     message.success(deviant.value ? '已按当前选择确认' : '已确认匹配')
@@ -2683,6 +2699,8 @@ onUnmounted(() => {
     _tailLines,
     ack,
     ackMainPath,
+    ackDomainReview,
+    needsDomainAck,
     archDownloadBase,
     archLayoutKey,
     archLoading,

@@ -222,6 +222,10 @@ class MatchUpdate(BaseModel):
         default=None,
         description="确认时勾选：主路径/入口已人工核对",
     )
+    ack_domain_review: Optional[bool] = Field(
+        default=None,
+        description="确认时勾选：低置信或 DOM-GENERIC 已人工核域",
+    )
     theme: Optional[str] = Field(default=None, description="主题 ID")
     chrome: Optional[str] = Field(default=None, description="界面质感 ID")
     layout: Optional[str] = Field(default=None, description="门户布局壳 ID")

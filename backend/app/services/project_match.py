@@ -47,6 +47,16 @@ from app.services.proposal import load_merged_proposal_text, summarize_proposal
 
 logger = logging.getLogger(__name__)
 
+
+def needs_domain_ack(*, confidence: float | None, domain: str | None) -> bool:
+    """低置信（<0.75）或 DOM-GENERIC → 确认前须勾「已人工核域」。"""
+    try:
+        conf = float(confidence if confidence is not None else 0)
+    except (TypeError, ValueError):
+        conf = 0.0
+    return conf < 0.75 or str(domain or "") == "DOM-GENERIC"
+
+
 def _next_id() -> str:
     return f"gf-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
@@ -606,6 +616,14 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
                 raise ValueError(
                     "开题未写清主路径入口，请解锁选择入口，或勾选「主路径已核对」后再确认"
                 )
+        # 低置信 / 通用壳：强制「已人工核域」（照抄 path_ack；不禁用确认按钮）
+        if needs_domain_ack(
+            confidence=getattr(project, "confidence", None),
+            domain=getattr(project, "domain", None),
+        ) and not getattr(body, "ack_domain_review", None):
+            raise ValueError(
+                "匹配置信度偏低或为通用壳，请勾选「已人工核域」后再确认"
+            )
         project.match_confirmed = True
         project.match_locked = True
         project.status = ProjectStatus.ready.value

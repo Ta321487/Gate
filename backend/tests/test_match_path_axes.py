@@ -96,6 +96,14 @@ class MatchPathAxesTests(unittest.TestCase):
         self.assertEqual(path["entry_options"], [])
         self.assertFalse(path["needs_path_ack"])
 
+    def test_needs_domain_ack_low_conf_or_generic(self) -> None:
+        from app.services.project_match import needs_domain_ack
+
+        self.assertTrue(needs_domain_ack(confidence=0.74, domain="DOM-LIBRARY"))
+        self.assertTrue(needs_domain_ack(confidence=0.99, domain="DOM-GENERIC"))
+        self.assertFalse(needs_domain_ack(confidence=0.75, domain="DOM-LIBRARY"))
+        self.assertFalse(needs_domain_ack(confidence=0.9, domain="DOM-SHOP"))
+
     def test_ensure_spec_schema_honors_entry_override(self) -> None:
         """一键生成前重编壳不得丢掉运营台手改的入口。"""
         title = "社区网格员走访台账"
