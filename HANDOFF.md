@@ -46,8 +46,8 @@
 - **原因**：闸红时卡禁打开；未列 findings；图缓存不跟 `modules.py`，重载像没修。
 - **已做**：文案红仍可打开；卡/弹窗工厂提示 + findings；`force` 绕过缓存；红时禁导出。
 - **假绿收口**：未拉图不得「可导出」→「待核验」；进论文材料页 `ensureModulesMeta` 预检闸；真红才「文案红」、真绿才「可导出」。
-- **Overrides 计划**：[`docs/pack-overrides.md`](./docs/pack-overrides.md)——八张可细调、重 bake 重放；**§6 UI 已定稿**（文字优先、保存后出图必变、闸走现网文案红、findings 仅加 `source`）；等人令 `做 P0`。
-- **你这边**：Overrides 说 `做 P0` 再开工。
+- **Overrides 计划**：[`docs/pack-overrides.md`](./docs/pack-overrides.md)——八张可细调、重 bake 重放；**§6 UI 已定**；**§1.5/§4.4 现网对账已订**（bake 整树擦盘须先 stash 白名单；挂 `apply_module_label_patch`；P0 不含 hide，人天 6–8）；代码未开工。
+- **你这边**：Overrides 说 `做 P0`（刀序：白名单 → 表/API → 改字 UI）；`做 P0.5` 才做 hide。
 - **已推送**（文案红 UX + Overrides 计划册等同批主题拆分提交）。
 
 ### 本会话（2026-11-03）· 农产下单 NPE · Map.get→doubleValue
