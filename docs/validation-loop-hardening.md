@@ -2,7 +2,7 @@
 
 > **本文只负责**：机器防崩已封版后，**人防错域 + 机拦假宣称/错词 + 客服不瞎承诺**的落地裁定与开工清单。  
 > **不负责**：温度分级细则（见 `backend/app/llm/temperature.py`）；布局/控件闸；交付审计小卡写法。  
-> **状态**：**待开工**（人下令「开工」后再改代码）。  
+> **状态**：**批 1～4 已齐**（假宣称 / 错域词 FAQ 种子 / FAQ 默认关润色 / 核域勾选）；待提交。  
 > **索引**：[README.md](./README.md) · 搁置：[parked-work.md](./parked-work.md) 碎另案 **n**
 
 ---
@@ -12,9 +12,9 @@
 | 层 | 内容 | 状态 |
 |----|------|------|
 | 机器防崩 | LLM 温度分级 + unit_flow 校验/重试 + 确定性/静态 fallback | **已封版**（勿在本单重开温度/重试大改） |
-| 机拦假宣称 / 错域词 | 扩 `_honesty_findings` + `domain_vocab`；**error 拦 ZIP** | 本单 ① |
-| 客服不瞎承诺 | 未命中不调 LLM；**交付默认关润色**，只吐种子 | 本单 ② |
-| 人防错域 | 低置信 / `DOM-GENERIC` **强制勾选**「已人工核域」（照抄 `path_ack`） | 本单 ③ |
+| 机拦假宣称 / 错域词 | 扩 `_honesty_findings` + `domain_vocab`；**error 拦 ZIP** | ①：**批 1+2 已齐** |
+| 客服不瞎承诺 | 未命中不调 LLM；**交付默认关润色**，只吐种子 | ②：**批 3 已齐** |
+| 人防错域 | 低置信 / `DOM-GENERIC` **强制勾选**「已人工核域」（照抄 `path_ack`） | ③：**批 4 已齐** |
 
 **明确作废**：全包 `.vue`/种子「提取所有动词名词 ↔ Capabilities/状态机」的通用 NLP 穷举——误伤与维护成本不可接受。
 
@@ -62,11 +62,13 @@
 
 ### ① 穿帮检测（约 3～7 人日）
 
-| 子项 | 落点 | 验收 |
-|------|------|------|
-| 错域词 | `domain_vocab` / surface-lexicon **批 C** 口径；扫学生可见面 + 种子 | 跨域专属词 → **error**；反例必红、旧 canary 不误伤 |
-| 假宣称 | `agents_qa._honesty_findings` 扩种子/扫描面（含 FAQ/公告等可见种子） | 未挂能力却「可退款/已对接…」类强宣称 → **error 拦 ZIP** |
-| 门禁合并 | `p3q` / 约定的 `p3s` 子项；`zip_allowed` 同源 | 红则禁下载 ZIP；勿只 warning |
+分批：`批 1` = 假宣称 + p3q 禁 ZIP；`批 2` = 错域词 error（lexicon 批 C 扫面加硬）。
+
+| 子项 | 落点 | 验收 | 批 |
+|------|------|------|----|
+| 假宣称 | `agents_qa._honesty_findings` 扩种子/扫描面（含 FAQ/公告/banner 可见种子） | 未挂能力却「可退款/已对接…」类强宣称 → **error 拦 ZIP** | **1 已齐** |
+| 门禁合并 | `p3q`（honesty error → `ok=False`）；`zip_allowed` 同源 | 红则禁下载 ZIP；勿只 warning；本地规则单独可复现 | **1 已齐** |
+| 错域词 | `domain_vocab` FAQ/公告种子串词 → error；挂 `lexicon_findings` | 跨域专属词 → **error**；反例必红、旧 canary 不误伤 | **2 已齐** |
 
 相关已有资产（先搜再改，禁止平行第二套）：
 
@@ -75,25 +77,25 @@
 - `backend/app/bake/gates/semantic.py` · `p3s`（当前偏演示口吻/场景资料）  
 - `docs/surface-lexicon-design.md` · `docs/role-boundary-copy-batch.md`
 
-### ② FAQ 强约束（约 0.5～2 人日）
+### ② FAQ 强约束（约 0.5～2 人日）· **批 3 已齐**
 
 | 子项 | 落点 | 验收 |
 |------|------|------|
 | 未命中 | 保持：无 FAQ 且无业务摘录 → `REPLY_NO_FAQ`，**不调** DeepSeek | 契约测钉死 |
-| 交付默认 | 润色开关默认关 → 命中只返回种子 `content` | 有 Key 也不改写 |
-| 演示可开 | 开关 true 时允许现有「依据摘录口语化」路径 | 与交付默认分测 |
+| 交付默认 | `thesis.ai-reply-polish` 默认关 → 命中只返回种子 `content` | 有 Key 也不改写 |
+| 演示可开 | 开关 / `AI_REPLY_POLISH=true` 时允许口语化 | 与交付默认分测 |
 
-真源：`skeletons/baseline/.../AiAssistantStore.java`（+ overlays 两份）。
+真源：三份 `AiAssistantStore.java` + baseline `application.yml` + bake `_patch_thesis_yml`。
 
-### ③ 匹配人工复核（约 0.5～1.5 人日）
+### ③ 匹配人工复核（约 0.5～1.5 人日）· **批 4 已齐**
 
 | 子项 | 落点 | 验收 |
 |------|------|------|
-| UI | `MatchTab.vue`：低置信 / GENERIC 风险标红 + 新勾选 | 不勾不能点「确认并继续」 |
-| API | 匹配确认接口校验 ack | 裸 POST 无法 `match_confirmed` |
+| UI | `MatchTab.vue`：低置信 / GENERIC 风险标红 + 「已人工核域」 | 不勾不能点「确认并继续」 |
+| API | `needs_domain_ack` + `ack_domain_review` | 裸 POST 无法 `match_confirmed` |
 | 生成链 | 仍依赖已有 `match_confirmed` 才能生成 | 不新开第二道「禁生成」旁路 |
 
-参考现成：`needs_path_ack` / `ackMainPath` / `preBakeRisks`（`< 0.75` 已提示但未强制勾选）。
+参考现成：`needs_path_ack` / `ackMainPath` / `preBakeRisks`。
 
 ---
 
@@ -136,4 +138,7 @@
 
 | 日期 | 说明 |
 |------|------|
+| 2026-11-04 | FAQ 分类跟 `category`/`ticket_type` 同字生成 + 分叉闸；具名域专皮全补（仅 GENERIC 留壳） |
+| 2026-11-04 | **批 1～4 收口**：假宣称硬闸；FAQ 种子跨域词；`thesis.ai-reply-polish` 默认关；低置信/GENERIC「已人工核域」前后端 |
+| 2026-11-04 | **批 1**：扩硬边界种子（云/地图/小程序原生）+ 未挂订单面退款强承诺；扫描面含 seeds/FAQ·公告 SQL/`portalBanners`；钉 `test_qa_factory_drift` 反例与 p3q 禁 ZIP |
 | 2026-11-04 | 初稿：老板接受「加固不新开战场」；作废 NLP 动词穷举；钉 A～D；待「开工」 |

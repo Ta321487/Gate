@@ -26,6 +26,20 @@
 8. **可交互控件**：**C0～C5 已齐**；`BASELINE_KNOWN_CONTROLS` 空。  
 9. **全域 UI 诊断**：**68 域双 OK**（`docs/ui-domain-diagnosis.md`）。
 
+### 本会话（2026-11-04）· FAQ 分类同字 + 具名域专皮
+
+- **站队**：**修工厂**（种子跟开题/SQL lookup 同口径；具名域不偏科）。
+- **已做**：① 36 具名域 FAQ 专皮；② bake 时 FAQ 分类名对齐 `category`/`ticket_type`；③ 表外分类 → lexicon error 挡 ZIP；`fragments.ensure_ai_assistant_sql` 委托 features。
+- **测**：s75 同字 / align / 分叉闸 / 具名域不落 generic 绿。
+- **未提交**：与校验闭环批 1～4 一并等人令 commit。
+
+### 本会话（2026-11-04）· 校验闭环 · 批 1～4 收口
+
+- **站队**：**修工厂**（碎另案 **n** · [`docs/validation-loop-hardening.md`](./docs/validation-loop-hardening.md)）。
+- **已做**：①假宣称硬闸；②FAQ 种子跨域词；③`thesis.ai-reply-polish` 默认关；④低置信/GENERIC「已人工核域」。
+- **未提交**：等人令 commit。
+- **续**：上节 FAQ 专皮全补。
+
 ### 本会话（2026-11-04）· 模块图「文案红」可诊断
 
 - **站队**：**修工厂**（L0 闸体验；不做可编辑页）。
