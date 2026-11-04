@@ -81,6 +81,9 @@ _HARD_BOUNDARY_AS_SUPPORTED = (
     (re.compile(r"(微信支付|支付宝(支付|对接)|真实支付)"), "真支付对接"),
     (re.compile(r"(法大大|上上签|第三方电子签|CA\s*证书)"), "第三方电子签/CA"),
     (re.compile(r"(RFID\s*盘点|多仓\s*WMS|ERP\s*财务)"), "RFID/多仓ERP"),
+    (re.compile(r"(短信网关|阿里云\s*OSS|对象存储|高德地图|百度地图API)"), "第三方云/地图对接"),
+    # 「微信小程序」 alone 太常见（题名/技术路线）；只拦「原生」吹法
+    (re.compile(r"(小程序原生|原生小程序|微信小程序原生)"), "小程序原生交付"),
 )
 
 # 同窗「宣称已支持」搭配（小集合）。无搭配 → 不升 error（避免否定句/背景调研误杀）。
@@ -90,6 +93,26 @@ _CLAIM_AS_SUPPORTED = re.compile(
     r"已支持|已集成|已对接|已接入|已开通|已上线|可全文答辩|已完整实现|"
     r"支持(?!期)|集成了|对接了|接入了|本期可用"
     r")"
+)
+
+# 能力未挂却写成强承诺（词本身即宣称；须有划界才放过）。
+# 交付信号：订单面（order_lines / 订单菜单）——与 opening_align refund 口径对齐。
+_REFUND_STRONG_CLAIM = re.compile(
+    r"(可退款|支持退款|一键退款|在线退款|自动退款|七天无理由退款)"
+)
+_ORDER_SURFACE_CAPS = frozenset({"order_lines"})
+_ORDER_SURFACE_MENUS = frozenset({"orders", "my_orders", "cart"})
+
+# 从学生包 SQL 抽 FAQ / 公告正文（可见种子，须进诚实扫描面）
+_AI_KB_SEED_RE = re.compile(
+    r"INSERT\s+INTO\s+sys_ai_knowledge[\s\S]{0,120}?"
+    r"SELECT\s+'((?:[^']|'')*)',\s*'((?:[^']|'')*)',\s*'((?:[^']|'')*)'",
+    re.IGNORECASE,
+)
+_NOTICE_SEED_RE = re.compile(
+    r"INSERT\s+INTO\s+sys_notice[\s\S]{0,120}?"
+    r"SELECT\s+'((?:[^']|'')*)',\s*'((?:[^']|'')*)'",
+    re.IGNORECASE,
 )
 
 # 「非本期 / 不做 / 不接」及常见划界，不算宣称支持
@@ -243,7 +266,51 @@ def _collect_qa_context(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]
     }
 
 
+def _unescape_sql_quote(s: str) -> str:
+    return (s or "").replace("''", "'")
+
+
+def _seed_sql_visible_parts(seed_sql: str) -> list[str]:
+    """FAQ（sys_ai_knowledge）与公告（sys_notice）INSERT 正文。"""
+    parts: list[str] = []
+    for m in _AI_KB_SEED_RE.finditer(seed_sql or ""):
+        # category, title, content
+        parts.append(_unescape_sql_quote(m.group(2)))
+        parts.append(_unescape_sql_quote(m.group(3)))
+    for m in _NOTICE_SEED_RE.finditer(seed_sql or ""):
+        parts.append(_unescape_sql_quote(m.group(1)))
+        parts.append(_unescape_sql_quote(m.group(2)))
+    return parts
+
+
+def _has_order_surface(ctx: dict[str, Any]) -> bool:
+    caps = {str(c) for c in (ctx.get("capabilities") or []) if c}
+    if caps & _ORDER_SURFACE_CAPS:
+        return True
+    menu_keys = ctx.get("menuKeys") or {}
+    flat: set[str] = set()
+    if isinstance(menu_keys, dict):
+        for keys in menu_keys.values():
+            if isinstance(keys, list):
+                flat.update(str(k) for k in keys if k)
+    if flat & _ORDER_SURFACE_MENUS:
+        return True
+    menus = ctx.get("menus") or {}
+    if isinstance(menus, dict):
+        for items in menus.values():
+            if not isinstance(items, list):
+                continue
+            for m in items:
+                if isinstance(m, dict) and str(m.get("key") or "") in _ORDER_SURFACE_MENUS:
+                    return True
+    return False
+
+
 def _flatten_label_text(ctx: dict[str, Any]) -> str:
+    """诚实扫描面：labels / 菜单 / seeds / FAQ·公告种子 / 提案摘录。
+
+    故意不扫全包 Vue 源码（误伤与维护成本高）；可见种子与 schema 文案必须进面。
+    """
     parts: list[str] = []
     labels = ctx.get("labels") or {}
     if isinstance(labels, dict):
@@ -260,6 +327,21 @@ def _flatten_label_text(ctx: dict[str, Any]) -> str:
             for m in items:
                 if isinstance(m, dict):
                     parts.append(str(m.get("label") or ""))
+    seeds = ctx.get("seeds") or {}
+    if isinstance(seeds, dict):
+        for v in seeds.values():
+            if isinstance(v, str) and v.strip():
+                parts.append(v)
+            elif isinstance(v, list):
+                parts.extend(str(x) for x in v if x)
+    schema = ctx.get("schema") if isinstance(ctx.get("schema"), dict) else {}
+    banners = schema.get("portalBanners") if isinstance(schema, dict) else None
+    if isinstance(banners, list):
+        for b in banners:
+            if isinstance(b, dict):
+                parts.append(str(b.get("title") or ""))
+                parts.append(str(b.get("lead") or ""))
+    parts.extend(_seed_sql_visible_parts(str(ctx.get("seed_sql") or "")))
     parts.append(str(ctx.get("domainLabel") or ""))
     parts.append(str(ctx.get("proposal") or "")[:800])
     return "\n".join(parts)
@@ -279,10 +361,11 @@ def _honesty_hard_boundary_hit(blob: str, match: re.Match[str]) -> bool:
 
 
 def _honesty_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
-    """Q-04：硬边界不得写成已支持；错域实体名本地可拦。
+    """Q-04：硬边界不得写成已支持；未挂能力的强承诺；错域实体名本地可拦。
 
-    本地不穷举域措辞、也不替代 LLM：只拦「硬边界种子 ∩ 宣称搭配」的强信号；
+    本地不穷举域措辞、也不替代 LLM：只拦「硬边界种子 ∩ 宣称搭配」与显式黑名单强承诺；
     词单独出现或否定/划界句（如「非 CA…第三方电子签平台」）不升 error。
+    扫描面含 labels / seeds / FAQ·公告 SQL 种子（见 `_flatten_label_text`）。
     """
     findings: list[dict[str, str]] = []
     blob = _flatten_label_text(ctx)
@@ -298,7 +381,28 @@ def _honesty_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
                         f"交付文案将硬边界「{name}」写成本期可用"
                         f"（命中：{m.group(0)} · 附近：{near[:72]}）"
                     ),
-                    "where": "schema.labels|proposal",
+                    "where": "schema.labels|seeds|faq|proposal",
+                }
+            )
+            break
+
+    # 未挂订单面却写「可退款」类强承诺（词本身即宣称）
+    if not _has_order_surface(ctx):
+        for m in _REFUND_STRONG_CLAIM.finditer(blob):
+            claim_win = blob[max(0, m.start() - 32) : min(len(blob), m.end() + 32)]
+            scope_win = blob[max(0, m.start() - 100) : min(len(blob), m.end() + 100)]
+            before = blob[max(0, m.start() - 24) : m.start()]
+            if _HONEST_SCOPE.search(scope_win) or _PREFIX_NEGATION.search(before):
+                continue
+            near = claim_win.strip()
+            findings.append(
+                {
+                    "level": "error",
+                    "msg": (
+                        "交付文案宣称退款可用，但 capabilities/菜单未见订单面"
+                        f"（命中：{m.group(0)} · 附近：{near[:72]}）"
+                    ),
+                    "where": "schema.labels|seeds|faq",
                 }
             )
             break

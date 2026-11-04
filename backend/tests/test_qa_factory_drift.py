@@ -370,6 +370,156 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         )
         self.assertTrue(any("错域实体词" in str(f.get("msg")) for f in warn), warn)
 
+    def test_honesty_refund_claim_without_order_surface(self) -> None:
+        """未挂订单面却写「可退款」→ error；有订单面或划界 → 不挡。"""
+        from app.llm.agents_qa import _honesty_findings
+
+        bad = _honesty_findings(
+            {
+                "domain": "DOM-LIBRARY",
+                "labels": {"faqLead": "支持退款，下单后可一键退款"},
+                "menus": {"user": [{"key": "archive", "label": "馆藏"}]},
+                "capabilities": [],
+                "proposal": "",
+            }
+        )
+        self.assertTrue(any(f.get("level") == "error" for f in bad), bad)
+
+        scoped = _honesty_findings(
+            {
+                "domain": "DOM-LIBRARY",
+                "labels": {"faqLead": "在线退款不在本期，仅登记人工处理"},
+                "menus": {"user": [{"key": "archive", "label": "馆藏"}]},
+                "capabilities": [],
+                "proposal": "",
+            }
+        )
+        self.assertFalse(any(f.get("level") == "error" for f in scoped), scoped)
+
+        with_orders = _honesty_findings(
+            {
+                "domain": "DOM-SHOP",
+                "labels": {"ordersLead": "支持退款申请"},
+                "menus": {"user": [{"key": "my_orders", "label": "我的订单"}]},
+                "capabilities": ["order_lines"],
+                "proposal": "",
+            }
+        )
+        self.assertFalse(
+            any("退款" in str(f.get("msg")) and f.get("level") == "error" for f in with_orders),
+            with_orders,
+        )
+
+    def test_honesty_faq_and_notice_seed_sql_surface(self) -> None:
+        """FAQ / 公告 SQL 种子须进诚实扫描面（关 LLM 也能本地打红）。"""
+        from app.llm.agents_qa import _fallback_qa, _honesty_findings
+
+        faq_sql = (
+            "INSERT INTO sys_ai_knowledge (category, title, content, keywords, hit_count)\n"
+            "SELECT '支付', '支付渠道', '本系统已对接微信支付与支付宝支付', '支付', 0\n"
+            "FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_ai_knowledge WHERE title='支付渠道');"
+        )
+        bad_faq = _honesty_findings(
+            {
+                "domain": "DOM-FOOD",
+                "labels": {"appName": "食堂"},
+                "menus": {},
+                "seed_sql": faq_sql,
+                "proposal": "",
+            }
+        )
+        self.assertTrue(any(f.get("level") == "error" for f in bad_faq), bad_faq)
+
+        notice_sql = (
+            "INSERT INTO sys_notice (title, content, publisher_username, publisher_name)\n"
+            "SELECT '售后说明', '本店支持七天无理由退款', 'admin', '管理员'\n"
+            "FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='售后说明');"
+        )
+        bad_notice = _honesty_findings(
+            {
+                "domain": "DOM-MUSIC",
+                "labels": {"appName": "曲库"},
+                "menus": {"user": [{"key": "archive", "label": "曲目"}]},
+                "capabilities": [],
+                "seed_sql": notice_sql,
+                "proposal": "",
+            }
+        )
+        self.assertTrue(any(f.get("level") == "error" for f in bad_notice), bad_notice)
+
+        # portal banner 面
+        banner_hit = _honesty_findings(
+            {
+                "domain": "DOM-FOOD",
+                "labels": {},
+                "menus": {},
+                "schema": {
+                    "portalBanners": [
+                        {"title": "支付升级", "lead": "已接入短信网关与高德地图"},
+                    ]
+                },
+                "proposal": "",
+            }
+        )
+        self.assertTrue(any(f.get("level") == "error" for f in banner_hit), banner_hit)
+
+        mini = _honesty_findings(
+            {
+                "domain": "DOM-FOOD",
+                "labels": {"techLead": "本期已支持小程序原生交付"},
+                "menus": {},
+                "proposal": "",
+            }
+        )
+        self.assertTrue(any(f.get("level") == "error" for f in mini), mini)
+
+        report = _fallback_qa(
+            {
+                "domain": "DOM-FOOD",
+                "labels": {"appName": "食堂", "noticePageTitle": "公告"},
+                "menus": {},
+                "menuKeys": {},
+                "entityKeys": [],
+                "capabilities": [],
+                "files": {},
+                "missing_files": [],
+                "seed_sql": faq_sql,
+                "proposal": "",
+            }
+        )
+        self.assertFalse(report.get("ok"), report)
+
+    def test_honesty_error_blocks_p3q_zip(self) -> None:
+        """本地 honesty error → fallback ok=False → apply_qa_to_gates 禁 ZIP。"""
+        from app.llm.agents_qa import _fallback_qa
+        from app.services.delivery_review import apply_qa_to_gates
+
+        qa = _fallback_qa(
+            {
+                "domain": "DOM-FOOD",
+                "labels": {
+                    "appName": "食堂",
+                    "noticePageTitle": "公告",
+                    "authPoints": ["已支持人脸识别闸机"],
+                },
+                "menus": {},
+                "menuKeys": {},
+                "entityKeys": [],
+                "capabilities": [],
+                "files": {},
+                "missing_files": [],
+                "proposal": "",
+            }
+        )
+        self.assertFalse(qa.get("ok"), qa)
+        self.assertTrue(any(f.get("level") == "error" for f in qa.get("findings") or []))
+
+        gates = {"overall": True, "zip_allowed": True}
+        apply_qa_to_gates(gates, qa, warn_blocks=False)
+        self.assertFalse(gates["p3q"]["ok"], gates["p3q"])
+        self.assertFalse(gates["zip_allowed"])
+        self.assertFalse(gates["overall"])
+
     def test_payment_copy_blocks_fallback_qa_without_llm(self) -> None:
         """关 LLM QA 时，支付宝/微信下单句仍须结构闸 error 挡包（农产续跑装绿回归）。"""
         from app.llm.agents_qa import _fallback_qa, _payment_copy_findings
