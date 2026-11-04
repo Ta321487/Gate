@@ -252,12 +252,73 @@ class TestAiAssistantScan(unittest.TestCase):
         for domain, title, body, cats in cases:
             with self.subTest(title=title):
                 sql_seed = domain_sql(domain, "t_ai", title=title, proposal_text=body)
-                faq = build_ai_knowledge_seed_sql(domain, title, body)
+                faq = build_ai_knowledge_seed_sql(
+                    domain, title, body, sql_context=sql_seed
+                )
                 for cat in cats:
                     self.assertIn(cat, sql_seed, f"sql missing {cat}")
                     self.assertIn(cat, faq, f"faq missing {cat}")
                 self.assertNotIn("水果", faq)
                 self.assertNotIn("社团活动怎么报名", faq)
+
+    def test_faq_aligns_pack_cats_to_sql_lookup_names(self) -> None:
+        """皮模板分类名若与 SQL lookup 不一致 → bake 时改写成同字。"""
+        from app.bake.features.ai_assistant import (
+            align_faq_rows_to_lookup_names,
+            build_ai_knowledge_seed_sql,
+            extract_lookup_names_from_sql,
+        )
+
+        sql = (
+            "INSERT IGNORE INTO category (id, name) VALUES "
+            "(1, '甲类'), (2, '乙类'), (3, '丙类');\n"
+        )
+        self.assertEqual(extract_lookup_names_from_sql(sql), ["甲类", "乙类", "丙类"])
+        # 报修族 lookup 表也要抽到
+        repair_sql = (
+            "INSERT IGNORE INTO repair_type (id, name, sort_no) VALUES "
+            "(1, '水电', 1), (2, '门窗', 2), (3, '家具', 3);"
+        )
+        self.assertEqual(
+            extract_lookup_names_from_sql(repair_sql), ["水电", "门窗", "家具"]
+        )
+        # VALUES 换行（IT fault_type / 物业 ticket_type 真种子形态）不得漏抽
+        multiline = (
+            "INSERT IGNORE INTO fault_type (id, name, sort_no) VALUES\n"
+            "(1, '内网', 1), (2, '终端', 2), (3, '打印机', 3);\n"
+        )
+        self.assertEqual(
+            extract_lookup_names_from_sql(multiline), ["内网", "终端", "打印机"]
+        )
+        rows = [
+            ("旧一", "旧一怎么办", "请选「旧一」提交", "旧一,办理", 12),
+            ("旧二", "旧二须知", "「旧二」请看说明", "旧二,须知", 10),
+            ("旧三", "旧三说明", "了解「旧三」", "旧三", 8),
+            ("旧一", "如何查看进度", "看进度", "进度", 6),
+        ]
+        aligned = align_faq_rows_to_lookup_names(rows, ["甲类", "乙类", "丙类"])
+        self.assertEqual([r[0] for r in aligned], ["甲类", "乙类", "丙类", "甲类"])
+        self.assertIn("甲类怎么办", aligned[0][1])
+        self.assertIn("「乙类」", aligned[1][2])
+
+        faq = build_ai_knowledge_seed_sql(
+            "DOM-ATTEND",
+            "请假系统",
+            "事假病假",
+            sql_context=sql,
+        )
+        self.assertIn("'甲类'", faq)
+        self.assertIn("'乙类'", faq)
+        self.assertNotIn("'事假类'", faq)
+
+        dorm_faq = build_ai_knowledge_seed_sql(
+            "DOM-DORM",
+            "宿舍报修",
+            "水电门窗",
+            sql_context=repair_sql,
+        )
+        self.assertIn("'水电'", dorm_faq)
+        self.assertIn("'门窗'", dorm_faq)
 
     def test_farm_faq_pack_titles(self) -> None:
         from app.bake.features.ai_assistant import build_ai_knowledge_seed_sql
@@ -323,6 +384,12 @@ class TestAiAssistantScan(unittest.TestCase):
             "lost_donate": "捐赠物资怎么认领",
             "procure": "办公用品怎么申购",
             "procure_journal": "理工外刊怎么荐购",
+            # 原落 generic 的具名域（抽检若干 + 全量另测）
+            "intern": "岗位周报怎么写",
+            "exam": "期末考试怎么参加",
+            "survey": "学风问卷怎么填",
+            "checkin": "正常归寝怎么签到",
+            "vote": "评优选先怎么投票",
             "generic": "AI 助手能做什么",
         }
         for skin, snippet in expected_snippets.items():
@@ -334,6 +401,28 @@ class TestAiAssistantScan(unittest.TestCase):
         # 动态皮与静态表一致
         for kind in ("farm", "retail", "campus", "print", "flowers", "errand", "points"):
             self.assertEqual(_shop_pack(kind), _AI_SEED_PACKS[f"shop_{kind}"])
+
+    def test_all_named_domains_have_dedicated_faq_skin(self) -> None:
+        """具名域禁止偏科落 generic；仅 DOM-GENERIC 用通用四条。"""
+        from app.bake.domains import DOMAIN_CAPABILITIES
+        from app.bake.features.ai_assistant import (
+            _AI_SEED_PACKS,
+            resolve_ai_knowledge_skin,
+        )
+
+        for domain in sorted(DOMAIN_CAPABILITIES):
+            with self.subTest(domain=domain):
+                skin = resolve_ai_knowledge_skin(domain, "测试系统", "业务办理与信息管理")
+                self.assertIn(skin, _AI_SEED_PACKS, domain)
+                self.assertEqual(len(_AI_SEED_PACKS[skin]), 4, skin)
+                if domain == "DOM-GENERIC":
+                    self.assertEqual(skin, "generic")
+                else:
+                    self.assertNotEqual(
+                        skin,
+                        "generic",
+                        f"{domain} 不应再落 generic（工厂孩子一视同仁）",
+                    )
 
     def test_attach_accept_force_on(self) -> None:
         spec = build_spec(
@@ -385,9 +474,10 @@ class TestAiAssistantBake(unittest.TestCase):
         self.assertIn("springframework.ai", ds_txt)
         self.assertTrue(any((ws / "backend").rglob("AiBizContext.java")))
         biz_txt = next((ws / "backend").rglob("AiBizContext.java")).read_text(encoding="utf-8")
+        # 商城有订单/货架；无 ticket_flow → prune 裁掉 TicketStore（勿再钉字面量）
         self.assertIn("OrderStore", biz_txt)
         self.assertIn("ArchiveStore", biz_txt)
-        self.assertIn("TicketStore", biz_txt)
+        self.assertNotIn("TicketStore", biz_txt)
         self.assertTrue(any((ws / "backend").rglob("AiAssistantController.java")))
         self.assertTrue(any((ws / "frontend").rglob("AiAssistant.vue")))
         self.assertTrue(any((ws / "frontend").rglob("AiAssistantFloat.vue")))
@@ -438,6 +528,87 @@ class TestAiAssistantBake(unittest.TestCase):
         self.assertIn("借阅", sql)
         self.assertIn("计算机", sql)
         self.assertNotIn("粮油", sql)
+        # 图书有 ticket_flow：AiBizContext 须保留 TicketStore（对照商城 prune）
+        biz = next((ws / "backend").rglob("AiBizContext.java")).read_text(encoding="utf-8")
+        self.assertIn("TicketStore", biz)
+        self.assertIn("ArchiveStore", biz)
+
+    def test_ai_reply_polish_default_off_decoupled_from_key(self) -> None:
+        """交付默认关润色；有 Key 也不改写；须独立开关（禁靠拔 Key）。"""
+        from pathlib import Path as _P
+
+        from app.bake.engine_bake import _patch_thesis_yml
+
+        root = _P(__file__).resolve().parents[2]
+        yml = (
+            root
+            / "skeletons"
+            / "baseline"
+            / "backend"
+            / "src"
+            / "main"
+            / "resources"
+            / "application.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ai-reply-polish:", yml)
+        self.assertRegex(yml, r"ai-reply-polish:\s*\$\{AI_REPLY_POLISH:false\}")
+
+        stores = [
+            root
+            / "skeletons"
+            / "baseline"
+            / "backend"
+            / "src"
+            / "main"
+            / "java"
+            / "com"
+            / "thesis"
+            / "service"
+            / "AiAssistantStore.java",
+            root
+            / "skeletons"
+            / "overlays"
+            / "persistence-mybatis"
+            / "backend"
+            / "src"
+            / "main"
+            / "java"
+            / "com"
+            / "thesis"
+            / "service"
+            / "AiAssistantStore.java",
+            root
+            / "skeletons"
+            / "overlays"
+            / "persistence-jpa"
+            / "backend"
+            / "src"
+            / "main"
+            / "java"
+            / "com"
+            / "thesis"
+            / "service"
+            / "AiAssistantStore.java",
+        ]
+        for path in stores:
+            txt = path.read_text(encoding="utf-8")
+            self.assertIn("REPLY_NO_FAQ", txt, path.name)
+            self.assertIn("isReplyPolishEnabled", txt, path.name)
+            self.assertIn("DeepSeekClient.configured() && isReplyPolishEnabled()", txt, path.name)
+            self.assertIn('faq.get("content")', txt, path.name)
+
+        on_yml = _patch_thesis_yml(
+            "thesis:\n  title: x\n",
+            "DOM-SHOP",
+            {"ai_assistant": True, "capabilities": ["ai_assistant"], "title": "农产"},
+        )
+        self.assertRegex(on_yml, r"ai-reply-polish:\s*false")
+        off_yml = _patch_thesis_yml(
+            "thesis:\n  title: x\n",
+            "DOM-SHOP",
+            {"ai_assistant": False, "capabilities": [], "title": "农产"},
+        )
+        self.assertNotIn("ai-reply-polish", off_yml)
 
 
 if __name__ == "__main__":

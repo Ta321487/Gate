@@ -194,6 +194,30 @@ def _faq(
     return (cat, title, content, keywords, hit)
 
 
+def _flow_faq_pack(
+    t1: str,
+    t2: str,
+    t3: str,
+    *,
+    mine: str,
+    how1: str,
+    body1: str,
+    how2: str,
+    body2: str,
+    how3: str,
+    body3: str,
+    progress_q: str,
+    progress_body: str,
+) -> list[tuple[str, str, str, str, int]]:
+    """具名域通用四条：三类事项 + 一条进度（口径贴菜单，禁止工厂腔）。"""
+    return [
+        _faq(t1, how1, body1, f"{t1},{mine},进度,办理", 12),
+        _faq(t2, how2, body2, f"{t2},须知,材料,办理", 10),
+        _faq(t3, how3, body3, f"{t3},说明,规则,查阅", 8),
+        _faq(t1, progress_q, progress_body, f"进度,{mine},状态,办理", 6),
+    ]
+
+
 def _shop_pack(kind: str) -> list[tuple[str, str, str, str, int]]:
     """商城 FAQ：分类名 = SHOP_KIND_CATEGORIES；热门标题按货皮开题口吻，忌千篇一律「选购说明」。"""
     from app.bake.scene_scan import SHOP_KIND_CATEGORIES
@@ -1801,6 +1825,511 @@ _AI_SEED_PACKS: dict[str, list[tuple[str, str, str, str, int]]] = {
             6,
         ),
     ],
+    # —— 原落 generic 的具名域：按菜单/事项名词补齐专皮（DOM-GENERIC 仍用 generic）——
+    "acad": _flow_faq_pack(
+        "转专业",
+        "休学",
+        "复学",
+        mine="我的申请",
+        how1="转专业怎么申请",
+        body1="先阅读「异动事项说明」中转专业要求，再在「我的申请」提交材料；审核意见以页面状态为准。",
+        how2="休学办理须知",
+        body2="「休学」请按说明准备材料并写清起止学期；提交后可在「我的申请」跟踪审批。",
+        how3="复学怎么办理",
+        body3="「复学」需对照异动事项说明核对条件后提交；被驳回可按意见补件再提。",
+        progress_q="如何查看异动申请进度",
+        progress_body="打开「我的申请」查看状态变更；长时间未更新可按页面提示补充说明。",
+    ),
+    "asset": _flow_faq_pack(
+        "办公物资",
+        "实验耗材",
+        "设备配件",
+        mine="我的申领",
+        how1="办公物资怎么申领",
+        body1="在「物资目录」选择「办公物资」品目填写数量与用途后提交；可在「我的申领」查看进度。",
+        how2="实验耗材申领须知",
+        body2="「实验耗材」请写清用途；库存与配额以审批意见为准，勿先领后补。",
+        how3="设备配件如何申领",
+        body3="「设备配件」提交后在「我的申领」跟踪；驳回可按意见修改再报。",
+        progress_q="如何查看申领进度",
+        progress_body="打开「我的申领」查看待审与完结状态；催办以角色权限为准。",
+    ),
+    "award": _flow_faq_pack(
+        "论文成果",
+        "专利成果",
+        "竞赛成果",
+        mine="我的成果登记",
+        how1="论文成果怎么登记",
+        body1="在「成果类型说明」确认要求后，于「我的成果登记」提交论文类材料并等待审核。",
+        how2="专利成果登记须知",
+        body2="「专利成果」请如实填写专利号与发明人；材料不全可能影响认定。",
+        how3="竞赛成果如何登记",
+        body3="「竞赛成果」按说明上传证书或证明；登记后可在「我的成果登记」查看进度。",
+        progress_q="如何查看成果登记进度",
+        progress_body="打开「我的成果登记」查看审核状态；被驳回可按意见补正后再提。",
+    ),
+    "carpass": _flow_faq_pack(
+        "校门通行",
+        "地下车库",
+        "访客临停",
+        mine="我的申请",
+        how1="校门通行证怎么申请",
+        body1="阅读「通行区域说明」后选择「校门通行」提交车辆与有效期；在「我的申请」查看审批。",
+        how2="地下车库通行须知",
+        body2="「地下车库」请写清车位或时段；审批通过前请勿强行驶入。",
+        how3="访客临停怎么办",
+        body3="「访客临停」由被访人协助提交；注意临停时限与区域限制。",
+        progress_q="如何查看通行证进度",
+        progress_body="打开「我的申请」查看审批结果；过期需重新申请，勿沿用失效证。",
+    ),
+    "carpool": _flow_faq_pack(
+        "上班通勤",
+        "周末出游",
+        "机场接送",
+        mine="我的意向",
+        how1="上班通勤怎么拼车",
+        body1="在「行程目录」选择「上班通勤」行程，提交同行意向；对方确认后即可成行。",
+        how2="周末出游拼车须知",
+        body2="「周末出游」请写清集合点与费用分摊；可在「我的行程」管理自己发布的行程。",
+        how3="机场接送怎么约",
+        body3="「机场接送」提交意向后关注「待我确认」；变更请及时取消以免爽约。",
+        progress_q="如何查看拼车意向进度",
+        progress_body="在「我的意向」与「待我确认」查看匹配与确认状态；未确认前可撤回。",
+    ),
+    "cert": _flow_faq_pack(
+        "在读证明",
+        "成绩证明",
+        "收入证明",
+        mine="我的申请",
+        how1="在读证明怎么开",
+        body1="在「证明类型说明」确认后选择「在读证明」提交；可在「我的申请」领取或下载。",
+        how2="成绩证明开具须知",
+        body2="「成绩证明」请核对学期范围；加盖与邮寄方式以审批意见为准。",
+        how3="收入证明如何申请",
+        body3="「收入证明」按说明填写用途后提交；材料不全将被驳回。",
+        progress_q="如何查看开具进度",
+        progress_body="打开「我的申请」查看审批与出具状态；办结后按页面提示领取。",
+    ),
+    "checkin": _flow_faq_pack(
+        "正常归寝",
+        "晚归登记",
+        "留宿说明",
+        mine="我的归寝",
+        how1="正常归寝怎么签到",
+        body1="在「查寝安排」确认场次后，于「我的归寝」完成「正常归寝」签到；超时可能记异常。",
+        how2="晚归登记须知",
+        body2="预计晚归请先做「晚归登记」并写清事由；返寝后按要求补签。",
+        how3="留宿说明怎么填",
+        body3="「留宿说明」用于特殊留宿报备；未报备可能影响查寝统计。",
+        progress_q="如何查看归寝记录",
+        progress_body="打开「我的归寝」查看当日与历史签到；异常请按宿管要求说明。",
+    ),
+    "club": _flow_faq_pack(
+        "注册材料",
+        "年审材料",
+        "活动备案",
+        mine="我的材料",
+        how1="社团注册材料怎么交",
+        body1="阅读「社团事项说明」后，在「我的材料」提交「注册材料」并等待审核。",
+        how2="年审材料须知",
+        body2="「年审材料」请按清单上传；逾期未交可能影响社团资格。",
+        how3="活动备案如何提交",
+        body3="「活动备案」写清时间地点与人数后提交；审核通过再开展活动。",
+        progress_q="如何查看材料审核进度",
+        progress_body="打开「我的材料」查看状态；被驳回可按意见补正后再提。",
+    ),
+    "contract": _flow_faq_pack(
+        "采购合同",
+        "服务合同",
+        "框架协议",
+        mine="我的合同",
+        how1="采购合同怎么报批",
+        body1="在「合同类型说明」确认后提交「采购合同」文本与附件；可在「我的合同」跟踪审批。",
+        how2="服务合同审批须知",
+        body2="「服务合同」请写清服务期限与金额；缺关键条款会被退回。",
+        how3="框架协议如何申请",
+        body3="「框架协议」按说明上传双方文本；审批节点以页面为准。",
+        progress_q="如何查看合同审批进度",
+        progress_body="打开「我的合同」查看各节点状态；退回后请按意见修改再送审。",
+    ),
+    "course": _flow_faq_pack(
+        "必修课",
+        "选修课",
+        "通识课",
+        mine="我的选课",
+        how1="必修课怎么选",
+        body1="在「课程检索」筛选「必修课」加入选课单；冲突课次无法提交，请先看课表。",
+        how2="选修课须知",
+        body2="「选修课」名额有限，提交后可在「我的选课」查看是否中签或待审。",
+        how3="通识课如何检索",
+        body3="「通识课」可用关键词或分类检索；选定后到「我的课表」核对时间地点。",
+        progress_q="如何查看选课结果",
+        progress_body="打开「我的选课」与「我的课表」确认结果；退选按页面开放时段操作。",
+    ),
+    "credit": _flow_faq_pack(
+        "创新学分",
+        "实践学分",
+        "竞赛学分",
+        mine="我的申请",
+        how1="创新学分怎么认定",
+        body1="阅读「认定项目说明」后选择「创新学分」提交证明材料；在「我的申请」查看进度。",
+        how2="实践学分认定须知",
+        body2="「实践学分」请附实践证明与学时说明；材料不全可能退回。",
+        how3="竞赛学分如何申报",
+        body3="「竞赛学分」按获奖等级上传证书；认定结果以审核意见为准。",
+        progress_q="如何查看学分认定进度",
+        progress_body="打开「我的申请」查看审核状态；通过后学分入账时间以教务通知为准。",
+    ),
+    "dating": _flow_faq_pack(
+        "兴趣匹配",
+        "同城交友",
+        "活动搭子",
+        mine="我的牵线",
+        how1="兴趣匹配怎么发起",
+        body1="在「资料浏览」完善交友资料后，可对「兴趣匹配」对象发起牵线；对方确认后可见联系方式策略以页面为准。",
+        how2="同城交友须知",
+        body2="「同城交友」请文明沟通；可在「我的牵线」查看往来状态。",
+        how3="活动搭子如何找",
+        body3="「活动搭子」按活动标签筛选后提交意向；未确认前可取消。",
+        progress_q="如何查看牵线进度",
+        progress_body="打开「我的牵线」查看待确认与已通过；请勿骚扰未同意的用户。",
+    ),
+    "ethic": _flow_faq_pack(
+        "伦理审查",
+        "合规自查",
+        "材料补正",
+        mine="我的材料",
+        how1="伦理审查材料怎么交",
+        body1="阅读「审核事项说明」后，在「我的材料」提交「伦理审查」材料包并等待审核。",
+        how2="合规自查须知",
+        body2="「合规自查」请按清单勾选并上传附件；缺项会被退回。",
+        how3="材料补正如何提交",
+        body3="收到补正意见后，用「材料补正」上传修订件；请注明对应意见编号。",
+        progress_q="如何查看材料审核进度",
+        progress_body="打开「我的材料」查看状态；长时间未更新可按页面提示联系审核岗。",
+    ),
+    "eval": _flow_faq_pack(
+        "理论课评教",
+        "实验课评教",
+        "实习评教",
+        mine="我的评教",
+        how1="理论课评教怎么填",
+        body1="在「我的评教」打开「理论课评教」问卷，按题目如实填写后提交；截止后不可改。",
+        how2="实验课评教须知",
+        body2="「实验课评教」请结合实验安排作答；匿名规则以页面说明为准。",
+        how3="实习评教如何完成",
+        body3="「实习评教」按课程说明进入填写；未完成可能影响成绩发布。",
+        progress_q="如何查看评教完成情况",
+        progress_body="打开「我的评教」查看已填与未填课程；请在截止前完成全部应评项。",
+    ),
+    "exam": _flow_faq_pack(
+        "期末考试",
+        "补考",
+        "竞赛模拟",
+        mine="考试科目",
+        how1="期末考试怎么参加",
+        body1="在「考试科目」查看「期末考试」安排与试卷入口；按开放时间进入答题，注意倒计时。",
+        how2="补考须知",
+        body2="「补考」资格与场次以教务安排为准；请提前在考试科目中确认。",
+        how3="竞赛模拟如何练",
+        body3="「竞赛模拟」可按科目练习；成绩仅供自测，不计入正式成绩（除非页面另有说明）。",
+        progress_q="如何查看考试与成绩",
+        progress_body="在「考试科目」查看场次与交卷记录；正式成绩发布以教务通知为准。",
+    ),
+    "expense": _flow_faq_pack(
+        "差旅报销",
+        "办公经费",
+        "业务招待",
+        mine="我的申请",
+        how1="差旅报销怎么报",
+        body1="阅读「经费项目说明」后选择「差旅报销」上传票据并提交；在「我的申请」跟踪审批。",
+        how2="办公经费报销须知",
+        body2="「办公经费」请按科目归类票据；超标准将被退回。",
+        how3="业务招待如何申请",
+        body3="「业务招待」需写清事由与对象；审批通过后再报销。",
+        progress_q="如何查看报销进度",
+        progress_body="打开「我的申请」查看各审批节点；退单后按意见补票再提。",
+    ),
+    "fleet": _flow_faq_pack(
+        "公务用车",
+        "教学用车",
+        "应急用车",
+        mine="我的申请",
+        how1="公务用车怎么申请",
+        body1="在「车辆说明」确认车型后提交「公务用车」申请；写清行程与用车时间。",
+        how2="教学用车须知",
+        body2="「教学用车」请附教学任务说明；冲突时段无法通过。",
+        how3="应急用车如何报",
+        body3="「应急用车」请标明紧急事由；审批通过后按调度取车。",
+        progress_q="如何查看用车申请进度",
+        progress_body="打开「我的申请」查看审批与派车状态；取消请提前操作以免空驶。",
+    ),
+    "fund": _flow_faq_pack(
+        "助学金",
+        "困难补助",
+        "勤工助学",
+        mine="我的申请",
+        how1="助学金怎么申请",
+        body1="在「项目列表」打开「助学金」阅读条件后提交；结果可在「我的申请」与公示查阅。",
+        how2="困难补助须知",
+        body2="「困难补助」请如实填写家庭情况；材料造假将取消资格。",
+        how3="勤工助学如何报名",
+        body3="「勤工助学」按岗位说明提交；录用与工时以用工部门通知为准。",
+        progress_q="如何查看资助申请进度",
+        progress_body="打开「我的申请」查看审核；公示期请关注「公示查阅」。",
+    ),
+    "grade": _flow_faq_pack(
+        "成绩复核",
+        "缓考申请",
+        "成绩证明",
+        mine="我的成绩申请",
+        how1="成绩复核怎么提",
+        body1="在「课程说明」确认课程后，于「我的成绩申请」提交「成绩复核」并写清理由。",
+        how2="缓考申请须知",
+        body2="「缓考申请」请附证明材料；是否批准以教务审核为准。",
+        how3="成绩查询在哪",
+        body3="可用「成绩查询」查看已发布成绩；有异议再走复核流程。",
+        progress_q="如何查看成绩申请进度",
+        progress_body="打开「我的成绩申请」查看处理状态；办结结果以页面与教务通知为准。",
+    ),
+    "instrument": _flow_faq_pack(
+        "分析仪器",
+        "加工设备",
+        "测量仪表",
+        mine="我的借用",
+        how1="分析仪器怎么借",
+        body1="在「仪器目录」选择「分析仪器」提交借用；需要机时请同时走「我的预约」。",
+        how2="加工设备借用须知",
+        body2="「加工设备」请确认培训与准入要求；未培训不得开机。",
+        how3="测量仪表如何预约",
+        body3="「测量仪表」可先预约机时再办理借用；冲突时段请改约。",
+        progress_q="如何查看借用与预约进度",
+        progress_body="在「我的借用」「我的预约」查看状态；归还请按时以免影响他人。",
+    ),
+    "intern": _flow_faq_pack(
+        "岗位周报",
+        "阶段小结",
+        "实习鉴定",
+        mine="我的周报",
+        how1="岗位周报怎么写",
+        body1="在「岗位说明」确认实习单位后，于「我的周报」提交「岗位周报」；请按周填写真实工作内容。",
+        how2="阶段小结须知",
+        body2="「阶段小结」按学校节点提交；逾期可能影响成绩认定。",
+        how3="实习鉴定如何交",
+        body3="「实习鉴定」需单位意见齐全后再上传；缺章将被退回。",
+        progress_q="如何查看周报批阅进度",
+        progress_body="打开「我的周报」查看已交与批阅状态；被退回请按意见修改再提。",
+    ),
+    "labor": _flow_faq_pack(
+        "公益劳动",
+        "宿舍劳动",
+        "校园美化",
+        mine="我的申请",
+        how1="公益劳动时长怎么认定",
+        body1="在「劳动项目说明」选择「公益劳动」提交时长与证明；可在「我的申请」查看认定结果。",
+        how2="宿舍劳动须知",
+        body2="「宿舍劳动」请按宿管安排打卡或登记；弄虚作假无效。",
+        how3="校园美化如何报名",
+        body3="「校园美化」按项目开放时间提交；名额满后无法再报。",
+        progress_q="如何查看时长认定进度",
+        progress_body="打开「我的申请」查看审核；认定学时入账以学工通知为准。",
+    ),
+    "labsafe": _flow_faq_pack(
+        "化学实验室",
+        "生物实验室",
+        "机房准入",
+        mine="我的准入",
+        how1="化学实验室怎么申请准入",
+        body1="在「实验室列表」选择「化学实验室」提交培训与安全承诺后申请；通过后可在「我的准入」查看。",
+        how2="生物实验室准入须知",
+        body2="「生物实验室」须完成安全培训；未通过考试不得进入。",
+        how3="机房准入如何办理",
+        body3="「机房准入」按说明上传材料；权限开通以审核通过为准。",
+        progress_q="如何查看准入进度",
+        progress_body="打开「我的准入」查看审核与有效期；过期需重新申请。",
+    ),
+    "moral": _flow_faq_pack(
+        "加分申请",
+        "减分申诉",
+        "测评说明",
+        mine="我的申请",
+        how1="德育加分怎么申请",
+        body1="阅读「测评指标说明」后提交「加分申请」并附证明；可在「我的申请」跟踪。",
+        how2="减分申诉须知",
+        body2="对记减有异议可提「减分申诉」；请写清事实与依据。",
+        how3="测评指标在哪看",
+        body3="「测评说明」与指标列表在说明页；申报前请先核对规则。",
+        progress_q="如何查看测评申请进度",
+        progress_body="打开「我的申请」查看审核结果；公示期请关注班级或学院通知。",
+    ),
+    "mutual_team": _flow_faq_pack(
+        "竞赛组队",
+        "项目组队",
+        "课程小组",
+        mine="我的志愿",
+        how1="竞赛组队怎么报名",
+        body1="在「组队资料目录」选择「竞赛组队」提交志愿；对方确认后可在「待我确认」处理邀请。",
+        how2="项目组队须知",
+        body2="「项目组队」请写清分工意向；名额满后无法再加入。",
+        how3="课程小组如何找队友",
+        body3="「课程小组」按课程标签筛选后提交志愿；未确认前可撤回。",
+        progress_q="如何查看组队志愿进度",
+        progress_body="在「我的志愿」与「待我确认」查看匹配状态；请及时回应以免过期。",
+    ),
+    "mutual_topic": _flow_faq_pack(
+        "毕设选题",
+        "课程选题",
+        "科研选题",
+        mine="我的志愿",
+        how1="毕设选题怎么报志愿",
+        body1="在「选题目录」选择「毕设选题」提交志愿顺序；导师确认规则以页面为准。",
+        how2="课程选题须知",
+        body2="「课程选题」名额有限，请在开放时段提交；可在「我的志愿」查看结果。",
+        how3="科研选题如何申请",
+        body3="「科研选题」请阅读题目要求后再报；「待我确认」中处理导师回执。",
+        progress_q="如何查看选题志愿进度",
+        progress_body="打开「我的志愿」查看志愿状态；调剂与确认节点以学院安排为准。",
+    ),
+    "mutual_tutor": _flow_faq_pack(
+        "学术导师",
+        "企业导师",
+        "学业辅导",
+        mine="我的志愿",
+        how1="学术导师怎么选",
+        body1="在「导师目录」浏览「学术导师」后提交志愿；双方确认后生效。",
+        how2="企业导师须知",
+        body2="「企业导师」请关注对接方式与次数要求；可在「我的志愿」跟踪。",
+        how3="学业辅导如何预约",
+        body3="「学业辅导」按导师开放时段提交；冲突请改约。",
+        progress_q="如何查看导师志愿进度",
+        progress_body="在「我的志愿」与「待我确认」查看确认状态；未通过可改报其他导师。",
+    ),
+    "party": _flow_faq_pack(
+        "积极分子",
+        "发展对象",
+        "预备党员",
+        mine="我的材料",
+        how1="积极分子材料怎么交",
+        body1="阅读「发展阶段说明」后，在「我的材料」提交「积极分子」阶段材料。",
+        how2="发展对象材料须知",
+        body2="「发展对象」请按清单上传思想汇报等；缺项会被退回。",
+        how3="预备党员阶段如何报送",
+        body3="「预备党员」材料按支部安排节点提交；进度以审核状态为准。",
+        progress_q="如何查看阶段材料进度",
+        progress_body="打开「我的材料」查看各阶段审核；请关注支部通知补正。",
+    ),
+    "proj": _flow_faq_pack(
+        "立项申报",
+        "中期检查",
+        "结题验收",
+        mine="我的申报",
+        how1="立项申报怎么交",
+        body1="阅读「申报项目说明」后提交「立项申报」书；可在「我的申报」跟踪。",
+        how2="中期检查须知",
+        body2="「中期检查」请按任务书上传进展材料；逾期可能影响拨款。",
+        how3="结题验收如何办理",
+        body3="「结题验收」需成果材料齐全；验收意见以专家组为准。",
+        progress_q="如何查看申报检查进度",
+        progress_body="打开「我的申报」查看立项/检查/结题各节点状态。",
+    ),
+    "promo": _flow_faq_pack(
+        "海报宣传",
+        "场地布展",
+        "新媒体推送",
+        mine="我的申请",
+        how1="海报宣传怎么报批",
+        body1="在「宣传事项说明」确认后提交「海报宣传」样稿与张贴范围；审批通过后再张贴。",
+        how2="场地布展须知",
+        body2="「场地布展」请写清时间地点；冲突场地无法通过。",
+        how3="新媒体推送如何申请",
+        body3="「新媒体推送」上传文案与配图；发布档期以宣传岗安排为准。",
+        progress_q="如何查看宣传审批进度",
+        progress_body="打开「我的申请」查看审批结果；驳回后按意见修改再提。",
+    ),
+    "seal": _flow_faq_pack(
+        "公章",
+        "合同章",
+        "业务专用章",
+        mine="我的申请",
+        how1="公章怎么申请",
+        body1="阅读「印章事项说明」后提交「公章」用印事由与文件；在「我的申请」查看审批。",
+        how2="合同章用印须知",
+        body2="「合同章」须附已批合同文本；无批件不得用印。",
+        how3="业务专用章如何办理",
+        body3="「业务专用章」按部门授权提交；取件时请携带有效证件。",
+        progress_q="如何查看用章进度",
+        progress_body="打开「我的申请」查看审批与用印完成状态。",
+    ),
+    "survey": _flow_faq_pack(
+        "学风问卷",
+        "满意度调查",
+        "需求调研",
+        mine="问卷项目",
+        how1="学风问卷怎么填",
+        body1="在「问卷项目」打开「学风问卷」按题作答并提交；通常每人限填一次。",
+        how2="满意度调查须知",
+        body2="「满意度调查」请如实评价；截止后入口关闭。",
+        how3="需求调研如何参与",
+        body3="「需求调研」按开放对象可见；提交前可检查必填项。",
+        progress_q="如何查看问卷完成情况",
+        progress_body="在「问卷项目」查看已填与未填；结果是否公示以组织方说明为准。",
+    ),
+    "timebank": _flow_faq_pack(
+        "陪伴服务",
+        "代办服务",
+        "技能互助",
+        mine="我的核销",
+        how1="陪伴服务怎么核销",
+        body1="完成「陪伴服务」后在「我的核销」提交时长与说明；对方确认后入账。",
+        how2="代办服务须知",
+        body2="「代办服务」请先在服务说明中确认范围；争议以平台规则处理。",
+        how3="技能互助如何登记",
+        body3="「技能互助」发布或接单后按时核销；未核销不计时长。",
+        progress_q="如何查看时长核销进度",
+        progress_body="打开「我的核销」查看待确认与已入账；被驳回可补充证明再提。",
+    ),
+    "trip": _flow_faq_pack(
+        "出差申请",
+        "加班申请",
+        "外出报备",
+        mine="我的申请",
+        how1="出差怎么申请",
+        body1="在「事项类型说明」确认后提交「出差申请」行程与事由；审批通过后再出行。",
+        how2="加班申请须知",
+        body2="「加班申请」请写清起止时间；与考勤规则冲突将被退回。",
+        how3="外出报备如何填",
+        body3="「外出报备」用于短期外出；请在出发前完成提交。",
+        progress_q="如何查看出差加班进度",
+        progress_body="打开「我的申请」查看审批状态；变更行程请先作废再重提。",
+    ),
+    "visitor": _flow_faq_pack(
+        "公务来访",
+        "亲友探访",
+        "施工人员",
+        mine="我的访客申请",
+        how1="公务来访怎么预约",
+        body1="阅读「区域说明」后提交「公务来访」访客信息与到访时段；在「我的访客申请」查看审批。",
+        how2="亲友探访须知",
+        body2="「亲友探访」请如实填写证件信息；超时未到需重新申请。",
+        how3="施工人员如何报备",
+        body3="「施工人员」须附施工说明；门岗核验通过后方可进入。",
+        progress_q="如何查看访客申请进度",
+        progress_body="打开「我的访客申请」查看审批与到访状态；取消请提前操作。",
+    ),
+    "vote": _flow_faq_pack(
+        "评优选先",
+        "议题表决",
+        "民意征集",
+        mine="评选活动",
+        how1="评优选先怎么投票",
+        body1="在「评选活动」打开「评优选先」按规则投票；每人票数以页面限制为准。",
+        how2="议题表决须知",
+        body2="「议题表决」请在开放时段完成；截止后不可改票（除非页面允许）。",
+        how3="民意征集如何参与",
+        body3="「民意征集」可按题目选择或留言；结果公示以组织方说明为准。",
+        progress_q="如何查看投票是否成功",
+        progress_body="在「评选活动」查看已参与记录；计票结果以活动结束后公示为准。",
+    ),
     "generic": [
         _faq(
             "通用",
@@ -1917,6 +2446,7 @@ def resolve_ai_knowledge_skin(
         return "recruit"
 
     # 具名域 → 自有皮（商城/图书/点餐另算货皮；活动/事件/失物/采购/招聘按深皮细分）
+    # DOM-GENERIC 故意不进表 → 落 generic；其余具名域必须有皮（禁止偏科）。
     domain_skin: dict[str, str] = {
         "DOM-DORM": "dorm",
         "DOM-PROPERTY": "property",
@@ -1946,6 +2476,43 @@ def resolve_ai_knowledge_skin(
         "DOM-LOST": "__lost__",
         "DOM-PROCURE": "__procure__",
         "DOM-RECRUIT": "__recruit__",
+        # 原落 generic 的具名域（全补）
+        "DOM-ACAD": "acad",
+        "DOM-ASSET": "asset",
+        "DOM-AWARD": "award",
+        "DOM-CARPASS": "carpass",
+        "DOM-CARPOOL": "carpool",
+        "DOM-CERT": "cert",
+        "DOM-CHECKIN": "checkin",
+        "DOM-CLUB": "club",
+        "DOM-CONTRACT": "contract",
+        "DOM-COURSE": "course",
+        "DOM-CREDIT": "credit",
+        "DOM-DATING": "dating",
+        "DOM-ETHIC": "ethic",
+        "DOM-EVAL": "eval",
+        "DOM-EXAM": "exam",
+        "DOM-EXPENSE": "expense",
+        "DOM-FLEET": "fleet",
+        "DOM-FUND": "fund",
+        "DOM-GRADE": "grade",
+        "DOM-INSTRUMENT": "instrument",
+        "DOM-INTERN": "intern",
+        "DOM-LABOR": "labor",
+        "DOM-LABSAFE": "labsafe",
+        "DOM-MORAL": "moral",
+        "DOM-MUTUAL-TEAM": "mutual_team",
+        "DOM-MUTUAL-TOPIC": "mutual_topic",
+        "DOM-MUTUAL-TUTOR": "mutual_tutor",
+        "DOM-PARTY": "party",
+        "DOM-PROJ": "proj",
+        "DOM-PROMO": "promo",
+        "DOM-SEAL": "seal",
+        "DOM-SURVEY": "survey",
+        "DOM-TIMEBANK": "timebank",
+        "DOM-TRIP": "trip",
+        "DOM-VISITOR": "visitor",
+        "DOM-VOTE": "vote",
     }
 
     if dom == "DOM-SHOP":
@@ -2067,13 +2634,83 @@ def _sql_escape(s: str) -> str:
     return (s or "").replace("\\", "\\\\").replace("'", "''")
 
 
+# 从已拼好的学生包 SQL 抽业务 lookup 名称（FAQ 必须跟这份同字）
+# category / ticket_type 通用；repair_type / fault_type 为报修族（宿舍/物业/IT）
+_LOOKUP_INSERT_RE = re.compile(
+    r"INSERT\s+(?:IGNORE\s+)?INTO\s+`?(category|ticket_type|repair_type|fault_type)`?\b"
+    r"[\s\S]{0,400}?VALUES\s*([\s\S]+?);",
+    re.IGNORECASE,
+)
+_LOOKUP_NAME_RE = re.compile(r"\(\s*\d+\s*,\s*'((?:[^']|'')*)'")
+
+# generic 皮允许的元分类（无业务 lookup 轴时）
+FAQ_META_CATEGORIES = frozenset({"通用", "流程", "公告", "助手"})
+
+
+def extract_lookup_names_from_sql(sql: str) -> list[str]:
+    """抽出 SQL 种子里 category/ticket_type/repair_type/fault_type 的 name（保序去重）。"""
+    out: list[str] = []
+    seen: set[str] = set()
+    for m in _LOOKUP_INSERT_RE.finditer(sql or ""):
+        values_blob = m.group(2) or ""
+        for nm in _LOOKUP_NAME_RE.finditer(values_blob):
+            name = (nm.group(1) or "").replace("''", "'").strip()
+            if name and name not in seen:
+                seen.add(name)
+                out.append(name)
+    return out
+
+
+def align_faq_rows_to_lookup_names(
+    rows: list[tuple[str, str, str, str, int]],
+    names: list[str],
+) -> list[tuple[str, str, str, str, int]]:
+    """把皮模板里的分类名改写成本包 lookup 真名，并替换题干/正文/关键词中的旧名。"""
+    if not rows or not names:
+        return rows
+    pack_cats: list[str] = []
+    for cat, *_rest in rows:
+        if cat not in pack_cats:
+            pack_cats.append(cat)
+    mapping: dict[str, str] = {}
+    for i, old in enumerate(pack_cats):
+        mapping[old] = names[i] if i < len(names) else names[i % len(names)]
+
+    def _rewrite(text: str) -> str:
+        out = text or ""
+        for old, new in sorted(mapping.items(), key=lambda kv: -len(kv[0])):
+            if old and old != new and old in out:
+                out = out.replace(old, new)
+        return out
+
+    aligned: list[tuple[str, str, str, str, int]] = []
+    for cat, title_s, content, keywords, hit in rows:
+        new_cat = mapping.get(cat, names[0])
+        aligned.append(
+            (
+                new_cat,
+                _rewrite(title_s),
+                _rewrite(content),
+                _rewrite(keywords),
+                int(hit),
+            )
+        )
+    return aligned
+
+
 def build_ai_knowledge_seed_sql(
     domain: str = "",
     title: str = "",
     proposal_text: str = "",
     capabilities: list | None = None,
+    *,
+    sql_context: str = "",
 ) -> str:
-    """生成幂等 INSERT 种子 SQL（4 条）。挂 loan_renew 时把逾期条换成续借说明。"""
+    """生成幂等 INSERT 种子 SQL（4 条）。
+
+    有 ``sql_context``（已含 category/ticket_type 种子）且非 generic 皮时，
+    FAQ 分类名强制与 lookup 同字；挂 loan_renew 时末条换成续借说明。
+    """
     skin = resolve_ai_knowledge_skin(domain, title, proposal_text)
     rows = list(_AI_SEED_PACKS.get(skin) or _AI_SEED_PACKS["generic"])
     caps = set(capabilities or [])
@@ -2090,6 +2727,10 @@ def build_ai_knowledge_seed_sql(
             rows = list(rows[:-1]) + [renew_row]
         else:
             rows = [renew_row]
+    if skin != "generic" and sql_context:
+        names = extract_lookup_names_from_sql(sql_context)
+        if names:
+            rows = align_faq_rows_to_lookup_names(rows, names)
     parts: list[str] = []
     for i, (cat, title_s, content, keywords, hit) in enumerate(rows):
         cond = (
@@ -2152,7 +2793,7 @@ def ensure_ai_assistant_sql(
     proposal_text: str = "",
     capabilities: list | None = None,
 ) -> str:
-    """能力开启时幂等补 AI 表，并按域/开题灌 FAQ 种子。"""
+    """能力开启时幂等补 AI 表，并按域/开题灌 FAQ 种子（分类名跟已有 lookup 同字）。"""
     if not enabled:
         return sql
     out = sql
@@ -2164,5 +2805,6 @@ def ensure_ai_assistant_sql(
             title=title,
             proposal_text=proposal_text,
             capabilities=capabilities,
+            sql_context=out,
         )
     return out

@@ -17,7 +17,9 @@
 
 ## 开则必交
 
-对话问答（FAQ 回落）、只读接业务 Store、知识种子按域灌（`resolve_ai_knowledge_skin`）、会话/满意度/热门问答。
+对话问答（FAQ 回落）、只读接业务 Store、知识种子按域灌（`resolve_ai_knowledge_skin`）、会话/满意度/热门问答。  
+**具名域 FAQ 皮**：除 `DOM-GENERIC` 外不得落 `generic` 四条壳（2026-11-04 收口）；交付默认关润色见 [`validation-loop-hardening.md`](./validation-loop-hardening.md)。  
+**分类同字**：bake 时 FAQ 分类名跟本包 lookup 种子对齐（`category` / `ticket_type` / `repair_type` / `fault_type`）；表外分类名 → `lexicon_findings` error 挡 ZIP。
 
 演示级：浏览器 TTS、文件名/类目映射识图。不交：真视觉/协同过滤/人脸/Agent 下单等。
 

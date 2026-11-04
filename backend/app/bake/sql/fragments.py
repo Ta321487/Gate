@@ -507,22 +507,17 @@ def ensure_ai_assistant_sql(
     proposal_text: str = "",
     capabilities: list | None = None,
 ) -> str:
-    """能力开启时幂等补 AI 表，并按域/开题灌 FAQ 种子。"""
-    if not enabled:
-        return sql
-    from app.bake.features.ai_assistant import build_ai_knowledge_seed_sql
+    """委托 features.ai_assistant（FAQ 与 category/ticket_type 同字）。"""
+    from app.bake.features.ai_assistant import ensure_ai_assistant_sql as _ensure
 
-    out = sql
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_ai_knowledge`?\b", out):
-        out = out.rstrip() + "\n" + _AI_KNOWLEDGE_DDL
-    if "INSERT INTO sys_ai_knowledge" not in out:
-        out = out.rstrip() + "\n" + build_ai_knowledge_seed_sql(
-            domain=domain,
-            title=title,
-            proposal_text=proposal_text,
-            capabilities=capabilities,
-        )
-    return out
+    return _ensure(
+        sql,
+        enabled=enabled,
+        domain=domain,
+        title=title,
+        proposal_text=proposal_text,
+        capabilities=capabilities,
+    )
 
 
 _EXAM_WRONGBOOK_DDL = """

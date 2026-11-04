@@ -184,11 +184,54 @@ _SLOT_POSITION_PATTERNS: dict[str, tuple[str, ...]] = {
 _NOTICE_RE = re.compile(
     r"INSERT INTO sys_notice[\s\S]{0,120}?SELECT '((?:[^']|'')*)', '((?:[^']|'')*)'"
 )
+# FAQ：category, title, content
+_AI_KB_RE = re.compile(
+    r"INSERT\s+INTO\s+sys_ai_knowledge[\s\S]{0,120}?"
+    r"SELECT\s+'((?:[^']|'')*)',\s*'((?:[^']|'')*)',\s*'((?:[^']|'')*)'",
+    re.IGNORECASE,
+)
 
 
 def seed_notices(sql: str) -> list[tuple[str, str]]:
     """从生成的学生包 SQL 里抽出 (标题, 正文)。"""
     return [(m.group(1), m.group(2)) for m in _NOTICE_RE.finditer(sql or "")]
+
+
+def seed_faq_entries(sql: str) -> list[tuple[str, str, str]]:
+    """从学生包 SQL 抽出 FAQ (category, title, content)。"""
+    return [(m.group(1), m.group(2), m.group(3)) for m in _AI_KB_RE.finditer(sql or "")]
+
+
+def _cross_domain_in_seed_text(
+    *,
+    title: str,
+    text: str,
+    schema: dict[str, Any],
+    domain: str,
+    where: str,
+) -> list[dict[str, str]]:
+    """公告/FAQ 种子正文串了别域招牌词 → error。"""
+    if not domain:
+        return []
+    exempt: set[str] = own_vocabulary(schema)
+    slots = schema_slots(schema)
+    lex = schema.get("lex") if isinstance(schema.get("lex"), dict) else {}
+    exempt.update(str(v) for v in list(slots.values()) + list(lex.values()) if v)
+    findings: list[dict[str, str]] = []
+    blob = f"{title} {text}"
+    for word in forbidden_words(domain):
+        if word in blob and not any(word in tok for tok in exempt):
+            findings.append(
+                {
+                    "level": "error",
+                    "msg": (
+                        f"种子「{title}」串了跨域专属名词「{word}」"
+                        f"（归属域：{'/'.join(exclusive_owners(word))}）"
+                    ),
+                    "where": where,
+                }
+            )
+    return findings
 
 
 # 已知待迁移（当前为空）：公告正文若由 f-string/banner 拼出、无法直接改字面量，
@@ -232,21 +275,70 @@ def notice_slot_findings(
                     }
                 )
                 break
-        if domain:
-            exempt: set[str] = own_vocabulary(schema)
-            exempt.update(str(v) for v in list(slots.values()) + list(lex.values()) if v)
-            for word in forbidden_words(domain):
-                if word in text and not any(word in tok for tok in exempt):
-                    findings.append(
-                        {
-                            "level": "error",
-                            "msg": (
-                                f"种子公告「{title}」串了跨域专属名词「{word}」"
-                                f"（归属域：{'/'.join(exclusive_owners(word))}）"
-                            ),
-                            "where": "sql/sys_notice",
-                        }
-                    )
+        findings.extend(
+            _cross_domain_in_seed_text(
+                title=title,
+                text=body,
+                schema=schema,
+                domain=domain,
+                where="sql/sys_notice",
+            )
+        )
+    return findings
+
+
+def faq_seed_findings(
+    sql: str, schema: dict[str, Any], *, domain: str = ""
+) -> list[dict[str, str]]:
+    """FAQ 种子（sys_ai_knowledge）串跨域专属名词 → error。"""
+    findings: list[dict[str, str]] = []
+    for _cat, title, content in seed_faq_entries(sql):
+        findings.extend(
+            _cross_domain_in_seed_text(
+                title=title,
+                text=content,
+                schema=schema,
+                domain=domain,
+                where="sql/sys_ai_knowledge",
+            )
+        )
+    return findings
+
+
+def faq_category_alignment_findings(sql: str) -> list[dict[str, str]]:
+    """FAQ 分类名必须落在本包 lookup 种子（或 generic 元分类）→ error。
+
+    lookup = category / ticket_type / repair_type / fault_type。
+    无 lookup 轴时不拦；有却写了表外分类名 = 口径分叉。
+    """
+    from app.bake.features.ai_assistant import (
+        FAQ_META_CATEGORIES,
+        extract_lookup_names_from_sql,
+    )
+
+    entries = seed_faq_entries(sql)
+    if not entries:
+        return []
+    lookup = extract_lookup_names_from_sql(sql)
+    if not lookup:
+        return []
+    allowed = set(lookup) | set(FAQ_META_CATEGORIES)
+    findings: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for cat, title, _content in entries:
+        if not cat or cat in allowed or cat in seen:
+            continue
+        seen.add(cat)
+        findings.append(
+            {
+                "level": "error",
+                "msg": (
+                    f"FAQ「{title}」分类「{cat}」不在本包 lookup 种子中"
+                    f"（已有：{'、'.join(lookup[:6])}{'…' if len(lookup) > 6 else ''}）"
+                ),
+                "where": "sql/sys_ai_knowledge",
+            }
+        )
     return findings
 
 
@@ -260,8 +352,8 @@ def lexicon_findings(
 ) -> list[dict[str, str]]:
     """三条规则的统一入口（供交付质量摘要 p3q 直接消费）。
 
-    `seed_sql`：学生包 SQL（含 sys_notice 种子公告）原文，用于第四条判据
-    ——公告正文与实体口径分叉 / 串跨域词。
+    `seed_sql`：学生包 SQL（含 sys_notice / sys_ai_knowledge 种子）原文，
+    用于公告口径分叉、公告/FAQ 串跨域词、FAQ 分类与 lookup 同字。
     """
     out: list[dict[str, str]] = []
     out.extend(slot_divergence_findings(schema))
@@ -269,6 +361,8 @@ def lexicon_findings(
     out.extend(render_guard_findings(files or {}))
     if seed_sql:
         out.extend(notice_slot_findings(seed_sql, schema, domain=domain))
+        out.extend(faq_seed_findings(seed_sql, schema, domain=domain))
+        out.extend(faq_category_alignment_findings(seed_sql))
     return out
 
 
