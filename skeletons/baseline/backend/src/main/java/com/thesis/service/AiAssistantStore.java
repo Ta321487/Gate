@@ -34,6 +34,11 @@ public class AiAssistantStore {
     private static final String REPLY_NO_FAQ =
             "暂未匹配到相关知识或业务数据。请换个问法，或请管理员在「AI知识库」补充条目。";
     private static Boolean tableReady;
+    /**
+     * 交付默认关润色：有 Key 也只吐 FAQ/业务摘录原文。
+     * 由 {@code thesis.ai-reply-polish} / 环境变量 {@code AI_REPLY_POLISH} 打开；禁止靠拔 Key 关润色。
+     */
+    private static volatile boolean replyPolishEnabled = false;
 
     private static JdbcTemplate db() {
         return JdbcSupport.jdbc();
@@ -51,6 +56,25 @@ public class AiAssistantStore {
             tableReady = false;
         }
         return tableReady;
+    }
+
+    /** Spring 注入 yml；演示/自测可另设环境变量 AI_REPLY_POLISH=true。 */
+    public static void setReplyPolishEnabled(boolean enabled) {
+        replyPolishEnabled = enabled;
+    }
+
+    public static boolean isReplyPolishEnabled() {
+        String env = System.getenv("AI_REPLY_POLISH");
+        if (env != null && !env.isBlank()) {
+            String v = env.trim();
+            return "1".equals(v) || "true".equalsIgnoreCase(v) || "yes".equalsIgnoreCase(v);
+        }
+        String prop = System.getProperty("thesis.ai-reply-polish", System.getProperty("AI_REPLY_POLISH", ""));
+        if (prop != null && !prop.isBlank()) {
+            String v = prop.trim();
+            return "1".equals(v) || "true".equalsIgnoreCase(v) || "yes".equalsIgnoreCase(v);
+        }
+        return replyPolishEnabled;
     }
 
     private static String fmt(Object o) {
@@ -243,7 +267,8 @@ public class AiAssistantStore {
                 }
                 answer = null;
                 source = faq != null ? "faq" : "biz";
-                if (DeepSeekClient.configured()) {
+                // 交付默认不润色：有 Key 也不改写；仅开关打开才走口语化
+                if (DeepSeekClient.configured() && isReplyPolishEnabled()) {
                     String title = (appTitle == null || appTitle.isBlank()) ? "本系统" : clip(appTitle, 80);
                     StringBuilder sys = new StringBuilder();
                     sys.append("你是「").append(title).append("」的智能助手。");
@@ -273,7 +298,7 @@ public class AiAssistantStore {
                         }
                     }
                 }
-                // 无 Key / LLM 失败：有 FAQ 则 FAQ 回落（契约）；勿让空货架 biz 抢答
+                // 关润色 / 无 Key / LLM 失败：有 FAQ 则吐种子原文（契约）；勿让空货架 biz 抢答
                 if (answer == null || answer.isBlank()) {
                     if (faq != null) {
                         answer = String.valueOf(faq.get("content"));
@@ -293,6 +318,7 @@ public class AiAssistantStore {
         out.put("faq", faq);
         out.put("biz", bizExcerpt != null && !bizExcerpt.isBlank());
         out.put("deepseekConfigured", DeepSeekClient.configured());
+        out.put("replyPolishEnabled", isReplyPolishEnabled());
         return out;
     }
 
@@ -463,6 +489,7 @@ public class AiAssistantStore {
         out.put("feedbackCount", 0);
         out.put("satisfiedRate", 0);
         out.put("deepseekConfigured", DeepSeekClient.configured());
+        out.put("replyPolishEnabled", isReplyPolishEnabled());
         out.put("hot", List.of());
         if (!ready()) return out;
         Integer kc = db().queryForObject("SELECT COUNT(*) FROM sys_ai_knowledge WHERE enabled=1", Integer.class);

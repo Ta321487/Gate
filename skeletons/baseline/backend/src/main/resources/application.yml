@@ -35,3 +35,5 @@ thesis:
   title: ${PROJECT_TITLE}
   register-role: user
   password-hash: none
+  # AI 助手命中后是否口语化润色（默认关；有 Key 也不改写种子。演示可 true / AI_REPLY_POLISH=true）
+  ai-reply-polish: ${AI_REPLY_POLISH:false}

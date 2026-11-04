@@ -30,6 +30,8 @@ KEEP_YML_KEYS: tuple[str, ...] = (
     "guest-teaser-limit",
     "allow-appoint-from-users",
     "use-quota",
+    # AI 助手润色：交付默认关，与 DEEPSEEK_API_KEY 解耦
+    "ai-reply-polish",
 )
 
 # (yml 键, Java 常量, Java 类型, 默认字面量, binder 字段名, 渲染分组)

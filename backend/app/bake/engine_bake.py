@@ -509,6 +509,11 @@ def _patch_thesis_yml(text: str, domain: str, spec: dict[str, Any]) -> str:
     lines.append("  # 密码存储：none（明文）| bcrypt | md5 | sha256")
     lines.append(f"  password-hash: {ph}")
 
+    # AI 助手润色：交付默认关（有 Key 也只吐种子）；演示可改 true
+    if "ai_assistant" in caps or bool(spec.get("ai_assistant")):
+        lines.append("  # AI 命中后是否口语化润色（默认关；与 API Key 解耦）")
+        lines.append("  ai-reply-polish: false")
+
     lines.append("  # 门户未登录是否可浏览")
     lines.append(f"  portal-guest-browse: {'true' if guest_on else 'false'}")
     if guest_on:

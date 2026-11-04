@@ -25,6 +25,12 @@ public class AiAssistantController {
     @Value("${thesis.title:本系统}")
     private String appTitle;
 
+    /** 交付默认 false；演示可开。与 API Key 解耦。 */
+    @Value("${thesis.ai-reply-polish:false}")
+    public void setReplyPolish(boolean enabled) {
+        AiAssistantStore.setReplyPolishEnabled(enabled);
+    }
+
     private void requireReady() {
         if (!AiAssistantStore.ready()) {
             throw new BizException(ErrorCode.NOT_FOUND, "未开通 AI 助手功能");
@@ -37,6 +43,7 @@ public class AiAssistantController {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("ready", true);
         m.put("deepseekConfigured", DeepSeekClient.configured());
+        m.put("replyPolishEnabled", AiAssistantStore.isReplyPolishEnabled());
         return R.ok(m);
     }
 
