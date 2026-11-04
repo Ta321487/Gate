@@ -5,7 +5,7 @@
 .gitignore[FC4T]: F:排除本地环境、缓存、数据库、上传工作区与临时产物，含布局冒烟 Vite 缓存与 probe_run，避免进 Git | R:- | A:- | S:skeletons/**/.vite-layout-smoke/ 为冒烟本机缓存不入库
 AGENTS.md[SG8T]: F: 声明 Agent 在本仓库的 AOCI 认知合同：成本红线、最小入口、认知纪律、收尾维护纪律、边界、配置通道与成本参数 | R: code:HANDOFF.md | A: - | S: 整仓 overview 一次即数十万 token，仅用户明确要求完整认知时可用，须跟随 next_cursor 到 completed 并回绑 Challenge 三哈希；Entry 语义只能来自真实证据，禁按路径/扩展名等推导；纯只读任务不调 maintain；cognition_budget 不在 config set 白名单，须走 scope budget set + Scope Change Apply，手改 .aoci/config.json 无效
 HANDOFF.md[SG8M]: F:新对话交接：当前主线、硬边界、开场白与专题入口 | R:code:README.md,code:docs/parked-work.md,code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:docs/ui-domain-diagnosis.md,code:docs/pack-overrides.md,code:.cursor/rules/ai-handoff.mdc | A:- | S:禁止参考/迁移 graduate_factory 与 v2；68 域双 OK、布局/控件 BASELINE_KNOWN_* 空；Overrides 等人令做 P0
-README.md[SG8S]: F:˵�����ΰѿ����ӹ��ɿɴ��� Web ϵͳ���Լ���Ӫ����ô���� | R:code:scripts/README.md,code:docs/tech-stack-delivery.md,code:HANDOFF.md,code:ARCHITECTURE.md | A:GET /api/health | S:Ĭ�� jdbc��mybatis��jpa��Security ������д������ bake �Ž��������� PPT �Ƕ��� Job������ ZIP
+README.md[SG8S]: F:毕设港运营中台说明文档，交代材料到出包的六步流水线、技术栈、启动步骤、配置项与领域目录结构。 | R:code:scripts/README.md,code:docs/tech-stack-delivery.md,code:HANDOFF.md,code:ARCHITECTURE.md | A:GET /api/health | S:门禁未通过禁止下载 ZIP；LLM 只填白名单业务岛，不写业务 Java 与 Vue；工厂 Key 不进学生 ZIP。
 docker-compose.yml[EC5T]: F:运行配置 docker-compose | R:- | A:- | S:-
 ARCHITECTURE.md[SG7L]: F:分层图说明运营台与 bake 流水线边界，以及薄壳域与学生包材料；领域 A～F/G/H | R:code:README.md,code:HANDOFF.md,code:architecture.html,code:docs/README.md | A:- | S:只画工厂架构与学生包边界，不画 bake/schema 细节；禁止 LLM 手写业务 Java/Vue
 architecture.html[SG6S]: F:可浏览器打开的工厂架构图页，对应 ARCHITECTURE.md 分层与主链路 A～H 叙事 | R:code:ARCHITECTURE.md,code:README.md | A:- | S:静态展示页，不进学生 ZIP；不与论文 ER/类图抢同一套图
@@ -15,7 +15,7 @@ architecture.html[SG6S]: F:可浏览器打开的工厂架构图页，对应 ARCH
 ai-assistant-delivery.mdc[SA7T]: F:把 AI 限定为按需能力岛：业务壳问答可开，RAG 或视觉主产品不支持 | R:- | A:- | S:工厂 Key 与 app/llm 不得进学生 ZIP
 column-contract.mdc[SD7T]: F:要求能力岛打开后 SQL 有列、三套 Store 对齐，缺列先补 ensure，禁止假成功返回 | R:- | A:- | S:-
 cross-domain-fix.mdc[SG7T]: F:规定开题翻车先修共享 bake 与门禁，禁止只改当前学生包 | R:- | A:- | S:先搜已有实现再改，不许另起平行逻辑/第二套开关/旁路
-delivery-audit.mdc[SQ7T]: F:�涨�������Ʊ������ܱ������ơ������ع����ϰ�С���������ع鰴 DOMAIN_GROUPS ������ AUDIT_GROUP_CANARIES | R:code:docs/delivery-audit-rules.md,code:backend/app/bake/domains.py,code:backend/tests/test_audit_group_canaries.py | A:- | S:������Ĭ�ϲ��Ĵ��룻��ֹֻ��ͼ��/����/ʵϰ����ð�������ع�
+delivery-audit.mdc[SQ7T]: F:Cursor 规则文件，规定审交付与标已齐的验收口径，要求默认只出报告并做旧题回归。 | R:code:docs/delivery-audit-rules.md,code:backend/app/bake/domains.py,code:backend/tests/test_audit_group_canaries.py | A:- | S:缺老板小卡不得称有效报告；旧题回归须覆盖 DOMAIN_GROUPS 每组代表，禁止只审三题。
 opening-scene.mdc[SG7T]: F:规定壳文案、资料字段和岗位名只扫题名与开题正文，场景轴不替代领域匹配 | R:code:backend/app/bake/scene_scan.py | A:- | S:-
 tech-stack-delivery.mdc[SV7T]: F:规定出包默认 Boot、Vue3、Element、MySQL 与 jdbc，开题写了 mybatis、jpa 或 Security 才跟 | R:- | A:- | S:-
 capability-home.mdc[SG8T]: F:规定工厂进程重构只搬 backend 与 frontend，能力正文归 features 家 | R:- | A:- | S:不动 skeletons；半截搬家不算完成；未钉行为禁止动手搬
@@ -68,13 +68,13 @@ archive_seed_guard.py[DQ6T]: F:硬检查档案演示种子能否被单据流域�
 auth_hero.py[DU6M]: F:按领域与主题拉登录氛围图到学生包 frontend/public/auth-hero.jpg | R:code:backend/app/bake/unsplash_fetch.py,code:backend/app/bake/atmosphere_prefetch.py | A:- | S:无 Key 或外网失败时改用本地色板生成，不能让登录页缺图
 capabilities.py[DB8L]: F:定义与题型无关的运行时能力积木，扫描开题是否超出可接范围，并提供「正文域」与「结算边界」两处口径入口 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/domains.py,code:backend/app/bake/cross_paths.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/domain_schema.py | A:- | S:硕博与真实业务全流程拒收；超范围只扫题名与功能段；book_lost/parcel_shelf 为域默认；parcel_ship 开题写「寄件」才挂；multi_category/product_tags/detail_attrs 为 SHOP/FOOD/CINEMA；compose_out_of_mvp 的域默认「本期不做」按整项/斜杠片段/词干片段判相关
 catalog.py[DB8L]: F:把开题正文匹配到骨架与领域，并汇总成 build_spec（含九组 *_surface_style） | R:code:backend/app/bake/domains.py,code:backend/app/bake/themes.py,code:backend/app/bake/domains_catalog/carrent.py | A:- | S:匹配失败回落关键词，不能改开题迁就目录；非对应域 surface 为空串；「借阅+座位」交叉须标题含借阅行为
-cross_paths.py[DB8M]: F:�������ж����á��µ���ԤԼ�����Ƿ��ܰ�ȫ�Ĵ��罻�� | R:code:backend/app/bake/archetype_shells.py | A:- | S:�������Ľ����������գ���ֹ degraded ������Ʒ
+cross_paths.py[DB8M]: F:把原型并集归一为 F、T、R 路径键，用白名单与 runtime_ok、defense_ready 判定交叉组合能否承接全文答辩。 | R:code:backend/app/bake/archetype_shells.py | A:- | S:白名单未列的组合一律 reject；FTR 虽可拼 SQL 但 defense_ready 为 false，须裁成单交叉。
 deep_skin_s.py[DB6S]: F:把深皮题型说法验收表映射到挂靠域 | R:- | A:- | S:-
 domain_entities.py[DD7S]: F:统一主实体名词，供菜单、数据表和论文小节同源引用 | R:code:backend/app/bake/domains.py | A:- | S:-
 domain_registry.py[DB8S]: F:按 domain 注册匹配、schema builder 与 SQL 模板映射 | R:code:backend/app/bake/domains.py | A:- | S:-
 domain_schema.py[DB8L]: F:装配合并校验 Domain Schema；attach_accept 串联 caps、ticket、九组 thicken、通识横切、shell_face 与各组角色 lead | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/features/list_crosscut.py,code:backend/app/bake/shell_face.py,code:backend/app/bake/features/trade_thicken.py,code:backend/app/bake/features/borrow_role_leads.py,code:backend/app/bake/features/repair_role_leads.py | A:- | S:list_crosscut 之后必须 apply_shell_face_to_spec；九组 thicken 已收口勿再增；角色 lead 用 setdefault 不覆盖已有
 domain_skin.py[DU7S]: F:把学生端可见文案与皮肤按 DOM 域回写到出包 | R:code:backend/app/bake/domains.py | A:- | S:禁止邻域文案泄漏
-domains.py[DB9M]: F:����ԭ�ʹʡ���������Ŀ¼������ DOMAIN_GROUPS�����������壻�������������� AUDIT_GROUP_CANARIES | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py,code:backend/tests/test_audit_group_canaries.py,code:docs/delivery-audit-rules.md | A:- | S:����ֻ������ô���򣻾����ع��������߶�����������BORROW_FAMILY �ܱ�������
+domains.py[DB9M]: F:集中登记原型关键词、各域默认能力与级联分组，并绑定目录与运行时表，为开题识别与出包提供唯一域清单。 | R:code:backend/app/bake/domains_catalog/__init__.py,code:backend/app/bake/gate_contracts.py,code:backend/tests/test_audit_group_canaries.py,code:docs/delivery-audit-rules.md | A:- | S:挪菜单不得改 BORROW_FAMILY_DOMAINS；表名以 domain_entities 覆盖为准。
 engine.py[DB8T]: F:再导出 bake_project 与 SQL 岛填充入口供调用方统一引用 | R:code:backend/app/bake/engine_bake.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/engine_islands.py | A:- | S:-
 engine_bake.py[DB9L]: F:bake 写骨架/prune/门户与九组构图环境变量，门禁前 layout_heal 回拷关键 CSS，并把 card_voice/shell_colors 交给交付写入 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/engine_resources.py,code:backend/app/bake/pack_prune.py,code:backend/app/bake/layout_heal.py,code:backend/app/bake/shell_face.py | A:- | S:write_policy 须在 java 包名 remap 之前；prune 残留未挂岛须硬失败；surface 可空串；脸字段从 spec 透传勿丢
 engine_islands.py[DB7S]: F:合并 schema 写工作区并同步 thesis yml 与 APP_DELIVERED（九组 SurfaceStyle + cardVoice/shellColors） | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_bake.py,code:backend/app/bake/engine_resources.py,code:backend/app/bake/ticket_policy.py | A:- | S:sync_workspace_thesis_yml 是唯一写盘路径；漏传 card_voice/shell_colors 则重写交付丢脸
@@ -189,7 +189,7 @@ stock_io.py[DB6S]: F:扫描并合并浅进销存（入库/出库/库存流水）
 stock_scrap.py[DB6S]: F:扫描并合并浅报废与盘点能力，报废走申请单审批流并复用库存流水 | R:code:backend/app/bake/features/stock_io.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/gate_contracts.py | A:- | S:挂报废时一并挂 stock_io；不做多仓调拨；STOCK_SCRAP_CAP 决定 scrap_request 表与审批文案，标签挂载走 attach_stock_scrap_labels
 survey.py[DB6S]: F:扫描并合并简易问卷配置填写与回收计数能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:-
 temporal_field.py[DB6S]: F:按开题决定档案日历字段用 date 还是 datetime | R:- | A:- | S:默认只有日期；须开题强调时分才升 datetime
-ticket_flow_opts.py[DB7L]: F:ɨ�貢�ϲ����������󸽼��嵥���걨��ֹ�ȵ���ѡ�� | R:code:backend/app/bake/proposal_scan.py,code:backend/app/bake/features/apply_thicken.py | A:- | S:ѡ�����Կ���ɨ������Ĭ�ϣ���ֹ�ٿ��༶��
+ticket_flow_opts.py[DB7L]: F:扫开题文本，为单据与档案补三级审批、必传附件、候补及申报截止字段，并挂材料清单菜单与能力，产出可烘焙的 schema。 | R:code:backend/app/bake/proposal_scan.py,code:backend/app/bake/features/apply_thicken.py | A:- | S:只增不减，扫不到不得关闭域默认开关；截止指申报窗口，勿与借阅逾期同扫；三级审批状态链固定不可改。
 timebank.py[DB6M]: F:扫描并合并时间银行时长账户流水与 balance_ledger 额度台账（多域科目/单位），ATTEND 跟进加厚可 force 假期额度 | R:code:backend/app/bake/proposal_lexicon.py,code:backend/app/bake/features/follow_thicken.py,code:backend/app/bake/gate_contracts.py | A:- | S:balance_ledger 与 timebank 同文件维护；LEDGER_DOMAINS 域默认或扫词才挂；follow_thicken 内 _force_balance_ledger 设 debitOnApprove/creditOnReturn/useLeaveDays
 user_publish.py[DB6S]: F:扫描内容壳用户投稿上传与先审后发路径 | R:- | A:- | S:非独立 cap；MUSIC 须点名用户上传才开
 ux_scan.py[DB6S]: F:扫描并合并搜索辅助浏览历史与画廊三项 UX 能力 | R:code:backend/app/bake/proposal_lexicon.py | A:- | S:无域默认，开题未写则保持原样
@@ -218,15 +218,15 @@ book_lost.py[DB7S]: F:图书丢失赔偿能力岛：域默认挂 book_lost，写
 parcel_shelf.py[DB7S]: F:驿站货架管理能力岛：PARCEL 域默认挂 parcel_shelf 并注入管理端菜单 | R:code:backend/app/bake/gate_contracts.py,code:backend/app/bake/menu_routes.py,code:backend/app/bake/domain_schema.py | A:- | S:对齐 structural DDL parcel_shelf；≠柜机硬件对接
 parcel_ship.py[DB7S]: F:驿站代收登记与寄出物流扫词挂能力岛，注入用户/管理菜单与 SQL | R:code:backend/app/bake/gate_contracts.py,code:backend/app/bake/sql/fragments.py,code:backend/app/bake/features/proposal_caps.py | A:- | S:域默认；不对接真快递面单
 borrow_thicken.py[DB7L]: F:做借用与占用组浅加厚：档案浅字段、用途字典、热门榜与荐购文案、材料清单岛、代取、床位约束、须知勾选与借用信誉口径 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/sql/fragments.py,code:backend/app/bake/features/book_suggest.py | A:- | S:只增不减；图书荐购只落 scan_book_suggest；分值信誉才挂 creditOnOverdue；非 cap 须登记 HUB_BYPASS_MODULES
-follow_thicken.py[DB7L]: F:������ǳ�Ӻ񣺰���Ĭ�ϼӿ���ɨ�ʲ� ticket/archive �ֶΡ�followThicken ���ء�labels �����鴰�ڵ��İ� | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/sql/fragments.py | A:- | S:ֻ���������������� DOM��ATTEND Ĭ�Ϲ� balance_ledger��ɨ�ʲżӼҷ�/������
-repair_thicken.py[DB8M]: F:����/�������Ӻ�����Ĭ�ϴ߰������ᵥԭ����ժҪ��SLA ���С�ǳ̨����״̬�İ�������ɨ�ʼ��� | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/ticket_flow_opts.py | A:- | S:ֻ�ұ������򣻴߰����ⲿ��������
-apply_thicken.py[DB8L]: F:���������Ӻ�����֪��ѡ���������ɡ�վ���š�ʧ��/ѡ��/������Ƥ��ǳ����д�� schema | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/ticket_flow_opts.py,code:backend/app/bake/gate_contracts.py | A:- | S:ֻ�� APPLY_DOMAINS ��������֪��ѡ�ٺ�ͬƽ̨��ѧ��/��ѡ/��ȴ=ǳ�����ٽ�������
-approve_thicken.py[DB8L]: F:�������Ӻ񣺱���/�г��ӱ����״�ҳ����ӡ̨��������/���̼��PROCURE ���ⲻ���� | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/ticket_policy.py,code:backend/app/bake/sql/ticket_optional_columns.py | A:- | S:ֻ�� APPROVE_DOMAINS��EXPENSE/TRIP ��ֹ JSON �У��ؿ��ز�ע���ӱ� DDL
+follow_thicken.py[DB7L]: F:为跟进组八域按壳底、扫词、能力三档加厚工单与档案浅字段、文案与特性，并输出门禁对齐比对，产出含 followThicken 标记的 schema。 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/sql/fragments.py | A:- | S:须原地取 schema，浅拷贝写回会冲掉 _force_ 顶层键；改词只改本组 TERMS，禁建第二套词典。
+repair_thicken.py[DB8M]: F:为宿舍、物业、IT 报修域补齐催办冷却、结单校验、SLA 分列与备件台账等开关及文案，并向门禁输出 A/B/C 档对齐比对。 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/ticket_flow_opts.py | A:- | S:催办仅站内提醒，非短信外呼；技能过滤非智能派单；parts/serial/faq 在物业与 IT 为壳底，宿舍须扫词。
+apply_thicken.py[DB8L]: F:为活动、失物、选课、线路四域报名申请加厚 schema，写须知勾选、驳回理由、站内信、下架到期与浅档案字段规则，产出实体、标签、features 与 B/C 对齐校验。 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/ticket_flow_opts.py,code:backend/app/bake/gate_contracts.py | A:- | S:改词只改本组 TERMS 与 scan_ 函数；DOM-CREDIT 仅写提示即返回，不挂四域通识，caps 需与 schema 同步。
+approve_thicken.py[DB8L]: F:为 23 个审批域加厚审批皮与建表 SQL：撤回退回再提、意见短语与字数、时限催办抄送、转审代审、子表建表、档案浅列注入与材料清单种子，并出 B/C 对齐校验。 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/ticket_policy.py,code:backend/app/bake/sql/ticket_optional_columns.py | A:- | S:限时自动通过默认 0 小时，仅扫词命中才设 72；非本组域原样返回，子表建表前先查重以免重复注入。
 borrow_structural.py[DB7L]: F:借用族结构表 DDL 按域/能力幂等补 ER 缺表（续借日志、罚款、文库扩展等） | R:code:backend/app/bake/features/e_sign.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/sql/fragments.py | A:- | S:从 fragments 迁出的 ensure；按能力开关注入，禁止无关域堆结构表
 trade_thicken.py[DB8L]: F:§1.6 交易加厚 T-00～T-11：三域超时钉齐、售后物流、影院/FOOD 点餐、发票文案、商品侧足迹规格问答预售等 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_sql.py,code:docs/trade-thicken-batch.md | A:- | S:只挂 SHOP/FOOD/CINEMA；browse_history 为 SHOP 域默认挂 cap；完整 SKU 矩阵不支持；HOTEL/CARRENT 不加厚
-reserve_thicken.py[DB8L]: F:ԤԼ���Ӻ����տڣ�RESERVE_DOMAINS ͨʶ�� R-02��R-10 ��Ƥ��ensure �� labels ���� | R:code:backend/app/bake/domain_schema.py,code:docs/reserve-thicken-batch.md | A:- | S:ֻ��ԤԼ�飻ռ���ٿ�������
-content_thicken.py[DB8L]: F:�������Ӻ� C-00��C-09��ͨʶ/����Ƥ + ������ + ɨβ��FORUM ��������ҳ���ݸ��Զ��������� labels DDL�� | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/runtime_policy.py,code:backend/tests/test_content_thicken_features.py,code:docs/content-thicken-batch.md | A:- | S:δ�� points/wallet/content_report/item_comment/userPublish ����Ĭ��Ӳ������draftAutoSave ���вݸ���ʱ��
-interact_thicken.py[DB8L]: F:�������Ӻ� I-00��I-12���������ּ�+���ض���+��Ƥ�� favorites/dm/allowRating/content_report �� cap ���� | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/favorites.py,code:backend/tests/test_interact_thicken_features.py,code:docs/interact-thicken-batch.md | A:- | S:ֻ�� INTERACT_DOMAINS�����ڶ����ղ�/�������棻Эͬ����/����ͼ/�����࿼��������
+reserve_thicken.py[DB8L]: F:为七域预约开题加厚 schema 与建表 SQL：通识取消改约提醒、爽约黑名单申诉，及医院、停车、会议、美业、酒店、租车、仪器域的皮列与菜单文案，产出 reserveThicken 标记与对齐校验。 | R:code:backend/app/bake/domain_schema.py,code:docs/reserve-thicken-batch.md | A:- | S:须已挂 slot_reserve 且属七域才生效；R-09 仅在 cap 已挂时叠加，禁止域默认硬挂与另建词典。
+content_thicken.py[DB8L]: F:为五个内容域加厚 archive 开题：阅读数、热门足迹与标题搜索，及论坛运营治理、博客媒资曲库文库的域皮表列 DDL 与菜单文案，产出 contentThicken 标记与对齐校验。 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/runtime_policy.py,code:backend/tests/test_content_thicken_features.py,code:docs/content-thicken-batch.md | A:- | S:须已挂 archive 且属五域；文库 DDL 用表名子串判重易误跳过；C-08 仅已挂 cap 时叠加，禁硬塞 points 与 wallet。
+interact_thicken.py[DB8L]: F:为互动匹配九域在 SQL 与 schema 上加厚列、子表与菜单文案，只增不减并复用既有 Store 引擎。 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/features/favorites.py,code:backend/tests/test_interact_thicken_features.py,code:docs/interact-thicken-batch.md | A:- | S:只挂 INTERACT_DOMAINS 九域；能力岛加深须已挂对应 cap 或 allowRating，禁止域默认硬开邻组岛。
 auth_crosscut.py[DB8M]: F:§0 X-AUTH 通识横切：注入锁定/改密/密保与会话三表；邀请码仅开题写到才挂表菜单种子 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/domain_schema.py,code:backend/app/bake/runtime_policy.py,code:backend/tests/test_auth_crosscut_features.py | A:- | S:禁止 *_thicken/DOM 专线；阈值进 AppPolicy 禁 thesis.auth-*；未写邀请则菜单/表/源码都不留
 msg_crosscut.py[DB8S]: F:§0 X-MSG 通识横切：站内信软删列、公告过期/强制弹窗/浅富文本，并补 ack 与广告位表菜单 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/domain_schema.py,code:backend/tests/test_msg_crosscut_features.py | A:- | S:禁止 *_thicken/DOM 专线；富文本仅浅 HTML；Banner 图 URL 手填不等 CDN
 org_crosscut.py[DB7M]: F:§0 X-ORG 通识横切：字典、站点浅设置、组织树与岗位菜单的 SQL 与 schema 挂载 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/schema/menu_utils.py | A:- | S:禁止 *_thicken/DOM 专线；字典与组织树扫词才开；标签批量启停常开；sys_site_config 只放品牌 KV
@@ -440,7 +440,7 @@ DOM-IT.sql[FC5S]: F:提供 DOM-IT 园区终端与故障工单 SQL 骨架 | R:cod
 DOM-LABOR.sql[FC5S]: F:提供 DOM-LABOR 用工项与申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-LABSAFE.sql[FC5S]: F:提供 DOM-LABSAFE 实验室准入申请 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-LIBRARY.sql[FC5S]: F:提供 DOM-LIBRARY 图书借阅收藏 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
-DOM-LISTING.sql[FC5S]: F:�ṩ DOM-LISTING ��������ע SQL �Ǽ� | R:code:backend/app/bake/sql/fragments.py | A:- | S:�������� LISTING Ƥ�ֶζ��룬ȱ���Ȳ� bake
+DOM-LISTING.sql[FC5S]: F:为房源条目域建库建表并写入管理员、分类、房源与公告种子数据，令演示环境开箱可用。 | R:code:backend/app/bake/sql/fragments.py | A:- | S:种子数据靠 INSERT IGNORE 与 NOT EXISTS 保幂等；初始密码为明文演示值，勿沿用。
 DOM-LOST.sql[FC5S]: F:提供 DOM-LOST 失物与认领 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-MEDIA.sql[FC5T]: F:提供 DOM-MEDIA 媒资点播档案 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:-
 DOM-MEETING.sql[FC5S]: F:提供 DOM-MEETING 会议室时段预约 SQL 骨架 | R:code:backend/app/bake/sql/domain_templates.py | A:- | S:resource_slot 含 uk_item_start
@@ -489,16 +489,16 @@ runtime.py[LB7M]: F:从设置加载 LLM 运行时开关与提供方端点 | R:co
 temperature.py[FC6S]: F:LLM 温度三档与任务/UnitKind 取用真源，禁止调用点写魔法数 | R:code:backend/app/llm/client.py,code:backend/app/llm/unit_flow/models.py | A:- | S:TEMP_BOUNDED_COPY(0.25) 归 deterministic；未知 task 回落 TEMP_STRUCTURED；未知 unit 回落 TEMP_BOUNDED_COPY；TEMP_DEFAULT=STRUCTURED
 
 ===D:/graduate_factory_v3/backend/app/llm/unit_flow/===
-__init__.py[DB6T]: F:�������ˮ�� Plan/Unit/Merge �Ĺ������ڣ�ȡ���ɵ�����ǩ Agent | R:code:backend/app/llm/unit_flow/orchestrator.py | A:- | S:-
-context_budget.py[DB5S]: F:�ü�� Unit ���ı�������Ԥ�㣬���� PPT ����׼������ | R:- | A:- | S:-
-executors.py[DB6T]: F:�� TaskUnit ���� LLM ִ�в������޸���ʾ | R:code:backend/app/llm/client.py | A:- | S:-
-merge.py[DB7M]: F:�Ѹ� Unit patch �ϲ��� workspace ��У�� schema | R:code:backend/app/bake/domain_schema.py | A:- | S:-
-models.py[DB6M]: F:���� DeliveryPlan �� TaskUnit �������ģ�� | R:- | A:- | S:-
-orchestrator.py[DB8S]: F:�������ˮ�ߣ��ƻ������� Unit���ϲ��벽��Ԫ���� | R:code:backend/app/llm/unit_flow/runner.py | A:- | S:-
-planner.py[DB7M]: F:�� workspace �� spec ȷ�������� DeliveryPlan������ LLM | R:- | A:- | S:-
+__init__.py[DB6T]: F:unit_flow 包对外唯一入口，仅重导出数据模型与编排函数，声明一键生成业务配置填充步骤的唯一实现。 | R:code:backend/app/llm/unit_flow/orchestrator.py | A:- | S:新增导出须同步 __all__，其中不含 TaskUnit 与 UnitKind；旧 run_island_agent 系列已移除，勿再引用。
+context_budget.py[DB5S]: F:把 proposal 与单元 user 负载按字符预算归一化并截断，避免单次提示词超长挤爆上下文。 | R:- | A:- | S:limit 小于等于 0 返回空串，单字段裁剪上限为预算的一半，预算按字符长度粗估而非 token。
+executors.py[DB6T]: F:对单个 TaskUnit 发起一次 JSON 模式 LLM 请求，返回补丁、token 用量与详情，供 micro-loop 复用。 | R:code:backend/app/llm/client.py | A:- | S:res.ok 为假或 data 非 dict 时返回 None 而不抛错，base_schema 形参当前未被使用。
+merge.py[DB7M]: F:按单元 id 前缀把各 Unit 补丁合并回 workspace 的标签文件与 schema，并在校验失败时降级兜底。 | R:code:backend/app/bake/domain_schema.py | A:- | S:分流依赖 unit_id 前缀 island、er、module、testcase；island 校验失败降级 deterministic 并回填 accept 等基座键。
+models.py[DB6M]: F:定义 FrozenSpec、TaskUnit、DeliveryPlan 与结果汇总等数据模型，并负责字典序列化与反序列化。 | R:- | A:- | S:from_dict 先取键再构造，frozen 缺键会以 None 覆盖默认值；int 取值用 or 兜底使 0 也回落默认值。
+orchestrator.py[DB8S]: F:对外编排 Plan、并发执行、合并与落盘，产出 Job step 进度文案与运行摘要，是填充流水线门面。 | R:code:backend/app/llm/unit_flow/runner.py | A:- | S:并发被钳在 1 到 8，proposal 读取失败静默为空串，merge 为 False 时不回写 workspace。
+planner.py[DB7M]: F:只扫描 workspace 与 spec 确定性切分批次生成全部 TaskUnit，不调用 LLM，便于预演与测试。 | R:- | A:- | S:模块无拉丁缺口时降级 branch_refine 且只取前 MODULE_BATCH 个，摘要总长截到 2400 字符。
 prompts.py[DA6S]: F:填岛/标签/PPT 各 Unit 的唯一 LLM 提示词与温度装配入口 | R:code:backend/app/llm/temperature.py,code:backend/app/llm/unit_flow/context_budget.py,code:backend/app/llm/unit_flow/models.py,code:backend/app/llm/agents_common.py | A:- | S:未知 UnitKind 抛 ValueError；island_roles 材料未写角色则勿输出 roles；authLead 禁开题/材料头字样；PPT 技术名须落 allowlist.tech
-runner.py[DB7M]: F:�� TaskUnit ΢ѭ����prepare��generate��check��repair | R:code:backend/app/llm/unit_flow/validators.py | A:- | S:-
-validators.py[DB6M]: F:У�� Unit ��������ϴ ER/ģ��/������ǩ���� | R:- | A:- | S:-
+runner.py[DB7M]: F:以信号量并发执行单元并跑生成校验重试的 micro-loop，独立短会话记用量，落盘计划与运行产物。 | R:code:backend/app/llm/unit_flow/validators.py | A:- | S:每单元开独立 SessionLocal，db 形参不再写入；on_event 加锁串行，PPT 末轮失败用 fallback 仍记 done。
+validators.py[DB6M]: F:按单元类型校验补丁形状与字段白名单，产出分级问题列表，驱动 micro-loop 的修复重试。 | R:- | A:- | S:island 只报基座不存在的新错误，er 清洗为空仅记 warn，module 与 testcase 的多余 id 记为 error。
 
 ===D:/graduate_factory_v3/backend/app/models/===
 __init__.py[DB6S]: F:定义工厂运营库 SQLAlchemy 项目与任务等 ORM 模型 | R:code:backend/app/core/database.py | A:- | S:Job.error_code 与 bake_fail_classify 码表同源；答辩 PPT 任务 kind 不得改 project.status
@@ -507,7 +507,7 @@ __init__.py[DB6S]: F:定义工厂运营库 SQLAlchemy 项目与任务等 ORM 模
 __init__.py[DB6L]: F:工厂 API 的 Pydantic 请求/响应模型（项目、匹配九组 surface、Job、失败分析、LLM 设置、上传分堆等） | R:code:backend/app/api/jobs.py,code:backend/app/api/projects/crud.py | A:- | S:JobOut.error_code 为 bake 稳定码；FailAnalysisClassifyIn/FixDraftIn 仅助归与未核对草稿入参，无升格字段；RuntimeBatchIn 空 ids 仅 stop=全部运行中
 
 ===D:/graduate_factory_v3/backend/app/services/===
-__init__.py[DB4T]: F:ռλ services ����ʼ�� | R:- | A:- | S:-
+__init__.py[DB4T]: F:services 包的空标记文件，仅用于把服务目录纳入可导入的 Python 包。 | R:- | A:- | S:-
 delivery_review.py[DB7L]: F:交付验收闭环：门槛、可用性、漂移与运营交接附件；提供 is_zip_stale 现场核验与 TTL 投影缓存 | R:code:backend/app/services/projects.py,code:backend/app/api/projects.py,code:backend/app/services/proposal.py | A:- | S:TTL20s 缓存仅可信命中；compute=False 冷缓存按未过期；下载/详情仍现场核验；复审 active 时 forbid_full_rebake 禁 from_step≤3；运营交接包不进学生 ZIP
 fill_events.py[DB6M]: F:推送填岛进度 SSE 事件，答辩 PPT 复用同 hub | R:- | A:- | S:-
 jobs.py[AW8L]: F:调度 bake Job：门禁评测失败写库，含 p3layout/p3controls 红则禁 ZIP | R:code:backend/app/bake/engine.py,code:backend/app/bake/gates/evaluate.py,code:backend/app/services/bake_fail_classify.py,code:backend/app/services/delivery_review.py,code:backend/app/services/runtime.py | A:- | S:from_step=0 禁止因已有工作区跳过 copy_bake；_gate_fail_summary 含 p3layout/p3controls；start_job 只取消同项目 bake 不影响 defense_ppt
@@ -531,12 +531,12 @@ bake_fail_analysis.py[AG7L]: F:聚合 bake failed 分布与周优先，并按需
 bake_fail_classify.py[AG8L]: F:bake 失败稳定分类器：权码与 CODES/FIX_LOCUS/LABELS，含布局与控件门禁归类 | R:code:docs/bake-fail-analysis.md,code:backend/app/services/jobs.py,code:backend/tests/test_bake_fail_classify.py | A:- | S:p3layout→BAKE_LAYOUT、p3controls→BAKE_FORM_CONTROLS；此二码未入 CODES/FIX_LOCUS 时 catalog 不含、locus 回落 UNKNOWN；改码须同步文档与测
 
 ===D:/graduate_factory_v3/backend/app/services/defense_ppt/===
-__init__.py[DB4T]: F:�������� PPT ����Ŀ¼���� | R:- | A:- | S:-
-check.py[DB6M]: F:�������� PPT �Ƿ��ɵ�����ͳһ Job �뵼���ż� | R:code:backend/app/services/defense_ppt/deck_io.py | A:- | S:-
-cover.py[DB5T]: F:�淶������ PPT �����ֶ� | R:- | A:- | S:-
-deck_io.py[DB6M]: F:��д���� PPT �� deck.json | R:- | A:- | S:-
-evidence.py[DB6M]: F:ֻ��װ������ PPT ֤�ݰ�����ֹ��ɨ�� | R:code:backend/app/services/proposal.py | A:- | S:-
-export_pptx.py[DB7M]: F:�� python-pptx �������� PPTX ��ѧ�� ZIP | R:code:backend/app/services/defense_ppt/check.py | A:- | S:-
+__init__.py[DB4T]: F:答辩 PPT 旁路服务包入口，约定产物落在 .factory 下的 defense-ppt 子目录。 | R:- | A:- | S:目录名以 PPT_DIR_NAME 与 PPT_SUBDIR 为准，勿在别处硬编码这两个字符串。
+check.py[DB6M]: F:对内存或已存 deck 逐项跑生成检查并合成 can_export 门闩，Job 流水线与导出 API 共用同一结论。 | R:code:backend/app/services/defense_ppt/deck_io.py | A:- | S:can_export 不只看 items，还须 gates 与 biz_dirty 同时为空，仅凭 items 会误判。
+cover.py[DB5T]: F:规范化封面字典并强制校验完整性，缺项含校徽即抛错，供导出前统一把关。 | R:- | A:- | S:normalize_cover 只保留 empty_cover 已有键，多余字段被丢弃；不齐时抛 ValueError。
+deck_io.py[DB6M]: F:以原子写方式读写 deck.json、封面与皮肤，并支持按页 id 打补丁后回写。 | R:- | A:- | S:存封面或皮肤会同步回写 deck.json；补丁按 id 找不到页即抛 FileNotFoundError。
+evidence.py[DB6M]: F:只读现有提案、模块、ER、用例与门禁结果，判定五项证据是否齐备并给出填充上下文。 | R:code:backend/app/services/proposal.py | A:- | S:has_modules 要求节点数大于 1，root 自身不算；加载异常一律吞掉判为不可用。
+export_pptx.py[DB7M]: F:门闩通过后用 python-pptx 按页生成 16:9 答辩 PPTX 落盘到 export 目录并返回路径。 | R:code:backend/app/services/defense_ppt/check.py | A:- | S:can_export 为假直接抛 PermissionError；图片只认 png 与 jpg 系格式，失败退化为文字标注。
 figures.py[DB6S]: F:把模块图与 ER SVG 嵌进答辩 PPT figures 目录 | R:- | A:- | S:-
 fingerprint.py[DB6M]: F:计算业务指纹以检测答辩 PPT 是否因 bake 变脏 | R:- | A:- | S:-
 job_fill.py[DB7M]: F:按页填充答辩 PPT，复用 unit_flow 并合并 patch | R:code:backend/app/llm/unit_flow/orchestrator.py | A:- | S:-
@@ -554,7 +554,7 @@ _audit_proposal_diff.py[TS5T]: F:Audit proposal diff coverage across packs and c
 _check_sample_biz.py[TS5M]: F:开题样例 → match → build_spec 业务皮校验；可选 Island LLM 润色角色。 | R:- | A:- | S:-
 run_unit_flow.py[TS5S]: F:CLI：填岛拆解流水线（与 Job step 2 同实现）。 示例： cd backend python scripts | R:- | A:- | S:-
 verify_bake_features.py[TB6S]: F:用健身与宠物商城样例跑 attach 与 SQL，核验多维分类、详情属性真列与限时购 | R:code:backend/app/bake/domain_schema.py,code:backend/app/bake/engine_sql.py,code:backend/app/bake/features/detail_attrs.py | A:- | S:手工验证脚本非 pytest；详情属性验 brand 等真列且无 detail_json；失败以退出码报告
-probe_three_persistence_bake_compile.py[TQ5S]: F:̽��ȫ����jdbc/mybatis/jpa bake ���룻֧�� --canary ֻ�� AUDIT_GROUP_CANARIES | R:code:backend/app/bake/domains.py,code:backend/tests/test_audit_group_canaries.py | A:--canary | S:���������뽻������������ͬ����ʧ�ܼ�����
+probe_three_persistence_bake_compile.py[TQ5S]: F:探针遍历全域与三种持久化各跑 bake 加 mvn compile，逐例记录结果并以失败数定退出码。 | R:code:backend/app/bake/domains.py,code:backend/tests/test_audit_group_canaries.py | A:--canary | S:GF_DATA_DIR 必须在 import app 之前设置，否则写进正式 data 目录；失败例保留工作区。
 
 ===D:/graduate_factory_v3/data/samples/===
 00-目录说明.txt[FC4T]: F:说明该样例目录的用途与选用方式 | R:- | A:- | S:-
@@ -804,13 +804,13 @@ README.md[SC5T]: F:文档库索引：开题对齐、交付审计、UI 闸、横�
 ai-assistant-delivery.md[SG6T]: F:记录ai assistant delivery相关交付约定与说明 | R:- | A:- | S:-
 ai-opening-delivery-map.md[SG6S]: F:记录ai opening delivery map相关交付约定与说明 | R:- | A:- | S:-
 capabilities.md[SG7S]: F:登记接题可认的 cap id、挂载口径与完整 HUB 例外表（含 thicken 与 auth_crosscut），并区分扫词写配置与扫词写代码常量 | R:code:backend/app/bake/capabilities.py,code:backend/app/bake/features/proposal_caps.py,code:backend/app/bake/features/auth_crosscut.py,code:docs/domains.md,code:docs/crosscut-delivery-batch.md,code:.cursor/rules/param-placement.mdc | A:- | S:CAPABILITIES 键集须等于本表全部 id；HUB_BYPASS 须含 auth_crosscut；新 cap 须同步 proposal_caps 与 engine_sql
-capability-expansion-batch.md[SG6M]: F:������������Լ����ѧ���ɼ��İ����ߣ���β���� AOCI maintain | R:code:docs/capabilities.md,code:.cursor/rules/student-copy.mdc | A:- | S:����ʵ��/README/���������У���ֹ����ǻ��ѧ����
+capability-expansion-batch.md[SG6M]: F:记录 E-01 至 E-14 能力扩岛批次的规格与验收勾选，§0 写明扫词挂载、文档即实包、禁双轨与薄实现等硬口径，全文已收口不再作续写工单。 | R:code:docs/capabilities.md,code:.cursor/rules/student-copy.mdc | A:- | S:未扫词材料不得挂 cap；禁新建 Compat、V2、Adapter 兼容层，须改原文件；学生包禁「演示」字样；扫词叠加仍限 15 表内。
 defense-ppt-backend.md[SG6M]: F:记录defense ppt backend相关交付约定与说明 | R:- | A:- | S:-
 defense-ppt-module.md[SG6M]: F:记录defense ppt module相关交付约定与说明 | R:- | A:- | S:-
-delivery-audit-rules.md[SC7M]: F:�涨����������ô��������·�����ơ��ϰ�С����v5.6 �����ع鶢 AUDIT_GROUP_CANARIES����5.1 A/B/C ��Ƥ�ֲ� | R:code:docs/domain-skin-gap-analysis.md,code:backend/app/bake/domains.py,code:backend/tests/test_audit_group_canaries.py,code:frontend/src/components/DeliveryReviewPane.vue | A:- | S:ȱС�����ó���Ч���棻��ֹֻ�����⣻��ɫ�ֲ��ٽṹƤ���տǲ��ñ�����
-difficulty-tiers.md[SG6S]: F:�������Ѷ� L0�CL3 �ֲ㣺���߱��䡢�ɼӼ����㡢�����ػ�ľ���Բ����� | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:������ʵ������������ʾ���� SDK/Ӳ����������
-domain-skin-gap-analysis.md[SG6L]: F:ά����Ƥ����Ԥ������������ ID ����״̬�У��潻�����ƽ�������5Ƥ��ɫ�ֲ���д | R:code:docs/delivery-audit-rules.md,code:docs/opening-feature-delivery-map.md | A:- | S:ID ��ֻ��һ������ɫ�ֲ��ٽṹƤ������ domains_catalog �� scene_scan
-domains.md[SG8M]: F:ά������ DOM ���� A��F ������G �潻����H ���ס�����Ĭ�������� Path B | R:code:backend/app/bake/domains.py,code:backend/app/bake/cross_path_guide.py,code:docs/capabilities.md | A:- | S:���� DOM ���� DOMAIN_CAPABILITIES ���룻��ֹ��Ĭ�� Dom ð��������
+delivery-audit-rules.md[SC7M]: F:规定审交付的主链路与红灯口径，§3 用 12 条主项加理解偏差判定四级结论，§4 列出 H20 至 H25 细则及载体与硬边界。 | R:code:docs/domain-skin-gap-analysis.md,code:backend/app/bake/domains.py,code:backend/tests/test_audit_group_canaries.py,code:frontend/src/components/DeliveryReviewPane.vue | A:- | S:审计轮默认只出报告不改代码；清单标已齐不等于本轮通过；旧题回归须每组抽 1 代表，组内未审完禁止开下一组。
+difficulty-tiers.md[SG6S]: F:把开题能力分 L0 基线标配、L1 可加价亮点、L2 交易占坑积木、L3 仍不接四层，附加价边界表与开题写法建议。 | R:code:docs/capabilities.md,code:docs/domains.md | A:- | S:硕士博士课题与真实生产全链路硬不接；命中越界信号即判 reject；加价项按加价报价，不写入本期交付承诺。
+domain-skin-gap-analysis.md[SG6L]: F:领域换皮全覆盖清单：用 M、S、P、C、X、Q 稳定 ID 册与状态列登记易混对、深皮、新预设、新能力与交叉加固，并给出硬边界与计数口径。 | R:code:docs/delivery-audit-rules.md,code:docs/opening-feature-delivery-map.md | A:- | S:标已齐须过交付红灯且不得伤旧；硬边界不接；新题型只追加 ID 不替换既有行。
+domains.md[SG8M]: F:把具名领域按 A 到 H 组编排，给出各域默认能力组合、换皮纪律与答辩口径，并说明通用兜底与真交叉白名单的适用边界。 | R:code:backend/app/bake/domains.py,code:backend/app/bake/cross_path_guide.py,code:docs/capabilities.md | A:- | S:具名域真源为能力矩阵而非 ARCH；未命中不得误落 LIBRARY，三合一或 L3 开题直接 reject。
 immersion-corners.md[SG6M]: F:沉浸感边角台账：按能力岛×共用 baseline 表面记加分观感，非门禁 | R:code:backend/app/bake/capabilities.py,code:docs/opening-feature-delivery-map.md,code:docs/difficulty-tiers.md | A:- | S:非强制不进交付审计红灯；禁按68 DOM复制皮肤；禁冒充WS/真支付/人脸闸机
 invariants.md[SG7T]: F:全厂硬约束：库表预算与3NF、学生端持久化、总管/子管/员工四槽位 | R:code:backend/app/bake/engine_sql.py,code:backend/app/bake/gates/schema_nf.py,code:backend/app/bake/staff_posts.py,code:docs/staff-posts-cross-domain.md | A:- | S:舒适区6–15、硬顶18；超15只警告；计费>18打回；借用族下限10
 opening-feature-delivery-map.md[SC8L]: F:开题密功能→工厂交付对照活表（全68域）；横切与各组状态/挂载真源 | R:code:docs/crosscut-delivery-batch.md,code:docs/domain-group-ui-styles.md,code:docs/capabilities.md,code:backend/app/bake/domains.py | A:- | S:已齐=管理端能管+用户端写库；禁再开*_thicken；只读/Hint/打印不算已齐
@@ -823,15 +823,15 @@ background-reconcile-cost.md[SG6S]: F:后台对账成本专题：一轮对账花
 trade-thicken-batch.md[SG8M]: F:§1.6 交易清待补已收口档案：T-00～T-11 工序与迁行均已齐 | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/features/trade_thicken.py,code:backend/tests/test_trade_thicken_features.py | A:- | S:一组一包 trade_thicken；三绿才迁行；HOTEL/CARRENT 不进本组；超时禁止第二套状态机；打印≠已齐
 reserve-thicken-batch.md[SG8M]: F:§1.7 预约清待补已收口档案：R-00～R-10 工序与验收均已齐 | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/features/reserve_thicken.py,code:backend/tests/test_reserve_thicken_features.py | A:- | S:一组一包 reserve_thicken 且须注册 domain_schema；只挂七预约域；三绿才迁行；不抢 §1.6 交易三域；勿再标活规格
 content-thicken-batch.md[SG7M]: F:§1.8 内容组加厚批次册；C-00～C-09 均已齐，文首为已收口档案 | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/features/content_thicken.py,code:backend/tests/test_content_thicken_features.py | A:- | S:工序不迁行；一批只盯本册；纯 Hint 须被前端读；能力岛禁域默认硬挂积分
-domain-group-ui-styles.md[SG8L]: F:���� UI �᣺һ�۾�������ͼ�������䷽ card_voice���Ǻ� SHOP ����+�Ҳ������� | R:code:docs/domains.md,code:backend/app/bake/shell_face.py,code:skeletons/baseline/frontend/src/styles/cardVoice.css | A:- | S:����е rhythm��SHOP ������ portalShellNav Ϊ׼��card_voice �ǵڶ��� surface
-group-thicken-archives-1-1-to-1-5.md[SG6S]: F:��1.1����1.5 ����/����/����/����/�����Ӻ����տڸ������� | R:code:docs/opening-feature-delivery-map.md,code:docs/trade-thicken-batch.md | A:- | S:���տڵ�������ϸ�Ե�ͼ�����鱾�����롹Ϊ׼
+domain-group-ui-styles.md[SG8L]: F:规定九个域组主表面构图目录（§2）与卡面配方（§2.5）、公共壳规范（§3），并以 §0.0 一眼精美总闸判定换皮是否达标。 | R:code:docs/domains.md,code:backend/app/bake/shell_face.py,code:skeletons/baseline/frontend/src/styles/cardVoice.css | A:- | S:禁止 dense 与 airy 等机械疏密档；隐喻绑域越界时手选回落域默认；换 style 不删改交付菜单路径集合。
+group-thicken-archives-1-1-to-1-5.md[SG6S]: F:复盘 1.1 到 1.5 节借用、跟进、报修、报名、审批五组加厚收口事实，按地图节给出模块、域集与收口时间线索引。 | R:code:docs/opening-feature-delivery-map.md,code:docs/trade-thicken-batch.md | A:- | S:管理能管且用户可产生数据、三骨架同绑；纯 Hint 或只读、打印不算已齐。
 interact-thicken-batch.md[SC6M]: F:§1.9 互动加厚批次册：I-00～I-12 挂载口径与验收勾选；已收口档案 | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/features/interact_thicken.py,code:backend/tests/test_interact_thicken_features.py | A:- | S:地图待补清零后才改已收口；AOCI remaining=0 后勾收尾
 crosscut-delivery-batch.md[SC6L]: F:§0 通识横切清待补批次册：分簇 X-AUTH～X-UX、四件套验收与波次要点 | R:code:docs/opening-feature-delivery-map.md,code:backend/app/bake/features/auth_crosscut.py,code:.cursor/rules/opening-group-delivery.mdc | A:- | S:一轮一簇；模块落基线非 *_thicken；X-AUTH～X-UX 已齐；活表行以地图 §0 为准；打印/灯箱等为基线体验常开
 cohort-opening-title-map.md[SC5M]: F:今年题名库方向册：题名落到域、皮与已有演示链，不改 bake、不写开题正文 | R:code:docs/parked-work.md,code:docs/README.md | A:- | S:仅「超新农产品销售网站」另有开题正文；其余按题名当范例；不预测明年
-opening-align-gate.md[SC6S]: F:�Ǽǿ���˫�������Ž���A �ǵס�B ɨ�ʡ�C �� cap������������ȫ������ | R:code:backend/app/bake/features/opening_align.py,code:docs/parked-work.md,code:backend/tests/test_opening_align_gate.py | A:- | S:��ֹ�ڶ��״ʵ䣻��������ȫ�Ķ�ҳ��ȫ��
+opening-align-gate.md[SC6S]: F:定义开题对齐门禁的 A 壳底白名单、B 扫词、C 能力加深三档口径，逐组列出真源常量与验收测试的对照。 | R:code:backend/app/bake/features/opening_align.py,code:docs/parked-work.md,code:backend/tests/test_opening_align_gate.py | A:- | S:禁止第二套词典：改词只改该组 thicken 的正则与 scan 函数；灰区开关进人工白名单。
 parked-work.md[SC6S]: F:搁置工作台账：大线与碎另案只记账不写规格 | R:code:docs/opening-align-gate.md,code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:docs/ui-domain-diagnosis.md,code:docs/validation-loop-hardening.md,code:HANDOFF.md | A:- | S:UI包/X系列/挂载与对齐门禁大线已收口；碎另案n校验闭环待开工
 bake-fail-analysis.md[SG7T]: F:bake 失败分析码表：归桶规则、A 档权威落点与 B 档建议工作流 | R:code:backend/app/services/bake_fail_classify.py;code:frontend/src/views/FailAnalysis.vue;code:docs/README.md | A:- | S:机器真源在 classify 常量；DeepSeek 草稿不得自动升格进本表
-ui-look-thicken-batch.md[SG8S]: F:UI �۸мӺ��������������ȡ�������/�������桢��Դ��������ҳ���׿ھ� | R:code:docs/domain-group-ui-styles.md,code:backend/app/bake/shell_face.py,code:skeletons/baseline/frontend/src/styles/cardVoice.css | A:- | S:���ߡٺÿ��������� card-foot/card-meta/card-acts��������д�� /goods
+ui-look-thicken-batch.md[SG8S]: F:记录出包 UI 观感加厚的活表，给出公共壳与九组主表面的进度、68 域台账、验收口径与真源落点。 | R:code:docs/domain-group-ui-styles.md,code:backend/app/bake/shell_face.py,code:skeletons/baseline/frontend/src/styles/cardVoice.css | A:- | S:键接满且测绿但观感仍像模板站仍算未完成；须改工厂骨架而非擦单个学生 ZIP。
 form-controls.md[SG8M]: F:学生包可交互控件真源：选型、下拉禁造库外值、C0～C5 分期与家在哪 | R:code:.cursor/rules/form-controls.mdc,code:backend/app/bake/form_controls_contract.py,code:backend/app/bake/gates/form_controls_workspace.py,code:docs/ui-layout-prebake-gate.md | A:- | S:C0～C5 已齐且 BASELINE_KNOWN_CONTROLS 空；filterable 允许、allow-create 禁；漏筛/对话框=未尽责；出包键 p3controls
 ui-domain-diagnosis.md[SG6M]: F:全域UI诊断台账：68域×L布局/C控件勾选，只记诊没诊过 | R:code:docs/ui-layout-prebake-gate.md,code:docs/form-controls.md,code:backend/app/bake/domains.py | A:- | S:本册不写细则正文；共享+68域双OK；细则只外链布局闸与控件册
 ui-layout-prebake-gate.md[SG8L]: F:起包前UI布局闸真源：一眼病、台账、结构模式、D3–D4冒烟与出包p3layout | R:code:backend/app/bake/layout_inventory.py,code:backend/app/bake/layout_contract.py,code:backend/app/bake/layout_smoke.py,code:backend/app/bake/gates/layout_workspace.py,code:docs/form-controls.md | A:- | S:闸只管结构/几何；禁只改当面ZIP消红；基线绿≠每题ZIP已过p3layout
@@ -877,7 +877,7 @@ ArchitectureDiagramViewer.vue[FB5M]: F:前端组件 ArchitectureDiagramViewer | 
 ClassDiagramViewer.vue[FB5L]: F:前端组件 ClassDiagramViewer | R:- | A:- | S:-
 ContentLoading.vue[FB5T]: F:前端组件 ContentLoading | R:- | A:- | S:-
 CopyIconButton.vue[FB5S]: F:前端组件 CopyIconButton | R:- | A:- | S:-
-DeliveryReviewPane.vue[FB5L]: F:������Ӫ�˽����������壺�ܱ�/����/�ϰ�С��չʾ�����������½����������س������� | R:code:docs/delivery-audit-rules.md,code:frontend/src/views/projectDetail/useProjectDetail.js,code:backend/app/services/delivery_review.py | A:- | S:ֻչʾ���Ʋ�����ڴ�ҳ��ѧ������С���������� 12 ����ͬ��
+DeliveryReviewPane.vue[FB5L]: F:交付复审面板展示安全区毒区门禁与轮次，承载进入复审、验圈、合卷与偏差登记操作。 | R:code:docs/delivery-audit-rules.md,code:frontend/src/views/projectDetail/useProjectDetail.js,code:backend/app/services/delivery_review.py | A:- | S:老板小卡勾选只存 localStorage；合卷需最近一轮通过且无回退、无未结案偏差。
 ErDiagramViewer.vue[AU7L]: F:展示论文 E-R 总图与实体属性图，并支持缩放拖拽与重置布局 | R:code:frontend/src/api.js | A:- | S:松手后实体不动，刚拖的菱形留在松手处，其余联系再避开交叉
 ModuleDiagramViewer.vue[FB6L]: F:功能模块图查看器：身份/业务布局切换、缩放平移、文案红禁导出 | R:code:backend/app/bake/schema/modules.py,code:frontend/src/api.js,code:frontend/src/views/projectDetail/ArtifactsTab.vue | A:- | S:labelGateOk===false时复制/下载PNG·SVG全禁用；修短签走modules.py非只擦SVG
 PageSkeleton.vue[FB5T]: F:前端组件 PageSkeleton | R:- | A:- | S:-
@@ -978,7 +978,7 @@ ThesisApplication.java[DB5T]: F:学生端 Java 组件 ThesisApplication | R:- | 
 ===D:/graduate_factory_v3/skeletons/baseline/backend/src/main/java/com/thesis/capability/===
 AddressStore.java[DB6S]: F:实现能力岛 AddressStore 的数据访问与业务操作 | R:- | A:- | S:-
 ArchiveLogStore.java[DB6M]: F:实现能力岛 ArchiveLogStore 的数据访问与业务操作 | R:- | A:- | S:-
-ArchiveStore.java[DP7L]: F:�������棺����/����/�������۸��������б�ɸ��jdbc ���ߣ� | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ArchiveController.java | A:- | S:���� Store ��������ͬ�󣻽���ɸ���������� LIKE��ȱ���Ȳ� bake
+ArchiveStore.java[DP7L]: F:通用档案能力：对可 bind 的分类表与业务对象表做增删改查、关键词与多维分页检索、库存与上下架维护，靠 information_schema 列探测支持软删、发布审核与扩展字段，产出统一 JSON 行。 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/controller/ArchiveController.java | A:- | S:软删只置 deleted_at 且列表默认过滤；draft、pending_review、rejected 与已下架对公开侧不可见；扣库存用 stock 条件更新，status 由库存与档期派生。
 AuditLogStore.java[DB6S]: F:实现能力岛 AuditLogStore 的数据访问与业务操作 | R:- | A:- | S:-
 BookSuggestStore.java[DB6M]: F:读者荐购单审核台账：通过或驳回，不自动建档入库 | R:code:skeletons/baseline/backend/src/main/java/com/thesis/service/MessageStore.java | A:- | S:enabled 为 false 时不建 book_suggest 表
 BrowseHistoryStore.java[DB6S]: F:实现能力岛 BrowseHistoryStore 的数据访问与业务操作 | R:- | A:- | S:-
@@ -1914,7 +1914,7 @@ capability-home.md[SG8T]: F:Trae 侧规定工厂进程重构只搬 backend 与 f
 column-contract.md[SD7T]: F:Trae 侧列契约：能力或开关开则 SQL 有列、菜单有入口，jdbc/mybatis/jpa 同源，缺列先补 ensure 再谈硬失败 | R:code:.cursor/rules/column-contract.mdc,code:docs/soft-fail-scan.md | A:- | S:禁止无列仍返回 200、解析失败当 0、extras 失败写 "{}"；硬失败文案是保险丝，不等于产品说明
 commit-messages.md[SG6T]: F:Trae 侧规定本仓库 git 提交说明、PR 标题与正文一律用中文，一到两句写清为什么而非罗列文件 | R:code:.cursor/rules/commit-messages.mdc | A:- | S:代码标识与路径保留原文，如 DOM-*、scene_scan、ensure_*；禁止英文祈使句当提交标题
 cross-domain-fix.md[SG7T]: F:Trae 侧规定开题翻车视为探针，先修共享 bake、门禁与基线，禁止只改当前学生包或单域硬编码 | R:code:.cursor/rules/cross-domain-fix.mdc,code:docs/delivery-audit-rules.md | A:- | S:先搜已有实现，不许另起平行逻辑、第二套开关或旁路；通用才进共享机制，单域专属须写明原因
-delivery-audit.md[SQ7T]: F:Trae ���涨�������Ʊ������ܱ������ơ������ع����ϰ�С���������ع鶢 AUDIT_GROUP_CANARIES | R:code:.cursor/rules/delivery-audit.mdc,code:docs/delivery-audit-rules.md,code:backend/app/bake/domains.py | A:- | S:ȱС��������Ч���棻��ֹֻ�����⣻�տǲ��ñ�����
+delivery-audit.md[SQ7T]: F:Trae 规则文件，与 Cursor 版同文，约束审交付、标已齐的验收动作与报告必备项。 | R:code:.cursor/rules/delivery-audit.mdc,code:docs/delivery-audit-rules.md,code:backend/app/bake/domains.py | A:- | S:审计轮默认只出报告不改代码；空壳或落不准不得标已齐，须挂简单字段规则。
 form-controls.md[SU8T]: F:Trae 同步规则：学生包可交互控件选型与闸摘要，与 .cursor/rules/form-controls.mdc 同文 | R:code:.cursor/rules/form-controls.mdc,code:docs/form-controls.md,code:skeletons/baseline/frontend/src/utils/archiveFieldWidget.js | A:- | S:只经 sync-ide-rules 从 .cursor 同步；禁手改漂移
 opening-scene.md[SG7T]: F:Trae 侧规定壳文案、注册资料字段与岗位名只扫题名和开题正文，场景轴不替代 DOM-* 领域匹配 | R:code:.cursor/rules/opening-scene.mdc,code:backend/app/bake/scene_scan.py | A:- | S:校园／企业／社区只走 scene_scan.py；开题未写清则用域默认，不臆造；禁止在 shells 或 profile 另写场景 hint
 student-copy.md[SU7T]: F:Trae 侧规定学生可见文案按店员或买家的口吻书写，页面、按钮、空态、报错与 schema.labels 都算可见面 | R:code:.cursor/rules/student-copy.mdc,code:docs/capability-expansion-batch.md | A:- | S:禁止工厂腔词（开题、bake、DOM-*、能力岛等）；空态不指挥买家去后台；缺列硬失败不写进界面
