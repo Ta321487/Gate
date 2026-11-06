@@ -56,32 +56,63 @@ def bake_project(project_id: str, spec: dict[str, Any], db_name: str) -> Path:
     settings = get_settings()
     src = settings.skeletons_dir / "baseline"
     dest = settings.workspace_dir / project_id
-    if dest.exists():
-        from app.services.projects import remove_tree_reliable
-        from app.services.runtime import detach_frontend_deps
+    # Overrides / 人工图补丁：整树删除前 stash，copytree 后 restore（pack-overrides §4.4）
+    from app.bake.islands_preserve import (
+        clear_islands_stash,
+        restore_islands_whitelist,
+        stash_islands_whitelist,
+    )
 
-        # Windows：旧预览 JVM 常短时锁住 application.yml，裸 rmtree 会 WinError 32
-        detach_frontend_deps(dest)
-        remove_tree_reliable(dest)
-    if not src.exists():
-        raise FileNotFoundError(f"骨架不存在: {src}")
-    # 骨架若残留 node_modules / target / dist，禁止整树拷进工作区：
-    # Windows 上大目录 copytree 曾出现 backend 被拷成空壳，导致后续写 yml / AppPolicy 全灭。
-    # 前端依赖由 prepare_frontend_deps 挂共享缓存；Maven target 由编译再生。
-    def _bake_copy_ignore(directory: str, names: list[str]) -> set[str]:
-        skip = {"node_modules", "target", "dist", ".vite"}
-        return {n for n in names if n in skip}
-
-    shutil.copytree(src, dest, ignore=_bake_copy_ignore)
-
-    # 对账孤儿清盘每轮会扫 workspace/：bake 中必须挂牌，否则半截目录被掏空
-    from app.services.project_disk import clear_bake_in_progress, mark_bake_in_progress
-
-    mark_bake_in_progress(dest)
+    islands_stash = None
     try:
-        return _bake_project_body(project_id, spec, db_name, dest)
+        if dest.exists():
+            from app.services.projects import remove_tree_reliable
+            from app.services.runtime import detach_frontend_deps
+
+            islands_stash = stash_islands_whitelist(dest)
+            # Windows：旧预览 JVM 常短时锁住 application.yml，裸 rmtree 会 WinError 32
+            detach_frontend_deps(dest)
+            remove_tree_reliable(dest)
+        if not src.exists():
+            raise FileNotFoundError(f"骨架不存在: {src}")
+        # 骨架若残留 node_modules / target / dist，禁止整树拷进工作区：
+        # Windows 上大目录 copytree 曾出现 backend 被拷成空壳，导致后续写 yml / AppPolicy 全灭。
+        # 前端依赖由 prepare_frontend_deps 挂共享缓存；Maven target 由编译再生。
+        def _bake_copy_ignore(directory: str, names: list[str]) -> set[str]:
+            skip = {"node_modules", "target", "dist", ".vite"}
+            return {n for n in names if n in skip}
+
+        shutil.copytree(src, dest, ignore=_bake_copy_ignore)
+        restore_islands_whitelist(dest, islands_stash)
+        # 镜像里有 module_labels 时再叠一次 nodes（补「仅 overrides 真源 / 旧 sanitize 掏空」）
+        try:
+            from app.bake.overrides import apply_overrides_to_workspace, load_overrides_mirror
+
+            mirror = load_overrides_mirror(dest)
+            if mirror and (mirror.get("module_labels") or {}):
+                apply_overrides_to_workspace(
+                    dest,
+                    mirror,
+                    refresh_stale=False,
+                    invalidate_modules=False,
+                )
+        except Exception:  # noqa: BLE001
+            import logging
+
+            logging.getLogger("app.bake").warning(
+                "overrides mirror reapply after restore failed", exc_info=True
+            )
+
+        # 对账孤儿清盘每轮会扫 workspace/：bake 中必须挂牌，否则半截目录被掏空
+        from app.services.project_disk import clear_bake_in_progress, mark_bake_in_progress
+
+        mark_bake_in_progress(dest)
+        try:
+            return _bake_project_body(project_id, spec, db_name, dest)
+        finally:
+            clear_bake_in_progress(dest)
     finally:
-        clear_bake_in_progress(dest)
+        clear_islands_stash(islands_stash)
 
 
 def _bake_project_body(

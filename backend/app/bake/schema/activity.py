@@ -319,13 +319,45 @@ def load_activity_model(
         return None
     spec = _read_json(workspace / "spec.json") or {}
     fb = str(spec.get("title") or "").strip() or title_fallback
-    return activity_model(
-        schema,
-        workspace,
-        proposal_text=proposal_text,
-        selection=selection,
-        title_fallback=fb,
-    )
+    sel = selection
+    if sel is None:
+        try:
+            from app.bake.overrides import resolve_override_selection
+
+            # 活动未单独勾选时跟序列勾选（与前端 openActivities 同口径）
+            sel = resolve_override_selection(workspace, "activity")
+            if sel is None:
+                sel = resolve_override_selection(workspace, "sequence")
+        except Exception:  # noqa: BLE001
+            sel = None
+    try:
+        model = activity_model(
+            schema,
+            workspace,
+            proposal_text=proposal_text,
+            selection=sel,
+            title_fallback=fb,
+        )
+    except ValueError:
+        model = activity_model(
+            schema,
+            workspace,
+            proposal_text=proposal_text,
+            selection=None,
+            title_fallback=fb,
+        )
+    try:
+        from app.bake.overrides import (
+            apply_activity_label_overrides,
+            override_labels_map,
+        )
+
+        model = apply_activity_label_overrides(
+            model, override_labels_map(workspace, "activity")
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return model
 
 
 # —— SVG ——

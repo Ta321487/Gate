@@ -3,7 +3,7 @@
 > **本文只负责**：论文材料 / 展示文案的 Human-in-the-loop 覆盖层——目标、红线、数据、按图手调范围、分期与验收。  
 > **不写**：能力岛新功能、改开题迁就模板、扫盘替换 `.vue` 中文。  
 > **站队**：修工厂共享钩子；单题补丁可进 DB + `islands`，重 bake **必须可重放**。  
-> **状态（2026-11-04）**：UI §6 已定 · **现网对账已订入 §1.5 / §4.4 / §7** · **代码未开工**（等人令 `做 P0`）。
+> **状态（2026-11-04）**：UI §6 已定 · 对账已订 · **P0～P3 代码/文档已落地**（含 hide、序列/活动/用例描述、架构/用例图/测例/菜单/类图短签、invariants/审计一句）；双写收口口径：分文件仍由现网 PUT 写坐标/E-R，Overrides 统一镜像+apply；**工作区未 commit**。
 
 相关：[`invariants.md`](./invariants.md)（八张材料真源）· [`delivery-audit-rules.md`](./delivery-audit-rules.md) · 已有零件 `modules.py` label patch · `er_labels.json` · `class_layout.json`。
 
@@ -13,7 +13,7 @@
 
 机器出图 / 出表之后，运营可在控制台做**最后细微手调**；**文字是一等公民**（短签、表内字段、菜单显示名、消息文案），位置/勾选是辅。**结构级大改仍建议重 bake**。重 bake 后 Overrides **原样叠回**，不得丢。
 
-**P0 一票否决**：今日 `bake_project` 对工作区是**整树删除**，无 islands 白名单保留。不做 stash/restore，验收「重 bake 短签/坐标仍在」必假——**先于**微调 Tab。
+**P0 一票否决（已补）**：`bake_project` 整树删除前经 `islands_preserve` stash/restore 白名单（§4.4）；测见 `test_islands_preserve`。
 
 ---
 
@@ -44,7 +44,7 @@
 
 | 项 | 现网事实 | Overrides 订法 |
 |----|----------|----------------|
-| **重 bake** | `engine_bake.bake_project`：`remove_tree_reliable(dest)` 后 copytree，**无** islands 保留 | P0 **第一刀**：bake 前 stash / 后 restore 白名单（§4.4）；再谈 DB/UI |
+| **重 bake** | ~~无保留~~ → **已接** `stash_islands_whitelist` / `restore_islands_whitelist` | 维护白名单表与 `test_islands_preserve`；禁 stash `diagram_cache` |
 | **模块短签钩子** | `islands/module_labels.json` + `apply_module_label_patch`；`build_module_model` 已叠补丁后再 `attach_module_label_gate` | **扩展此链**，禁止第二套 apply；LLM Agent 亦写同文件 → 落盘形状须兼容 |
 | **补丁 JSON 形状** | 盘上为 `{"nodes":{"<id>":"短签"}}`（`sanitize_module_label_patch`） | DB payload 可用扁平 `module_labels`；**落盘/调用 apply 前适配成 `nodes`**（§4.2） |
 | **模块 node id** | 菜单叶 `{side}:{menuKey}`（较稳）；身份叶 `identity:{i}:m{j}`（**索引，重 bake 易失效**） | 键消失 → 失效补丁，**禁止**按原文模糊贴到别的节点；UI 可提示身份叶不稳定 |
@@ -124,7 +124,7 @@ Overrides **主战场是字**，不是框在哪。位置（§2.1）只保证不�
 
 **硬约束（实现时钉测）**
 
-1. bake / 清工作区 **白名单保留**（今日**未实现**，见 §4.4）：`class_layout.json`、`er_view*`、`er_labels.json`、`module_labels.json`、`testcase_labels.json`、`overrides.json`。  
+1. bake / 清工作区 **白名单保留**（`islands_preserve`，见 §4.4）：`class_layout.json`、`er_view*`、`er_labels.json`、`module_labels.json`、`testcase_labels.json`、`overrides.json`。  
 2. 禁止 Overrides apply 阶段 **重写** layout 坐标（除非人点了「复位布局」——复位仍调现有 `clear_class_layout_patch` 一类 API）。  
 3. 微调 Tab **不得**再实现一套类图/E-R 画布；链接/深链到现有 modal 即可。  
 4. 若将来把 layout 字节也塞进 DB：只能是 **与 islands 文件同步的镜像**，编辑仍只走现有保存接口，避免双写打架。  
@@ -220,8 +220,7 @@ project_overrides
 
 ### 4.4 重 bake 白名单（P0 第一刀 · 现网缺口）
 
-今日行为：工作区整树删掉再烤 → 人工拖位与一切 islands 补丁**全丢**。  
-订约：`bake_project` 在 `remove_tree` **之前** stash、copytree **之后** restore 下列相对路径（缺则跳过；目录 `er_view/` 整树）：
+实现：`app/bake/islands_preserve.py`；`bake_project` 在 `remove_tree` **之前** stash、copytree **之后** restore 下列相对路径（缺则跳过；目录 `er_view/` 整树）：
 
 | 相对路径 | 备注 |
 |----------|------|
@@ -313,7 +312,7 @@ bake 主路径
 | 手调文案 | 输入框；空 = 跟机器 |
 | 图上隐藏 | **P0.5 再露**；P0 表可不含此列 |
 
-行操作：`恢复本行机器名`。  
+行操作：各材料表统一「还原」= 清空本行手调、跟机器原文（输入框亦 clearable）。  
 次要：`打开模块图预览` → 现有 `ModuleDiagramViewer`（须已是新字）。  
 v1 不提供第二套拖拽排序。
 
@@ -460,7 +459,6 @@ v1 不提供第二套拖拽排序。
 
 ## 11. 下一步（等人令）
 
-- 说 **`做 P0`**：按 §7 刀序——**先** bake 白名单，再表/API/模块图改字 UI + findings.`source` + 重放钉测（**不含** hide）。  
-- 说 **`做 P0.5`**：仅 `module_hide`。  
-- 说 **`先补 invariants 一句`**：只改 invariants 交叉引用。  
-- 说 **`改范围`**：增减某张图的手调面后再改本册 §3 / §1.5。
+- 说 **`提交并推送`**：建议按主题拆 commit（bake 白名单 / overrides 核心 / 控制台 Tab / 文档）。  
+- 说 **`改范围`**：增减某张图的手调面后再改本册 §3 / §1.5。  
+- 真机验收：控制台微调 Tab 改字 → 打开材料见新字 → 重 bake → 字仍在。

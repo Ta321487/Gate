@@ -24,7 +24,7 @@ from app.llm.agents import (
 )
 from app.llm.unit_flow import format_fill_step_meta, run_fill_pipeline
 from app.llm.runtime import load_llm_runtime
-from app.models import Job, JobKind, JobStatus, Project, ProjectStatus
+from app.models import Job, JobKind, JobStatus, Project, ProjectOverrides, ProjectStatus
 from app.services.projects import MSG_DOWNLOAD_GATES
 from app.services.proposal import load_merged_proposal_text
 from app.services.bake_fail_classify import classify_bake_error
@@ -36,6 +36,30 @@ from app.services.delivery_review import (
 )
 
 logger = logging.getLogger("gf.job")
+
+
+async def _reapply_project_overrides(
+    db: AsyncSession, project_id: str, workspace: Path
+) -> None:
+    """若元库有 overrides，叠回工作区（失败只打日志，不挡 bake）。"""
+    try:
+        row = await db.get(ProjectOverrides, project_id)
+        if not row or not isinstance(row.payload, dict) or not row.payload:
+            return
+        from app.bake.overrides import apply_overrides_to_workspace
+
+        applied = await asyncio.to_thread(
+            apply_overrides_to_workspace, workspace, dict(row.payload)
+        )
+        # 失效键回写 DB，便于控制台清理
+        if applied.get("_stale") != (row.payload or {}).get("_stale") or applied.get(
+            "module_labels"
+        ) != (row.payload or {}).get("module_labels"):
+            row.payload = applied
+            flag_modified(row, "payload")
+            await db.commit()
+    except Exception:  # noqa: BLE001
+        logger.exception("overrides reapply failed project=%s", project_id)
 
 
 def _apply_job_error(
@@ -465,6 +489,8 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                 bake_id, bake_spec, bake_db = project.id, dict(project.spec or {}), project.db_name
                 workspace = await asyncio.to_thread(bake_project, bake_id, bake_spec, bake_db)
                 project.workspace_path = str(workspace)
+                # Overrides：DB 真源叠回 islands（stash 已保留盘上文件；此处补「仅 DB 有」）
+                await _reapply_project_overrides(db, project.id, workspace)
                 try:
                     from app.services.student_db import reset_student_schema
 
@@ -541,6 +567,8 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     )
                 except Exception as he:  # noqa: BLE001
                     raise RuntimeError(f"学生包收口失败（填岛后裁剪）：{he}") from he
+                # LLM 填岛可能重写 module_labels；手调键再叠一次
+                await _reapply_project_overrides(db, project.id, workspace)
                 await asyncio.sleep(0.2)
 
             # 4 构建验证 + Fix Agent（编译中通过 meta 刷新子进度文案）

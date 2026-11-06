@@ -871,7 +871,16 @@ def _module_leaf_nodes(
         if not lab:
             continue
         mid = f"{branch_id}:m{i}"
-        details = [str(d).strip() for d in (mod.get("details") or []) if str(d).strip()]
+        raw_details = [str(d).strip() for d in (mod.get("details") or []) if str(d).strip()]
+        # 同父下细节短签去重
+        details: list[str] = []
+        seen_detail: set[str] = set()
+        for d in raw_details:
+            key = _clean_module_leaf_label(d) or d
+            if key in seen_detail:
+                continue
+            seen_detail.add(key)
+            details.append(d)
         if expand_details and details:
             kids = [
                 _node(f"{mid}:d{j}", d, source=f"{source}:detail")
@@ -957,6 +966,14 @@ def _menu_keys_for_module_text(text: str, menu_items: list[dict[str, Any]]) -> l
             t in blob for t in ("预约", "预订", "挂号")
         ):
             hits.append(key)
+        elif key == "banners" and any(
+            t in blob for t in ("广告位", "轮播", "横幅", "Banner", "banner")
+        ):
+            hits.append(key)
+        elif key in ("schedule_jobs", "scheduled_tasks", "jobs", "cron") and any(
+            t in blob for t in ("定时任务", "定时", "调度")
+        ):
+            hits.append(key)
     out: list[str] = []
     seen: set[str] = set()
     for k in hits:
@@ -964,6 +981,50 @@ def _menu_keys_for_module_text(text: str, menu_items: list[dict[str, Any]]) -> l
             seen.add(k)
             out.append(k)
     return out
+
+
+def _cover_stem(lab: str) -> str:
+    s = (lab or "").strip()
+    for w in ("模块", "功能", "管理", "我的", "浏览", "记录"):
+        s = s.replace(w, "")
+    return s.strip()
+
+
+def _labels_share_cover_stem(a: str, b: str, *, min_len: int = 2) -> bool:
+    """开题短签与菜单名共享足够长前缀 → 视为已覆盖（不维护异名词表）。"""
+    sa, sb = _cover_stem(a), _cover_stem(b)
+    if len(sa) < min_len or len(sb) < min_len:
+        return False
+    n = 0
+    for x, y in zip(sa, sb):
+        if x != y:
+            break
+        n += 1
+    return n >= min_len
+
+
+def _detail_texts_cover_menu(
+    details_pool: list[str],
+    *,
+    menu_lab: str,
+    menu_key: str,
+) -> bool:
+    """开题已点名的菜单能力 → 勿再 menu_pad 成并列叶子。"""
+    ml = (menu_lab or "").strip()
+    stem = _cover_stem(ml)
+    for d in details_pool:
+        ds = str(d).strip()
+        if not ds:
+            continue
+        if ml and (ml == ds or ml in ds or ds in ml):
+            return True
+        if stem and len(stem) >= 2 and stem in ds:
+            return True
+        if _labels_share_cover_stem(ml, ds):
+            return True
+        if _menu_keys_for_module_text(ds, [{"key": menu_key, "label": ml}]):
+            return True
+    return False
 
 
 _AUTH_LABEL_EXACT = frozenset(
@@ -1251,6 +1312,7 @@ def _align_material_modules_to_menus_with_stats(
     out: list[dict[str, Any]] = []
     eligible = 0
     kept = 0
+    details_pool: list[str] = []
 
     for mod in material_mods:
         if not isinstance(mod, dict):
@@ -1264,16 +1326,18 @@ def _align_material_modules_to_menus_with_stats(
         details = [str(d).strip() for d in (mod.get("details") or []) if str(d).strip()]
         if _is_auth_module_label(lab):
             out.append({"label": lab, "details": details})
+            details_pool.extend(details)
             kept += 1
             eligible += 1
             continue
         eligible += 1
-        # 只按一级模块名对齐交付；细节里的「商品/订单」等词不得把评价/支付等幽灵挂进来
+        # 只按一级模块名对齐交付；细节里的词不得决定「是否保留」一级模块（防幽灵）
         keys = _menu_keys_for_module_text(lab, menu_items)
         if not keys:
             continue
         covered.update(keys)
         out.append({"label": lab, "details": details})
+        details_pool.extend(details)
         kept += 1
 
     if side == "user" and not any(_is_auth_module_label(str(m.get("label") or "")) for m in out):
@@ -1281,14 +1345,25 @@ def _align_material_modules_to_menus_with_stats(
     elif side == "admin" and not any(_is_auth_module_label(str(m.get("label") or "")) for m in out):
         out.insert(0, {"label": "登录模块", "details": []})
 
+    # 已保留的一级短签也参与「勿 pad」，避免细节/近义短签已覆盖后菜单再挂一支
+    label_pool = list(details_pool)
+    for m in out:
+        lab = str(m.get("label") or "").strip()
+        if lab:
+            label_pool.append(lab)
+
     menu_pad = 0
     for raw in menu_items:
         key = str(raw.get("key") or "").strip()
         if not key or key in covered:
             continue
+        menu_lab = _menu_label(raw)
+        if _detail_texts_cover_menu(label_pool, menu_lab=menu_lab, menu_key=key):
+            covered.add(key)
+            continue
         covered.add(key)
         menu_pad += 1
-        out.append({"label": _format_menu_module_label(_menu_label(raw)), "details": []})
+        out.append({"label": _format_menu_module_label(menu_lab), "details": []})
     polished = _polish_identity_modules(out, role_lab=role_lab, menu_items=menu_items)
     return polished, {"eligible": eligible, "kept": kept, "menu_pad": menu_pad}
 
@@ -1675,62 +1750,85 @@ def _branch_is_identity_role(lab: str) -> bool:
     )
 
 
-def audit_module_model(model: dict[str, Any] | None) -> list[dict[str, str]]:
-    """机器闸：身份/业务枝下的一级叶子不得散文、不得带「模块」、不得复读角色前缀。"""
+def audit_module_model(
+    model: dict[str, Any] | None,
+    *,
+    override_ids: set[str] | frozenset[str] | None = None,
+) -> list[dict[str, str]]:
+    """机器闸：身份/业务枝下的一级叶子不得散文、不得带「模块」、不得复读角色前缀。
+
+    ``override_ids``：生效字来自手调/补丁的 node id；findings 增 ``source`` /
+    ``override_key``（pack-overrides §6.6），不另起闸。
+    """
     if not isinstance(model, dict):
         return []
     root = model.get("root") if isinstance(model.get("root"), dict) else {}
     findings: list[dict[str, str]] = []
+    ov = override_ids if override_ids is not None else None
 
-    def add(kind: str, branch: str, label: str, detail: str) -> None:
-        findings.append(
-            {
-                "kind": kind,
-                "branch": branch,
-                "label": label,
-                "detail": detail,
-            }
-        )
+    def add(kind: str, branch: str, label: str, detail: str, nid: str = "") -> None:
+        row: dict[str, str] = {
+            "kind": kind,
+            "branch": branch,
+            "label": label,
+            "detail": detail,
+        }
+        if ov is not None:
+            if nid and nid in ov:
+                row["source"] = "override"
+                row["override_key"] = f"module_labels.{nid}"
+            else:
+                row["source"] = "machine"
+        findings.append(row)
 
-    def audit_leaf(lab: str, role_lab: str) -> None:
+    def audit_leaf(lab: str, role_lab: str, nid: str = "") -> None:
         if not lab:
-            add("empty", role_lab, lab, "空叶子")
+            add("empty", role_lab, lab, "空叶子", nid)
             return
         if _is_leaked_section_module_label(lab) or _is_prose_module_label(lab):
-            add("prose", role_lab, lab, "散文/泄漏段头进图")
+            add("prose", role_lab, lab, "散文/泄漏段头进图", nid)
         if "模块" in lab or lab.endswith("子模块") or lab.endswith("功能"):
-            add("suffix", role_lab, lab, "叶子仍带「模块/功能」尾")
+            add("suffix", role_lab, lab, "叶子仍带「模块/功能」尾", nid)
         if lab.endswith("等"):
-            add("etc", role_lab, lab, "叶子以「等」收尾")
+            add("etc", role_lab, lab, "叶子以「等」收尾", nid)
         if "以及" in lab or "划分为" in lab or "功能模块划分" in lab:
-            add("glue", role_lab, lab, "并列/段头未切开")
+            add("glue", role_lab, lab, "并列/段头未切开", nid)
         if role_lab and _branch_is_identity_role(role_lab):
             for pref in _role_prefix_candidates(role_lab):
                 if pref and lab.startswith(pref) and lab != pref:
-                    add("role_prefix", role_lab, lab, f"复读角色前缀「{pref}」")
+                    add("role_prefix", role_lab, lab, f"复读角色前缀「{pref}」", nid)
                     break
         if len(lab) > _LEAF_GATE_MAX_LEN:
-            add("too_long", role_lab, lab, f"超过 {_LEAF_GATE_MAX_LEN} 字")
+            add("too_long", role_lab, lab, f"超过 {_LEAF_GATE_MAX_LEN} 字", nid)
 
     for branch in root.get("children") or []:
         if not isinstance(branch, dict):
             continue
         role_lab = str(branch.get("label") or "").strip()
+        branch_id = str(branch.get("id") or "").strip()
         kids = [c for c in (branch.get("children") or []) if isinstance(c, dict)]
         if not kids:
             # 按业务单叶提升到根下：自身即叶子
-            audit_leaf(role_lab, "")
+            audit_leaf(role_lab, "", branch_id)
             continue
         for leaf in kids:
             if str(leaf.get("source") or "").endswith(":detail"):
                 continue
-            audit_leaf(str(leaf.get("label") or "").strip(), role_lab)
+            audit_leaf(
+                str(leaf.get("label") or "").strip(),
+                role_lab,
+                str(leaf.get("id") or "").strip(),
+            )
     return findings
 
 
-def attach_module_label_gate(model: dict[str, Any]) -> dict[str, Any]:
+def attach_module_label_gate(
+    model: dict[str, Any],
+    *,
+    override_ids: set[str] | frozenset[str] | None = None,
+) -> dict[str, Any]:
     """给模型挂 label_gate；红则写入 leaf_source_note，导出卡可直接红。"""
-    findings = audit_module_model(model)
+    findings = audit_module_model(model, override_ids=override_ids)
     ok = not findings
     note = "" if ok else f"模块图叶子文案检查红 {len(findings)} 处（散文/超长/带模块尾/角色前缀等）"
     model["label_gate"] = {
@@ -1773,10 +1871,49 @@ def module_model(
     return attach_module_label_gate(model)
 
 
+def apply_module_hide(
+    model: dict[str, Any], hide_ids: set[str] | frozenset[str] | list[str] | None
+) -> dict[str, Any]:
+    """从图面树去掉指定 id（含子树）；不改 menus / 包内路由。根节点不可藏。"""
+    hide = {str(x).strip() for x in (hide_ids or []) if str(x).strip()}
+    hide.discard("root")
+    if not hide or not isinstance(model, dict):
+        return model
+
+    def prune(n: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not isinstance(n, dict):
+            return None
+        nid = str(n.get("id") or "").strip()
+        if nid and nid in hide:
+            return None
+        kids_in = n.get("children") or []
+        kids_out: list[dict[str, Any]] = []
+        for c in kids_in:
+            kept = prune(c if isinstance(c, dict) else None)
+            if kept is not None:
+                kids_out.append(kept)
+        out = dict(n)
+        if kids_out:
+            out["children"] = kids_out
+        elif "children" in out:
+            out.pop("children", None)
+        return out
+
+    root = model.get("root")
+    if isinstance(root, dict):
+        pruned = prune(root)
+        if pruned is not None:
+            model = dict(model)
+            model["root"] = pruned
+            model["module_hide"] = sorted(hide)
+    return model
+
+
 def build_module_model(
     workspace: Path,
     *,
     with_label_patch: bool = True,
+    apply_hide: bool = True,
     proposal_text: str = "",
     layout: str = DEFAULT_MODULE_LAYOUT,
     expand_details: bool = False,
@@ -1794,9 +1931,23 @@ def build_module_model(
         expand_details=expand_details,
     )
     if with_label_patch:
-        model = apply_module_label_patch(model, load_module_label_patch(workspace))
-        # 人工补丁也可能写回「模块」/散文 → 再跑闸
-        model = attach_module_label_gate(model)
+        raw_patch = load_module_label_patch(workspace)
+        clean_patch = sanitize_module_label_patch(raw_patch)
+        override_ids = set((clean_patch.get("nodes") or {}).keys())
+        model = apply_module_label_patch(model, clean_patch)
+        # 人工补丁也可能写回「模块」/散文 → 再跑闸；findings 标 source
+        # 闸在剪枝前跑：隐藏不得用来消文案红
+        model = attach_module_label_gate(model, override_ids=override_ids)
+    if apply_hide:
+        try:
+            from app.bake.overrides import load_overrides_mirror
+
+            mirror = load_overrides_mirror(workspace)
+            hide = (mirror or {}).get("module_hide") if isinstance(mirror, dict) else None
+            if hide:
+                model = apply_module_hide(model, hide)
+        except Exception:  # noqa: BLE001
+            pass
     return model
 
 
@@ -1810,6 +1961,7 @@ def load_module_model(
     return build_module_model(
         workspace,
         with_label_patch=True,
+        apply_hide=True,
         proposal_text=proposal_text,
         layout=layout,
         expand_details=expand_details,

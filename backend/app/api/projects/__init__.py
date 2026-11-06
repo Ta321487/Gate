@@ -13,5 +13,6 @@ from app.api.projects import crud as _crud  # noqa: F401
 from app.api.projects import schema as _schema  # noqa: F401
 from app.api.projects import runtime as _runtime  # noqa: F401
 from app.api.projects import delivery_review as _delivery_review  # noqa: F401
+from app.api.projects import overrides as _overrides  # noqa: F401
 
 __all__ = ["router"]

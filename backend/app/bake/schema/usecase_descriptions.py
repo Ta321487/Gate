@@ -987,6 +987,32 @@ def render_usecase_description_markdown(
     return "\n".join(lines)
 
 
+def _candidate_stable_id(c: dict[str, Any]) -> str:
+    from app.bake.schema.sequence import candidate_id
+
+    return candidate_id(c)
+
+
+def _pick_usecase_desc_by_ids(
+    candidates: list[dict[str, Any]], ids: list[str], *, count: int
+) -> list[dict[str, Any]] | None:
+    """按稳定 id 勾选；非法/不足则 None（回落默认挑选）。"""
+    by_id = {_candidate_stable_id(c): c for c in candidates if isinstance(c, dict)}
+    picked: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in ids:
+        sid = str(raw or "").strip()
+        if not sid or sid in seen:
+            continue
+        if sid not in by_id:
+            return None
+        seen.add(sid)
+        picked.append(by_id[sid])
+        if len(picked) >= count:
+            break
+    return picked if picked else None
+
+
 def usecase_description_model(
     schema: dict[str, Any] | None,
     *,
@@ -994,6 +1020,7 @@ def usecase_description_model(
     count: int = DEFAULT_DESC_COUNT,
     table_start: str = DEFAULT_TABLE_START,
     title_fallback: str = "管理系统",
+    selection: list[str] | None = None,
 ) -> dict[str, Any]:
     schema = schema if isinstance(schema, dict) else {}
     title = _app_title(schema, title_fallback)
@@ -1002,12 +1029,17 @@ def usecase_description_model(
     candidates = build_usecase_description_candidates(
         schema, proposal_text=proposal_text
     )
-    selected = select_usecase_descriptions(candidates, count=n)
+    selected: list[dict[str, Any]] | None = None
+    if selection:
+        selected = _pick_usecase_desc_by_ids(candidates, selection, count=n)
+    if not selected:
+        selected = select_usecase_descriptions(candidates, count=n)
     cases_out: list[dict[str, Any]] = []
     for i, c in enumerate(selected):
         cases_out.append(
             {
                 "id": f"UCD-{i + 1:03d}",
+                "stable_id": _candidate_stable_id(c),
                 "table_no": _next_table_no(tstart, i),
                 "name": c["name"],
                 "actor": c["actor"],
@@ -1031,6 +1063,21 @@ def usecase_description_model(
         if (proposal_text or "").strip()
         else "由交付 menus/roles/entities 推导；未提供开题正文时按主路径优先级选用"
     )
+    cand_out: list[dict[str, Any]] = []
+    for c in candidates:
+        if not isinstance(c, dict):
+            continue
+        cand_out.append(
+            {
+                "stable_id": _candidate_stable_id(c),
+                "name": c.get("name"),
+                "actor": c.get("actor"),
+                "menu_key": c.get("menu_key"),
+                "side": c.get("side"),
+                "kind": c.get("kind"),
+                "score": c.get("score"),
+            }
+        )
     return {
         "title": title,
         "intro": intro,
@@ -1039,6 +1086,8 @@ def usecase_description_model(
         "requested_count": n,
         "table_start": tstart,
         "cases": cases_out,
+        "selected_ids": [str(c.get("stable_id") or "") for c in cases_out],
+        "candidates": cand_out,
         "candidate_count": len(candidates),
         "markdown": render_usecase_description_markdown(
             title=title, cases=cases_out, table_start=tstart
@@ -1052,16 +1101,40 @@ def load_usecase_description_model(
     proposal_text: str = "",
     count: int = DEFAULT_DESC_COUNT,
     table_start: str = DEFAULT_TABLE_START,
+    selection: list[str] | None = None,
 ) -> dict[str, Any] | None:
     schema = _read_json(workspace / "domain.schema.json")
     if not schema:
         return None
     spec = _read_json(workspace / "spec.json")
     title_fb = str(spec.get("title") or "管理系统")
-    return usecase_description_model(
+    sel = selection
+    if sel is None:
+        try:
+            from app.bake.overrides import resolve_override_selection
+
+            sel = resolve_override_selection(workspace, "usecase_desc")
+        except Exception:  # noqa: BLE001
+            sel = None
+    model = usecase_description_model(
         schema,
         proposal_text=proposal_text,
         count=count,
         table_start=table_start,
         title_fallback=title_fb,
+        selection=sel,
     )
+    try:
+        from app.bake.overrides import (
+            apply_usecase_desc_cell_overrides,
+            load_overrides_mirror,
+        )
+
+        mirror = load_overrides_mirror(workspace)
+        block = (mirror or {}).get("usecase_desc") if isinstance(mirror, dict) else None
+        cells = (block or {}).get("cell_overrides") if isinstance(block, dict) else None
+        if cells:
+            model = apply_usecase_desc_cell_overrides(model, cells)
+    except Exception:  # noqa: BLE001
+        pass
+    return model

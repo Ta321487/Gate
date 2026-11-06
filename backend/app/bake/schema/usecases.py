@@ -2665,7 +2665,7 @@ def load_usecase_model(
     spec = _read_json(workspace / "spec.json")
     title_fb = str(spec.get("title") or "管理系统")
     st = resolve_usecase_style(spec=spec if isinstance(spec, dict) else None)
-    return usecase_model(
+    model = usecase_model(
         schema,
         actor=actor,
         proposal_text=proposal_text,
@@ -2673,6 +2673,23 @@ def load_usecase_model(
         style=st,
         spec=spec if isinstance(spec, dict) else None,
     )
+    try:
+        from app.bake.overrides import (
+            apply_usecase_diagram_overrides,
+            load_overrides_mirror,
+        )
+
+        mirror = load_overrides_mirror(workspace)
+        block = (mirror or {}).get("usecase") if isinstance(mirror, dict) else None
+        if isinstance(block, dict) and (block.get("labels") or block.get("hide")):
+            model = apply_usecase_diagram_overrides(
+                model,
+                labels=block.get("labels") if isinstance(block.get("labels"), dict) else {},
+                hide=block.get("hide") if isinstance(block.get("hide"), list) else [],
+            )
+    except Exception:  # noqa: BLE001
+        pass
+    return model
 
 
 def assert_workspace_usecases(workspace: Path, *, proposal_text: str = "") -> None:

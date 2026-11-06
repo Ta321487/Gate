@@ -88,6 +88,20 @@ class Project(Base):
     )
 
 
+class ProjectOverrides(Base):
+    """出包微调（论文材料展示层）；见 docs/pack-overrides.md。"""
+
+    __tablename__ = "project_overrides"
+
+    project_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+    updated_by: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+
 class JobKind(str, enum.Enum):
     bake = "bake"
     defense_ppt = "defense_ppt"

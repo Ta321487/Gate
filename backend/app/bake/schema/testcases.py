@@ -865,12 +865,30 @@ def load_testcase_model(
     spec = _read_json(workspace / "spec.json")
     title_fb = str(spec.get("title") or "管理系统")
     patch = load_testcase_label_patch(workspace) if with_label_patch else None
-    return testcase_model(
+    model = testcase_model(
         schema,
         fields=fields,
         title_fallback=title_fb,
         label_patch=patch,
     )
+    try:
+        from app.bake.overrides import apply_testcase_overrides, load_overrides_mirror
+
+        mirror = load_overrides_mirror(workspace)
+        block = (mirror or {}).get("testcases") if isinstance(mirror, dict) else None
+        if isinstance(block, dict) and (block.get("hide") or block.get("cell_overrides")):
+            model = apply_testcase_overrides(
+                model,
+                hide=block.get("hide") if isinstance(block.get("hide"), list) else [],
+                cell_overrides=(
+                    block.get("cell_overrides")
+                    if isinstance(block.get("cell_overrides"), dict)
+                    else {}
+                ),
+            )
+    except Exception:  # noqa: BLE001
+        pass
+    return model
 
 
 def build_testcase_skeleton(workspace: Path) -> dict[str, Any] | None:

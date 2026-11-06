@@ -1210,13 +1210,43 @@ def load_sequence_model(
         return None
     spec = _read_json(workspace / "spec.json") or {}
     fb = str(spec.get("title") or "").strip() or title_fallback
-    return sequence_model(
-        schema,
-        workspace,
-        proposal_text=proposal_text,
-        selection=selection,
-        title_fallback=fb,
-    )
+    sel = selection
+    if sel is None:
+        try:
+            from app.bake.overrides import resolve_override_selection
+
+            sel = resolve_override_selection(workspace, "sequence")
+        except Exception:  # noqa: BLE001
+            sel = None
+    try:
+        model = sequence_model(
+            schema,
+            workspace,
+            proposal_text=proposal_text,
+            selection=sel,
+            title_fallback=fb,
+        )
+    except ValueError:
+        # 失效勾选 → 回落默认，不挡打开
+        model = sequence_model(
+            schema,
+            workspace,
+            proposal_text=proposal_text,
+            selection=None,
+            title_fallback=fb,
+        )
+    try:
+        from app.bake.overrides import (
+            apply_sequence_label_overrides,
+            override_labels_map,
+        )
+
+        model = apply_sequence_label_overrides(
+            model, override_labels_map(workspace, "sequence")
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return model
 
 
 # —— SVG ——

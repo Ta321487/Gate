@@ -170,6 +170,31 @@ class ErLabelsUpdate(BaseModel):
     relations: dict[str, str] = Field(default_factory=dict, description="联系名 → 中文联系名")
 
 
+class OverridesSaveIn(BaseModel):
+    """出包微调保存（pack-overrides）；禁止键由服务端 sanitize 拒绝。"""
+
+    model_config = ConfigDict(title="Overrides 保存")
+
+    payload: dict[str, Any] = Field(default_factory=dict, description="overrides payload")
+    version: Optional[int] = Field(
+        default=None, description="乐观锁；省略则不检查；冲突 409"
+    )
+    apply: bool = Field(default=True, description="写盘并叠模块短签 / invalidate")
+
+
+class OverridesOut(BaseModel):
+    model_config = ConfigDict(title="Overrides 状态")
+
+    project_id: str
+    version: int
+    payload: dict[str, Any] = Field(default_factory=dict)
+    updated_at: Optional[datetime] = None
+    module_nodes: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="当前模块树 id/label/path，供微调表（可空）",
+    )
+
+
 class ErViewUpdate(BaseModel):
     """人工拖过的 E-R 图（islands/er_view）。reset 后恢复自动排版。"""
 

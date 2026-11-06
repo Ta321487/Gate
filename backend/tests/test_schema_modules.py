@@ -240,6 +240,47 @@ class ModuleDiagramTests(unittest.TestCase):
         self.assertNotIn("超级管理员端功能涉及系统后台登录", merch_labs)
         self.assertTrue(all("涉及" not in x for x in merch_labs))
 
+    def test_detail_covers_menu_no_pad_twin(self) -> None:
+        """开题细节已写「广告位」时，不得再 menu_pad 出并列「广告位」叶。"""
+        from app.bake.schema.modules import _align_material_modules_to_menus
+
+        aligned = _align_material_modules_to_menus(
+            [
+                {"label": "登录模块", "details": []},
+                {"label": "农产品管理模块", "details": ["广告位"]},
+            ],
+            side="admin",
+            menus=[
+                {"key": "archive", "label": "农产品管理"},
+                {"key": "banners", "label": "广告位"},
+            ],
+            role_lab="管理员",
+        )
+        labs = [m["label"] for m in aligned]
+        self.assertEqual(labs.count("广告位"), 0, labs)
+        farm = next(m for m in aligned if "农产品" in m["label"])
+        self.assertIn("广告位", farm.get("details") or [])
+
+    def test_detail_near_menu_label_no_pad_twin(self) -> None:
+        """开题细节与菜单名共享词干时，不得再 pad 出第二支（不维护异名词表）。"""
+        from app.bake.schema.modules import _align_material_modules_to_menus
+
+        aligned = _align_material_modules_to_menus(
+            [
+                {"label": "登录模块", "details": []},
+                {"label": "农产品管理模块", "details": ["广告槽"]},
+            ],
+            side="admin",
+            menus=[
+                {"key": "archive", "label": "农产品管理"},
+                {"key": "banners", "label": "广告位"},
+            ],
+            role_lab="管理员",
+        )
+        labs = [m["label"] for m in aligned]
+        self.assertNotIn("广告位", labs, labs)
+        self.assertTrue(any("农产品" in x for x in labs), labs)
+
     def test_prose_with_login_not_auth_leaf(self) -> None:
         """含「登录」的散文不得因认证旁路进图。"""
         from app.bake.schema.modules import (
@@ -683,6 +724,47 @@ class ModuleDiagramTests(unittest.TestCase):
         gated = attach_module_label_gate(dict(raw))
         self.assertFalse(gated["label_gate"]["ok"])
         self.assertIn("检查红", gated["leaf_source_note"])
+
+    def test_label_gate_source_override_vs_machine(self) -> None:
+        """手调叠上后 findings 带 source，不另起闸。"""
+        raw = {
+            "title": "t",
+            "layout": "identity",
+            "root": {
+                "id": "root",
+                "label": "t",
+                "children": [
+                    {
+                        "id": "identity:0",
+                        "label": "买家",
+                        "children": [
+                            {
+                                "id": "ov1",
+                                "label": "这是一段超过八字的散文短签",
+                                "source": "materials",
+                            },
+                            {
+                                "id": "mc1",
+                                "label": "管理员登录模块",
+                                "source": "materials",
+                            },
+                        ],
+                    }
+                ],
+            },
+        }
+        gated = attach_module_label_gate(dict(raw), override_ids={"ov1"})
+        by_id = {}
+        for f in gated["label_gate"]["findings"]:
+            # 按 label 粗分：散文=手调叶，suffix=机器叶
+            if f.get("kind") == "too_long":
+                self.assertEqual(f.get("source"), "override")
+                self.assertEqual(f.get("override_key"), "module_labels.ov1")
+            if f.get("kind") == "suffix":
+                self.assertEqual(f.get("source"), "machine")
+            by_id[f.get("kind")] = f
+        self.assertIn("too_long", by_id)
+        self.assertIn("suffix", by_id)
 
     def test_label_gate_green_on_canaries(self) -> None:
         """多域出图后 label_gate 必须绿——全选题同一闸，不靠人盯。"""

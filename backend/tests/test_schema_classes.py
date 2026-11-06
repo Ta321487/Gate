@@ -431,6 +431,28 @@ class ClassDiagramTests(unittest.TestCase):
                 w + 1.0,
             )
 
+    def test_unclump_manual_layout_separates_overlap(self) -> None:
+        """框高变大后旧坐标叠堆 → 推开，避免糊作一团。"""
+        from app.bake.schema.class_model import _unclump_manual_layout
+        from app.bake.schema.classes import _BOX_GAP
+
+        model = {
+            "layout": {
+                "a": {"x": 40.0, "y": 40.0, "w": 160.0, "h": 200.0},
+                "b": {"x": 50.0, "y": 60.0, "w": 160.0, "h": 200.0},
+            }
+        }
+        _unclump_manual_layout(model)
+        self.assertTrue(model.get("layout_unclumped"))
+        a, b = model["layout"]["a"], model["layout"]["b"]
+        separated = (
+            a["x"] + a["w"] + _BOX_GAP <= b["x"]
+            or b["x"] + b["w"] + _BOX_GAP <= a["x"]
+            or a["y"] + a["h"] + _BOX_GAP <= b["y"]
+            or b["y"] + b["h"] + _BOX_GAP <= a["y"]
+        )
+        self.assertTrue(separated, msg=f"still overlapping: {a} vs {b}")
+
     def test_class_layout_patch_roundtrip(self) -> None:
         """拖拽布局落盘后重载仍覆盖自动坐标；并按当前框高收紧间距。"""
         from app.bake.schema.classes import (

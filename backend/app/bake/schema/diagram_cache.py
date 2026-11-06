@@ -17,7 +17,8 @@ from typing import Any, Callable
 logger = logging.getLogger("app.bake.diagram_cache")
 
 _CACHE_DIR = Path("islands") / "diagram_cache"
-_CACHE_VER = 3
+# 5：modules 指纹含 overrides/module_labels；废旧缓存
+_CACHE_VER = 5
 
 # 各类图参与指纹的相对路径（缺文件记 0）
 _SOURCE_RELS: dict[str, tuple[str, ...]] = {
@@ -25,13 +26,19 @@ _SOURCE_RELS: dict[str, tuple[str, ...]] = {
         "sql/schema.sql",
         "domain.schema.json",
         "islands/class_layout.json",
+        "islands/overrides.json",
     ),
     "er": (
         "sql/schema.sql",
         "domain.schema.json",
         "islands/er_labels.json",
     ),
-    "modules": ("domain.schema.json", "spec.json"),
+    "modules": (
+        "domain.schema.json",
+        "spec.json",
+        "islands/module_labels.json",
+        "islands/overrides.json",
+    ),
     "architecture": ("domain.schema.json", "spec.json"),
     "sequences": ("domain.schema.json", "spec.json"),
     "activities": ("domain.schema.json", "spec.json"),

@@ -881,6 +881,19 @@ def build_class_model(
     model["evidence"]["oo_relations_added"] = oo_added
     dep_added = infer_dependency_relations(model)
     model["evidence"]["dependency_relations_added"] = dep_added
+    # 手调中文名须在算框高 / 排版之前叠上，否则旧坐标 + 新框高会叠成一团
+    try:
+        from app.bake.overrides import (
+            apply_class_label_overrides,
+            load_overrides_mirror,
+        )
+
+        mirror = load_overrides_mirror(workspace)
+        labels = (mirror or {}).get("class_labels") if isinstance(mirror, dict) else None
+        if labels:
+            model = apply_class_label_overrides(model, labels)
+    except Exception:  # noqa: BLE001
+        pass
     apply_class_display_mode(model, display_mode)
     patch, saved_mode = load_class_layout_bundle(workspace)
     # 仅当落盘显示规则与当前不同时收紧间距（切 sample/full）；同规则保持拖拽坐标
@@ -890,6 +903,7 @@ def build_class_model(
         # 快路径：已有落盘坐标时跳过 ELK，只算框高 + 钉框折线
         _sized_layout_stub(model)
         if apply_class_layout_patch(model, patch, compact=False):
+            _unclump_manual_layout(model)
             _apply_manual_zero_cross(model, max_rounds=8)
         else:
             attach_layout(model)
@@ -897,22 +911,78 @@ def build_class_model(
     else:
         attach_layout(model)
         if apply_class_layout_patch(model, patch, compact=compact):
+            if not compact:
+                _unclump_manual_layout(model)
             _apply_manual_zero_cross(model, max_rounds=8)
         else:
             auto_layout_fresh = True
 
-    # 首次自动排版落盘：下次打开走快路径，避免重复竞赛拖死接口
-    if auto_layout_fresh and isinstance(model.get("layout"), dict) and model["layout"]:
+    # 首次自动排版 / 叠堆推开后都落盘，避免下次仍读旧堆叠坐标或旧 cache
+    if (
+        (auto_layout_fresh or model.get("layout_unclumped"))
+        and isinstance(model.get("layout"), dict)
+        and model["layout"]
+    ):
         try:
             save_class_layout_patch(
                 workspace,
                 model["layout"],
                 display_mode=normalize_class_display_mode(display_mode),
             )
-            model["layout_auto_persisted"] = True
+            if auto_layout_fresh:
+                model["layout_auto_persisted"] = True
+            if model.get("layout_unclumped"):
+                model["layout_unclump_persisted"] = True
         except OSError:
             pass
     return model
+
+
+def _unclump_manual_layout(model: dict[str, Any]) -> None:
+    """人工钉坐标后框高可能变大；若矩形重叠则推开，避免「糊作一团」。"""
+    layout = model.get("layout")
+    if not isinstance(layout, dict) or len(layout) < 2:
+        return
+    pos: dict[str, tuple[float, float, float, float]] = {}
+    for tid, box in layout.items():
+        if not isinstance(box, dict):
+            continue
+        try:
+            pos[str(tid)] = (
+                float(box["x"]),
+                float(box["y"]),
+                float(box["w"]),
+                float(box["h"]),
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    if len(pos) < 2:
+        return
+    from app.bake.schema.class_layout import _rects_overlap, _separate_boxes
+
+    ids = list(pos.keys())
+    overlapped = False
+    for i in range(len(ids)):
+        for j in range(i + 1, len(ids)):
+            a, b = pos[ids[i]], pos[ids[j]]
+            if _rects_overlap((a[0], a[1], a[2], a[3]), (b[0], b[1], b[2], b[3])):
+                overlapped = True
+                break
+        if overlapped:
+            break
+    if not overlapped:
+        return
+    separated = _separate_boxes(pos)
+    model["layout"] = {
+        tid: {
+            "x": round(x, 1),
+            "y": round(y, 1),
+            "w": round(w, 1),
+            "h": round(h, 1),
+        }
+        for tid, (x, y, w, h) in separated.items()
+    }
+    model["layout_unclumped"] = True
 
 
 _CLASS_MODEL_CACHE: dict[str, tuple[tuple[Any, ...], dict[str, Any]]] = {}
@@ -935,7 +1005,12 @@ def _class_model_fingerprint(
         assoc_mode,
         _CLASS_ROUTE_VER,
     ]
-    for rel in ("sql/schema.sql", "domain.schema.json", "islands/class_layout.json"):
+    for rel in (
+        "sql/schema.sql",
+        "domain.schema.json",
+        "islands/class_layout.json",
+        "islands/overrides.json",
+    ):
         p = ws / rel
         try:
             st = p.stat()

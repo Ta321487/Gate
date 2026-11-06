@@ -130,7 +130,19 @@ def load_architecture_model(workspace: Path, *, title_fallback: str = "管理系
     schema = _read_json(workspace / "domain.schema.json")
     if not schema:
         return None
-    return architecture_model(schema, title_fallback=title_fallback)
+    model = architecture_model(schema, title_fallback=title_fallback)
+    try:
+        from app.bake.overrides import load_overrides_mirror
+
+        mirror = load_overrides_mirror(workspace)
+        labels = (mirror or {}).get("architecture_labels") if isinstance(mirror, dict) else None
+        if labels:
+            from app.bake.overrides import apply_architecture_label_overrides
+
+            model = apply_architecture_label_overrides(model, labels)
+    except Exception:  # noqa: BLE001
+        pass
+    return model
 
 
 def _marker_defs() -> str:

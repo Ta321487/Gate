@@ -559,6 +559,7 @@ async def download_sequences_svg(
 async def get_classes(
     project_id: str,
     display: str = Query("sample", description="sample=论文示例精简方法 · full=代码全量"),
+    force: bool = Query(False, description="强制重算（绕过图缓存）"),
     db: AsyncSession = Depends(get_db),
 ):
     """系统类图模型（论文交付默认 display=sample）。
@@ -576,6 +577,7 @@ async def get_classes(
         ws,
         display=display,
         title_fallback=p.title or "管理系统",
+        force=force,
     )
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
@@ -586,6 +588,7 @@ async def get_classes(
 async def download_classes_svg(
     project_id: str,
     display: str = Query("sample", description="sample=论文示例精简方法 · full=代码全量"),
+    force: bool = Query(False, description="强制重算（绕过图缓存）"),
     db: AsyncSession = Depends(get_db),
 ):
     from fastapi.responses import Response
@@ -600,6 +603,7 @@ async def download_classes_svg(
         ws,
         display=display,
         title_fallback=p.title or "管理系统",
+        force=force,
     )
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
