@@ -77,6 +77,7 @@
       <ul v-if="findingRows.length" class="small mod-findings">
         <li v-for="(row, i) in findingRows" :key="i">
           <strong>{{ row.kindZh }}</strong>
+          <span v-if="row.sourceZh" class="muted"> · {{ row.sourceZh }}</span>
           · {{ row.branch || '（根）' }} → 「{{ row.label || '（空）' }}」
           <span class="muted">{{ row.detail }}</span>
         </li>
@@ -115,7 +116,7 @@ const props = defineProps({
   sourceNote: { type: String, default: '' },
   /** 叶子文案机器闸：false 时提示加红 */
   labelGateOk: { type: Boolean, default: true },
-  /** label_gate.findings：kind/branch/label/detail */
+  /** label_gate.findings：kind/branch/label/detail，可选 source */
   labelGateFindings: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
 })
@@ -134,10 +135,16 @@ const KIND_ZH = {
   too_long: '超长',
 }
 
+const SOURCE_ZH = {
+  machine: '机器',
+  override: '手调',
+}
+
 const findingRows = computed(() => {
   const list = Array.isArray(props.labelGateFindings) ? props.labelGateFindings : []
   return list.slice(0, 30).map((f) => ({
     kindZh: KIND_ZH[f?.kind] || f?.kind || '闸红',
+    sourceZh: SOURCE_ZH[f?.source] || '',
     branch: String(f?.branch || '').trim(),
     label: String(f?.label || '').trim(),
     detail: String(f?.detail || '').trim(),

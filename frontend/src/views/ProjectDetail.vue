@@ -74,6 +74,9 @@
       <n-tab-pane name="artifacts" tab="产物 / 对照">
         <ArtifactsTab />
       </n-tab-pane>
+      <n-tab-pane name="overrides" tab="微调">
+        <OverridesTab />
+      </n-tab-pane>
     </n-tabs>
 
     <DetailModals />
@@ -104,6 +107,7 @@ import GenerateTab from './projectDetail/GenerateTab.vue'
 import RuntimeTab from './projectDetail/RuntimeTab.vue'
 import LogsTab from './projectDetail/LogsTab.vue'
 import ArtifactsTab from './projectDetail/ArtifactsTab.vue'
+import OverridesTab from './projectDetail/OverridesTab.vue'
 import DetailModals from './projectDetail/DetailModals.vue'
 
 const detail = useProjectDetail()
