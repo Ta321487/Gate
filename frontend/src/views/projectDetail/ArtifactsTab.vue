@@ -152,7 +152,7 @@
                       </li>
                       <li v-for="c in t.columns" :key="c.name" :class="{ pk: c.pk, fk: c.fk }">
                         <span class="col-name">{{ c.name }}</span>
-                        <span class="zh-edit-wrap">
+                        <span class="zh-edit-wrap zh-edit-wrap--col">
                           <input
                             class="zh-edit col-zh"
                             :class="{
@@ -277,23 +277,35 @@
                           </span>
                         </div>
                         <p class="small muted thesis-card-desc" :title="card.desc">{{ card.desc }}</p>
-                        <n-button
-                          size="small"
-                          type="primary"
-                          :disabled="!thesisCardOpenable(card) || artifactsFrozen"
-                          :loading="card.loading"
-                          :title="artifactsFrozen ? artifactsFrozenReason : (card.id === 'modules' && modulesLabelRed ? '文案红仍可打开：看 findings 与工厂提示' : undefined)"
-                          @click="card.open"
-                        >{{ card.action }}</n-button>
+                        <div class="thesis-card-actions">
+                          <n-button
+                            size="small"
+                            type="primary"
+                            :disabled="!thesisCardOpenable(card) || artifactsFrozen"
+                            :loading="card.loading"
+                            :title="artifactsFrozen ? artifactsFrozenReason : (card.id === 'modules' && modulesLabelRed ? '文案红仍可打开：看 findings 与工厂提示' : undefined)"
+                            @click="card.open"
+                          >{{ card.action }}</n-button>
+                          <n-button
+                            v-if="card.id === 'modules'"
+                            size="small"
+                            quaternary
+                            :disabled="artifactsFrozen"
+                            title="跳到微调 Tab 改短签；重 bake 后会叠回"
+                            @click="tab = 'overrides'"
+                          >手调文字</n-button>
+                        </div>
                       </div>
                     </div>
                     <div v-if="g.id === 'design' && modulesLabelRed" class="banner fail" style="margin:12px 0 0">
                       <h4>工厂提示 · 功能模块图文案红</h4>
                       <p class="small">
                         叶子短签未过闸（散文/超长/「模块」尾/角色前缀等），不当可贴论文图发出。
-                        打开模块图看 findings → 修工厂
+                        findings 标「机器」→ 修工厂
                         <code>backend/app/bake/schema/modules.py</code>
-                        清洗（勿只擦本包 SVG）→ 热重载后端后点「重新加载」强制重算。
+                        清洗；标「手调」→
+                        <a href="#" @click.prevent="tab = 'overrides'">微调</a>
+                        改短签或恢复机器名。热重载后端后打开图可「重新加载」强制重算。
                         仅当交付菜单 / domain.schema 叶子本身错了才重 bake。
                       </p>
                     </div>
@@ -521,7 +533,8 @@
                 :project-id="p.id"
                 :delivery-review="p.delivery_review || {}"
                 :disabled="artifactsFrozen || !p.workspace_path"
-                :reload="load"
+                :reload="refreshDeliveryReviewPanel"
+                :apply-review="applyDeliveryReviewPanel"
                 :show-scrub-copy="copyGateNeedsScrub"
                 :scrub-busy="copyScrubBusy"
                 :scrub-copy="scrubStudentCopy"
@@ -636,7 +649,9 @@ const {
   erLayoutKey, erLoading, erMode, erSvgSource, failedBannerTitle, fetchErSvg, fetchModSvg, fillEventSource,
   fillLiveCols, fillLiveRows, fillLiveSnap, fillLiveSummary, fillLiveVisible, fillPlanCols, fillPlanHint,
   fillPlanLoading, fillPlanRows, filteredApiGroups, filteredLog, form, formatSize, frontendAddr, gateCols,
-  copyGateHits, copyGateNeedsScrub, copyScrubBusy, scrubStudentCopy, gateRows, genState, genSuccessBannerHint, genSuccessBannerTitle, goArtifacts, isApiCollapsed, isTableCollapsed, jobActing,
+  copyGateHits, copyGateNeedsScrub, copyScrubBusy, scrubStudentCopy,
+  applyDeliveryReviewPanel, refreshDeliveryReviewPanel,
+  gateRows, genState, genSuccessBannerHint, genSuccessBannerTitle, goArtifacts, isApiCollapsed, isTableCollapsed, jobActing,
   jobInFlight, keepDb, keywordHits, labelLooksLatin, layoutOptions, llmOptions, load, loadApis,
   loadArtifactView, loadError, loadErrorCode, loadLog, loadSchema, logFilter, logLoading, logReqSeq,
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,

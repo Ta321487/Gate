@@ -1335,19 +1335,108 @@ async function scrubStudentCopy() {
   copyScrubBusy.value = true
   try {
     const res = await api.scrubStudentCopy(p.value.id)
-    await load()
     const data = res?.data || {}
+    // 接口已成功：先用响应体对齐门禁/合卷提示，勿 await 整页 load（产物视图重、失败会误报清洗失败）
+    const gates = { ...(p.value.gates || {}) }
+    const prevCopy = gates.p3copy && typeof gates.p3copy === 'object' ? gates.p3copy : {}
+    const prevSem = gates.p3s && typeof gates.p3s === 'object' ? gates.p3s : {}
+    const prevLean = gates.p3lean && typeof gates.p3lean === 'object' ? gates.p3lean : {}
+    if ('copy_ok' in data) {
+      gates.p3copy = {
+        ...prevCopy,
+        ok: !!data.copy_ok,
+        desc: data.copy_desc || prevCopy.desc || '',
+        detail: {
+          ...(prevCopy.detail && typeof prevCopy.detail === 'object' ? prevCopy.detail : {}),
+          hits: Array.isArray(data.hits) ? data.hits : [],
+        },
+      }
+    }
+    if ('semantic_ok' in data) {
+      gates.p3s = {
+        ...prevSem,
+        ok: !!data.semantic_ok,
+        desc: data.semantic_desc || prevSem.desc || '',
+        detail: {
+          ...(prevSem.detail && typeof prevSem.detail === 'object' ? prevSem.detail : {}),
+          demo_hits: Array.isArray(data.demo_hits) ? data.demo_hits : (prevSem.detail?.demo_hits || []),
+        },
+      }
+    }
+    if ('lean_ok' in data) {
+      gates.p3lean = {
+        ...prevLean,
+        ok: !!data.lean_ok,
+        desc: data.lean_desc || prevLean.desc || '',
+      }
+    }
+    applyDeliveryReviewPanel({
+      ...(p.value.delivery_review || {}),
+      zip_stale: true,
+      gates,
+      zip_ready: false,
+      download_blocked_reason:
+        data.download_blocked_reason
+        || p.value.download_blocked_reason
+        || '工程已变更 · 请完成验圈并重新合卷后再下载',
+    })
     const ok = !!data.copy_ok && data.semantic_ok !== false
     message.success(
       ok
         ? '学生可见文案已清洗 · 请到交付复审验圈后合卷'
         : (res?.message || '已尝试清洗 · 请看是否仍有命中'),
     )
+    try {
+      await refreshDeliveryReviewPanel()
+    } catch {
+      /* 写已成功；投影刷新失败不改 busy / 不弹清洗失败 */
+    }
   } catch (err) {
     message.error(err?.response?.data?.detail || err?.message || '清洗失败')
   } finally {
     copyScrubBusy.value = false
   }
+}
+
+/**
+ * 交付复审投影写回：review 字段进 delivery_review；
+ * gates/checklist/zip_ready 等升到详情顶层（质量检查 Tab / canDownload 读顶层）。
+ */
+function applyDeliveryReviewPanel(panel) {
+  if (!p.value || !panel || typeof panel !== 'object') return
+  const {
+    gates,
+    checklist,
+    zip_ready,
+    download_blocked_reason,
+    status,
+    delivery_mark,
+    ...reviewFields
+  } = panel
+  const next = {
+    ...p.value,
+    delivery_review: {
+      ...(p.value.delivery_review || {}),
+      ...reviewFields,
+      ...(gates && typeof gates === 'object' ? { gates } : {}),
+      ...(Array.isArray(checklist) ? { checklist } : {}),
+    },
+  }
+  if (gates && typeof gates === 'object') next.gates = gates
+  if (Array.isArray(checklist)) next.checklist = checklist
+  if (zip_ready !== undefined) next.zip_ready = !!zip_ready
+  if (download_blocked_reason !== undefined) {
+    next.download_blocked_reason = download_blocked_reason
+  }
+  if (status) next.status = status
+  if (delivery_mark !== undefined) next.delivery_mark = delivery_mark
+  p.value = next
+}
+
+async function refreshDeliveryReviewPanel() {
+  if (!p.value?.id) return
+  const panel = await api.getDeliveryReview(p.value.id)
+  applyDeliveryReviewPanel(panel)
 }
 
 function goArtifacts(view = 'db') {
@@ -1779,6 +1868,32 @@ async function reloadSeqSvg() {
   }
 }
 
+/** 勾选写入 Overrides，重 bake / 重开仍在（pack-overrides P1） */
+async function persistDiagramSelection(section, ids) {
+  if (!p.value?.id || !Array.isArray(ids) || !ids.length) return
+  try {
+    const cur = await api.getOverrides(p.value.id)
+    const payload = { ...(cur.payload || {}), schema_version: 1 }
+    const prev = payload[section] && typeof payload[section] === 'object' ? payload[section] : {}
+    payload[section] = {
+      ...prev,
+      selected_ids: [...ids],
+      labels: prev.labels && typeof prev.labels === 'object' ? prev.labels : {},
+    }
+    if (section === 'usecase_desc') {
+      payload[section].cell_overrides =
+        prev.cell_overrides && typeof prev.cell_overrides === 'object' ? prev.cell_overrides : {}
+    }
+    await api.putOverrides(p.value.id, {
+      payload,
+      version: cur.version || 0,
+      apply: true,
+    })
+  } catch {
+    /* 图已换选；持久化失败不挡预览，下次仍可再勾 */
+  }
+}
+
 async function onSeqApplySelection(ids) {
   if (!Array.isArray(ids) || ids.length !== 3) {
     message.warning('请恰好勾选 3 个交付功能')
@@ -1788,6 +1903,7 @@ async function onSeqApplySelection(ids) {
   try {
     seqIndex.value = 0
     await loadSequences(ids)
+    await persistDiagramSelection('sequence', ids)
   } catch (e) {
     message.error(e?.response?.data?.detail || '无法按所选功能生成序列图')
   } finally {
@@ -1865,6 +1981,7 @@ async function onActApplySelection(ids) {
   try {
     actIndex.value = 0
     await loadActivities(ids)
+    await persistDiagramSelection('activity', ids)
   } catch (e) {
     message.error(e?.response?.data?.detail || '无法按所选功能生成活动图')
   } finally {
@@ -1913,7 +2030,11 @@ async function openClasses() {
   if (!p.value || classLoading.value || artifactsFrozen.value) return
   classLoading.value = true
   try {
-    classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
+    // force：废掉叠堆旧 SVG；后端会推开重叠框并写回坐标
+    classMeta.value = await api.getClasses(p.value.id, {
+      display: classDisplayMode.value,
+      force: true,
+    })
     classSvgSource.value = svgFromPack(classMeta.value)
     classLayoutKey.value += 1
     showClasses.value = true
@@ -1928,7 +2049,10 @@ async function reloadClassSvg() {
   if (!p.value || classLoading.value) return
   classLoading.value = true
   try {
-    classMeta.value = await api.getClasses(p.value.id, { display: classDisplayMode.value })
+    classMeta.value = await api.getClasses(p.value.id, {
+      display: classDisplayMode.value,
+      force: true,
+    })
     classSvgSource.value = svgFromPack(classMeta.value)
     classLayoutKey.value += 1
   } catch {
@@ -2174,10 +2298,10 @@ async function toggleUnlock() {
     if (!ok) return
     matchBusy.value = true
     try {
-      await api.patchMatch(p.value.id, { unlock: true })
-      unlocked.value = true
+      // patch 已回 ProjectDetail：直接落地，勿再 await 整页 load
+      p.value = await api.patchMatch(p.value.id, { unlock: true })
+      unlocked.value = !p.value.match_locked
       message.success('已解锁')
-      await load()
     } finally {
       matchBusy.value = false
     }
@@ -2188,10 +2312,9 @@ async function toggleUnlock() {
     }
     matchBusy.value = true
     try {
-      await api.patchMatch(p.value.id, { unlock: false })
-      unlocked.value = false
+      p.value = await api.patchMatch(p.value.id, { unlock: false })
+      unlocked.value = !p.value.match_locked
       message.success('已重新锁定')
-      await load()
     } finally {
       matchBusy.value = false
     }
@@ -2444,9 +2567,15 @@ async function runGenerateJob(opts = {}) {
     )
     if (!ok) return
     try {
-      await api.closeDeliveryReview(p.value.id)
+      const closeRes = await api.closeDeliveryReview(p.value.id)
+      const st = closeRes?.data?.review
+      if (st && typeof st === 'object') {
+        applyDeliveryReviewPanel({
+          ...(p.value.delivery_review || {}),
+          review: st,
+        })
+      }
       message.success('已结束复审')
-      await load({ syncTab: false, lite: true })
     } catch (e) {
       message.error(e?.response?.data?.detail || e?.message || '结束复审失败')
       return
@@ -2456,6 +2585,10 @@ async function runGenerateJob(opts = {}) {
   try {
     const res = await api.generate(p.value.id, { confirmDiff: !!opts.confirmDiff })
     message.success(res.message || '已启动生成')
+    // 写已入队：立刻切 generating，勿等 lite load 才放按钮
+    if (p.value) {
+      p.value = { ...p.value, status: 'generating' }
+    }
     const jobId = res?.data?.job_id
     if (jobId) {
       try {
@@ -2467,7 +2600,6 @@ async function runGenerateJob(opts = {}) {
     await refreshJob()
     tab.value = 'generate'
     startPoll()
-    await load({ syncTab: false, lite: true })
   } catch (e) {
     const detail = e?.response?.data?.detail || e?.message || '启动生成失败'
     if (typeof detail === 'string' && detail.includes('交付复审进行中')) {
@@ -2478,6 +2610,10 @@ async function runGenerateJob(opts = {}) {
     throw e
   } finally {
     softApplying.value = false
+  }
+  // 入队成功后 busy 已消；投影由轮询对齐，勿堵在 lite load
+  if (p.value?.status === 'generating') {
+    void load({ syncTab: false, lite: true }).catch(() => {})
   }
 }
 
@@ -2493,10 +2629,13 @@ async function cancelCurrent() {
   try {
     await api.cancelJob(currentJob.value.id)
     message.success('已取消')
-    await load()
+    if (currentJob.value) {
+      currentJob.value = { ...currentJob.value, status: 'cancelled' }
+    }
   } finally {
     jobActing.value = ''
   }
+  void load({ syncTab: false, lite: true }).catch(() => {})
 }
 
 async function retryCurrent() {
@@ -2509,11 +2648,17 @@ async function retryCurrent() {
   try {
     const res = await api.retryJob(currentJob.value.id)
     message.success(res?.message || '已从失败步骤续跑')
-    await load()
+    if (p.value) {
+      p.value = { ...p.value, status: 'generating' }
+    }
+    if (currentJob.value) {
+      currentJob.value = { ...currentJob.value, status: 'running' }
+    }
     startPoll()
   } finally {
     jobActing.value = ''
   }
+  void load({ syncTab: false, lite: true }).catch(() => {})
 }
 
 function downloadZip() {
@@ -2803,6 +2948,8 @@ onUnmounted(() => {
     copyGateNeedsScrub,
     copyScrubBusy,
     scrubStudentCopy,
+    applyDeliveryReviewPanel,
+    refreshDeliveryReviewPanel,
     genState,
     genSuccessBannerHint,
     genSuccessBannerTitle,

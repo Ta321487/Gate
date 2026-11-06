@@ -271,14 +271,15 @@ async function loadFormControlsGate() {
 async function load() {
   loading.value = true
   try {
+    // 系统摘要先落地并消顶栏 loading；布局/控件闸各有按钮 loading，勿串进顶栏转圈
     info.value = await api.system()
-    await Promise.all([loadCache(), loadLayoutGate(), loadFormControlsGate()])
   } catch {
     info.value = null
   } finally {
     loading.value = false
     booted.value = true
   }
+  await Promise.all([loadCache(), loadLayoutGate(), loadFormControlsGate()])
 }
 
 async function free() {
@@ -288,7 +289,12 @@ async function free() {
     const cleaned = res?.data?.cleaned || 0
     if (cleaned) message.success(res.message)
     else message.info(res.message)
-    await load()
+    // 释放端口已成功：只刷系统信息，勿串布局/控件闸（可达 120s）拖住按钮
+    try {
+      info.value = await api.system()
+    } catch {
+      /* ignore */
+    }
   } finally {
     freeing.value = false
   }

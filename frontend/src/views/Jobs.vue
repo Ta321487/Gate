@@ -160,7 +160,12 @@ function pruneExpanded(tree) {
 async function act(fn, okMsg) {
   const res = await fn()
   message.success(typeof res === 'string' ? res : (okMsg || '完成'))
-  await load()
+  // 写已成功：列表刷新失败不吞成功态
+  try {
+    await load()
+  } catch {
+    /* ignore */
+  }
 }
 
 const columns = [

@@ -202,9 +202,16 @@ export function usePdRuntime({ p, tab, route, ctx }) {
     }
     startRtWatch()
     try {
-      await api.runtimeAction(projectId, side, action)
+      const res = await api.runtimeAction(projectId, side, action)
       if (!ctx.viewActive(projectId, epoch)) return
-      await ctx.load({ id: projectId })
+      // 启停接口已成功：用响应体 + runtime 投影对齐，勿整页 load（会拖产物/门禁、超时后按钮仍转圈）
+      const meta = res?.data && typeof res.data === 'object' ? res.data : {}
+      if (p.value && p.value.id === projectId) {
+        if (meta.backend_port != null) p.value.backend_port = meta.backend_port
+        if (meta.frontend_port != null) p.value.frontend_port = meta.frontend_port
+        if (meta.project_status) p.value.status = meta.project_status
+      }
+      await refreshRuntime(projectId)
       if (!ctx.viewActive(projectId, epoch)) return
       // 冷启动 Maven 常要 1～2 分钟；超时后仍靠 startRtWatch 继续刷到 settled
       const deadline = Date.now() + (action === 'stop' ? 12000 : 180000)

@@ -100,6 +100,11 @@ export const api = {
     }),
   putErLabels: (id, body) => http.put(`/projects/${id}/schema/er-labels`, body),
   putErView: (id, body) => http.put(`/projects/${id}/schema/er-view`, body),
+  getOverrides: (id) => http.get(`/projects/${id}/overrides`, { timeout: 120000 }),
+  // apply 会叠材料/洗缓存，勿用默认 60s 误报失败而 UI 仍旧草稿
+  putOverrides: (id, body) => http.put(`/projects/${id}/overrides`, body, { timeout: 120000 }),
+  clearOverridesStale: (id) =>
+    http.post(`/projects/${id}/overrides/clear-stale`, null, { timeout: 120000 }),
   getModules: (id, { layout = 'identity', expandDetails = false, force = false } = {}) =>
     http.get(`/projects/${id}/schema/modules`, {
       params: {
@@ -128,8 +133,11 @@ export const api = {
     if (ids?.length) q.set('ids', ids.join(','))
     return `/api/projects/${id}/schema/activities.svg?${q}`
   },
-  getClasses: (id, { display = 'sample' } = {}) =>
-    http.get(`/projects/${id}/schema/classes`, { params: { display }, timeout: 120000 }),
+  getClasses: (id, { display = 'sample', force = false } = {}) =>
+    http.get(`/projects/${id}/schema/classes`, {
+      params: { display, ...(force ? { force: true } : {}) },
+      timeout: 120000,
+    }),
   classesSvgUrl: (id, { display = 'sample' } = {}) => {
     const q = new URLSearchParams({ display })
     return `/api/projects/${id}/schema/classes.svg?${q}`
@@ -180,7 +188,9 @@ export const api = {
     return `/api/projects/${id}/schema/modules.svg?${q}`
   },
   runtime: (id) => http.get(`/projects/${id}/runtime`),
-  runtimeAction: (id, side, action) => http.post(`/projects/${id}/runtime/${side}/${action}`),
+  // 分配端口 / 启停握手可能超过默认 60s；长跑态靠前端轮询，勿用默认超时误杀
+  runtimeAction: (id, side, action) =>
+    http.post(`/projects/${id}/runtime/${side}/${action}`, null, { timeout: 120000 }),
   /** 批量预览启停；action=start 对运行中的项目等价重启（服务端串行错峰，可能较久） */
   runtimeBatch: (body) => http.post('/projects/runtime/batch', body, { ...HEAVY_OPTS }),
   logs: (id, side, opts) => http.get(`/projects/${id}/logs/${side}`, opts),
@@ -193,16 +203,24 @@ export const api = {
   deleteJob: (id) => http.delete(`/jobs/${id}`),
   getProposalDiff: (id) => http.get(`/projects/${id}/proposal-diff`),
   ackPreGenerate: (id) => http.post(`/projects/${id}/delivery-review/ack-pre-generate`),
-  getDeliveryReview: (id) => http.get(`/projects/${id}/delivery-review`),
-  startDeliveryReview: (id) => http.post(`/projects/${id}/delivery-review/start`),
-  closeDeliveryReview: (id) => http.post(`/projects/${id}/delivery-review/close`),
-  verifyDeliveryReview: (id) => http.post(`/projects/${id}/delivery-review/verify`),
-  repackDeliveryReview: (id) => http.post(`/projects/${id}/delivery-review/repack`),
+  // 会算 workspace 指纹，勿用默认 60s
+  getDeliveryReview: (id) =>
+    http.get(`/projects/${id}/delivery-review`, { timeout: 120000 }),
+  startDeliveryReview: (id) =>
+    http.post(`/projects/${id}/delivery-review/start`, null, { timeout: 120000 }),
+  closeDeliveryReview: (id) =>
+    http.post(`/projects/${id}/delivery-review/close`, null, { timeout: 120000 }),
+  // 验圈会顺带跑 QA Agent（LLM 可达 ~120s）+ 门禁；勿用默认 60s
+  verifyDeliveryReview: (id) =>
+    http.post(`/projects/${id}/delivery-review/verify`, null, { timeout: 180000 }),
+  repackDeliveryReview: (id) =>
+    http.post(`/projects/${id}/delivery-review/repack`, null, { timeout: 120000 }),
   runDeliveryQa: (id) => http.post(`/projects/${id}/delivery-review/qa`, null, { timeout: 180000 }),
   scrubStudentCopy: (id) => http.post(`/projects/${id}/scrub-student-copy`, null, { timeout: 120000 }),
-  addDeliveryFixNote: (id, text) => http.post(`/projects/${id}/delivery-review/notes`, { text }),
+  addDeliveryFixNote: (id, text) =>
+    http.post(`/projects/${id}/delivery-review/notes`, { text }, { timeout: 120000 }),
   resolveDeliveryFixNote: (id, noteId, done = true) =>
-    http.patch(`/projects/${id}/delivery-review/notes/${noteId}`, { done }),
+    http.patch(`/projects/${id}/delivery-review/notes/${noteId}`, { done }, { timeout: 120000 }),
   deliveryHandoffUrl: (id) => `/api/projects/${id}/delivery-review/handoff`,
   purgeOrphanJobs: () => http.post('/jobs/purge-orphans'),
   purgeFinishedJobs: () => http.post('/jobs/purge-finished'),

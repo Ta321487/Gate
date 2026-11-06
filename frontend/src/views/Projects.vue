@@ -873,13 +873,27 @@ async function markRowDelivery(row, mark) {
   if (!row?.id || deliveryBusyId.value) return
   deliveryBusyId.value = row.id
   try {
-    await api.patchDelivery(row.id, mark)
+    const detail = await api.patchDelivery(row.id, mark)
+    // 接口已回 ProjectDetail：就地 patch 行，勿整表 load（会串 stats/目录把按钮拖住）
+    const idx = list.value.findIndex((r) => r.id === row.id)
+    if (idx >= 0 && detail && typeof detail === 'object') {
+      const cur = list.value[idx]
+      list.value[idx] = {
+        ...cur,
+        delivery_mark: detail.delivery_mark ?? mark,
+        zip_ready: detail.zip_ready ?? cur.zip_ready,
+        download_blocked_reason:
+          detail.download_blocked_reason !== undefined
+            ? detail.download_blocked_reason
+            : cur.download_blocked_reason,
+        status: detail.status || cur.status,
+      }
+    }
     message.success(
       mark === 'delivered' || mark === 'ready'
         ? `已标记为${deliveryMarkLabel(mark)}`
         : '已清除履约标记',
     )
-    await load()
   } finally {
     deliveryBusyId.value = ''
   }

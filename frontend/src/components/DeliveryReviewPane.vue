@@ -322,6 +322,8 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   /** 可选：返回 Promise 的刷新函数；有则 await，避免 busy 过早清空导致连点 */
   reload: { type: Function, default: null },
+  /** 合卷成功后先乐观写入投影（消黄条），再等 reload 权威对齐 */
+  applyReview: { type: Function, default: null },
   /** 与质量检查同源：父级 scrubStudentCopy / copyGateNeedsScrub */
   showScrubCopy: { type: Boolean, default: false },
   scrubBusy: { type: Boolean, default: false },
@@ -395,11 +397,27 @@ watch(
 )
 
 async function refreshAfter() {
-  if (typeof props.reload === 'function') {
-    await props.reload()
-    return
+  // 写操作已成功时，投影刷新失败不得冒泡成「操作失败」或拖死 busy
+  try {
+    if (typeof props.reload === 'function') {
+      await props.reload()
+      return
+    }
+    emit('refresh')
+  } catch {
+    /* ignore */
   }
-  emit('refresh')
+}
+
+/** 验圈/合卷/QA 响应里已有结论时立刻 patch，再轻量刷新 */
+function applyFromWrite(patch) {
+  if (!patch || typeof patch !== 'object') return
+  if (typeof props.applyReview === 'function') {
+    props.applyReview({
+      ...(props.deliveryReview || {}),
+      ...patch,
+    })
+  }
 }
 
 function formatAt(raw) {
@@ -609,7 +627,16 @@ async function onStart() {
   if (busy.value || props.disabled) return
   busy.value = 'start'
   try {
-    await api.startDeliveryReview(props.projectId)
+    const res = await api.startDeliveryReview(props.projectId)
+    const st = res?.data?.review
+    if (st && typeof st === 'object') {
+      applyFromWrite({
+        review: st,
+        zip_stale: true,
+        zip_ready: false,
+        delivery_mark: 'none',
+      })
+    }
     message.success('已进入交付复审')
     await refreshAfter()
   } catch (e) {
@@ -658,9 +685,27 @@ async function onVerify() {
         message.warning('验圈未通过 · 请查看毒区与「质量检查」页')
       }
     }
+    // 响应已含 gates/checklist/zip_*：先 patch 顶层，再轻量拉投影
+    applyFromWrite({
+      review: payload.review,
+      zones: payload.zones,
+      blocking_gates: payload.blocking_gates,
+      zip_stale: payload.zip_stale,
+      gates: payload.gates,
+      checklist: payload.checklist,
+      zip_ready: payload.zip_ready,
+      download_blocked_reason: payload.download_blocked_reason,
+    })
     await refreshAfter()
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '验圈失败')
+    const code = e?.code || ''
+    const timedOut =
+      code === 'ECONNABORTED' || /timeout/i.test(String(e?.message || ''))
+    message.error(
+      timedOut
+        ? '验圈超时 · 后台可能仍在跑，稍后刷新再看；网络慢时可再点一次'
+        : e?.response?.data?.detail || e?.message || '验圈失败',
+    )
   } finally {
     busy.value = ''
   }
@@ -670,11 +715,28 @@ async function onRepack() {
   if (busy.value || props.disabled || !canRepack.value) return
   busy.value = 'repack'
   try {
-    await api.repackDeliveryReview(props.projectId)
+    const raw = await api.repackDeliveryReview(props.projectId)
+    const meta = raw?.data && typeof raw.data === 'object' ? raw.data : {}
+    // 接口已成功：立刻消「未同步」并放开下载条件，勿等整页 load
+    applyFromWrite({
+      zip_stale: false,
+      workspace_hash:
+        meta.workspace_hash || props.deliveryReview?.workspace_hash || '',
+      zip_ready: true,
+      download_blocked_reason: null,
+      status: 'generated',
+    })
     message.success('合卷完成 · 交付包已更新')
     await refreshAfter()
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '合卷失败')
+    const code = e?.code || ''
+    const timedOut =
+      code === 'ECONNABORTED' || /timeout/i.test(String(e?.message || ''))
+    message.error(
+      timedOut
+        ? '合卷请求超时 · 若 Network 已显示成功请刷新本页对齐状态'
+        : e?.response?.data?.detail || e?.message || '合卷失败',
+    )
   } finally {
     busy.value = ''
   }
@@ -687,6 +749,14 @@ async function onQa() {
     const res = await api.runDeliveryQa(props.projectId)
     if (res.qa?.ok) message.success('质量摘要已通过')
     else message.warning('质量摘要存在 error 级问题')
+    applyFromWrite({
+      gates: res.gates,
+      download_blocked_reason: res.download_blocked_reason,
+      review: {
+        ...(props.deliveryReview?.review || {}),
+        last_qa: res.qa,
+      },
+    })
     await refreshAfter()
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '质量摘要失败')
@@ -699,7 +769,11 @@ async function onClose() {
   if (busy.value || props.disabled) return
   busy.value = 'close'
   try {
-    await api.closeDeliveryReview(props.projectId)
+    const res = await api.closeDeliveryReview(props.projectId)
+    const st = res?.data?.review
+    if (st && typeof st === 'object') {
+      applyFromWrite({ review: st })
+    }
     message.success('已结束交付复审')
     await refreshAfter()
   } catch (e) {
@@ -723,7 +797,11 @@ async function onCloseAndRebake() {
   if (!ok) return
   busy.value = 'close-rebake'
   try {
-    await api.closeDeliveryReview(props.projectId)
+    const res = await api.closeDeliveryReview(props.projectId)
+    const st = res?.data?.review
+    if (st && typeof st === 'object') {
+      applyFromWrite({ review: st })
+    }
     message.success('已结束复审 · 请确认选项后重新生成')
     await refreshAfter()
     if (typeof props.goGenerate === 'function') {
@@ -743,11 +821,27 @@ async function onAddNote() {
   if (!text || busy.value || props.disabled) return
   busy.value = 'note'
   try {
-    await api.addDeliveryFixNote(props.projectId, text)
+    const res = await api.addDeliveryFixNote(props.projectId, text)
+    const note = res?.data?.note
     noteText.value = ''
     showDoneNotes.value = false
+    // 响应已含新 note：先入投影，勿等 getDeliveryReview（指纹可达 120s）才消 loading
+    if (note && typeof note === 'object') {
+      const prev = props.deliveryReview?.review || {}
+      const notes = [...(Array.isArray(prev.fix_notes) ? prev.fix_notes : []), note].slice(-40)
+      applyFromWrite({
+        review: {
+          ...prev,
+          status: prev.status === 'idle' || !prev.status ? 'active' : prev.status,
+          fix_notes: notes,
+        },
+        delivery_mark: 'none',
+      })
+    }
     message.success('已登记偏差')
     await refreshAfter()
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '登记失败')
   } finally {
     busy.value = ''
   }
@@ -758,6 +852,17 @@ async function onResolveNote(noteId, done) {
   busy.value = `note-${noteId}`
   try {
     await api.resolveDeliveryFixNote(props.projectId, noteId, done)
+    // 接口无投影体：本地改 note 状态，再轻量对齐
+    const prev = props.deliveryReview?.review || {}
+    const notes = (Array.isArray(prev.fix_notes) ? prev.fix_notes : []).map((n) => {
+      if (!n || n.id !== noteId) return n
+      return {
+        ...n,
+        status: done ? 'done' : 'open',
+        resolved_at: done ? (n.resolved_at || new Date().toISOString()) : null,
+      }
+    })
+    applyFromWrite({ review: { ...prev, fix_notes: notes } })
     message.success(done ? '已结案' : '已重开')
     await refreshAfter()
   } catch (e) {
