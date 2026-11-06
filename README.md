@@ -8,6 +8,8 @@
 
 生成以确定性骨架 + 领域配置为主；LLM（DeepSeek）只填白名单「业务岛」，不写业务 Java/Vue。门禁未通过禁止下载 ZIP。
 
+产品化（内部工具 → 软件公司级运营控制台，非「作者够用」标准）：成熟度、运营交互与改进项见 [`docs/product-form-maturity.md`](./docs/product-form-maturity.md)（§2.4 / §4·P）。
+
 ## 技术栈
 
 | 端 | 技术 |

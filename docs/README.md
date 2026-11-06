@@ -12,6 +12,7 @@
 
 | 文档 | 何时读 | 状态 |
 |------|--------|------|
+| [product-form-maturity.md](./product-form-maturity.md) | **内部工具 → 软件公司级产品**：成熟度、运营交互 §2.4/§4·P、用语 O、复测与定位 | 活表 · 改 UI 前读 §4·P |
 | [capabilities.md](./capabilities.md) | 查 **cap id** 与挂载口径（域默认 / 开题才挂 / 壳附带） | 活表 |
 | [domains.md](./domains.md) | 查 `DOM-*` 分组（**A～F 具名 → G 真交叉 → H 兜底**）与**域默认**能力组合、GENERIC/ARCH、Path B | 活表 |
 | [difficulty-tiers.md](./difficulty-tiers.md) | 开题可写到哪一层（L0–L3）、加价边界 | 活表 |
@@ -48,7 +49,7 @@
 | [immersion-corners.md](./immersion-corners.md) | 沉浸感边角（毕设加分，非门禁） | 非强制清单 |
 | [surface-lexicon-design.md](./surface-lexicon-design.md) | 话术层（Surface Lexicon）设计与批次 | 设计稿；批 A/B/C 已落地见 HANDOFF |
 | [role-boundary-copy-batch.md](./role-boundary-copy-batch.md) | **换开题抗性诚实账** + **角色边界（L4）**按域族收成结构闸 | 批次册 · §0 常读；`trade`～`fallback` **十组已齐**；L2/L5 仍是长尾 |
-| [pack-overrides.md](./pack-overrides.md) | **出包微调（Overrides）**：八张材料手调、重 bake 重放、UI 定稿、闸与现网统一 | **计划册已对账订正** · §1.5/§4.4 · UI §6 已定 · 未开工代码 · 等人令 `做 P0` |
+| [pack-overrides.md](./pack-overrides.md) | **出包微调（Overrides）**：八张材料手调、重 bake 重放、UI 定稿、闸与现网统一 | **P0～P3 已落地**（未 commit）· 等人令推送 |
 | [validation-loop-hardening.md](./validation-loop-hardening.md) | **校验闭环加固**：假宣称/错域词 error、FAQ 默认关润色、低置信/GENERIC 强制核域 | **批 1～4 已齐** · 待提交 |
 
 ## 答辩 PPT
