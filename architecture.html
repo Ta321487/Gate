@@ -175,7 +175,9 @@ flowchart TB
         BAKE_FEAT["features/ 能力扫词 / 菜单 / ensure_*"]
         BAKE_PRUNE["pack_prune.py 出包前剪未挂岛"]
         BAKE_SCH["schema/ 壳 / ER / 模块 / 用例 / 测试用例"]
-        BAKE_GATE["gates/ 门禁 p0a…p3lean + overall"]
+        BAKE_EXPORT["schema/diagram_* 论文图三档导出 SVG / Mermaid / Draw.io + rubric 闸"]
+        BAKE_SWATCH["shell_color_swatches.py 壳色色点池（静态资产）"]
+        BAKE_GATE["gates/ 门禁 p0a…p3controls + overall"]
         SCENE["scene_scan.py 场景身份唯一真源"]
     end
     subgraph L5["⑤ LLM 层 backend/app/llm 只填白名单岛"]
@@ -216,6 +218,8 @@ flowchart TB
     BAKE_ENG --> BAKE_SQL
     BAKE_ENG --> BAKE_FEAT
     BAKE_ENG --> BAKE_SCH
+    BAKE_ENG --> BAKE_EXPORT
+    BAKE_ENG --> BAKE_SWATCH
     BAKE_ENG --> SCENE
     BAKE_ENG --> BAKE_PRUNE
     SVC --> LLM_FLOW --> LLM_AG --> LLM_RT
@@ -239,7 +243,7 @@ flowchart TB
     <div class="tile"><h4>进程隔离</h4><p>运营后端（Python）与学生工程（JVM + Node）是两类进程；工厂只启停与探活。</p></div>
     <div class="tile g"><h4>端口池</h4><p>学生后端 9100–9120、前端 9200–9220；限制同时在跑的数量，不限制选题库存。</p></div>
     <div class="tile o"><h4>数据分离</h4><p>工厂元库管运营状态；学生库由 student_db.py 建库建表灌种子并回收。</p></div>
-    <div class="tile v"><h4>LLM 边界</h4><p>只产出白名单 island / 标签 / 用例等 schema JSON，业务代码由模板决定。</p></div>
+    <div class="tile v"><h4>LLM 边界</h4><p>只产出白名单 island / 标签 / 用例等 schema JSON，业务代码由模板决定；不确定 → 确定性：审类闸先行、生成类校验回退。</p></div>
   </div>
 </section>
 
@@ -279,7 +283,7 @@ flowchart LR
     <tr><td>5 <code>gate_e2e</code></td><td><code>bake/gates/evaluate.py</code> + <code>delivery_review.evaluate_workspace_gates</code> + QA Agent</td><td><code>projects.gates</code>、<code>projects.checklist</code>；<code>overall</code> 决定能否打包</td></tr>
     <tr><td>6 <code>pack</code></td><td><code>delivery_review.finalize_pack</code> → <code>jobs.pack_zip</code>；bake 末段已跑 <code>pack_prune</code></td><td>先写临时文件再原子替换的 ZIP；排除 node_modules / target / .git / islands / .factory；未挂岛由 <code>pack_prune</code> 剪掉，残留则 <code>p3lean</code> 拒 ZIP</td></tr>
   </table>
-  <p class="sub">门禁键：<code>p0a</code> 后端骨架 · <code>p0b</code> 前端骨架 · <code>p1</code> 登录基线 · <code>p2</code> 领域主流程 E2E · <code>p3a</code> 清单实装 · <code>p3b</code> Spec/契约一致 · <code>p3t</code> 技术栈 · <code>p3d</code> 文档 · <code>p3s</code> 语义 · <code>p3n</code> 库表 · <code>p3ac</code> 档案语义列 · <code>p3q</code> 质量摘要 · <code>p3lean</code> 出包精简（无未挂岛残留），外加可接题边界 <code>accept</code>。单调性键见 <code>bake/gates/keys.py</code>；复审期间由 <code>forbid_full_rebake</code> 拦截整段重跑。</p>
+  <p class="sub">门禁键：<code>p0a</code> 后端骨架 · <code>p0b</code> 前端骨架 · <code>p1</code> 登录基线 · <code>p2</code> 领域主流程 E2E · <code>p3a</code> 清单实装 · <code>p3b</code> Spec/契约一致 · <code>p3t</code> 技术栈 · <code>p3d</code> 文档 · <code>p3s</code> 语义 · <code>p3n</code> 库表 · <code>p3ac</code> 档案语义列 · <code>p3q</code> 质量摘要 · <code>p3lean</code> 出包精简（无未挂岛残留）· <code>p3layout</code> 起包前布局闸 · <code>p3controls</code> 可交互控件闸，外加可接题边界 <code>accept</code>。单调性键见 <code>bake/gates/keys.py</code>；复审期间由 <code>forbid_full_rebake</code> 拦截整段重跑。</p>
 </section>
 
 <section id="s3">
@@ -324,6 +328,7 @@ flowchart TB
     PD --> T4["LogsTab 日志过滤"]
     PD --> T5["ArtifactsTab 库表 / 论文材料 / API / 复审 / 质量 / PPT"]
     T5 --> AV["图查看器组件 ER · 模块 · 架构 · 序列 · 活动 · 类 · 用例 · 测试用例"]
+    T5 --> DX["论文图导出 SVG / Mermaid .mmd / Draw.io .drawio（导出前过 rubric 闸）"]
     T2 --> PPM["components/defensePpt/ + ppt/ 答辩 PPT 面板与页预览"]
     V1 --> API["api.js · axios baseURL='/api' timeout 60s（重操作 600s / 轮询 8s 静默）"]
     V2 --> API
@@ -544,6 +549,7 @@ flowchart TB
     <li>骨架不含 <code>node_modules</code> / <code>target</code> / <code>dist</code>：<code>bake_project</code> 的 <code>copytree(ignore=…)</code> 明确跳过；前端依赖由预览子系统挂共享缓存，Maven target 由编译再生。</li>
     <li>持久层由 <code>bake/persistence.py</code> 决定：默认 <code>jdbc</code>（JdbcTemplate），开题点名时切 <code>mybatis</code> / <code>jpa</code>，并按需叠 <code>addon-spring-security</code>。</li>
     <li>场景身份（校园 / 企业 / 社区）由 <code>bake/scene_scan.py</code> 的 <code>scene_for(domain, title, proposal)</code> 统一决定；壳文案与注册资料页必须读同一 scene，<b>禁止改开题迁就模板</b>。</li>
+    <li>论文图与壳色：<code>bake/schema/diagram_export.py</code> 三档同源导出（SVG / Mermaid / Draw.io，同一 model），导出前过 <code>diagram_rubric</code> 闸（红禁导出）；壳色来自 <code>bake/shell_color_swatches.py</code> 色点池，人可有限自配 brand + accent，禁止运行时 LLM 现吐 hex。</li>
   </ul>
 </section>
 
@@ -688,7 +694,7 @@ flowchart LR
       block.dataset.tools = '1';
       const bar = document.createElement('div');
       bar.className = 'diagram-tools';
-      bar.innerHTML = '<span>图太大？</span><button type="button">放大查看</button>';
+      bar.innerHTML = '<span>图太小？</span><button type="button">放大查看</button>';
       bar.querySelector('button').addEventListener('click', () => openOverlay(block));
       block.parentNode.insertBefore(bar, block);
     });

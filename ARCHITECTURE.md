@@ -42,7 +42,9 @@ flowchart TB
         BAKE_FEAT["features/ · 能力扫词 / 菜单 / ensure_*"]
         BAKE_PRUNE["pack_prune.py · 出包前剪未挂岛"]
         BAKE_SCH["schema/ · 壳 / ER / 模块 / 用例 / 测试用例"]
-        BAKE_GATE["gates/ · 门禁 p0a…p3lean + overall"]
+        BAKE_EXPORT["schema/diagram_* · 论文图三档导出<br/>SVG / Mermaid / Draw.io + rubric 闸"]
+        BAKE_SWATCH["shell_color_swatches.py · 壳色色点池（静态资产）"]
+        BAKE_GATE["gates/ · 门禁 p0a…p3controls + overall"]
         SCENE["scene_scan.py · 场景身份唯一真源"]
     end
 
@@ -90,6 +92,8 @@ flowchart TB
     BAKE_ENG --> BAKE_SQL
     BAKE_ENG --> BAKE_FEAT
     BAKE_ENG --> BAKE_SCH
+    BAKE_ENG --> BAKE_EXPORT
+    BAKE_ENG --> BAKE_SWATCH
     BAKE_ENG --> SCENE
     BAKE_ENG --> BAKE_PRUNE
     SVC --> LLM_FLOW --> LLM_AG --> LLM_RT
@@ -117,7 +121,7 @@ flowchart TB
 | 进程隔离 | 运营后端（Python）与学生工程（JVM + Node）是**两类进程**；工厂只负责启停与探活，不把学生代码跑在自身事件循环里 |
 | 端口池 | 学生后端 `9100–9120`、前端 `9200–9220`；`GF_PREVIEW_MAX_RUNNING` 限制**同时运行**数，不限制选题库存 |
 | 数据分离 | 工厂元库管运营状态；学生库由 `services/student_db.py` 建库建表灌种子，删项目时按规则回收 |
-| LLM 边界 | LLM 只产出白名单 island / 标签 / 用例等 **schema JSON**；业务 Java / Vue 由骨架与模板决定 |
+| LLM 边界 | LLM 只产出白名单 island / 标签 / 用例等 **schema JSON**；业务 Java / Vue 由骨架与模板决定。不确定 → 确定性：审类闸先行、生成类校验回退（见 [`docs/llm-determinism.md`](./docs/llm-determinism.md)） |
 
 ---
 
@@ -165,7 +169,7 @@ flowchart LR
 | 5 `gate_e2e` | `bake/gates/evaluate.py` 的 `evaluate_domain_gates` + `delivery_review.evaluate_workspace_gates` + QA Agent | `projects.gates`、`projects.checklist`；`overall` 决定能否打包 |
 | 6 `pack` | `delivery_review.finalize_pack` → `jobs.pack_zip`；bake 末段已跑 `pack_prune` | 临时文件写完再原子替换的 ZIP；排除 `node_modules` / `target` / `.git` / `islands` / `.factory`；未挂岛文件由 `pack_prune` 剪掉，残留则 `p3lean` 拒 ZIP |
 
-**门禁键（交付闸）**：`p0a` 后端骨架、`p0b` 前端骨架、`p1` 登录基线、`p2` 领域主流程 E2E、`p3a` 清单实装、`p3b` Spec/契约一致、`p3t` 技术栈、`p3d` 文档、`p3s` 语义、`p3n` 库表、`p3ac` 档案语义列、`p3q` 质量摘要、`p3lean` 出包精简（无未挂岛残留）；外加可接题边界 `accept`。单调性键见 `bake/gates/keys.py`，复审期间由 `forbid_full_rebake` 拦截整段重跑。
+**门禁键（交付闸）**：`p0a` 后端骨架、`p0b` 前端骨架、`p1` 登录基线、`p2` 领域主流程 E2E、`p3a` 清单实装、`p3b` Spec/契约一致、`p3t` 技术栈、`p3d` 文档、`p3s` 语义、`p3n` 库表、`p3ac` 档案语义列、`p3q` 质量摘要、`p3lean` 出包精简（无未挂岛残留）、`p3layout` 起包前布局闸、`p3controls` 可交互控件闸；外加可接题边界 `accept`。单调性键见 `bake/gates/keys.py`，复审期间由 `forbid_full_rebake` 拦截整段重跑。
 
 ---
 
@@ -211,6 +215,7 @@ flowchart TB
     PD --> T4["LogsTab 日志过滤"]
     PD --> T5["ArtifactsTab 库表 / 论文材料 / API / 复审 / 质量 / PPT"]
     T5 --> AV["图查看器组件<br/>ER · 模块 · 架构 · 序列 · 活动 · 类 · 用例 · 测试用例"]
+    T5 --> DX["论文图导出：SVG / Mermaid(.mmd) / Draw.io(.drawio)<br/>导出前过 rubric 闸"]
     T2 --> PPM["components/defensePpt/ + ppt/<br/>答辩 PPT 面板与页预览"]
 
     V1 --> API["api.js · axios baseURL='/api'<br/>timeout 60s（重操作 600s / 轮询 8s 静默）"]
@@ -456,6 +461,7 @@ flowchart TB
 - 骨架**不含** `node_modules` / `target` / `dist`：`bake_project` 的 `copytree(ignore=…)` 明确跳过，前端依赖由预览子系统按共享缓存挂载，Maven `target` 由编译再生。
 - 持久层由 `bake/persistence.py` 决定：默认 `jdbc`（JdbcTemplate），开题点名时切 `mybatis` / `jpa`，并按需叠 `addon-spring-security`。
 - 场景身份（校园 / 企业 / 社区）由 `bake/scene_scan.py` 的 `scene_for(domain, title, proposal)` 统一决定，壳文案与注册资料页必须读同一 scene——**禁止改开题迁就模板**。
+- 论文图与壳色：`bake/schema/diagram_export.py` 三档同源导出（SVG / Mermaid / Draw.io，同一 model），导出前过 `diagram_rubric` 闸（红禁导出，见 [`docs/thesis-diagram-export.md`](./docs/thesis-diagram-export.md)）；壳色来自 `bake/shell_color_swatches.py` 色点池，人可有限自配 brand + accent，禁止运行时 LLM 现吐 hex（见 [`docs/shell-color-swatch-pool.md`](./docs/shell-color-swatch-pool.md)）。
 
 ---
 
