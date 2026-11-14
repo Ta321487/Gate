@@ -23,7 +23,14 @@
 | **7** 多操作者 | **默认不做** |
 | **10** 上手 | **本会话实现关**（CX/ON0/S0～S3）；验收 [`docs/acceptance/newhire-onboarding-2026-11-09.md`](./docs/acceptance/newhire-onboarding-2026-11-09.md) |
 
-**下一棒**：本波 **`提交并推送`**（出包瘦身 + 端口漂移 + 毕设阶段轨 + 本轮真红修复）；或继续预览验收。
+**下一棒**：继续波次 10 预览验收；本轮提交轨迹以 `git log` 为准。
+
+### 本会话（2026-11-15）· 近义匹配、架构文档与控制台原型收尾
+
+- **匹配**：目录支持 `synonyms` 近义簇，同簇命中计 1 锚分；LLM 目录摘要展示锚与近义写法。补「办公用品劳保用品申领」真题写法，避免 S-05 落入 `DOM-GENERIC`。
+- **架构文档**：`ARCHITECTURE.md` 与 `architecture.html` 同步论文图 SVG / Mermaid / Draw.io 导出与 `rubric`、壳色色点池、`p3layout` / `p3controls`，并修正放大提示文案。
+- **原型**：`prototype/` 对齐现行开工台、项目列表、失败分析与详情阶段轨；失败样本四类筛选组合生效，仍为静态 mock。
+- **测**：`test_sample_proposal_match.py`、`test_deep_skin_s.py`、`test_oa_apply_p.py` **48 通过，541 子用例通过**；pytest cache 有 Windows `WinError 5` 权限警告，不影响结果。原型 `node --check`、浏览器筛选 / 阶段门槛验收、`git diff --check` 通过。
 
 ### 本会话（2026-11-15）· 真红四处（评审子集）
 
