@@ -29,6 +29,7 @@
 |------|--------|------|
 | [delivery-audit-rules.md](./delivery-audit-rules.md) | **怎么审**交付：主链路、红灯、老板小卡 | 活表 |
 | [domain-skin-gap-analysis.md](./domain-skin-gap-analysis.md) | 换皮 **ID 册**与进度（M/S/P/C）；不论功能库存 | 活表 |
+| [domain-skin-onboarding.md](./domain-skin-onboarding.md) | 域/皮 **接入施工清单**（与上行进度册分工：本册管「改哪」，上行管「齐没齐」） | 活表 |
 | [opening-feature-delivery-map.md](./opening-feature-delivery-map.md) | 开题密功能 → 落点（已实现/扫词开/**待补**/不支持） | 活表 |
 | [group-thicken-archives-1-1-to-1-5.md](./group-thicken-archives-1-1-to-1-5.md) | **§1.1～§1.5 加厚复盘**（借用/跟进/报修/报名/审批；明细仍以地图为准） | 已收口档案 |
 | [trade-thicken-batch.md](./trade-thicken-batch.md) | **§1.6 交易组加厚** | 已收口档案 |
@@ -37,6 +38,7 @@
 | [interact-thicken-batch.md](./interact-thicken-batch.md) | **§1.9 互动/匹配组加厚** | 已收口档案 |
 | [crosscut-delivery-batch.md](./crosscut-delivery-batch.md) | **§0 通识横切**清待补（一轮一簇；非域组 thicken） | 批次册 · X-AUTH～X-UX 已齐；打印/灯箱等为基线体验；档案 Excel 已是 xlsx |
 | [domain-group-ui-styles.md](./domain-group-ui-styles.md) | 域组 **UI 表面**选型（ASCII / 对标 / §0.0 闸） | 选型册 · 九组已接线 |
+| [shell-color-swatch-pool.md](./shell-color-swatch-pool.md) | **壳色色点池 / 有限自配**：行业配色非担保；主色+点缀点选；池养护与 LLM 边界 | P0～P3 已接线 |
 | [ui-look-thicken-batch.md](./ui-look-thicken-batch.md) | **UI 观感加厚**（公共壳 + 各组主表面；**68 域台账**） | 再磨已收口 |
 | [vue-split-batch.md](./vue-split-batch.md) | **Vue 大文件拆分**（`.setup.js` + `.css`；合读护栏） | 已收口 |
 | [ui-layout-prebake-gate.md](./ui-layout-prebake-gate.md) | **布局一眼病规则与闸**（几何；起包前全表） | D1～D5 已齐（助手+工厂反应） |
@@ -53,6 +55,8 @@
 | [surface-lexicon-design.md](./surface-lexicon-design.md) | 话术层（Surface Lexicon）设计与批次 | 设计稿；批 A/B/C 已落地见 HANDOFF |
 | [role-boundary-copy-batch.md](./role-boundary-copy-batch.md) | **换开题抗性诚实账** + **角色边界（L4）**按域族收成结构闸 | 批次册 · §0 常读；`trade`～`fallback` **十组已齐**；L2/L5 仍是长尾 |
 | [pack-overrides.md](./pack-overrides.md) | **出包微调（Overrides）**：八张材料手调、重 bake 重放、UI 定稿、闸与现网统一 | **P0～P3 已落地**（未 commit）· 等人令推送 |
+| [thesis-diagram-export.md](./thesis-diagram-export.md) | **论文图同源导出**：SVG / Mermaid / Draw.io；正确性红线；几何债延期 | 活表 · M0/M1 开工 |
+| [llm-determinism.md](./llm-determinism.md) | **工厂 LLM 硬原则**：不确定→确定性；审类闸先行、生成类校验回退 | 现行 |
 | [validation-loop-hardening.md](./validation-loop-hardening.md) | **校验闭环加固**：假宣称/错域词 error、FAQ 默认关润色、低置信/GENERIC 强制核域 | **批 1～4 已齐** · 待提交 |
 
 ## 答辩 PPT

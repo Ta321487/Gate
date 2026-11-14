@@ -1,8 +1,8 @@
 # 领域换皮全覆盖清单（工厂）
 
 > **本文只负责**：换皮 / 新预设 / 新能力的 **ID 册**与状态列。  
-> **不负责**：开题密功能全表与待补（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；怎么审（[`delivery-audit-rules.md`](./delivery-audit-rules.md)）。  
-> **工厂怎么干活 / 怎么审**：[`delivery-audit-rules.md`](./delivery-audit-rules.md)（材料→匹配→出包）。  
+> **不负责**：开题密功能全表与待补（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；怎么审（[`delivery-audit-rules.md`](./delivery-audit-rules.md)）；**施工时改哪些文件**（[`domain-skin-onboarding.md`](./domain-skin-onboarding.md)）。  
+> **工厂怎么干活 / 怎么审**：[`delivery-audit-rules.md`](./delivery-audit-rules.md)（材料→匹配→出包）。**接入施工**：[`domain-skin-onboarding.md`](./domain-skin-onboarding.md)。  
 > **开题密功能对照**：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
 > **领域组表**：[`domains.md`](./domains.md)。  
 > 对照：`domains_catalog/`、`scene_scan.py`；交接见 [../HANDOFF.md](../HANDOFF.md)。  

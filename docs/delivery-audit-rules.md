@@ -161,7 +161,7 @@
 
 ## 5. 改代码时对照
 
-皮 **不只** 申请/跟进；各族换皮纪律见 [`domains.md`](./domains.md) A/B/C。审字段穿帮 / 换皮进度时按下表扫全层，禁止只改一个 builder。
+皮 **不只** 申请/跟进；各族换皮纪律见 [`domains.md`](./domains.md) A/B/C。**新增/修改域或皮的施工清单**见 [`domain-skin-onboarding.md`](./domain-skin-onboarding.md)。审字段穿帮 / 换皮进度时按下表扫全层，禁止只改一个 builder。
 
 ### 5.1 皮与可见面（按层）
 

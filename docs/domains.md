@@ -1,7 +1,7 @@
 # 领域清单（组 A–H）
 
 > **本文只负责**：具名 `DOM-*` 分组（bake 目录 A–H）、各域**默认**能力组合、GENERIC/ARCH 兜底绑壳（**仅** H；真交叉落点见 G）、Path B 白名单与答辩口径。  
-> **不负责**：开题密功能全表 / 待补清单（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；cap 挂载细则（[`capabilities.md`](./capabilities.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；组 UI 表面选型（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)）；UI 观感加厚进度（[`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)）。  
+> **不负责**：开题密功能全表 / 待补清单（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）；cap 挂载细则（[`capabilities.md`](./capabilities.md)）；换皮 ID 册（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；**新增/修改域或皮改哪些文件**（[`domain-skin-onboarding.md`](./domain-skin-onboarding.md)）；组 UI 表面选型（[`domain-group-ui-styles.md`](./domain-group-ui-styles.md)）；UI 观感加厚进度（[`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md)）。  
 > **口径**：具名域 bake 真源 = 能力矩阵；`ARCH-*` 不替代 `DOM-*`，也不表达技术栈 spine。  
 > **交接**：[HANDOFF.md](../HANDOFF.md) · **总览**：[README.md](../README.md) · **索引**：[README.md](./README.md)
 
@@ -32,6 +32,7 @@
 | 开题密功能对照 | [`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md) |
 | §1.1～§1.5 加厚复盘 | [`group-thicken-archives-1-1-to-1-5.md`](./group-thicken-archives-1-1-to-1-5.md) |
 | 换皮 ID 册 / 组审进度 | [`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md) |
+| 新增/修改域或皮 · 同步落点 | [`domain-skin-onboarding.md`](./domain-skin-onboarding.md) |
 | 怎么审交付 | [`delivery-audit-rules.md`](./delivery-audit-rules.md) |
 | 域组 UI 表面选型 | [`domain-group-ui-styles.md`](./domain-group-ui-styles.md) |
 | UI 观感加厚（68 域台账） | [`ui-look-thicken-batch.md`](./ui-look-thicken-batch.md) |
@@ -46,7 +47,8 @@
 | **B 同壳标签** | 预约/内容等同壳换眉标角色名 | [`kind_label_packs.py`](../backend/app/bake/schema/kind_label_packs.py)（CRM 见 `deep_skin_overrides`） | 加 pack；扫词仍走 `scene_scan.*_KIND_RULES` |
 | **C 换表/种子** | 种子 SQL 形态不同（EQUIP/ACTIVITY…） | 各域 seed blob / `_EQUIP_SEEDS` | rules + seed/pack **同到**；本周不拆 SQL 生成器 |
 
-运营日常：只传开题 → 匹配 → bake。新皮由对话助手改登记表，不改当面学生 ZIP。开题平台名（如「方木」）禁止写入多店 `mp_shops`。
+运营日常：只传开题 → 匹配 → bake。新皮由对话助手改登记表，不改当面学生 ZIP。开题平台名（如「方木」）禁止写入多店 `mp_shops`。  
+**施工全表**（域一套 / 皮一套，防漏改）：[`domain-skin-onboarding.md`](./domain-skin-onboarding.md)。
 
 ### A. 借用 / 占用流（薄壳 + 能力组合；密功能见地图）
 

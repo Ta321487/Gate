@@ -21,11 +21,69 @@
 | **0～4、6～9** | **已关**（见册 §5.1） |
 | **5** 材料闭环 | **E 齐；D1 仍开**（parked m） |
 | **7** 多操作者 | **默认不做** |
-| **10** 新人入职上手 | **本会话实现关**（CX/ON0/S0～S3）；验收 [`docs/acceptance/newhire-onboarding-2026-11-09.md`](./docs/acceptance/newhire-onboarding-2026-11-09.md) |
+| **10** 上手 | **本会话实现关**（CX/ON0/S0～S3）；验收 [`docs/acceptance/newhire-onboarding-2026-11-09.md`](./docs/acceptance/newhire-onboarding-2026-11-09.md) |
 
-**下一棒**：本波 **`提交并推送`**（出包瘦身 + 端口漂移 + 毕设阶段轨）；或继续预览验收。
+**下一棒**：本波 **`提交并推送`**（出包瘦身 + 端口漂移 + 毕设阶段轨 + 本轮真红修复）；或继续预览验收。
 
-### 本会话（2026-11-14）· 手调归论文材料
+### 本会话（2026-11-15）· 真红四处（评审子集）
+
+- **修工厂**：基线抹 `OrdersAdmin`/`ReservationsAdmin` 工厂注记（禁 `bake` 词）；`PortalHome` mall-hero 自限高消 `abs_in_stretch_slot`；博客加厚不再硬塞 `userPublish`（投稿仍扫词）；足迹/收藏/留言 SQL 预算改走 `evaluate_table_budget` + 足迹增量 1 表。  
+- **测**：`test_pack_prune` 基线注记、`test_layout_contract`、`test_ux_scan` 足迹预算、`test_user_publish_content`、`test_c08_capability_islands_gated` / `test_c04_blog_skin`、favorites/guestbook SQL **绿**。  
+- **未 commit**。
+
+### 本会话（2026-11-15）· 行业肤出包必须剪
+
+- **现象**：李锐莹包 `themes.css` 仍全厂 `@import` + `themes/*` 六十多套（工厂配色库穿帮）。  
+- **修工厂**：`pack_themes.scrub_pack_themes` 按 `spec.theme` 只留本题（如 `shop-lime`→`themes/shop.css` 单块）；`p3lean.foreign_themes` 红则禁 ZIP；`engine_bake` 在 layout_heal 后再裁一次。  
+- **测**：`test_pack_prune -k pack_themes` 绿。  
+- **未 commit**（`pack_themes.py` 仍 `??`）。  
+- **你这边**：重启后端后**重 bake** 才吃到；手边旧目录不会自动变瘦。骨架 `skeletons/.../themes.css` 全库是真源，故意不砍。
+
+### 本会话（2026-11-15）· 壳色色点池 P0～P3
+
+- **修工厂**：按 [`docs/shell-color-swatch-pool.md`](./docs/shell-color-swatch-pool.md) 接线——`shell_color_swatches.py` 静态池（themes 灌入+稳色）；catalog 暴露；微调色块选 theme + 可折叠自配主色/点缀 + 小预览；`shell_face`/`shell_colors_for_pack` 叠自配；换皮/reset **钉死清空自配**；脏主色/对比硬拦，互撞软提示。  
+- **示意跟色**：catalog `theme_shell_previews` 与 themes CSS 同源；微调区**只留一处生效线框**（去掉问号线框、自配条第二预览、行业色下拉）。  
+- **口径**：行业=底皮；自配=可选盖主色/点缀（不是第三套色）；已自配时色块标「底皮」、示意文案写清覆盖关系。  
+- **测**：`test_shell_color_swatches` + `test_shell_face` **19 绿**。  
+- **未 commit**。  
+- **你这边**：硬刷新控制台；自配紫+米时示意跟自配，海蓝只作底皮锚点。
+
+### 上一段（2026-11-15）· 农产改生鲜青绿 + 侧栏乱码
+
+- **探针**：李锐莹包 **`shop-lime`**；侧栏 UTF-8 已修；marketplace 侧栏已接。  
+- **未 commit**。
+
+### 本会话（2026-11-14）· 序列/活动去模板腔
+
+- **修工厂**：`_KIND_WRITE_PHASES` 覆盖主链路常见 kind（cart/review/orders/tickets/archive/content/profile/users/category/lookup/coupons/browse_history/week_calendar/deadline/archive_logs/blind_pools/group_campaigns/delivery_slots/price_spans/permits/line_specs/lost_clues/consigns/open…）；缺表走 `_phases_from_flow_spec`；禁「选择{菜单}」容器套话；活动图同源。  
+- **测**：`test_schema_sequence` 15 绿；`test_diagram_rubric` + `test_agents_thesis_diagrams` 17 绿。  
+- **未 commit**。  
+- **你这边**：重启后端 + 打开序列/活动（或对账 force）吃新文案。  
+- **余（非本片）**：私信 usecase 勿与资料页合并（超新 dm+profile）。
+
+### 上一段（2026-11-14）· 论文材料生成纠偏 + 对账不吃旧缓存
+
+- **修工厂**：有 `staff_posts` 时按岗 pack 校验（空 subadmin 不误杀）；评价序列勿吃 OrderController；购物车↔订单拆桶；`product←order_line` 改关联；对账 `pack_*` **force**；评价订单文案规则闸不依赖 menus。  
+- **探针**：健身电商 force 后确定性须改 **0**。  
+- **测**：`test_agents_thesis_diagrams` + `test_diagram_rubric` 17 绿。  
+- **未 commit**。  
+- **你这边**：**重启工厂后端**再点对账；材料卡旧图可重开/重 bake。
+
+### 上一段（2026-11-14）· 学生端 API 清单对准实包
+
+- **修工厂**：`api_inventory` 不再按 `api_style` 藏变体；清单 = 工作区 Controller 实有 Mapping；`flow_api` 路径 need 改精确匹配；产物页/帮助文案标明「源码清单，非 Swagger」。  
+- **测**：`test_api_inventory` + `test_api_style` 绿（含基线条数对账）。  
+- **未 commit**（与论文图等同批未推）。  
+- **余**：不改运行时 OpenAPI；真要 Swagger 联调仍走「运行」页后端。
+
+### 上一段（2026-11-14）· 论文图同源导出 + M3 rubric 闸
+
+- **修工厂**：三档导出（Draw.io / Mermaid / SVG）同源；`diagram_rubric.py` 挂 `rubric_gate`，下载红则 400；几何债仍延期（parked **m**）。  
+- **测**：`test_diagram_rubric` + `test_diagram_export_*` 22 绿。  
+- **未 commit**。  
+- **余**：M4 LLM 对账（可选）；厂内几何刀另开。
+
+### 上一段（2026-11-14）· 手调归论文材料
 
 - **修工厂**：出包「手调文字」从轨旁工具迁回论文材料；八张材料卡齐挂并锚 Overrides 分组；工具只留日志。  
 - **测**：`test_console_product_form_contract` + `test_delivery_stages_contract` 绿。  
