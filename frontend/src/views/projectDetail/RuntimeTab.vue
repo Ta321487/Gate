@@ -5,7 +5,8 @@
       <div class="row" style="margin:0">
         <n-button
           size="small"
-          :type="rtCanStartAll && !rtAnyLive ? 'primary' : 'default'"
+          :type="rtPreviewPrimary ? 'default' : (rtCanStartAll && !rtAnyLive ? 'primary' : 'default')"
+          :secondary="rtPreviewPrimary || !(rtCanStartAll && !rtAnyLive)"
           :disabled="!rtCanStartAll"
           :title="rtStartBlockedReason || undefined"
           :loading="rtPendingAll==='start'"
@@ -13,19 +14,26 @@
         >全部启动</n-button>
         <n-button
           size="small"
-          :type="rtBothLive ? 'primary' : 'default'"
+          secondary
           :disabled="!rtCanStopAll"
           :loading="rtPendingAll==='stop'"
           @click="rtAction('all','stop')"
         >全部关闭</n-button>
         <n-button
           size="small"
+          secondary
           :disabled="!rtCanRestartAll"
           :title="rtGenerating ? '生成中 · 请等待完成后再重启' : undefined"
           :loading="rtPendingAll==='restart'"
           @click="rtAction('all','restart')"
         >全部重启</n-button>
-        <n-button size="small" :disabled="rt.frontend_status !== 'healthy' || rtBusyFe" @click="openPreview">打开预览</n-button>
+        <n-button
+          size="small"
+          :type="rtPreviewPrimary ? 'primary' : 'default'"
+          :secondary="!rtPreviewPrimary"
+          :disabled="!rtPreviewPrimary || rtBusyFe"
+          @click="openPreview"
+        >打开预览</n-button>
         <CopyIconButton
           v-if="rt.preview_url && rt.frontend_status === 'healthy'"
           :text="rt.preview_url"
@@ -33,8 +41,8 @@
         />
       </div>
     </div>
-    <div class="grid-2">
-      <div class="panel">
+    <div class="grid-2 stage-grid">
+      <div class="panel panel-quiet">
         <div class="panel-hd">
           <h3>后端 · :{{ p.backend_port || '—' }}<CopyIconButton v-if="backendAddr" :text="backendAddr" tip="复制后端地址" /></h3>
           <span class="pill" :class="runtimeStatusPill(rt.backend_status)">{{ runtimeStatusLabel(rt.backend_status) }}</span>
@@ -43,15 +51,20 @@
           <div class="row" style="justify-content:flex-end">
             <n-button
               size="small"
+              secondary
               :disabled="rtBusyBe || rtAllBusy || runtimeTransient(rt.backend_status) || (rtGenerating && !runtimeCanStop(rt.backend_status))"
               :loading="rtBusyBe || runtimeTransient(rt.backend_status)"
               @click="rtAction('backend', runtimeCanStop(rt.backend_status) ? 'stop' : 'start')"
             >{{ runtimeCanStop(rt.backend_status) ? '停止' : '启动' }}</n-button>
           </div>
-          <pre class="log-box">{{ runtimeLogView(rt.backend_status, rt.backend_log_tail) }}</pre>
+          <n-collapse :default-expanded-names="[]" class="mt-8">
+            <n-collapse-item title="后端日志（排障）" name="be-log">
+              <pre class="log-box">{{ runtimeLogView(rt.backend_status, rt.backend_log_tail) }}</pre>
+            </n-collapse-item>
+          </n-collapse>
         </div>
       </div>
-      <div class="panel">
+      <div class="panel panel-quiet">
         <div class="panel-hd">
           <h3>前端 · :{{ p.frontend_port || '—' }}<CopyIconButton v-if="frontendAddr" :text="frontendAddr" tip="复制前端地址" /></h3>
           <span class="pill" :class="runtimeStatusPill(rt.frontend_status)">{{ runtimeStatusLabel(rt.frontend_status) }}</span>
@@ -60,12 +73,17 @@
           <div class="row" style="justify-content:flex-end">
             <n-button
               size="small"
+              secondary
               :disabled="rtBusyFe || rtAllBusy || runtimeTransient(rt.frontend_status) || (rtGenerating && !runtimeCanStop(rt.frontend_status))"
               :loading="rtBusyFe || runtimeTransient(rt.frontend_status)"
               @click="rtAction('frontend', runtimeCanStop(rt.frontend_status) ? 'stop' : 'start')"
             >{{ runtimeCanStop(rt.frontend_status) ? '停止' : '启动' }}</n-button>
           </div>
-          <pre class="log-box">{{ runtimeLogView(rt.frontend_status, rt.frontend_log_tail) }}</pre>
+          <n-collapse :default-expanded-names="[]" class="mt-8">
+            <n-collapse-item title="前端日志（排障）" name="fe-log">
+              <pre class="log-box">{{ runtimeLogView(rt.frontend_status, rt.frontend_log_tail) }}</pre>
+            </n-collapse-item>
+          </n-collapse>
         </div>
       </div>
     </div>
@@ -73,6 +91,7 @@
 </template>
 
 <script setup>
+import { computed, unref } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 const {
@@ -110,4 +129,7 @@ const {
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
 } = bindPd()
+
+/** 预览已健康时主 CTA=打开预览；否则主 CTA=全部启动 */
+const rtPreviewPrimary = computed(() => unref(rt)?.frontend_status === 'healthy')
 </script>

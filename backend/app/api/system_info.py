@@ -175,6 +175,8 @@ async def system_info(db: AsyncSession = Depends(get_db)):
         uploads=str(s.uploads_dir.resolve()),
         skeletons=str(s.skeletons_dir.resolve()),
         cache=str(s.cache_dir.resolve()),
+        preview_max_running=int(s.gf_preview_max_running),
+        preview_running=len(managed_be),
     )
 
 

@@ -44,7 +44,6 @@ _FE_REQUIRED_PKG_MARKERS = (
     "node_modules/vue/package.json",
     "node_modules/element-plus/package.json",
     "node_modules/@element-plus/icons-vue/package.json",
-    "node_modules/@ctrl/tinycolor/package.json",
     "node_modules/vite/package.json",
     "node_modules/qrcode/package.json",
 )
@@ -220,6 +219,208 @@ def _kill_port(port: int, pids: list[int] | None = None) -> None:
                 os.kill(pid, signal.SIGTERM)
         except Exception:  # noqa: BLE001
             pass
+
+
+# 启停日志头：--- start port=9100 --- 或 --- start port=9200 proxy=9100 ---
+_START_PORT_RE = re.compile(r"(?m)^---\s*start\s+port=(\d+)\b")
+
+
+def _side_log_path(project_id: str, side: str) -> Path:
+    settings = get_settings()
+    return settings.logs_dir / project_id / f"{side}.log"
+
+
+def port_from_side_log(project_id: str, side: str) -> int | None:
+    """从 backend/frontend.log 解析最近一次启动端口（停启截断前可读）。"""
+    path = _side_log_path(project_id, side)
+    if not path.is_file():
+        return None
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return None
+    matches = _START_PORT_RE.findall(text)
+    if not matches:
+        return None
+    try:
+        return int(matches[-1])
+    except ValueError:
+        return None
+
+
+def backend_port_healthy(port: int) -> bool:
+    if not port or not _tcp_open(port):
+        return False
+    return bool(
+        _http_ok(f"http://127.0.0.1:{port}/actuator/health")
+        or _http_ok(f"http://127.0.0.1:{port}/api/meta")
+        or _http_ok(f"http://127.0.0.1:{port}/")
+    )
+
+
+def frontend_port_healthy(port: int) -> bool:
+    return bool(port and _tcp_open(port) and _http_ok(f"http://127.0.0.1:{port}/"))
+
+
+# 内部别名（旧调用点）
+_backend_http_healthy = backend_port_healthy
+_frontend_http_healthy = frontend_port_healthy
+
+
+def _pid_command_line(pid: int) -> str:
+    """读进程命令行（识别工作区孤儿 JVM / Vite）。"""
+    if pid <= 0:
+        return ""
+    if sys.platform == "win32":
+        try:
+            out = subprocess.check_output(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    f"(Get-CimInstance Win32_Process -Filter 'ProcessId={int(pid)}').CommandLine",
+                ],
+                text=True,
+                errors="ignore",
+                timeout=8,
+            )
+            return (out or "").strip()
+        except Exception:  # noqa: BLE001
+            return ""
+    try:
+        raw = Path(f"/proc/{int(pid)}/cmdline").read_bytes()
+        return raw.replace(b"\x00", b" ").decode("utf-8", "ignore").strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _norm_path_token(p: str | Path) -> str:
+    return str(p).replace("/", "\\").lower()
+
+
+def workspace_pool_listening_port(
+    workspace: Path | None,
+    *,
+    side: str,
+) -> int | None:
+    """端口池里命令行含本工作区路径、且已可服务的监听端口（登记漂移时用）。"""
+    if workspace is None:
+        return None
+    try:
+        ws = workspace.resolve()
+    except OSError:
+        return None
+    if not ws.is_dir():
+        return None
+    settings = get_settings()
+    if side == "backend":
+        lo, hi = settings.backend_port_start, settings.backend_port_end
+        healthy = _backend_http_healthy
+    else:
+        lo, hi = settings.frontend_port_start, settings.frontend_port_end
+        healthy = _frontend_http_healthy
+    marker = _norm_path_token(ws)
+    snap = listening_ports_with_pids()
+    for port in sorted(p for p in snap if lo <= p <= hi):
+        if not healthy(port):
+            continue
+        for pid in snap.get(port) or ():
+            cmd = _norm_path_token(_pid_command_line(pid))
+            if marker and marker in cmd:
+                return port
+    return None
+
+
+def kill_pool_orphans_for_workspace(workspace: Path | None, *, side: str) -> list[int]:
+    """杀掉端口池内命令行指向本工作区的监听进程（Maven fork 遗孤 / 登记端口已换）。"""
+    if workspace is None:
+        return []
+    try:
+        ws = workspace.resolve()
+    except OSError:
+        return []
+    if not ws.is_dir():
+        return []
+    settings = get_settings()
+    if side == "backend":
+        lo, hi = settings.backend_port_start, settings.backend_port_end
+    else:
+        lo, hi = settings.frontend_port_start, settings.frontend_port_end
+    marker = _norm_path_token(ws)
+    snap = listening_ports_with_pids()
+    killed: list[int] = []
+    for port, pids in snap.items():
+        if port < lo or port > hi:
+            continue
+        hit = False
+        for pid in pids:
+            cmd = _norm_path_token(_pid_command_line(pid))
+            if marker and marker in cmd:
+                hit = True
+                try:
+                    if sys.platform == "win32":
+                        subprocess.run(
+                            ["taskkill", "/PID", str(pid), "/T", "/F"],
+                            capture_output=True,
+                            check=False,
+                        )
+                    else:
+                        os.kill(pid, signal.SIGTERM)
+                    killed.append(pid)
+                except Exception:  # noqa: BLE001
+                    pass
+        if hit:
+            _kill_port(port, sorted(pids))
+    return killed
+
+
+def discover_backend_port(
+    project_id: str,
+    registered: int | None,
+    *,
+    workspace: Path | None = None,
+) -> int:
+    """实占后端端口：登记健康优先 → 日志端口 → 工作区池内孤儿。"""
+    reg = int(registered or 0)
+    if reg and _backend_http_healthy(reg):
+        return reg
+    log_p = port_from_side_log(project_id, "backend") or 0
+    if log_p and log_p != reg and _backend_http_healthy(log_p):
+        return log_p
+    orphan = workspace_pool_listening_port(workspace, side="backend") or 0
+    if orphan and orphan not in (reg, log_p) and _backend_http_healthy(orphan):
+        return orphan
+    if reg and _tcp_open(reg):
+        return reg
+    if log_p and _tcp_open(log_p):
+        return log_p
+    if orphan and _tcp_open(orphan):
+        return orphan
+    return reg or log_p or orphan or 0
+
+
+def discover_frontend_port(
+    project_id: str,
+    registered: int | None,
+    *,
+    workspace: Path | None = None,
+) -> int:
+    reg = int(registered or 0)
+    if reg and _frontend_http_healthy(reg):
+        return reg
+    log_p = port_from_side_log(project_id, "frontend") or 0
+    if log_p and log_p != reg and _frontend_http_healthy(log_p):
+        return log_p
+    orphan = workspace_pool_listening_port(workspace, side="frontend") or 0
+    if orphan and orphan not in (reg, log_p) and _frontend_http_healthy(orphan):
+        return orphan
+    if reg and _tcp_open(reg):
+        return reg
+    if log_p and _tcp_open(log_p):
+        return log_p
+    if orphan and _tcp_open(orphan):
+        return orphan
+    return reg or log_p or orphan or 0
 
 
 def _resolve_cmd(name: str) -> Optional[str]:
@@ -456,7 +657,7 @@ def prepare_frontend_deps(fe: Path, npm: str, log_f: TextIO) -> None:
 
 
 def start_backend(project_id: str, workspace: Path, port: int, db_name: str = "") -> str:
-    stop_backend(project_id, port)
+    stop_backend(project_id, port, workspace=workspace)
     settings = get_settings()
     log_dir = settings.logs_dir / project_id
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -601,22 +802,31 @@ def _clear_vite_cache(fe: Path, log_f: TextIO) -> None:
 
 
 def start_frontend(project_id: str, workspace: Path, port: int, backend_port: int) -> str:
-    stop_frontend(project_id, port)
+    stop_frontend(project_id, port, workspace=workspace)
     settings = get_settings()
     log_dir = settings.logs_dir / project_id
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / "frontend.log"
     fe = workspace / "frontend"
 
+    # 代理必须打到实占后端口，避免登记 9101、JVM 仍在 9100 时页面空转
+    proxy_port = discover_backend_port(
+        project_id, backend_port, workspace=workspace
+    ) or int(backend_port or 0)
+
     npm = _resolve_cmd("npm")
     log_f = open(log_path, "w", encoding="utf-8")
-    log_f.write(f"--- start port={port} proxy={backend_port} ---\n")
+    log_f.write(f"--- start port={port} proxy={proxy_port} ---\n")
+    if proxy_port and backend_port and proxy_port != int(backend_port):
+        log_f.write(
+            f"WARN backend port drift: registered={backend_port} effective={proxy_port}\n"
+        )
     log_f.flush()
 
     try:
         if (fe / "package.json").exists() and npm:
             env = os.environ.copy()
-            env["VITE_API_PROXY"] = f"http://127.0.0.1:{backend_port}"
+            env["VITE_API_PROXY"] = f"http://127.0.0.1:{proxy_port}"
             # 关闭彩色输出，避免前端日志里 ESC 码在运营端显示成乱码
             env["NO_COLOR"] = "1"
             env["FORCE_COLOR"] = "0"
@@ -708,13 +918,21 @@ def stop_backend(
     port: int | None = None,
     *,
     listening_pids: dict[int, set[int]] | None = None,
+    workspace: Path | None = None,
 ) -> None:
-    """停后端：STORE 句柄（taskkill /T）+ 按记录端口清孤儿；批量时复用同一快照。"""
+    """停后端：STORE 句柄 + 登记端口 + 日志端口 + 工作区池内孤儿。
+
+    Maven fork 出的 JVM 在工厂重启/端口重租后常与登记端口分叉；只杀登记口会假「启动中」。
+    """
+    log_port = port_from_side_log(project_id, "backend")
     h = STORE.backends.pop(project_id, None)
     if h:
         _kill(h)
-    if port is not None:
-        _kill_port(port, _port_pids(port, listening_pids))
+    ports = {p for p in (port, log_port) if p}
+    for p in sorted(ports):
+        _kill_port(p, _port_pids(p, listening_pids))
+    if workspace is not None:
+        kill_pool_orphans_for_workspace(workspace, side="backend")
     _mark_log_stopped(project_id, "backend")
 
 
@@ -723,13 +941,18 @@ def stop_frontend(
     port: int | None = None,
     *,
     listening_pids: dict[int, set[int]] | None = None,
+    workspace: Path | None = None,
 ) -> None:
-    """停前端：STORE 句柄（taskkill /T）+ 按记录端口清孤儿；批量时复用同一快照。"""
+    """停前端：STORE 句柄 + 登记端口 + 日志端口 + 工作区池内孤儿。"""
+    log_port = port_from_side_log(project_id, "frontend")
     h = STORE.frontends.pop(project_id, None)
     if h:
         _kill(h)
-    if port is not None:
-        _kill_port(port, _port_pids(port, listening_pids))
+    ports = {p for p in (port, log_port) if p}
+    for p in sorted(ports):
+        _kill_port(p, _port_pids(p, listening_pids))
+    if workspace is not None:
+        kill_pool_orphans_for_workspace(workspace, side="frontend")
     _mark_log_stopped(project_id, "frontend")
 
 
@@ -748,10 +971,12 @@ def stop_all(
     project_id: str,
     backend_port: int | None = None,
     frontend_port: int | None = None,
+    *,
+    workspace: Path | None = None,
 ) -> None:
     """停句柄 + 按端口清孤儿进程（工厂 API 重启后 STORE 会丢）。"""
-    stop_backend(project_id, backend_port)
-    stop_frontend(project_id, frontend_port)
+    stop_backend(project_id, backend_port, workspace=workspace)
+    stop_frontend(project_id, frontend_port, workspace=workspace)
 
 
 def backend_running(project_id: str) -> bool:
@@ -764,18 +989,24 @@ def frontend_running(project_id: str) -> bool:
     return bool(h and h.process.poll() is None)
 
 
-def backend_status(project_id: str, port: int) -> str:
-    """stopped | starting | healthy | error —— 以端口可服务为准（不依赖进程表是否丢过）。"""
-    if not port:
-        return "starting" if backend_running(project_id) else "stopped"
-    if _tcp_open(port) and (
-        _http_ok(f"http://127.0.0.1:{port}/actuator/health")
-        or _http_ok(f"http://127.0.0.1:{port}/api/meta")
-        or _http_ok(f"http://127.0.0.1:{port}/")
-    ):
+def backend_status(
+    project_id: str,
+    port: int,
+    *,
+    workspace: Path | None = None,
+) -> str:
+    """stopped | starting | healthy | error —— 认实占端口（含日志/工作区漂移）。"""
+    settings = get_settings()
+    ws = workspace
+    if ws is None:
+        cand = settings.workspace_dir / project_id
+        if cand.is_dir():
+            ws = cand
+    eff = discover_backend_port(project_id, port, workspace=ws)
+    if eff and _backend_http_healthy(eff):
         return "healthy"
     log = backend_log(project_id)
-    if backend_running(project_id):
+    if backend_running(project_id) or (eff and _tcp_open(eff)):
         if _log_has_be_fatal(log):
             return "error"
         return "starting"
@@ -785,14 +1016,24 @@ def backend_status(project_id: str, port: int) -> str:
     return "stopped"
 
 
-def frontend_status(project_id: str, port: int) -> str:
+def frontend_status(
+    project_id: str,
+    port: int,
+    *,
+    workspace: Path | None = None,
+) -> str:
     """stopped | starting | healthy | error"""
-    if not port:
-        return "starting" if frontend_running(project_id) else "stopped"
-    if _tcp_open(port) and _http_ok(f"http://127.0.0.1:{port}/"):
+    settings = get_settings()
+    ws = workspace
+    if ws is None:
+        cand = settings.workspace_dir / project_id
+        if cand.is_dir():
+            ws = cand
+    eff = discover_frontend_port(project_id, port, workspace=ws)
+    if eff and _frontend_http_healthy(eff):
         return "healthy"
     log = frontend_log(project_id)
-    if frontend_running(project_id):
+    if frontend_running(project_id) or (eff and _tcp_open(eff)):
         if _log_has_fe_fatal(log):
             return "error"
         return "starting"
@@ -847,16 +1088,17 @@ def side_active(
     side: str,
     listening: set[int] | None = None,
 ) -> bool:
-    """是否仍占用端口：进程表在跑，或端口 LISTENING（不打 HTTP，避免系统页卡死）。"""
-    if not port:
-        return False
+    """是否仍占用端口：进程表在跑，或登记/日志端口 LISTENING（不打 HTTP）。"""
     if side == "backend" and backend_running(project_id):
         return True
     if side == "frontend" and frontend_running(project_id):
         return True
+    ports = {p for p in (port, port_from_side_log(project_id, side)) if p}
+    if not ports:
+        return False
     if listening is not None:
-        return port in listening
-    return bool(_pids_on_port(port))
+        return any(p in listening for p in ports)
+    return any(bool(_pids_on_port(p)) for p in ports)
 
 
 def free_idle_ports(

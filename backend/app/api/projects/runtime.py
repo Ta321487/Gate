@@ -113,11 +113,24 @@ async def _batch_stop(
         items.append({**_project_brief(p), "action": "stop", "ok": True, "reason": ""})
 
     def _kill_them() -> None:
+        settings = get_settings()
         for p, touch_be, touch_fe in plan:
+            ws = settings.workspace_dir / p.id
+            ws_path = ws if ws.is_dir() else None
             if touch_be:
-                rt.stop_backend(p.id, p.backend_port or None, listening_pids=snap)
+                rt.stop_backend(
+                    p.id,
+                    p.backend_port or None,
+                    listening_pids=snap,
+                    workspace=ws_path,
+                )
             if touch_fe:
-                rt.stop_frontend(p.id, p.frontend_port or None, listening_pids=snap)
+                rt.stop_frontend(
+                    p.id,
+                    p.frontend_port or None,
+                    listening_pids=snap,
+                    workspace=ws_path,
+                )
         if plan:
             # 等端口/句柄释放，避免随后收敛读到 kill 之前的 LISTENING
             time.sleep(0.6)
@@ -359,11 +372,15 @@ async def runtime_action(
                 rt.start_frontend(project_id, ws, p.frontend_port, p.backend_port)
                 p.status = ProjectStatus.running.value
             elif action == "stop":
-                rt.stop_all(project_id, p.backend_port, p.frontend_port)
+                rt.stop_all(
+                    project_id, p.backend_port, p.frontend_port, workspace=ws
+                )
                 if p.status == ProjectStatus.running.value:
                     p.status = ProjectStatus.generated.value
             elif action == "restart":
-                rt.stop_all(project_id, p.backend_port, p.frontend_port)
+                rt.stop_all(
+                    project_id, p.backend_port, p.frontend_port, workspace=ws
+                )
                 rt.start_backend(project_id, ws, p.backend_port, p.db_name or "")
                 rt.start_frontend(project_id, ws, p.frontend_port, p.backend_port)
                 p.status = ProjectStatus.running.value
@@ -373,9 +390,9 @@ async def runtime_action(
             if action == "start":
                 rt.start_backend(project_id, ws, p.backend_port, p.db_name or "")
             elif action == "stop":
-                rt.stop_backend(project_id, p.backend_port)
+                rt.stop_backend(project_id, p.backend_port, workspace=ws)
             elif action == "restart":
-                rt.stop_backend(project_id, p.backend_port)
+                rt.stop_backend(project_id, p.backend_port, workspace=ws)
                 rt.start_backend(project_id, ws, p.backend_port, p.db_name or "")
             else:
                 raise HTTPException(400, "未知动作")
@@ -383,9 +400,9 @@ async def runtime_action(
             if action == "start":
                 rt.start_frontend(project_id, ws, p.frontend_port, p.backend_port)
             elif action == "stop":
-                rt.stop_frontend(project_id, p.frontend_port)
+                rt.stop_frontend(project_id, p.frontend_port, workspace=ws)
             elif action == "restart":
-                rt.stop_frontend(project_id, p.frontend_port)
+                rt.stop_frontend(project_id, p.frontend_port, workspace=ws)
                 rt.start_frontend(project_id, ws, p.frontend_port, p.backend_port)
             else:
                 raise HTTPException(400, "未知动作")

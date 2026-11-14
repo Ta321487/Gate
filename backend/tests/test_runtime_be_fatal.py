@@ -46,7 +46,6 @@ def test_frontend_deps_ok_requires_package_json_deps(tmp_path: Path):
         "node_modules/vue/package.json",
         "node_modules/element-plus/package.json",
         "node_modules/@element-plus/icons-vue/package.json",
-        "node_modules/@ctrl/tinycolor/package.json",
         "node_modules/vite/package.json",
         "node_modules/qrcode/package.json",
     ):

@@ -33,17 +33,25 @@ export function usePdRuntime({ p, tab, route, ctx }) {
   const rtFeLive = computed(() => runtimeCanStop(rt.frontend_status))
   const rtAnyLive = computed(() => rtBeLive.value || rtFeLive.value)
   const rtBothLive = computed(() => rtBeLive.value && rtFeLive.value)
+  /** 启停过渡态（starting/stopping）：busy 已消时仍禁重复主操作，靠状态机而非拖住 loading */
+  const rtSettling = computed(
+    () => runtimeTransient(rt.backend_status) || runtimeTransient(rt.frontend_status),
+  )
   const rtCanStartAll = computed(
     () =>
       Boolean(p.value?.workspace_path) &&
       !rtGenerating.value &&
       !rtAnyBusy.value &&
+      !rtSettling.value &&
       !rtBothLive.value,
   )
+  // 停止：starting 仍可停（与改前一致）；仅 start/restart 受 settling 门闩
   const rtCanStopAll = computed(
     () => Boolean(p.value?.workspace_path) && !rtAnyBusy.value && rtAnyLive.value,
   )
-  const rtCanRestartAll = computed(() => rtCanStopAll.value && !rtGenerating.value)
+  const rtCanRestartAll = computed(
+    () => rtCanStopAll.value && !rtGenerating.value && !rtSettling.value,
+  )
   const backendAddr = computed(() => {
     if (rt.backend_url) return rt.backend_url
     const host = rt.public_host || '127.0.0.1'
@@ -61,7 +69,7 @@ export function usePdRuntime({ p, tab, route, ctx }) {
     if (base) return base
     if (!rtCanStartAll.value) {
       if (rtBothLive.value) return '前后端已在运行'
-      if (rtAnyBusy.value) return '启停进行中 · 请稍候'
+      if (rtAnyBusy.value || rtSettling.value) return '启停进行中 · 请稍候'
     }
     return ''
   })
@@ -211,22 +219,24 @@ export function usePdRuntime({ p, tab, route, ctx }) {
         if (meta.frontend_port != null) p.value.frontend_port = meta.frontend_port
         if (meta.project_status) p.value.status = meta.project_status
       }
+      // 轻量对齐一次即可；冷启动 settled 靠 startRtWatch，勿把 busy 绑到 Maven 长轮询
       await refreshRuntime(projectId)
-      if (!ctx.viewActive(projectId, epoch)) return
-      // 冷启动 Maven 常要 1～2 分钟；超时后仍靠 startRtWatch 继续刷到 settled
-      const deadline = Date.now() + (action === 'stop' ? 12000 : 180000)
-      while (Date.now() < deadline && ctx.viewActive(projectId, epoch) && tab.value === 'runtime') {
-        await refreshRuntime(projectId)
-        if (_runtimeSettled(side, action)) break
-        await new Promise((r) => setTimeout(r, 700))
-      }
+    } catch (e) {
+      const timedOut =
+        e?.code === 'ECONNABORTED' || /timeout/i.test(String(e?.message || ''))
+      message.error(
+        timedOut
+          ? '启停请求超时 · 服务端可能已受理，请看运行状态或刷新对齐'
+          : e?.response?.data?.detail || e?.message || '启停失败',
+      )
     } finally {
       if (touchBe) rtBusyBe.value = false
       if (touchFe) rtBusyFe.value = false
       if (side === 'all') rtPendingAll.value = ''
       if (ctx.viewActive(projectId, epoch) && tab.value === 'runtime') {
-        await refreshRuntime(projectId)
-        if (rtNeedsWatch()) startRtWatch()
+        void refreshRuntime(projectId).then(() => {
+          if (rtNeedsWatch()) startRtWatch()
+        })
       }
     }
   }
