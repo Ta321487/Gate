@@ -164,6 +164,8 @@ const catalog = ref({
   follow_surface_styles: [],
   repair_surface_styles: [],
   approve_surface_styles: [],
+  shell_color_swatches: [],
+  theme_shell_previews: {},
 })
 const form = reactive({
   archetype: '',
@@ -187,6 +189,8 @@ const form = reactive({
   followSurfaceStyle: 'dossier',
   repairSurfaceStyle: 'ticketfeed',
   approveSurfaceStyle: 'typelist',
+  shellBrandSwatch: '',
+  shellAccentSwatch: '',
   llm: 'on',
   passwordHash: 'none',
 })
@@ -349,12 +353,58 @@ const ucdSourceNote = ref('')
 const ucdCases = ref([])
 const ucdMarkdown = ref('')
 const ucdCount = ref(0)
+const ucdRubricGate = ref(null)
+const erRubricGate = computed(() => schema.value?.rubric_gate || null)
+const thesisAuditBusy = ref(false)
+const thesisAuditReport = ref(null)
 const archOptions = computed(() => catalog.value.archetypes.map((x) => ({ label: x.label, value: x.id })))
 const domCascaderOptions = computed(() => buildDomainCascaderOptions(catalog.value))
 const themeOptions = computed(() => {
   const list = catalog.value.themes_by_domain?.[form.domain] || []
   return list.map((x) => ({ label: x.label, value: x.id }))
 })
+function themePreviewTokens(themeId) {
+  const fromCss = catalog.value.theme_shell_previews?.[themeId]
+  if (fromCss?.brand && fromCss?.accent) {
+    return {
+      brand: fromCss.brand,
+      accent: fromCss.accent,
+      bg: fromCss.bg,
+      surface: fromCss.surface,
+      ink: fromCss.ink,
+      soft: fromCss.soft || fromCss.accent,
+    }
+  }
+  const s = softThemeSwatch(themeId)
+  return {
+    brand: s.brand || s.accent,
+    accent: s.accent,
+    bg: s.bg,
+    surface: s.surface,
+    ink: s.ink,
+    soft: s.soft,
+  }
+}
+const themeChipOptions = computed(() => {
+  const list = catalog.value.themes_by_domain?.[form.domain] || []
+  return list.map((x) => {
+    const s = themePreviewTokens(x.id)
+    return {
+      id: x.id,
+      label: x.label,
+      brand: s.brand,
+      accent: s.accent,
+      bg: s.bg,
+    }
+  })
+})
+const shellSwatchCatalog = computed(() => catalog.value.shell_color_swatches || [])
+const shellBrandSwatchOptions = computed(() =>
+  shellSwatchCatalog.value.filter((x) => x.brand_ok || (x.roles || []).includes('brand')),
+)
+const shellAccentSwatchOptions = computed(() =>
+  shellSwatchCatalog.value.filter((x) => x.accent_ok || (x.roles || []).includes('accent')),
+)
 const chromeOptions = computed(() => {
   const list = catalog.value.chrome_styles || []
   return list.map((x) => ({ label: x.label, value: x.id }))
@@ -364,16 +414,64 @@ const layoutOptions = computed(() => {
   return list.map((x) => ({ label: x.label, value: x.id }))
 })
 function softThemeWireStyle(themeId) {
-  const s = softThemeSwatch(themeId)
+  const s = themePreviewTokens(themeId)
+  const brandPick = shellSwatchCatalog.value.find((x) => x.id === form.shellBrandSwatch)
+  const accentPick = shellSwatchCatalog.value.find((x) => x.id === form.shellAccentSwatch)
+  const brand = brandPick?.hex || s.brand || s.accent
+  const accent = accentPick?.hex || s.accent
+  // 自配后卡片软色跟点缀走，避免线框还停在旧行业 soft
+  const soft =
+    brandPick || accentPick
+      ? `color-mix(in srgb, ${accent} 24%, #ffffff)`
+      : s.soft
   return {
     '--lsw-bg': s.bg,
     '--lsw-surface': s.surface,
     '--lsw-ink': s.ink,
-    '--lsw-accent': s.accent,
-    '--lsw-soft': s.soft,
+    '--lsw-brand': brand,
+    '--lsw-accent': accent,
+    '--lsw-soft': soft,
   }
 }
-const softVisualWireStyle = computed(() => softThemeWireStyle(form.theme))
+const softVisualWireStyle = computed(() => {
+  // 显式依赖：换色板 / 自配色点都要重算示意
+  void form.theme
+  void form.shellBrandSwatch
+  void form.shellAccentSwatch
+  void catalog.value.theme_shell_previews
+  return softThemeWireStyle(form.theme)
+})
+const shellColorCustomOpen = ref(false)
+watch(
+  () => [form.shellBrandSwatch, form.shellAccentSwatch],
+  ([b, a]) => {
+    if (b || a) shellColorCustomOpen.value = true
+  },
+  { immediate: true },
+)
+function pickThemeChip(themeId) {
+  if (softSaving.value || form.theme === themeId) return
+  form.theme = themeId
+  // 换行业配色：自配重置（与后端钉死策略一致）
+  form.shellBrandSwatch = ''
+  form.shellAccentSwatch = ''
+  saveSoft()
+}
+function pickShellSwatch(role, swatchId) {
+  if (softSaving.value) return
+  if (role === 'brand') {
+    form.shellBrandSwatch = form.shellBrandSwatch === swatchId ? '' : swatchId
+  } else {
+    form.shellAccentSwatch = form.shellAccentSwatch === swatchId ? '' : swatchId
+  }
+  saveSoft()
+}
+function clearShellSwatches() {
+  if (softSaving.value) return
+  form.shellBrandSwatch = ''
+  form.shellAccentSwatch = ''
+  saveSoft()
+}
 const typefaceOptions = computed(() => {
   const list = catalog.value.type_pairings || []
   return list.map((x) => ({ label: x.label, value: x.id }))
@@ -943,8 +1041,24 @@ const showSoftBakePanel = computed(() => {
 
 const softBakeHint = computed(() =>
   genState.value === 'idle'
-    ? '选项即时保存；点「一键生成」写入工程'
-    : '选项即时保存；点下方按钮写入工程',
+    ? '先选行业底皮；不信默认再可选盖主色/点缀。示意只有一套'
+    : '底皮 + 可选壳色自配。选项即时保存；点下方按钮写入工程',
+)
+const shellColorCustomized = computed(
+  () => !!(form.shellBrandSwatch || form.shellAccentSwatch),
+)
+const softColorPreviewLabel = computed(() => {
+  const themeLabel =
+    themeChipOptions.value.find((t) => t.id === form.theme)?.label || form.theme || '当前底皮'
+  if (shellColorCustomized.value) {
+    return `生效示意（壳色已自配 · 底皮仍是「${themeLabel}」）`
+  }
+  return `生效示意（整页跟「${themeLabel}」）`
+})
+const softThemeHeadHint = computed(() =>
+  shellColorCustomized.value
+    ? '色块只换底皮氛围；点了会清空自配。示意里的主色/点缀以自配为准'
+    : '先点一档作整页起点；不信默认再打开下方自配',
 )
 
 const softApplying = ref(false)
@@ -1208,6 +1322,8 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
       form.followSurfaceStyle = p.value.spec?.follow_surface_style || 'dossier'
       form.repairSurfaceStyle = p.value.spec?.repair_surface_style || 'ticketfeed'
       form.approveSurfaceStyle = p.value.spec?.approve_surface_style || 'typelist'
+      form.shellBrandSwatch = p.value.spec?.shell_brand_swatch || ''
+      form.shellAccentSwatch = p.value.spec?.shell_accent_swatch || ''
       form.llm = p.value.llm_enabled ? 'on' : 'off'
       form.passwordHash = p.value.password_hash || 'none'
       unlocked.value = !p.value.match_locked
@@ -1365,6 +1481,23 @@ function smokeDetailFromAxios(err) {
   if (d && typeof d === 'object') return d
   if (typeof d === 'string') return { message: d, error_source: 'factory' }
   return { message: err?.message || '冒烟请求失败', error_source: 'factory' }
+}
+
+async function runThesisDiagramAudit() {
+  if (!p.value?.id || thesisAuditBusy.value || artifactsFrozen.value) return
+  thesisAuditBusy.value = true
+  try {
+    const res = await api.runThesisDiagramAudit(p.value.id)
+    const data = res?.data || res || {}
+    thesisAuditReport.value = data
+    const summary = res?.message || data.summary || '论文图对账完成'
+    if (data.ok === false) message.warning(summary)
+    else message.success(summary)
+  } catch (e) {
+    message.error(e?.response?.data?.detail || e?.message || '论文图对账失败')
+  } finally {
+    thesisAuditBusy.value = false
+  }
 }
 
 async function runApiSmoke() {
@@ -1752,6 +1885,20 @@ const erEntityOptions = computed(() => {
     }))
 })
 
+const erDrawioUrl = computed(() => {
+  if (!p.value?.id) return ''
+  const params = { mode: erMode.value === 'part' ? 'part' : 'total' }
+  if (params.mode === 'part' && erEntity.value) params.entity = erEntity.value
+  return api.erDrawioUrl(p.value.id, params)
+})
+
+const erMmdUrl = computed(() => {
+  if (!p.value?.id) return ''
+  const params = { mode: erMode.value === 'part' ? 'part' : 'total' }
+  if (params.mode === 'part' && erEntity.value) params.entity = erEntity.value
+  return api.erMmdUrl(p.value.id, params)
+})
+
 const erDownloadBase = computed(() => {
   const id = p.value?.id || 'er'
   if (erMode.value === 'part') {
@@ -1783,6 +1930,22 @@ const modulesLabelRed = computed(() => {
 const modulesLabelFindings = computed(() => {
   const raw = modulesMeta.value?.label_gate?.findings
   return Array.isArray(raw) ? raw : []
+})
+
+const modDrawioUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.modulesDrawioUrl(p.value.id, {
+    layout: modulesLayout.value,
+    expandDetails: modulesExpandDetails.value,
+  })
+})
+
+const modMmdUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.modulesMmdUrl(p.value.id, {
+    layout: modulesLayout.value,
+    expandDetails: modulesExpandDetails.value,
+  })
 })
 
 const modDownloadBase = computed(() => {
@@ -1881,6 +2044,16 @@ const archDownloadBase = computed(() => {
   return `${id}-逻辑架构图-${title}`
 })
 
+const archDrawioUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.architectureDrawioUrl(p.value.id)
+})
+
+const archMmdUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.architectureMmdUrl(p.value.id)
+})
+
 async function fetchArchSvg() {
   return svgFromPack(archMeta.value)
 }
@@ -1919,6 +2092,14 @@ const seqDownloadBase = computed(() => {
   const d = seqMeta.value?.diagrams?.[seqIndex.value]
   const title = d?.figure_title || seqMeta.value?.figure_title || '系统序列图'
   return `${id}-序列图-${title}`
+})
+
+const seqMmdUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.sequencesMmdUrl(p.value.id, {
+    index: seqIndex.value,
+    ids: seqSelectedIds.value.length === 3 ? seqSelectedIds.value : undefined,
+  })
 })
 
 async function fetchSeqSvg() {
@@ -2011,6 +2192,14 @@ async function onSeqDiagramIndex(i) {
   seqLayoutKey.value += 1
 }
 
+const actMmdUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.activitiesMmdUrl(p.value.id, {
+    index: actIndex.value,
+    ids: actSelectedIds.value.length === 3 ? actSelectedIds.value : undefined,
+  })
+})
+
 const actDownloadBase = computed(() => {
   const id = p.value?.id || 'act'
   const d = actMeta.value?.diagrams?.[actIndex.value]
@@ -2088,6 +2277,16 @@ async function onActDiagramIndex(i) {
   actSvgSource.value = svgFromPack(actMeta.value, n)
   actLayoutKey.value += 1
 }
+
+const classDrawioUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.classesDrawioUrl(p.value.id, { display: classDisplayMode.value })
+})
+
+const classMmdUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.classesMmdUrl(p.value.id, { display: classDisplayMode.value })
+})
 
 const classDownloadBase = computed(() => {
   const id = p.value?.id || 'classes'
@@ -2211,6 +2410,16 @@ const ucMdjUrl = computed(() => {
   return api.usecasesMdjUrl(p.value.id, { actor: usecaseActor.value })
 })
 
+const ucDrawioUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.usecasesDrawioUrl(p.value.id, { actor: usecaseActor.value })
+})
+
+const ucMmdUrl = computed(() => {
+  if (!p.value?.id) return ''
+  return api.usecasesMmdUrl(p.value.id, { actor: usecaseActor.value })
+})
+
 async function fetchUcSvg() {
   return svgFromPack(usecaseMeta.value)
 }
@@ -2307,6 +2516,7 @@ async function reloadUsecaseDescriptions() {
     ucdCases.value = data.cases || []
     ucdMarkdown.value = data.markdown || ''
     ucdCount.value = data.count || 0
+    ucdRubricGate.value = data.rubric_gate || null
   } catch {
     message.error('无法加载用例描述表')
   } finally {
@@ -2440,6 +2650,8 @@ async function resetMatch() {
     form.followSurfaceStyle = p.value.spec?.follow_surface_style || 'dossier'
     form.repairSurfaceStyle = p.value.spec?.repair_surface_style || 'ticketfeed'
     form.approveSurfaceStyle = p.value.spec?.approve_surface_style || 'typelist'
+    form.shellBrandSwatch = p.value.spec?.shell_brand_swatch || ''
+    form.shellAccentSwatch = p.value.spec?.shell_accent_swatch || ''
     form.passwordHash = p.value.password_hash || 'none'
     unlocked.value = false
     ack.value = false
@@ -2571,7 +2783,12 @@ async function saveSoft() {
     if (showApproveSurface.value && form.approveSurfaceStyle) {
       body.approve_surface_style = form.approveSurfaceStyle
     }
+    body.shell_brand_swatch = form.shellBrandSwatch || ''
+    body.shell_accent_swatch = form.shellAccentSwatch || ''
     p.value = await api.patchMatch(p.value.id, body)
+    // 换皮后端会清自配，与表单对齐
+    form.shellBrandSwatch = p.value.spec?.shell_brand_swatch || ''
+    form.shellAccentSwatch = p.value.spec?.shell_accent_swatch || ''
     message.success('已保存')
   } finally {
     softSaving.value = false
@@ -2943,11 +3160,15 @@ onUnmounted(() => {
     ackDomainReview,
     needsDomainAck,
     archDownloadBase,
+    archDrawioUrl,
     archLayoutKey,
     archLoading,
     archMeta,
+    archMmdUrl,
     archSvgSource,
     classDownloadBase,
+    classDrawioUrl,
+    classMmdUrl,
     classEvidenceNote,
     classLayoutKey,
     classLoading,
@@ -3011,6 +3232,8 @@ onUnmounted(() => {
     downloadZipLabel,
     entryOptions,
     erDownloadBase,
+    erDrawioUrl,
+    erMmdUrl,
     erEntity,
     erEntityOptions,
     erLabelSaving,
@@ -3088,6 +3311,8 @@ onUnmounted(() => {
     matchSourceLabel,
     matchWarnings,
     modDownloadBase,
+    modDrawioUrl,
+    modMmdUrl,
     modLayoutKey,
     modLoading,
     modSvgSource,
@@ -3232,6 +3457,9 @@ onUnmounted(() => {
     rtGenerating,
     rtPendingAll,
     rtStartBlockedReason,
+    runThesisDiagramAudit,
+    thesisAuditBusy,
+    thesisAuditReport,
     runApiSmoke,
     runGenerateJob,
     runPptCheck,
@@ -3261,6 +3489,7 @@ onUnmounted(() => {
     showArchitecture,
     showSequences,
     seqDownloadBase,
+    seqMmdUrl,
     seqIndex,
     seqLayoutKey,
     seqLoading,
@@ -3269,6 +3498,7 @@ onUnmounted(() => {
     seqSvgSource,
     showActivities,
     actDownloadBase,
+    actMmdUrl,
     actIndex,
     actLayoutKey,
     actLoading,
@@ -3295,6 +3525,16 @@ onUnmounted(() => {
     softSaving,
     softThemeWireStyle,
     softVisualWireStyle,
+    softColorPreviewLabel,
+    softThemeHeadHint,
+    shellColorCustomized,
+    shellColorCustomOpen,
+    shellBrandSwatchOptions,
+    shellAccentSwatchOptions,
+    themeChipOptions,
+    pickThemeChip,
+    pickShellSwatch,
+    clearShellSwatches,
     specText,
     startFillEvents,
     startGenerate,
@@ -3333,6 +3573,8 @@ onUnmounted(() => {
     ucDownloadBase,
     ucLayoutKey,
     ucLoading,
+    ucDrawioUrl,
+    ucMmdUrl,
     ucMdjUrl,
     ucSvgSource,
     ucdCases,
@@ -3341,7 +3583,9 @@ onUnmounted(() => {
     ucdIntro,
     ucdLoading,
     ucdMarkdown,
+    ucdRubricGate,
     ucdSourceNote,
+    erRubricGate,
     undoDelivery,
     undoDeliveryLabel,
     unlocked,

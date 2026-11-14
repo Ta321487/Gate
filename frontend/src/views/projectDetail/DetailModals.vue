@@ -131,7 +131,14 @@
       </div>
       <pre class="spec-preview" style="max-height:60vh">{{ specText }}</pre>
     </n-modal>
-    <n-modal v-model:show="showEr" preset="card" title="E-R 图（线框）" style="width:min(1280px,96vw)">
+    <n-modal
+      v-model:show="showEr"
+      preset="card"
+      title="E-R 图（线框）"
+      class="paper-diagram-modal"
+      style="width:min(1280px,96vw)"
+      :content-style="paperDiagramContentStyle"
+    >
       <ErDiagramViewer
         v-if="showEr"
         :key="erLayoutKey"
@@ -141,6 +148,9 @@
         :entity="erEntity"
         :entity-options="erEntityOptions"
         :loading="erLoading"
+        :drawio-url="erDrawioUrl"
+        :mermaid-url="erMmdUrl"
+        :rubric-gate="erRubricGate"
         @update:mode="onErMode"
         @update:entity="onErEntity"
         @save-view="saveErView"
@@ -149,7 +159,14 @@
         @export-all-parts="exportAllErParts"
       />
     </n-modal>
-    <n-modal v-model:show="showModules" preset="card" title="功能模块图" style="width:min(1280px,96vw)">
+    <n-modal
+      v-model:show="showModules"
+      preset="card"
+      title="功能模块图"
+      class="paper-diagram-modal"
+      style="width:min(1280px,96vw)"
+      :content-style="paperDiagramContentStyle"
+    >
       <ModuleDiagramViewer
         v-if="showModules"
         :key="modLayoutKey"
@@ -162,12 +179,22 @@
         :label-gate-ok="modulesMeta?.label_gate?.ok !== false"
         :label-gate-findings="modulesLabelFindings"
         :loading="modLoading"
+        :drawio-url="modDrawioUrl"
+        :mermaid-url="modMmdUrl"
+        :rubric-gate="modulesMeta?.rubric_gate"
         @update:layout="onModulesLayout"
         @update:expand-details="onModulesExpandDetails"
         @reload="reloadModSvg"
       />
     </n-modal>
-    <n-modal v-model:show="showArchitecture" preset="card" title="系统逻辑架构图" style="width:min(960px,96vw)">
+    <n-modal
+      v-model:show="showArchitecture"
+      preset="card"
+      title="系统逻辑架构图"
+      class="paper-diagram-modal"
+      style="width:min(960px,96vw)"
+      :content-style="paperDiagramContentStyle"
+    >
       <ArchitectureDiagramViewer
         v-if="showArchitecture"
         :key="archLayoutKey"
@@ -175,15 +202,27 @@
         :download-name="archDownloadBase"
         :source-note="archMeta?.source_note || ''"
         :loading="archLoading"
+        :drawio-url="archDrawioUrl"
+        :mermaid-url="archMmdUrl"
+        :rubric-gate="archMeta?.rubric_gate"
         @reload="reloadArchSvg"
       />
     </n-modal>
-    <n-modal v-model:show="showSequences" preset="card" title="系统序列图" style="width:min(1100px,96vw)">
+    <n-modal
+      v-model:show="showSequences"
+      preset="card"
+      title="系统序列图"
+      class="paper-diagram-modal"
+      style="width:min(1100px,96vw)"
+      :content-style="paperDiagramContentStyle"
+    >
       <SequenceDiagramViewer
         v-if="showSequences"
         :key="seqLayoutKey"
         :svg-source="seqSvgSource"
         :download-name="seqDownloadBase"
+        :mermaid-url="seqMmdUrl"
+        :rubric-gate="seqMeta?.rubric_gate"
         :source-note="seqMeta?.source_note || ''"
         :loading="seqLoading"
         :candidates="seqMeta?.candidates || []"
@@ -195,12 +234,21 @@
         @update:diagram-index="onSeqDiagramIndex"
       />
     </n-modal>
-    <n-modal v-model:show="showActivities" preset="card" title="系统活动图" style="width:min(1100px,96vw)">
+    <n-modal
+      v-model:show="showActivities"
+      preset="card"
+      title="系统活动图"
+      class="paper-diagram-modal"
+      style="width:min(1100px,96vw)"
+      :content-style="paperDiagramContentStyle"
+    >
       <ActivityDiagramViewer
         v-if="showActivities"
         :key="actLayoutKey"
         :svg-source="actSvgSource"
         :download-name="actDownloadBase"
+        :mermaid-url="actMmdUrl"
+        :rubric-gate="actMeta?.rubric_gate"
         :source-note="actMeta?.source_note || ''"
         :loading="actLoading"
         :candidates="actMeta?.candidates || []"
@@ -212,7 +260,14 @@
         @update:diagram-index="onActDiagramIndex"
       />
     </n-modal>
-    <n-modal v-model:show="showClasses" preset="card" title="系统类图" style="width:min(1280px,96vw)">
+    <n-modal
+      v-model:show="showClasses"
+      preset="card"
+      title="系统类图"
+      class="paper-diagram-modal"
+      style="width:min(1280px,96vw)"
+      :content-style="paperDiagramContentStyle"
+    >
       <ClassDiagramViewer
         v-if="showClasses"
         :key="classLayoutKey"
@@ -223,6 +278,9 @@
         :loading="classLoading"
         :display-mode="classDisplayMode"
         :display-modes="classDisplayModes"
+        :drawio-url="classDrawioUrl"
+        :mermaid-url="classMmdUrl"
+        :rubric-gate="classMeta?.rubric_gate"
         @save-layout="saveClassLayout"
         @reset-layout="resetClassLayout"
         @update:display-mode="onClassDisplayMode"
@@ -232,8 +290,9 @@
       v-model:show="showUsecases"
       preset="card"
       title="用例图"
+      class="paper-diagram-modal"
       style="width:min(1280px,96vw)"
-      content-style="max-height: min(88vh, 920px); overflow: auto;"
+      :content-style="paperDiagramContentStyle"
     >
       <UseCaseDiagramViewer
         v-if="showUsecases"
@@ -246,6 +305,9 @@
         :source-note="usecaseMeta?.source_note || ''"
         :style-rules="usecaseMeta?.style?.rules_zh || []"
         :mdj-url="ucMdjUrl"
+        :drawio-url="ucDrawioUrl"
+        :mermaid-url="ucMmdUrl"
+        :rubric-gate="usecaseMeta?.rubric_gate"
         :loading="ucLoading"
         @update:actor="onUsecaseActor"
         @reload="reloadUsecases"
@@ -275,6 +337,7 @@
         :count="ucdCount"
         :download-name="ucdDownloadBase"
         :loading="ucdLoading"
+        :rubric-gate="ucdRubricGate"
         @reload="reloadUsecaseDescriptions"
       />
     </n-modal>
@@ -294,6 +357,9 @@ import ModuleDiagramViewer from '../../components/ModuleDiagramViewer.vue'
 import TestcaseViewer from '../../components/TestcaseViewer.vue'
 import UseCaseDescriptionViewer from '../../components/UseCaseDescriptionViewer.vue'
 import UseCaseDiagramViewer from '../../components/UseCaseDiagramViewer.vue'
+import { PAPER_DIAGRAM_CONTENT_STYLE } from '../../components/useDiagramFrameResize'
+
+const paperDiagramContentStyle = PAPER_DIAGRAM_CONTENT_STYLE
 
 const preGenLinksOpen = ref(false)
 
@@ -311,7 +377,7 @@ const {
   catalog, checkCols, checkRows, chromeOptions, collapsedApis, collapsedTables, commitColZh, commitRelZh,
   commitTableZh, confirmDelete, confirmHint, confirmMatch, confirmPreGenerate, currentJob, deleteBlocked,
   deleteBlockedReason, deleting, deliveryBusy, deliveryMark, deviant, displayConf, domCascaderOptions, downloadAndDeliver,
-  downloadBlockedReason, downloadZip, downloadZipLabel, entryOptions, erDownloadBase, erEntity, erEntityOptions, erLabelSaving,
+  downloadBlockedReason, downloadZip, downloadZipLabel, entryOptions, erDownloadBase, erDrawioUrl, erMmdUrl, erRubricGate, erEntity, erEntityOptions, erLabelSaving,
   erLayoutKey, erLoading, erMode, erSvgSource, exportAllErParts, failedBannerTitle, fetchErSvg, fetchModSvg, fillEventSource,
   fillLiveCols, fillLiveRows, fillLiveSnap, fillLiveSummary, fillLiveVisible, fillPlanCols, fillPlanHint,
   fillPlanLoading, fillPlanRows, filteredApiGroups, filteredLog, form, formatSize, frontendAddr, gateCols,
@@ -319,7 +385,7 @@ const {
   jobInFlight, keepDb, keywordHits, labelLooksLatin, layoutOptions, llmOptions, load, loadApis,
   loadArtifactView, loadError, loadErrorCode, loadLog, loadSchema, logFilter, logLoading, logReqSeq,
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
-  matchPillClass, matchPillText, matchSourceLabel, matchWarnings,   modDownloadBase, modLayoutKey, modLoading, modSvgSource,
+  matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modDrawioUrl, modMmdUrl, modLayoutKey, modLoading, modSvgSource,
   modulesExpandDetails, modulesLayout, modulesMeta, modulesOk, modulesLabelFindings, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, onUsecaseActor, openArchitecture, openClasses, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, openSequences, onSeqApplySelection, onSeqDiagramIndex, openActivities, onActApplySelection, onActDiagramIndex, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
@@ -335,13 +401,13 @@ const {
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
-  themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucDownloadBase, ucLayoutKey, ucLoading, ucMdjUrl, ucSvgSource,
-  ucdCases, ucdCount, ucdDownloadBase, ucdIntro, ucdLoading, ucdMarkdown, ucdSourceNote,
+  themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucDownloadBase, ucLayoutKey, ucLoading, ucDrawioUrl, ucMmdUrl, ucMdjUrl, ucSvgSource,
+  ucdCases, ucdCount, ucdDownloadBase, ucdIntro, ucdLoading, ucdMarkdown, ucdRubricGate, ucdSourceNote,
   undoDelivery, undoDeliveryLabel, unlocked, usecaseActor, usecaseMeta, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
-  reloadUsecaseDescriptions, archDownloadBase, archLayoutKey, archLoading, archMeta, archSvgSource,
-  seqDownloadBase, seqIndex, seqLayoutKey, seqLoading, seqMeta, seqSelectedIds, seqSvgSource,
-  actDownloadBase, actIndex, actLayoutKey, actLoading, actMeta, actSelectedIds, actSvgSource,
-  classDownloadBase, classEvidenceNote, classLayoutKey, classLoading, classMeta, classSvgSource,
+  reloadUsecaseDescriptions, archDownloadBase, archDrawioUrl, archMmdUrl, archLayoutKey, archLoading, archMeta, archSvgSource,
+  seqDownloadBase, seqMmdUrl, seqIndex, seqLayoutKey, seqLoading, seqMeta, seqSelectedIds, seqSvgSource,
+  actDownloadBase, actMmdUrl, actIndex, actLayoutKey, actLoading, actMeta, actSelectedIds, actSvgSource,
+  classDownloadBase, classDrawioUrl, classMmdUrl, classEvidenceNote, classLayoutKey, classLoading, classMeta, classSvgSource,
   classDisplayMode, classDisplayModes, onClassDisplayMode,
 } = bindPd()
 

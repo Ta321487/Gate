@@ -95,84 +95,152 @@
 
     <div v-if="genState !== 'running' && showSoftBakePanel" class="panel panel-quiet mb-16">
         <div class="panel-hd">
-          <h3 class="soft-label-with-tip">
-            视觉与生成选项
-            <n-tooltip trigger="hover" placement="bottom-start" :delay="120">
-              <template #trigger>
-                <button type="button" class="soft-tip-btn" aria-label="当前视觉示意">
-                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                    <path
-                      fill="currentColor"
-                      d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 15a1.1 1.1 0 1 1 0-2.2A1.1 1.1 0 0 1 12 17zm1.2-4.4h-2.4V7h2.4v5.6z"
-                    />
-                  </svg>
-                </button>
-              </template>
-              <div class="soft-visual-tip">
-                <div class="soft-visual-tip-title">当前选项示意</div>
-                <div
-                  class="layout-shell-wire soft-visual-wire"
-                  :data-layout="form.layout || 'topbar'"
-                  :data-chrome="form.chrome || 'soft'"
-                  :data-home="form.portalHomeStyle || 'cards'"
-                  :data-typeface="form.typeface || 'clean'"
-                  :style="softVisualWireStyle"
-                >
-                  <div class="lsw-chrome">
-                    <span class="lsw-brand" />
-                    <span class="lsw-nav"><i /><i /><i /></span>
-                  </div>
-                  <div class="lsw-body">
-                    <template v-if="(form.portalHomeStyle || 'cards') === 'editorial'">
-                      <div class="lsw-editorial">
-                        <div class="lsw-main">
-                          <span class="lsw-card" />
-                          <span class="lsw-card short" />
-                        </div>
-                        <div class="lsw-side">
-                          <span class="lsw-card" />
-                          <span class="lsw-card" />
-                        </div>
-                      </div>
-                    </template>
-                    <template v-else-if="(form.portalHomeStyle || 'cards') === 'mall'">
-                      <div class="lsw-mall">
-                        <div class="lsw-mall-rail">
-                          <span class="lsw-card" />
-                          <span class="lsw-card short" />
-                          <span class="lsw-card" />
-                        </div>
-                        <div class="lsw-mall-main">
-                          <span class="lsw-card lsw-mall-banner" />
-                          <div class="lsw-mall-grid">
-                            <span class="lsw-card" />
-                            <span class="lsw-card" />
-                            <span class="lsw-card" />
-                            <span class="lsw-card" />
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <div class="lsw-cards">
-                        <span class="lsw-card" />
-                        <span class="lsw-card" />
-                        <span class="lsw-card" />
-                      </div>
-                    </template>
-                  </div>
-                  <div class="lsw-type">标题 Aa · 正文示意</div>
-                </div>
-              </div>
-            </n-tooltip>
-          </h3>
+          <h3>视觉与生成选项</h3>
           <span class="small muted">{{ softBakeHint }}</span>
         </div>
         <div class="panel-bd">
+          <div class="soft-theme-block">
+            <div class="soft-live-preview">
+              <div class="soft-live-preview-label">{{ softColorPreviewLabel }}</div>
+              <div
+                class="layout-shell-wire soft-visual-wire soft-live-wire"
+                :data-layout="form.layout || 'topbar'"
+                :data-chrome="form.chrome || 'soft'"
+                :data-home="form.portalHomeStyle || 'cards'"
+                :data-typeface="form.typeface || 'clean'"
+                :style="softVisualWireStyle"
+              >
+                <div class="lsw-chrome">
+                  <span class="lsw-brand" />
+                  <span class="lsw-nav"><i /><i /><i /></span>
+                </div>
+                <div class="lsw-body">
+                  <template v-if="(form.portalHomeStyle || 'cards') === 'editorial'">
+                    <div class="lsw-editorial">
+                      <div class="lsw-main">
+                        <span class="lsw-card" />
+                        <span class="lsw-card short" />
+                      </div>
+                      <div class="lsw-side">
+                        <span class="lsw-card" />
+                        <span class="lsw-card" />
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else-if="(form.portalHomeStyle || 'cards') === 'mall'">
+                    <div class="lsw-mall">
+                      <div class="lsw-mall-rail">
+                        <span class="lsw-card" />
+                        <span class="lsw-card short" />
+                        <span class="lsw-card" />
+                      </div>
+                      <div class="lsw-mall-main">
+                        <span class="lsw-card lsw-mall-banner" />
+                        <div class="lsw-mall-grid">
+                          <span class="lsw-card" />
+                          <span class="lsw-card" />
+                          <span class="lsw-card" />
+                          <span class="lsw-card" />
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="lsw-cards">
+                      <span class="lsw-card" />
+                      <span class="lsw-card" />
+                      <span class="lsw-card" />
+                    </div>
+                  </template>
+                </div>
+                <div class="lsw-type">
+                  <span class="lsw-type-main">主按钮</span>
+                  <span class="lsw-type-price">¥128</span>
+                  · 标题 Aa
+                </div>
+              </div>
+            </div>
+            <div class="soft-theme-head">
+              <span class="soft-theme-label">行业底皮</span>
+              <span class="small muted">{{ softThemeHeadHint }}</span>
+            </div>
+            <div
+              class="theme-chip-row"
+              :class="{ 'theme-chip-row--overridden': shellColorCustomized }"
+              role="listbox"
+              aria-label="行业底皮"
+            >
+              <button
+                v-for="t in themeChipOptions"
+                :key="t.id"
+                type="button"
+                class="theme-chip"
+                role="option"
+                :aria-selected="form.theme === t.id"
+                :class="{ active: form.theme === t.id }"
+                :disabled="softSaving"
+                :title="shellColorCustomized ? `${t.label}（底皮；壳色已自配覆盖）` : t.label"
+                @click="pickThemeChip(t.id)"
+              >
+                <span class="theme-chip-swatch" :style="{ background: `linear-gradient(135deg, ${t.accent}, ${t.brand})` }" />
+                <span class="theme-chip-name">{{ t.label }}</span>
+              </button>
+            </div>
+          </div>
+          <div class="soft-shell-color panel-nested">
+            <button
+              type="button"
+              class="soft-shell-toggle"
+              :disabled="softSaving"
+              @click="shellColorCustomOpen = !shellColorCustomOpen"
+            >
+              <span>壳色自配（可选）</span>
+              <span class="small muted">{{ shellColorCustomOpen ? '收起' : (shellColorCustomized ? '已盖住底皮主色/点缀' : '不配则整页跟底皮') }}</span>
+            </button>
+            <div v-show="shellColorCustomOpen" class="soft-shell-body">
+              <p class="small muted soft-shell-hint">
+                只改导航/主按钮（主色）和价签强调（点缀）。不是第三套配色；上面示意只会显示这一套生效结果。
+              </p>
+              <div class="shell-swatch-group">
+                <div class="shell-swatch-label">主色</div>
+                <div class="shell-swatch-row">
+                  <button
+                    v-for="s in shellBrandSwatchOptions"
+                    :key="'b-' + s.id"
+                    type="button"
+                    class="shell-swatch"
+                    :class="{ active: form.shellBrandSwatch === s.id }"
+                    :style="{ background: s.hex }"
+                    :title="(s.note || s.id) + ' ' + s.hex"
+                    :disabled="softSaving"
+                    @click="pickShellSwatch('brand', s.id)"
+                  />
+                </div>
+              </div>
+              <div class="shell-swatch-group">
+                <div class="shell-swatch-label">点缀</div>
+                <div class="shell-swatch-row">
+                  <button
+                    v-for="s in shellAccentSwatchOptions"
+                    :key="'a-' + s.id"
+                    type="button"
+                    class="shell-swatch"
+                    :class="{ active: form.shellAccentSwatch === s.id }"
+                    :style="{ background: s.hex }"
+                    :title="(s.note || s.id) + ' ' + s.hex"
+                    :disabled="softSaving"
+                    @click="pickShellSwatch('accent', s.id)"
+                  />
+                </div>
+              </div>
+              <div class="row mt-8">
+                <n-button size="tiny" quaternary :disabled="softSaving || !shellColorCustomized" @click="clearShellSwatches">
+                  清除自配，跟回底皮
+                </n-button>
+              </div>
+            </div>
+          </div>
           <div class="grid-2">
-            <n-form-item label="行业配色">
-              <n-select v-model:value="form.theme" :options="themeOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
-            </n-form-item>
             <n-form-item label="界面质感">
               <n-select v-model:value="form.chrome" :options="chromeOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
             </n-form-item>
@@ -444,7 +512,11 @@ const {
   runtimeStatusPill, runtimeTransient, saveSoft, sceneOptions, schema, schemaErGapCount, securityDeviant, securityLabel,
   securityOn, securityOptions, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
   showSoftBakePanel, showSpec, showTestcases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
-  softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
+  softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle,
+  softColorPreviewLabel, softThemeHeadHint, shellColorCustomized,
+  shellColorCustomOpen, shellBrandSwatchOptions, shellAccentSwatchOptions,
+  themeChipOptions, pickThemeChip, pickShellSwatch, clearShellSwatches,
+  specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, undoDelivery, undoDeliveryLabel,

@@ -555,8 +555,10 @@ const stageOptions = [
       { label: 'E-R 中文补全', value: 'er_labels' },
       { label: '模块图命名', value: 'module_labels' },
       { label: '测试用例文案', value: 'testcase_labels' },
+      { label: '用例说明润色', value: 'usecase_prose' },
       { label: '编译修复', value: 'auto_fix' },
       { label: '质量摘要', value: 'qa_report' },
+      { label: '论文图对账', value: 'thesis_diagram_audit' },
       { label: '配置写出', value: 'emit' },
     ],
   },
@@ -564,15 +566,44 @@ const stageOptions = [
 const stageLabelMap = Object.fromEntries(
   stageOptions.flatMap((g) => (g.children || []).map((o) => [o.value, o.label])),
 )
+/** unit:{id} 填岛拆解明细 → 中文（未知 id 仍带可读前缀，禁止裸英文） */
+const UNIT_ID_ZH = {
+  'island.roles': '填岛·岗位称呼',
+  'island.seeds': '填岛·公告种子',
+  'island.entities': '填岛·实体文案',
+}
+const UNIT_PREFIX_ZH = [
+  ['island.labels.', '填岛·界面文案'],
+  ['ppt.', '答辩 PPT'],
+  ['island.', '填岛'],
+  ['er.', 'E-R 中文'],
+  ['module.', '模块图命名'],
+  ['testcase.', '测试用例'],
+]
 function stageLabel(stage) {
   if (!stage) return '—'
-  return stageLabelMap[stage] || stage
+  const exact = stageLabelMap[stage]
+  if (exact) return exact
+  const raw = String(stage)
+  if (raw.startsWith('unit:')) {
+    const id = raw.slice(5)
+    if (UNIT_ID_ZH[id]) return UNIT_ID_ZH[id]
+    for (const [prefix, label] of UNIT_PREFIX_ZH) {
+      if (id.startsWith(prefix)) {
+        const rest = id.slice(prefix.length)
+        return rest ? `${label}·${rest}` : label
+      }
+    }
+    return `填岛单元·${id}`
+  }
+  return raw
 }
 
 /** 调用明细展示：新旧英文/中文片段统一成可读中文 */
 const DETAIL_WORD_LABELS = {
-  'fallback structural only': '回退：仅结构扫描（未调用大模型）',
+  'fallback structural only': '确定性结构闸（未调用大模型）',
   'qa llm failed': '质量摘要：大模型失败',
+  '确定性结构闸（未调用大模型）': '确定性结构闸（未调用大模型）',
   'match recommend': '匹配推荐',
   'spec enrich': '摘要润色',
   'sample proposal': '样例开题',

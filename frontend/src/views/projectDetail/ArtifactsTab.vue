@@ -222,6 +222,69 @@
               <p class="small muted mb-8">
                 贴说明书用：系统设计（功能模块图 / 系统逻辑架构图 / 系统类图 / 系统序列图 / 系统活动图）· 需求分析（用例图 / 用例描述表）· 系统测试（软件测试用例）。模块图按身份时以交付菜单为叶子真源，开题「功能模块划分为」只辅助命名（未交付模块不进图）；架构图按交付角色画 B/S 分层；类图实体与外键来自 schema.sql，属性/方法与可见性来自 bake 包 Java（六种关系线、零交叉；默认论文示例可切代码全量，拖拽后回拉重选折线），并与开题 domain.schema 对照；序列图固定 3 张核心功能（可勾选），四槽位与六条画法，文案取自 bake；活动图固定 3 张（可与序列同勾选），三泳道用户/系统/数据库，判断条件写在菱形外侧箭头上；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
               </p>
+              <div class="row mb-8" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+                <n-button
+                  size="small"
+                  type="primary"
+                  secondary
+                  :loading="thesisAuditBusy"
+                  :disabled="artifactsFrozen || !p.workspace_path"
+                  title="确定性规则 + 可选大模型假宣称扫描；只审不改图"
+                  @click="runThesisDiagramAudit"
+                >论文图对账</n-button>
+                <span class="small muted">有 Key 时补假宣称扫描；无 Key 只跑规则闸。不改图、不每 bake 自动打。</span>
+              </div>
+              <div v-if="thesisAuditReport" class="banner mb-8" :class="thesisAuditMustFix.length ? 'fail' : ''">
+                <h4>
+                  对账
+                  <span class="pill" :class="thesisAuditMustFix.length ? 'pill-red' : 'pill-green'" style="margin-left:6px">
+                    须改 {{ thesisAuditMustFix.length }}
+                  </span>
+                  <span class="pill pill-amber" style="margin-left:4px">
+                    待核 {{ thesisAuditVerify.length }}
+                  </span>
+                  <template v-if="thesisAuditReport.llm_used"> · 含 LLM</template>
+                  <template v-else-if="thesisAuditReport.llm_skip_reason"> · 仅规则</template>
+                </h4>
+                <p class="small">{{ thesisAuditReport.summary }}</p>
+                <p v-if="!thesisAuditReport.llm_used && thesisAuditReport.llm_skip_reason" class="small muted">
+                  {{ thesisAuditReport.llm_skip_reason }} · 规则闸仍有效；配好 Key 后再点可补 LLM 扫描（结果进「待核」，不自动当老师）。
+                </p>
+                <p class="small muted" style="margin:4px 0 0">
+                  <strong>须改</strong>＝规则闸铁证，该处理；
+                  <strong>待核</strong>＝LLM/规则留意，打开材料卡核对后再决定。点「去处理」跳转。
+                </p>
+                <div v-if="thesisAuditMustFix.length" style="margin-top:10px">
+                  <h4 style="margin:0 0 6px;font-size:13px">须改 · {{ thesisAuditMustFix.length }}</h4>
+                  <ul class="small" style="margin:0;padding-left:1.2em">
+                    <li v-for="(f, i) in thesisAuditMustFix" :key="'m'+i" style="margin:6px 0">
+                      <span class="pill pill-red" style="margin-right:6px">{{ f.badge || '须改' }}</span>
+                      <strong>错</strong>
+                      <span v-if="f.where" class="muted"> · {{ f.where }}</span>
+                      · {{ f.msg }}
+                      <div v-if="f.fix || f.goto" class="muted" style="margin-top:2px">
+                        <span v-if="f.fix">路径：{{ f.fix }}</span>
+                        <a href="#" style="margin-left:8px" @click.prevent="jumpThesisAuditFinding(f)">去处理</a>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+                <div v-if="thesisAuditVerify.length" style="margin-top:10px">
+                  <h4 style="margin:0 0 6px;font-size:13px">待核 · {{ thesisAuditVerify.length }}</h4>
+                  <ul class="small" style="margin:0;padding-left:1.2em">
+                    <li v-for="(f, i) in thesisAuditVerify" :key="'v'+i" style="margin:6px 0">
+                      <span class="pill pill-amber" style="margin-right:6px">{{ f.badge || '待核' }}</span>
+                      <strong>{{ f.level === 'error' ? '错' : (f.level === 'warn' ? '警' : '提示') }}</strong>
+                      <span v-if="f.where" class="muted"> · {{ f.where }}</span>
+                      · {{ f.msg }}
+                      <div v-if="f.fix || f.goto" class="muted" style="margin-top:2px">
+                        <span v-if="f.fix">路径：{{ f.fix }}</span>
+                        <a href="#" style="margin-left:8px" @click.prevent="jumpThesisAuditFinding(f)">去处理</a>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
               <div class="thesis-groups">
                 <div v-for="g in thesisGroups" :key="g.id" class="thesis-group">
                   <div
@@ -242,19 +305,8 @@
                       <div v-for="card in g.cards" :key="card.id" class="thesis-card">
                         <div class="thesis-card-hd">
                           <strong>{{ card.title }}</strong>
-                          <span
-                            class="pill"
-                            :class="artifactsFrozen ? 'pill-amber' : (thesisCardOk(card) ? 'pill-green' : (card.id === 'modules' && modulesLabelRed ? 'pill-amber' : 'pill-neutral'))"
-                          >
-                            {{
-                              artifactsFrozen
-                                ? '生成中'
-                                : (card.id === 'modules' && modulesLabelRed
-                                  ? '文案红'
-                                  : (card.id === 'modules' && modulesLabelPending
-                                    ? '待核验'
-                                    : (thesisCardOk(card) ? '可导出' : (p.workspace_path ? '待生成' : '未生成'))))
-                            }}
+                          <span class="pill" :class="thesisCardPillClass(card)">
+                            {{ thesisCardPillText(card) }}
                           </span>
                         </div>
                         <p class="small muted thesis-card-desc" :title="card.desc">{{ card.desc }}</p>
@@ -264,7 +316,7 @@
                             type="primary"
                             :disabled="!thesisCardOpenable(card) || artifactsFrozen"
                             :loading="card.loading"
-                            :title="artifactsFrozen ? artifactsFrozenReason : (card.id === 'modules' && modulesLabelRed ? '文案红仍可打开：看 findings 与工厂提示' : undefined)"
+                            :title="artifactsFrozen ? artifactsFrozenReason : ((card.id === 'modules' && modulesLabelRed) || thesisRubricRed(card) ? '规则/文案红仍可打开：看 findings 与工厂提示' : undefined)"
                             @click="card.open"
                           >{{ card.action }}</n-button>
                           <n-button
@@ -342,7 +394,7 @@
                 </div>
               </div>
               <div class="small muted">
-                自动扫描学生工程接口，便于对照主流程验收；仅供运营端查看，不含于交付包。
+                按工作区 Controller 源码列出实有接口（不是 Swagger 运行时文档），便于对照主流程验收；仅供运营端查看，不含于交付包。
                 复制为「方法 + 路径」；联调请用「运行」页的后端地址（需先登录预览）。
                 「全量冒烟」按本域 flow_api 模拟页面主路径点击（可多链：借+约、收藏等），只探测已启动预览，不会自动启停；启停请到「运行」页。
                 全量表「可达」= 打到学生后端；业务成败看上方「主流程」。
@@ -430,8 +482,13 @@
                   <span v-if="apis.api_style" class="mono" style="margin-left:8px">
                     item_ref={{ apis.api_style.item_ref }} · cart_mutate={{ apis.api_style.cart_mutate }}
                   </span>
-                  <span v-if="apis.style_hidden" class="pill pill-neutral" style="margin-left:8px">
-                    已隐藏变体 {{ apis.style_hidden }}
+                  <span
+                    v-if="apis.style_mismatch || apis.style_hidden"
+                    class="pill pill-amber"
+                    style="margin-left:8px"
+                    title="源码里仍有与宣称 api_style 不一致的传参变体；清单已按源码实列，未隐藏"
+                  >
+                    源码变体 {{ apis.style_mismatch || apis.style_hidden }}
                   </span>
                 </div>
                 <ul style="margin:0;padding-left:1.2em">
@@ -589,19 +646,112 @@ const {
   tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucLoading, ucdLoading, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint, archLoading, classLoading, seqLoading, actLoading,
+  archMeta, classMeta, seqMeta, actMeta, usecaseMeta, ucdRubricGate,
+  runThesisDiagramAudit, thesisAuditBusy, thesisAuditReport,
 } = bindPd()
+
+const thesisAuditFindings = computed(() => {
+  const raw = thesisAuditReport.value?.findings
+  return Array.isArray(raw) ? raw.filter((f) => f && f.msg) : []
+})
+const thesisAuditMustFix = computed(() => {
+  const raw = thesisAuditReport.value?.must_fix
+  if (Array.isArray(raw) && raw.length) return raw.filter((f) => f && f.msg)
+  return thesisAuditFindings.value.filter((f) => f.trust === 'must_fix' || f.badge === '须改')
+})
+const thesisAuditVerify = computed(() => {
+  const raw = thesisAuditReport.value?.verify
+  if (Array.isArray(raw) && raw.length) return raw.filter((f) => f && f.msg)
+  const mustIds = new Set(thesisAuditMustFix.value.map((f) => `${f.where}|${f.msg}`))
+  return thesisAuditFindings.value.filter((f) => !mustIds.has(`${f.where}|${f.msg}`))
+})
+
+/** 对账 finding → 打开手调 / 对应材料卡 */
+function jumpThesisAuditFinding(f) {
+  const goto = String(f?.goto || '').trim()
+  const where = String(f?.where || '').trim().toLowerCase()
+  const key = goto || where.split(/[\[.]/)[0] || ''
+  const openers = {
+    usecase_desc: () => openUsecaseDescriptions(),
+    usecase: () => openUsecases(),
+    usecases: () => openUsecases(),
+    sequence: () => openSequences(),
+    sequences: () => openSequences(),
+    activity: () => openActivities(),
+    activities: () => openActivities(),
+    classes: () => openClasses(),
+    architecture: () => openArchitecture(),
+    modules: () => openModules(),
+    testcases: () => openTestcases(),
+    er: () => openEr(),
+  }
+  // 手调优先（有 override section）
+  const overrideKeys = new Set([
+    'usecase_desc', 'usecase', 'sequence', 'activity', 'classes',
+    'architecture', 'modules', 'testcases',
+  ])
+  if (overrideKeys.has(key)) {
+    openThesisOverrides(key === 'usecases' ? 'usecase' : key)
+    return
+  }
+  const open = openers[key]
+  if (open) {
+    open()
+    return
+  }
+  // 未知 where：至少回到论文材料卡面
+  thesisSurface.value = 'cards'
+  artifactView.value = 'thesis'
+  tab.value = 'thesis'
+}
+
+function thesisMetaForCard(card) {
+  if (!card) return null
+  if (card.id === 'modules') return modulesMeta.value
+  if (card.id === 'architecture') return archMeta.value
+  if (card.id === 'classes') return classMeta.value
+  if (card.id === 'sequences') return seqMeta.value
+  if (card.id === 'activities') return actMeta.value
+  if (card.id === 'usecases') return usecaseMeta.value
+  if (card.id === 'usecase-desc') return ucdRubricGate.value ? { rubric_gate: ucdRubricGate.value } : null
+  return null
+}
+
+function thesisRubricRed(card) {
+  const gate = thesisMetaForCard(card)?.rubric_gate
+  return !!(gate && gate.ok === false)
+}
 
 function thesisCardOk(card) {
   if (!card) return false
+  if (thesisRubricRed(card)) return false
   if (card.id === 'modules') return !!modulesOk.value && !!modulesLabelOk.value
   return !!modulesOk.value
 }
 
-/** 文案红仍可打开诊断；可导出仍看 thesisCardOk */
+/** 文案/规则红仍可打开诊断；可导出仍看 thesisCardOk */
 function thesisCardOpenable(card) {
   if (!card) return false
   if (card.id === 'modules') return !!modulesOk.value
+  if (thesisMetaForCard(card)) return true
   return thesisCardOk(card)
+}
+
+function thesisCardPillClass(card) {
+  if (artifactsFrozen.value) return 'pill-amber'
+  if (card.id === 'modules' && modulesLabelRed.value) return 'pill-amber'
+  if (thesisRubricRed(card)) return 'pill-amber'
+  if (thesisCardOk(card)) return 'pill-green'
+  return 'pill-neutral'
+}
+
+function thesisCardPillText(card) {
+  if (artifactsFrozen.value) return '生成中'
+  if (card.id === 'modules' && modulesLabelRed.value) return '文案红'
+  if (thesisRubricRed(card)) return '规则红'
+  if (card.id === 'modules' && modulesLabelPending.value) return '待核验'
+  if (thesisCardOk(card)) return '可导出'
+  return p.value?.workspace_path ? '待生成' : '未生成'
 }
 
 const thesisGroups = computed(() => [
@@ -621,7 +771,7 @@ const thesisGroups = computed(() => [
       {
         id: 'architecture',
         title: '系统逻辑架构图',
-        desc: '角色 → 界面 → Vue → SpringBoot → MySQL · HTTPS · 复制 PNG / 下载 SVG',
+        desc: '角色 → 界面 → Vue → SpringBoot → MySQL · HTTPS · PNG/SVG · Draw.io / Mermaid 同源导出',
         action: '打开架构图',
         overrideSection: 'architecture',
         loading: archLoading.value,
