@@ -100,6 +100,8 @@ class GuestbookCapabilityTests(unittest.TestCase):
         self.assertEqual(spec.get("accept"), "full")
 
     def test_trade_sql_injects_guestbook_within_budget(self) -> None:
+        from app.bake.engine_sql import evaluate_table_budget
+
         sql = domain_sql(
             "DOM-GENERIC",
             "thesis_test",
@@ -108,12 +110,13 @@ class GuestbookCapabilityTests(unittest.TestCase):
         )
         self.assertIn("sys_guestbook", sql)
         n = count_create_tables(sql)
-        self.assertLessEqual(n, 13)
         self.assertGreaterEqual(n, 6)
+        self.assertTrue(evaluate_table_budget(sql, "DOM-GENERIC").ok)
 
         shop = domain_sql("DOM-SHOP", "thesis_test")
         self.assertIn("sys_guestbook", shop)
-        self.assertLessEqual(count_create_tables(shop), 13)
+        budget = evaluate_table_budget(shop, "DOM-SHOP")
+        self.assertTrue(budget.ok, budget.message)
 
     def test_library_without_keyword_no_guestbook_table(self) -> None:
         sql = normalize_sql(domain_sql("DOM-LIBRARY", "thesis_test"))

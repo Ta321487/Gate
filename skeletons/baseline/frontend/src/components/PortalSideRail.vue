@@ -290,12 +290,12 @@ function saveEdit() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--portal-accent, #0b6e75);
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent);
+  color: var(--portal-brand, #08545a);
+  background: color-mix(in srgb, var(--portal-brand, #08545a) 12%, transparent);
 }
 .rail-mark--more {
   color: #fff;
-  background: var(--portal-accent, #0b6e75);
+  background: var(--portal-brand, #08545a);
 }
 .rail-mark--sm {
   width: 22px;
@@ -311,11 +311,11 @@ function saveEdit() {
 .rail-btn:hover,
 .rail-btn.is-active {
   color: var(--portal-ink, #15202b);
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, transparent);
+  background: color-mix(in srgb, var(--portal-brand, #08545a) 10%, transparent);
 }
 .rail-btn:hover .rail-mark,
 .rail-btn.is-active .rail-mark {
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 22%, transparent);
+  background: color-mix(in srgb, var(--portal-brand, #08545a) 22%, transparent);
 }
 .rail-cap {
   display: block;
@@ -343,7 +343,7 @@ function saveEdit() {
 }
 .more-row:hover,
 .more-row.is-active {
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent);
+  background: color-mix(in srgb, var(--portal-brand, #08545a) 12%, transparent);
 }
 .pin-hint {
   margin-left: auto;
@@ -377,10 +377,10 @@ function saveEdit() {
   border-radius: 8px;
 }
 .portal-side-rail-edit .edit-row:hover {
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 6%, transparent);
+  background: color-mix(in srgb, var(--portal-brand, #08545a) 6%, transparent);
 }
 .portal-side-rail-edit .edit-row.on {
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 10%, transparent);
+  background: color-mix(in srgb, var(--portal-brand, #08545a) 10%, transparent);
 }
 .portal-side-rail-edit .edit-pick {
   min-width: 0;
@@ -425,7 +425,7 @@ function saveEdit() {
   font-size: 14px;
 }
 .portal-side-rail-edit .edit-handle:hover:not(:disabled) {
-  color: var(--portal-accent, #0b6e75);
+  color: var(--portal-brand, #08545a);
   background: var(--portal-surface, #fff);
   box-shadow: 0 0 0 1px var(--portal-line, #e2e8f0);
 }
@@ -441,8 +441,8 @@ function saveEdit() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--portal-accent, #0b6e75);
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 12%, transparent);
+  color: var(--portal-brand, #08545a);
+  background: color-mix(in srgb, var(--portal-brand, #08545a) 12%, transparent);
 }
 .portal-side-rail-edit .rail-mark--sm {
   width: 22px;

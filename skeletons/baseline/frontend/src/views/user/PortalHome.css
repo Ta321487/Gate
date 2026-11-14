@@ -118,7 +118,7 @@
 .more {
   border: 0;
   background: transparent;
-  color: var(--portal-accent, #0b6e75);
+  color: var(--portal-brand, #08545a);
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
@@ -242,35 +242,63 @@
   .editorial { grid-template-columns: 1fr; }
   .claim { min-height: 220px; }
   .news-track { grid-template-columns: 1fr; }
-  .mall-hero { grid-template-columns: 1fr; }
-  .mall-cats { flex-direction: row; flex-wrap: wrap; max-height: none; }
-  .mall-cat { flex: 1 1 40%; }
+  .mall-cats {
+    width: 100%;
+    max-width: none;
+    bottom: auto;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+  }
+  .mall-cat {
+    flex: 1 1 30%;
+    border-bottom: 0;
+    border-left: 0;
+    border-bottom: 2px solid transparent;
+    text-align: center;
+    padding: 10px 8px;
+  }
+  .mall-cat:hover {
+    border-left-color: transparent;
+    border-bottom-color: var(--portal-brand, #08545a);
+  }
+  .mall-hero { min-height: 180px; }
   .mall-banner { min-height: 180px; }
+  .mall-banner-slide { min-height: 180px; }
   .mall-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* —— 商城货架首页 —— */
 .mall { display: flex; flex-direction: column; gap: 22px; }
 .mall-hero {
-  display: grid;
-  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
-  gap: 0;
+  position: relative;
+  display: block;
+  /* 与横幅同高底；自限高，避免 stretch 条把贴底轮播点拽到槽底 */
+  min-height: 280px;
+  height: fit-content;
   border: 1px solid var(--portal-line, #e5e7eb);
   border-radius: var(--portal-radius, 10px);
   overflow: hidden;
   background: var(--portal-surface, #fff);
 }
 .mall-cats {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: clamp(148px, 18vw, 200px);
   display: flex;
   flex-direction: column;
-  background:
-    linear-gradient(
-      165deg,
-      color-mix(in srgb, var(--portal-brand, #08545a) 90%, #0a0a0a) 0%,
-      color-mix(in srgb, var(--portal-ink, #15202b) 82%, #000) 100%
-    );
   color: #f8fafc;
-  min-height: 280px;
+  background: color-mix(in srgb, var(--portal-ink, #15202b) 38%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 6px 0 28px rgba(0, 0, 0, 0.16);
 }
 .mall-cat {
   display: block;
@@ -283,12 +311,13 @@
   padding: 11px 14px;
   font-size: 13px;
   cursor: pointer;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 3px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 .mall-cat:hover {
-  background: color-mix(in srgb, var(--portal-accent, #0b6e75) 28%, transparent);
-  border-left-color: var(--portal-accent, #0b6e75);
+  background: color-mix(in srgb, var(--portal-brand, #08545a) 48%, rgba(255, 255, 255, 0.1));
+  border-left-color: var(--portal-brand, #08545a);
 }
 .mall-cat-empty {
   margin: auto;
@@ -299,6 +328,7 @@
 .mall-banner {
   min-height: 280px;
   position: relative;
+  width: 100%;
   background: var(--portal-surface, #fff);
 }
 .mall-banner-slide {
@@ -381,7 +411,7 @@
   width: 4px;
   height: 1.05em;
   border-radius: 2px;
-  background: var(--portal-accent, #0b6e75);
+  background: var(--portal-brand, #08545a);
 }
 .mall-grid {
   display: grid;

@@ -47,38 +47,38 @@ for (const [key, cssVar] of Object.entries(shellVarMap)) {
   const val = shellColors[key]
   if (val) document.documentElement.style.setProperty(cssVar, val)
 }
-if (shellColors.accent) {
+if (shellColors.accent || shellColors.brand) {
   const brand = shellColors.brand || shellColors.accent
-  const accent = shellColors.accent
+  const accent = shellColors.accent || brand
   // 跟当前主题变量混，浅色皮/夜间皮/影院皮都能搭
   const bg = 'var(--portal-bg)'
   const surface = 'var(--portal-surface)'
   const ink = 'var(--portal-ink)'
-  // 盖死 Element 默认蓝：主色 + 深浅阶，避免按钮/链接仍冒蓝
-  document.documentElement.style.setProperty('--el-color-primary', accent)
+  // 壳主色走 brand（双色主题才能露第二色）；accent 留给价签等点缀
+  document.documentElement.style.setProperty('--el-color-primary', brand)
   document.documentElement.style.setProperty(
     '--el-color-primary-light-3',
-    `color-mix(in srgb, ${accent} 70%, ${surface})`,
+    `color-mix(in srgb, ${brand} 70%, ${surface})`,
   )
   document.documentElement.style.setProperty(
     '--el-color-primary-light-5',
-    `color-mix(in srgb, ${accent} 50%, ${surface})`,
+    `color-mix(in srgb, ${brand} 50%, ${surface})`,
   )
   document.documentElement.style.setProperty(
     '--el-color-primary-light-7',
-    `color-mix(in srgb, ${accent} 30%, ${surface})`,
+    `color-mix(in srgb, ${brand} 30%, ${surface})`,
   )
   document.documentElement.style.setProperty(
     '--el-color-primary-light-8',
-    `color-mix(in srgb, ${accent} 20%, ${surface})`,
+    `color-mix(in srgb, ${brand} 20%, ${surface})`,
   )
   document.documentElement.style.setProperty(
     '--el-color-primary-light-9',
-    `color-mix(in srgb, ${accent} 12%, ${surface})`,
+    `color-mix(in srgb, ${brand} 12%, ${surface})`,
   )
   document.documentElement.style.setProperty(
     '--el-color-primary-dark-2',
-    `color-mix(in srgb, ${accent} 78%, #000)`,
+    `color-mix(in srgb, ${brand} 78%, #000)`,
   )
   document.documentElement.style.setProperty(
     '--portal-accent-soft',
@@ -89,8 +89,8 @@ if (shellColors.accent) {
   document.documentElement.style.setProperty(
     '--portal-line',
     darkShell
-      ? `color-mix(in srgb, ${accent} 22%, ${surface})`
-      : `color-mix(in srgb, ${accent} 12%, ${bg})`,
+      ? `color-mix(in srgb, ${brand} 22%, ${surface})`
+      : `color-mix(in srgb, ${brand} 12%, ${bg})`,
   )
   document.documentElement.style.setProperty(
     '--portal-skel-base',

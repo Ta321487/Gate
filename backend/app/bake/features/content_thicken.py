@@ -577,8 +577,7 @@ def _apply_blog_skin(
     labels.setdefault("saveDraftLabel", "存草稿")
     labels.setdefault("publishFromDraftLabel", "发布草稿")
     thicken["draftBox"] = True
-    if not archive.get("userPublish"):
-        archive["userPublish"] = True
+    # 投稿仍走扫词（user_publish）；禁止域默认硬塞 userPublish，否则 gate/SQL 对不齐会空壳
     _add_feature(spec, "博客草稿箱")
 
     # 专栏/分类订阅

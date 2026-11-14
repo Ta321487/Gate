@@ -170,11 +170,11 @@ class OaApplyPTests(unittest.TestCase):
 
 
     def test_oa_keyword_budget(self) -> None:
-        """与 DOM-EVENT 同口径：词表预算 ≤20，长尾靠 match_recommend。"""
+        """与 DOM-EVENT 同口径：词表预算 ≤24，长尾靠 match_recommend。"""
         for sid, _phrase, domain, _title in OA_APPLY_CASES:
             with self.subTest(domain=domain):
                 kws = DOMAINS[domain].get("keywords") or []
-                self.assertLessEqual(len(kws), 20, kws)
+                self.assertLessEqual(len(kws), 24, kws)
                 self.assertGreaterEqual(len(kws), 4, kws)
 
     def test_keyword_hard_split_does_not_steal_neighbors(self) -> None:

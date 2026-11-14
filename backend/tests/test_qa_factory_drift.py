@@ -543,7 +543,9 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
         report = _fallback_qa(dirty)
         self.assertFalse(report.get("ok"), report)
-        self.assertEqual(report.get("mode"), "fallback")
+        self.assertEqual(report.get("mode"), "deterministic")
+        self.assertTrue(report.get("structural_primary"))
+        self.assertFalse(report.get("llm_used"))
 
         clean = {
             **dirty,

@@ -1083,9 +1083,22 @@ class ContentThickenFeatureTests(unittest.TestCase):
 
         blog = _spec("DOM-BLOG", "个人博客专栏管理系统", "")
         bt = (blog.get("schema") or {}).get("contentThicken") or {}
-        # BLOG 壳默认 userPublish → 投稿审过通知
-        self.assertTrue(bt.get("publishApproveNotify"))
+        # 投稿扫词开：空开题不硬塞 userPublish，故不挂审过通知
+        self.assertFalse(bt.get("publishApproveNotify"))
         self.assertFalse(bt.get("followersOnlyComment"))
+
+        blog_pub = _spec(
+            "DOM-BLOG",
+            "个人博客专栏管理系统",
+            "支持读者投稿与先审后发。",
+        )
+        bp = (blog_pub.get("schema") or {}).get("contentThicken") or {}
+        self.assertTrue(
+            ((blog_pub.get("schema") or {}).get("entities") or {})
+            .get("archive", {})
+            .get("userPublish")
+        )
+        self.assertTrue(bp.get("publishApproveNotify"))
 
         blog_cmt = _spec(
             "DOM-BLOG",

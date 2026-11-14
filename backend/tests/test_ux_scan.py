@@ -76,14 +76,27 @@ class UxScanTests(unittest.TestCase):
         self.assertTrue(search.get("hotKeywords"))
 
     def test_browse_sql_within_budget(self) -> None:
+        from app.bake.engine_sql import evaluate_table_budget
+
+        caps = ["archive", "order_lines", "guestbook", "favorites", "browse_history"]
+        base = domain_sql(
+            "DOM-SHOP",
+            "thesis_test",
+            capabilities=["archive", "order_lines", "guestbook", "favorites"],
+            proposal_text="商城下单",
+        )
         sql = domain_sql(
             "DOM-SHOP",
             "thesis_test",
-            capabilities=["archive", "order_lines", "guestbook", "favorites", "browse_history"],
+            capabilities=caps,
             proposal_text="浏览历史",
         )
         self.assertIn("user_browse_history", sql)
-        self.assertLessEqual(count_create_tables(sql), 13)
+        self.assertNotIn("user_browse_history", base)
+        # 足迹只加一张表；总表数随平台横切上涨，硬顶走 evaluate_table_budget
+        self.assertEqual(count_create_tables(sql) - count_create_tables(base), 1)
+        budget = evaluate_table_budget(sql, "DOM-SHOP", caps)
+        self.assertTrue(budget.ok, budget.message)
 
     def test_gallery_column_on_product(self) -> None:
         sql = normalize_sql(

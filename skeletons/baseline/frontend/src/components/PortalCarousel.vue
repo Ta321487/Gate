@@ -55,6 +55,7 @@ const raw = computed(() => {
     src: b.src || b.imageUrl || '',
     title: b.title || '',
     lead: b.lead || '',
+    linkUrl: b.linkUrl || b.href || '',
   }))
   return [...fromApi, ...baked].filter((x) => x && x.src)
 })
@@ -100,8 +101,13 @@ function orderSlides(list) {
 
 async function loadApi() {
   try {
-    const res = await http.get('/api/banners', { params: { slot: 'home' } })
-    apiBanners.value = Array.isArray(res.data) ? res.data : []
+    const [home, portal] = await Promise.all([
+      http.get('/api/banners', { params: { slot: 'home' } }),
+      http.get('/api/banners', { params: { slot: 'portal' } }),
+    ])
+    const a = Array.isArray(home.data) ? home.data : []
+    const b = Array.isArray(portal.data) ? portal.data : []
+    apiBanners.value = [...a, ...b]
   } catch {
     apiBanners.value = []
   }
@@ -125,6 +131,7 @@ async function probe() {
         src: b.src || b.imageUrl || '',
         title: b.title || '',
         lead: b.lead || '',
+        linkUrl: b.linkUrl || b.href || '',
       })).filter((x) => x.title),
     )
   } else {

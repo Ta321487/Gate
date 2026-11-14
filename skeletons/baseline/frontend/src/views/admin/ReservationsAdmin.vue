@@ -298,7 +298,7 @@ const stylistShort = computed(() => {
 const states = computed(() => getSchema()?.entities?.reservation?.states || {})
 const allowRating = computed(() => !!getSchema()?.entities?.reservation?.allowRating)
 const labels = computed(() => getSchema()?.labels || {})
-/** 总管看监督句，前台/店员看一线核销句（labels 由 bake 写入） */
+/** 总管看监督句，前台/店员看一线核销句（文案来自 schema.labels） */
 const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
 const pageLead = computed(() => {
   const lab = labels.value || {}

@@ -69,6 +69,7 @@ const banners = computed(() => {
     src: b.src || b.imageUrl || '',
     title: b.title || '',
     lead: b.lead || '',
+    linkUrl: b.linkUrl || b.href || '',
   }))
   // 有图优先；无图但有标题的也保留（mall 纯色兜底文案）
   const merged = [...fromApi, ...baked].filter((x) => x && (x.src || x.title))
@@ -81,8 +82,14 @@ const newsItems = ref([])
 
 async function loadHomeBanners() {
   try {
-    const res = await http.get('/api/banners', { params: { slot: 'home' } })
-    apiBanners.value = Array.isArray(res.data) ? res.data : []
+    // 管理端槽位有 home / portal；首页都认，避免配了 portal 买家端空白
+    const [home, portal] = await Promise.all([
+      http.get('/api/banners', { params: { slot: 'home' } }),
+      http.get('/api/banners', { params: { slot: 'portal' } }),
+    ])
+    const a = Array.isArray(home.data) ? home.data : []
+    const b = Array.isArray(portal.data) ? portal.data : []
+    apiBanners.value = [...a, ...b]
   } catch {
     apiBanners.value = []
   }

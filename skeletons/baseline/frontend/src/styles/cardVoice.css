@@ -183,14 +183,11 @@ html[data-card-voice='board'] .browse-surface .card .stage-chip {
   padding: 3px 10px;
 }
 
-/* 商城首页跟叙事脸 */
+/* 商城首页跟叙事脸：分类条毛玻璃叠全宽图，禁实色竖条抢戏 */
 html[data-card-voice='story'] .mall-cats {
-  background:
-    linear-gradient(
-      165deg,
-      color-mix(in srgb, var(--portal-brand, #08545a) 92%, #000) 0%,
-      color-mix(in srgb, var(--portal-accent, #0b6e75) 75%, #111) 100%
-    );
+  background: color-mix(in srgb, var(--portal-ink, #15202b) 40%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
 }
 html[data-card-voice='story'] .mall-banner-kicker {
   font-size: clamp(1.35rem, 2.4vw, 1.85rem);

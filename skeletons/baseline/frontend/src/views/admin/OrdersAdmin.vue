@@ -438,7 +438,7 @@ const completeVerb = computed(() => {
   return '完成'
 })
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
-/** 多店/食堂：超管看监督句，商家·档口看一线履约句（labels 由 bake 写入） */
+/** 多店/食堂：超管看监督句，商家·档口看一线履约句（文案来自 schema.labels） */
 const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
 const pageLead = computed(() => {
   const labels = getSchema()?.labels || {}

@@ -75,10 +75,14 @@ class FavoritesCapabilityTests(unittest.TestCase):
         self.assertNotIn(FAVORITES_CAP, forum)
 
     def test_sql_injects_user_favorite(self) -> None:
+        from app.bake.engine_sql import evaluate_table_budget
+
         sql = domain_sql("DOM-SHOP", "thesis_shop")
         n = normalize_sql(sql)
         self.assertIn("user_favorite", n)
-        self.assertLessEqual(count_create_tables(sql), 13)
+        budget = evaluate_table_budget(sql, "DOM-SHOP")
+        self.assertTrue(budget.ok, budget.message)
+        self.assertGreaterEqual(count_create_tables(sql), 6)
 
     def test_attach_accept_merges_favorites(self) -> None:
         out = attach_accept(

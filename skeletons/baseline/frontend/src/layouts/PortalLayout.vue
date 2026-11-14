@@ -436,7 +436,7 @@ async function logout() {
   bottom: 2px;
   height: 2px;
   border-radius: 1px;
-  background: var(--portal-accent, #0b6e75);
+  background: var(--portal-brand, #08545a);
 }
 .user {
   display: flex;
@@ -451,19 +451,19 @@ async function logout() {
   padding: 4px 6px;
 }
 .btn-login {
-  --el-button-bg-color: var(--portal-accent, #0b6e75);
-  --el-button-border-color: var(--portal-accent, #0b6e75);
-  --el-button-hover-bg-color: var(--portal-brand, #08545a);
-  --el-button-hover-border-color: var(--portal-brand, #08545a);
+  --el-button-bg-color: var(--portal-brand, #08545a);
+  --el-button-border-color: var(--portal-brand, #08545a);
+  --el-button-hover-bg-color: color-mix(in srgb, var(--portal-brand, #08545a) 72%, #000);
+  --el-button-hover-border-color: color-mix(in srgb, var(--portal-brand, #08545a) 72%, #000);
   font-weight: 600;
 }
 .btn-reg {
   --el-button-bg-color: var(--portal-surface, #fff);
   --el-button-text-color: var(--portal-brand, #08545a);
-  --el-button-border-color: color-mix(in srgb, var(--portal-accent, #0b6e75) 45%, var(--portal-line, #e2e8e6));
+  --el-button-border-color: color-mix(in srgb, var(--portal-brand, #08545a) 45%, var(--portal-line, #e2e8e6));
   --el-button-hover-bg-color: var(--portal-accent-soft, #e8f3f2);
   --el-button-hover-text-color: var(--portal-brand, #08545a);
-  --el-button-hover-border-color: var(--portal-accent, #0b6e75);
+  --el-button-hover-border-color: var(--portal-brand, #08545a);
   font-weight: 600;
 }
 .btn-guest-account.is-active {
@@ -495,7 +495,7 @@ async function logout() {
   font-size: 12px;
   font-weight: 600;
   color: #fff;
-  background: var(--portal-accent, #0b6e75);
+  background: var(--portal-brand, #08545a);
 }
 .account-caret { color: var(--portal-muted, #94a3b8); }
 .account-guest-trig {
