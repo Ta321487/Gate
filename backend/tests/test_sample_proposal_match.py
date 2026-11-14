@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.bake.catalog import match_text
+from app.bake.catalog import _catalog_scores, match_text
 from app.bake.domains import DOMAINS
 
 
@@ -18,11 +18,41 @@ class SlimMatchDataTests(unittest.TestCase):
                 )
 
     def test_all_domains_keyword_budget(self) -> None:
-        """全域词表硬分流预算 ≤24；近义长尾靠 match_hint / match_recommend。"""
+        """全域词表硬分流预算 ≤24 锚；近义写法进 synonyms，不占锚位。"""
         for key, meta in DOMAINS.items():
             with self.subTest(domain=key):
                 kws = meta.get("keywords") or []
                 self.assertLessEqual(len(kws), 24, f"{key} keywords={kws}")
+
+    def test_synonyms_attach_to_keyword_anchors(self) -> None:
+        """synonyms 键必须是 keywords 锚；写法不得再占另一锚（防簇计 2 分）。"""
+        for key, meta in DOMAINS.items():
+            syn = meta.get("synonyms") or {}
+            if not syn:
+                continue
+            kws = set(meta.get("keywords") or [])
+            with self.subTest(domain=key):
+                self.assertIsInstance(syn, dict)
+                for anchor, alts in syn.items():
+                    self.assertIn(anchor, kws, f"{key} synonyms 键「{anchor}」不在 keywords")
+                    extras = (alts,) if isinstance(alts, str) else tuple(alts or ())
+                    for alt in extras:
+                        self.assertNotIn(
+                            alt,
+                            kws,
+                            f"{key} 近义「{alt}」仍在 keywords，应只留在 synonyms[{anchor!r}]",
+                        )
+
+    def test_synonym_cluster_scores_once(self) -> None:
+        """同簇多写法同现只 +1，不虚高抢邻域。"""
+        text = "实验室危化品领用与危险品申领台账"
+        scored = {k: (s, h) for k, s, h in _catalog_scores(text, DOMAINS)}
+        self.assertIn("DOM-ASSET", scored)
+        score, hits = scored["DOM-ASSET"]
+        self.assertEqual(score, 1, f"hits={hits}")
+        self.assertEqual(len(hits), 1)
+        # 取最长命中写法
+        self.assertIn(hits[0], ("危化品领用", "危险品领用", "危险品申领"))
 
     def test_keyword_hard_split_titles(self) -> None:
         cases = [

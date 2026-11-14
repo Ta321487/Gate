@@ -170,7 +170,7 @@ class OaApplyPTests(unittest.TestCase):
 
 
     def test_oa_keyword_budget(self) -> None:
-        """与 DOM-EVENT 同口径：词表预算 ≤24，长尾靠 match_recommend。"""
+        """与 DOM-EVENT 同口径：词表预算 ≤24 锚，长尾靠 match_recommend。"""
         for sid, _phrase, domain, _title in OA_APPLY_CASES:
             with self.subTest(domain=domain):
                 kws = DOMAINS[domain].get("keywords") or []

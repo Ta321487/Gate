@@ -116,7 +116,13 @@ def catalog_brief_for_match() -> str:
     arch_lines = [f"- {k}: {v.get('label')}" for k, v in ARCHETYPES.items()]
     dom_lines: list[str] = []
     for k, v in DOMAINS.items():
-        kws = "、".join((v.get("keywords") or [])[:6])
+        # 目录给 LLM 看锚+近义写法（展平）；打分仍按锚计 1
+        surfaces: list[str] = []
+        for _anchor, surfs in iter_keyword_anchors(v):
+            surfaces.extend(surfs)
+            if len(surfaces) >= 8:
+                break
+        kws = "、".join(surfaces[:8])
         flows = "；".join((v.get("flows") or [])[:2])
         hint = (v.get("match_hint") or "").strip()
         line = f"- {k}（{v.get('label')}）关键词:{kws} 流程:{flows}"
@@ -361,6 +367,28 @@ def extract_title(text: str, fallback: str = "未命名毕设项目") -> str:
 _ARCHETYPE_TIE_PRIORITY = ARCH_PATH_ORDER
 
 
+def iter_keyword_anchors(meta: dict) -> list[tuple[str, tuple[str, ...]]]:
+    """域/原型词表锚点：每个 ``keywords`` 项是一锚；可选 ``synonyms[锚]`` 为同簇写法。
+
+    打分时簇内任一写法命中只 +1（防近义多的域虚高抢邻域）。无 ``synonyms`` 时
+    与旧扁平词表等价。不接 ``SLOT_CLUSTERS``（那是页面话术轴）。
+    """
+    raw_syn = meta.get("synonyms") or {}
+    syn = raw_syn if isinstance(raw_syn, dict) else {}
+    out: list[tuple[str, tuple[str, ...]]] = []
+    for kw in meta.get("keywords") or []:
+        if not isinstance(kw, str) or not kw.strip():
+            continue
+        extras = syn.get(kw) or ()
+        if isinstance(extras, str):
+            extras = (extras,)
+        surfaces = (kw,) + tuple(
+            s.strip() for s in extras if isinstance(s, str) and s.strip() and s.strip() != kw
+        )
+        out.append((kw, surfaces))
+    return out
+
+
 def _catalog_scores(text: str, catalog: dict) -> list[tuple[str, int, list[str]]]:
     from app.bake.proposal_lexicon import keyword_mentioned
 
@@ -368,11 +396,20 @@ def _catalog_scores(text: str, catalog: dict) -> list[tuple[str, int, list[str]]
     for key, meta in catalog.items():
         score = 0
         local_hits: list[str] = []
-        for kw in meta.get("keywords", []):
+        for _anchor, surfaces in iter_keyword_anchors(meta):
             # 目录匹配忽略「扩展/对比」语境，避免范围外词抬主路径（全域通用）
-            if keyword_mentioned(text, kw, ignore_contrast=True):
+            # 同簇取最长命中写法，便于题名 tie-break（更具体优先）
+            hit = next(
+                (
+                    s
+                    for s in sorted(surfaces, key=len, reverse=True)
+                    if keyword_mentioned(text, s, ignore_contrast=True)
+                ),
+                None,
+            )
+            if hit:
                 score += 1
-                local_hits.append(kw)
+                local_hits.append(hit)
         if score > 0:
             scored.append((key, score, local_hits))
     return scored

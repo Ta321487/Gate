@@ -119,8 +119,12 @@ class DeepSkinSMatchTests(unittest.TestCase):
                     self.assertEqual(recruit_product_kind(title, body), "witkey")
 
     def test_event_keyword_budget_still_holds(self) -> None:
+        """预算计锚点数；近义在 synonyms，不占锚。"""
         kws = DOMAINS["DOM-EVENT"].get("keywords") or []
         self.assertLessEqual(len(kws), 24, kws)
+        syn = DOMAINS["DOM-EVENT"].get("synonyms") or {}
+        for alt in (syn.get("疫情") or ()):
+            self.assertNotIn(alt, kws)
 
 
 if __name__ == "__main__":
