@@ -1,4 +1,9 @@
-"""TaskUnit 并发编排 + micro-loop（prepare → generate → check → repair）。"""
+"""TaskUnit 并发编排 + micro-loop（prepare → generate → check → repair）。
+
+生成类落地「不确定→确定性」：LLM 填文案 → 校验 → 带错重试 → 仍不过则
+确定性/静态 fallback。审类见 agents_qa / agents_thesis_diagrams 与
+docs/llm-determinism.md。
+"""
 
 from __future__ import annotations
 
