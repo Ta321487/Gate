@@ -163,9 +163,47 @@ _FALLBACK_PHOTOS: dict[str, list[str]] = {
     ],
 }
 
+# 商城货皮：查询与兜底图跟 catalog kind，避免农产题落到鞋服卖场图
+_SHOP_KIND_AUTH_QUERY: dict[str, str] = {
+    "farm": "farmers market fresh produce fruit vegetables agriculture",
+    "flowers": "flower shop bouquet florist fresh blooms",
+    "print": "print shop copy center office printing press",
+    "errand": "campus courier delivery package errand service",
+    "points": "gift rewards redemption mall counter",
+    "campus": "campus bookstore secondhand textbooks",
+}
 
-def build_query(domain: str, theme: str) -> str:
-    base = auth_hero_query_for(domain)
+_SHOP_KIND_FALLBACK: dict[str, list[str]] = {
+    "farm": [
+        "1488459716781-31f82fcf7c4a",
+        "1464226184884-fa280b87c399",
+        "1560493676-04071c5fba47",
+        "1542838132-92c53300491e",
+    ],
+    "flowers": [
+        "1487530811179-bd11efe48cc0",
+        "1468328060065-0b0e0c0c0c0c",
+        "1490312278751-2c0e6b0e0e0e",
+    ],
+}
+
+
+def _normalize_shop_kind(catalog_kind: str | None) -> str:
+    """retail_pharmacy → retail；farm / flowers 等专皮原样。"""
+    raw = str(catalog_kind or "").strip().lower()
+    if not raw:
+        return ""
+    if raw.startswith("retail"):
+        return "retail"
+    return raw.split("_", 1)[0] if raw else ""
+
+
+def build_query(domain: str, theme: str, catalog_kind: str = "") -> str:
+    kind = _normalize_shop_kind(catalog_kind)
+    if domain == "DOM-SHOP" and kind in _SHOP_KIND_AUTH_QUERY:
+        base = _SHOP_KIND_AUTH_QUERY[kind]
+    else:
+        base = auth_hero_query_for(domain)
     mood = ""
     tid = (theme or "").lower()
     for key, words in _THEME_MOOD.items():
@@ -177,9 +215,16 @@ def build_query(domain: str, theme: str) -> str:
     return f"{base} {mood}".strip()
 
 
-def _pick_fallback_id(domain: str, theme: str) -> str:
-    photos = _FALLBACK_PHOTOS.get(domain) or _FALLBACK_PHOTOS["DOM-GENERIC"]
-    h = int(hashlib.md5(f"{domain}|{theme}".encode()).hexdigest()[:8], 16)
+def _pick_fallback_id(domain: str, theme: str, catalog_kind: str = "") -> str:
+    kind = _normalize_shop_kind(catalog_kind)
+    photos = (
+        _SHOP_KIND_FALLBACK.get(kind)
+        if domain == "DOM-SHOP" and kind in _SHOP_KIND_FALLBACK
+        else None
+    )
+    if not photos:
+        photos = _FALLBACK_PHOTOS.get(domain) or _FALLBACK_PHOTOS["DOM-GENERIC"]
+    h = int(hashlib.md5(f"{domain}|{theme}|{kind}".encode()).hexdigest()[:8], 16)
     return photos[h % len(photos)]
 
 
@@ -190,8 +235,10 @@ def _fetch_via_api(query: str, access_key: str, dest: Path) -> bool:
     return False
 
 
-def _fetch_fallback_photo(domain: str, theme: str, dest: Path) -> bool:
-    pid = _pick_fallback_id(domain, theme)
+def _fetch_fallback_photo(
+    domain: str, theme: str, dest: Path, catalog_kind: str = ""
+) -> bool:
+    pid = _pick_fallback_id(domain, theme, catalog_kind=catalog_kind)
     return _download(uf.direct_photo_url(pid, width=1600, height=900), dest)
 
 
@@ -204,19 +251,28 @@ def _fetch_local_atmosphere(domain: str, theme: str, dest: Path) -> bool:
     )
 
 
-def fetch_auth_hero(workspace: Path, domain: str, theme: str) -> bool:
+def fetch_auth_hero(
+    workspace: Path, domain: str, theme: str, catalog_kind: str = ""
+) -> bool:
     """
     写入 workspace/frontend/public/auth-hero.jpg。
     成功 True；失败不抛，bake 继续。
     顺序：本机缓存 → Unsplash API → Unsplash 直链 → 主题色本地生成。
+    catalog_kind：商城货皮（farm/flowers/…），避免农产题缓存/搜到鞋服卖场。
     """
     settings = get_settings()
     public = workspace / "frontend" / "public"
     dest = public / "auth-hero.jpg"
-    cache_key = uf.cache_key_hash(domain, theme)
+    kind = _normalize_shop_kind(catalog_kind)
+    cache_key = uf.cache_key_hash(domain, theme, kind or "-")
+    cache_name = (
+        f"{domain}-{theme}-{kind}-{cache_key}.jpg"
+        if kind
+        else f"{domain}-{theme}-{cache_key}.jpg"
+    )
     cache_file = uf.cache_file(
         "auth-heroes",
-        f"{domain}-{theme}-{cache_key}.jpg",
+        cache_name,
         cache_dir=settings.cache_dir,
     )
 
@@ -224,7 +280,7 @@ def fetch_auth_hero(workspace: Path, domain: str, theme: str) -> bool:
         log.info("auth hero cache hit → %s", dest)
         return True
 
-    query = build_query(domain, theme)
+    query = build_query(domain, theme, catalog_kind=kind)
     key = (getattr(settings, "unsplash_access_key", None) or "").strip()
     ok = False
     source = ""
@@ -233,7 +289,7 @@ def fetch_auth_hero(workspace: Path, domain: str, theme: str) -> bool:
         if ok:
             source = "unsplash-api"
     if not ok:
-        ok = _fetch_fallback_photo(domain, theme, dest)
+        ok = _fetch_fallback_photo(domain, theme, dest, catalog_kind=kind)
         if ok:
             source = "unsplash-direct"
     if not ok:
@@ -246,7 +302,7 @@ def fetch_auth_hero(workspace: Path, domain: str, theme: str) -> bool:
             uf.cache_write(cache_file, dest)
         log.info("auth hero saved (%s / %s): %s", source or "?", query, dest)
         return True
-    log.warning("auth hero skipped for %s / %s", domain, theme)
+    log.warning("auth hero skipped for %s / %s kind=%s", domain, theme, kind or "-")
     return False
 
 

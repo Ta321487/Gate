@@ -479,6 +479,7 @@ def fetch_portal_banners(
     theme: str,
     schema: dict[str, Any] | None = None,
     count: int = PORTAL_BANNER_COUNT,
+    catalog_kind: str = "",
 ) -> list[dict[str, str]]:
     """写入 public/portal-banners/{n}.jpg；失败不抛。网络慢时尽快跳过。"""
     if not domain_wants_portal_banners(domain):
@@ -498,7 +499,8 @@ def fetch_portal_banners(
 
     captions = _expand_captions(_caption_seeds(schema), count)
     candidates = _pick_portal_ids(domain, theme, max(count * 2, 12))  # 多备几张，失败可换
-    query = build_query(domain, theme) + " wide interior"
+    # 农产等货皮跟 auth 同查询，避免门户也落成鞋服卖场
+    query = build_query(domain, theme, catalog_kind=catalog_kind) + " wide interior"
     key = (getattr(settings, "unsplash_access_key", None) or "").strip()
 
     slides: list[dict[str, str]] = []

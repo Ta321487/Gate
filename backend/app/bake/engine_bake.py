@@ -381,9 +381,17 @@ def _bake_project_body(
 
     from app.bake.auth_hero import auth_hero_public_path, fetch_auth_hero
     from app.bake.portal_banners import fetch_portal_banners
+    from app.bake.scene_scan import shop_catalog_kind
 
-    fetch_auth_hero(dest, domain, theme)
-    portal_banners = fetch_portal_banners(dest, domain, theme, schema)
+    shop_kind = (
+        shop_catalog_kind(str(title or ""), proposal_for_sql)
+        if domain == "DOM-SHOP"
+        else ""
+    )
+    fetch_auth_hero(dest, domain, theme, catalog_kind=shop_kind)
+    portal_banners = fetch_portal_banners(
+        dest, domain, theme, schema, catalog_kind=shop_kind
+    )
     _write_factory_delivered(
         dest,
         title,
@@ -476,13 +484,19 @@ def _bake_project_body(
             logging.getLogger("app.bake").info(
                 "notes_scrub after layout_heal=%s", notes_again[:12]
             )
-        # lean 前再瘦一次依赖（防 heal/叠层把骨架 pom 直声明带回）
+        # lean 前再瘦一次依赖 / 行业肤（防 heal/叠层把骨架 pom 或全厂 themes 带回）
         from app.bake.pack_deps import scrub_student_pack_deps
+        from app.bake.pack_themes import scrub_pack_themes
 
         dep_again = scrub_student_pack_deps(dest, spec)
         if dep_again:
             logging.getLogger("app.bake").info(
                 "deps_scrub after layout_heal=%s", dep_again[:12]
+            )
+        theme_again = scrub_pack_themes(dest, spec)
+        if theme_again:
+            logging.getLogger("app.bake").info(
+                "theme_scrub after layout_heal=%s", theme_again[:12]
             )
         leftovers = scan_forbidden_island_files(dest, spec)
         if leftovers:
@@ -503,6 +517,8 @@ def _bake_project_body(
                 "dead_deps",
                 "identity",
                 "readme_phantoms",
+                "archive_detail_face",
+                "foreign_themes",
             ):
                 rows = detail.get(key) or []
                 if rows:

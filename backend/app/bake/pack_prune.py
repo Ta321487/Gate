@@ -2555,6 +2555,13 @@ def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[s
     if dep_notes:
         deleted.extend(dep_notes)
 
+    # 行业肤：只留 spec.theme，不带全厂 themes/* 目录
+    from app.bake.pack_themes import scrub_pack_themes
+
+    theme_notes = scrub_pack_themes(dest, spec)
+    if theme_notes:
+        deleted.extend(theme_notes)
+
     return {
         "domain": domain,
         "capabilities": sorted(caps),
@@ -2692,13 +2699,14 @@ def scan_shell_chrome_leaks(
 def evaluate_pack_lean_gate(
     workspace: Path, spec: dict[str, Any] | None = None
 ) -> dict[str, Any]:
-    """p3lean：未挂岛无残留 + 无工厂注记 + 壳件对齐 + 无死依赖 + 库名/单启动类 + README 无假表 + 详情主脸无异域。"""
+    """p3lean：未挂岛无残留 + 无工厂注记 + 壳件对齐 + 无死依赖 + 库名/单启动类 + README 无假表 + 详情主脸无异域 + 无异域行业肤。"""
     from app.bake.archive_detail_prune import scan_archive_detail_leaks_in_workspace
     from app.bake.pack_deps import (
         scan_dead_declared_deps,
         scan_delivery_identity_issues,
         scan_readme_schema_phantoms,
     )
+    from app.bake.pack_themes import scan_foreign_theme_leaks
 
     hits = scan_forbidden_island_files(workspace, spec)
     notes = scan_factory_notes_leaks(workspace)
@@ -2707,6 +2715,7 @@ def evaluate_pack_lean_gate(
     identity = scan_delivery_identity_issues(workspace)
     phantoms = scan_readme_schema_phantoms(workspace)
     detail_face = scan_archive_detail_leaks_in_workspace(workspace, spec)
+    themes = scan_foreign_theme_leaks(workspace, spec)
     ok = (
         not hits
         and not notes
@@ -2715,6 +2724,7 @@ def evaluate_pack_lean_gate(
         and not identity
         and not phantoms
         and not detail_face
+        and not themes
     )
     parts: list[str] = []
     if hits:
@@ -2743,10 +2753,16 @@ def evaluate_pack_lean_gate(
             f"详情异域残留 {len(detail_face)}：{', '.join(sample)}"
             + ("…" if len(detail_face) > len(sample) else "")
         )
+    if themes:
+        sample = themes[:8]
+        parts.append(
+            f"异域行业肤 {len(themes)}：{', '.join(sample)}"
+            + ("…" if len(themes) > len(sample) else "")
+        )
     desc = (
         "；".join(parts)
         if parts
-        else "瘦身通过：无未挂岛、无工厂注记、壳件对齐、无死依赖、库名/启动类一致、详情主脸干净"
+        else "瘦身通过：无未挂岛、无工厂注记、壳件对齐、无死依赖、库名/启动类一致、详情主脸干净、无异域行业肤"
     )
     return {
         "ok": ok,
@@ -2760,12 +2776,14 @@ def evaluate_pack_lean_gate(
             "identity": identity[:40],
             "readme_phantoms": phantoms[:40],
             "archive_detail_face": detail_face[:40],
+            "foreign_themes": themes[:40],
             "count": len(hits)
             + len(notes)
             + len(chrome)
             + len(dead)
             + len(identity)
             + len(phantoms)
-            + len(detail_face),
+            + len(detail_face)
+            + len(themes),
         },
     }

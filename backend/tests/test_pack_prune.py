@@ -1058,6 +1058,56 @@ class PackPruneFactorySelfGateTests(unittest.TestCase):
             detail = (lean.get("detail") or {}).get("archive_detail_face") or []
             self.assertTrue(detail, lean.get("desc"))
 
+    def test_pack_themes_keeps_only_active_theme(self) -> None:
+        """全厂 themes/* 不得进学生包；只留 spec.theme 色块。"""
+        from app.bake.pack_themes import scan_foreign_theme_leaks, scrub_pack_themes
+
+        styles_src = BASELINE_FE / "styles"
+        if not (styles_src / "themes.css").is_file():
+            self.skipTest("baseline themes.css missing")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            styles = dest / "frontend/src/styles"
+            styles.mkdir(parents=True)
+            shutil.copy2(styles_src / "themes.css", styles / "themes.css")
+            shutil.copytree(styles_src / "themes", styles / "themes")
+            spec = {
+                "domain": "DOM-SHOP",
+                "theme": "shop-lime",
+                "capabilities": ["archive", "order_lines"],
+            }
+            before = scan_foreign_theme_leaks(dest, spec)
+            self.assertTrue(before, "未剪应检出异域行业肤")
+            lean0 = evaluate_pack_lean_gate(dest, spec)
+            self.assertFalse(lean0["ok"])
+            self.assertTrue((lean0.get("detail") or {}).get("foreign_themes"))
+
+            notes = scrub_pack_themes(dest, spec)
+            self.assertTrue(any(n.startswith("theme_keep:") for n in notes))
+            self.assertTrue(any(n.startswith("theme_drop:") for n in notes))
+
+            kept = list((styles / "themes").glob("*.css"))
+            self.assertEqual([p.name for p in kept], ["shop.css"])
+            shop = (styles / "themes/shop.css").read_text(encoding="utf-8")
+            self.assertIn('data-theme="shop-lime"', shop)
+            self.assertNotIn('data-theme="shop-coral"', shop)
+            self.assertNotIn('data-theme="dorm-', shop)
+            entry = (styles / "themes.css").read_text(encoding="utf-8")
+            self.assertIn('@import "./themes/shop.css"', entry)
+            self.assertNotIn("dorm.css", entry)
+            self.assertNotIn("lib-ink", entry)
+
+            self.assertEqual(scan_foreign_theme_leaks(dest, spec), [])
+            # 最小壳：无岛残留/注记即可过 lean 的主题维
+            (dest / "frontend/src/router").mkdir(parents=True, exist_ok=True)
+            (dest / "frontend/src/router/index.js").write_text(
+                "export default []\n", encoding="utf-8"
+            )
+            lean = evaluate_pack_lean_gate(dest, spec)
+            self.assertFalse(
+                (lean.get("detail") or {}).get("foreign_themes"), lean.get("desc")
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
