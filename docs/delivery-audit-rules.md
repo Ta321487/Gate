@@ -1,8 +1,9 @@
 # 工厂交付与审计（Agent 依据）
 
-> **本文只负责**：怎么审交付（主链路、红灯、老板小卡）。  
+> **本文只负责**：怎么审交付（主链路、红灯、审计检查表）。  
 > **不负责**：换皮 ID 进度（[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)）；密功能是否待补（[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)）。  
-> **版本**：v5.6（2026-10-22）。指导只保留主链路；细则坑点追加到文末「红灯表」，不另起长文。老板小卡与工厂 `DeliveryReviewPane` 同步。旧题回归 = 组代表（`AUDIT_GROUP_CANARIES`）；§5 皮对照扩为各族分层（不止申请/跟进）。  
+> **版本**：v5.6（2026-10-22）。指导只保留主链路；细则坑点追加到文末「红灯表」，不另起长文。**审计检查表**（原称老板小卡）与工厂 `DeliveryReviewPane` 同步。旧题回归 = 组代表（`AUDIT_GROUP_CANARIES`）；§5 皮对照扩为各族分层（不止申请/跟进）。  
+> **用语**：见 [`glossary.md`](./glossary.md)。  
 > **索引**：[README.md](./README.md)。  
 > **清单册**（待办 ID / 状态列）：[`domain-skin-gap-analysis.md`](./domain-skin-gap-analysis.md)。  
 > **开题密功能对照**：[`opening-feature-delivery-map.md`](./opening-feature-delivery-map.md)。  
@@ -61,7 +62,7 @@
 审计轮**默认只出报告、不改代码**（人明确下令才改）。  
 清单标「已齐」≠本轮通过。
 
-### 3.1 必问（老板小卡，缺一条报告无效）
+### 3.1 必问（审计检查表，缺一条报告无效）
 
 运营自检：**12 条主项 +「理解偏差」**（与工厂产物「交付复审」勾选项一致）。缺主项或未勾理解偏差 → 报告无效。
 

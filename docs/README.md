@@ -12,7 +12,10 @@
 
 | 文档 | 何时读 | 状态 |
 |------|--------|------|
-| [product-form-maturity.md](./product-form-maturity.md) | **内部工具 → 软件公司级产品**：成熟度、运营交互 §2.4/§4·P、用语 O、复测与定位 | 活表 · 改 UI 前读 §4·P |
+| [product-form-maturity.md](./product-form-maturity.md) | **内部工具 → 软件公司级产品**：成熟度；**整厂**产品形态 §2.4.5（W1～W15）；构图 §2.5；§4·P；用语 O | 活表 · 形态 `整厂产品形态` · 构图 `收卡片墙` |
+| [console-product-surface.md](./console-product-surface.md) | **运营台构图 / 收卡片墙**：S1～S7、V1～V8；与 §2.4 交互层分离 | 手册已齐 · UI 待令 |
+| [glossary.md](./glossary.md) | 旧绰号 → 标准名（O1） | 控制台主路径已跟 |
+| [release-checklist.md](./release-checklist.md) | 发版检查单（C2 / F2） | 声称无人值守前勾选 |
 | [capabilities.md](./capabilities.md) | 查 **cap id** 与挂载口径（域默认 / 开题才挂 / 壳附带） | 活表 |
 | [domains.md](./domains.md) | 查 `DOM-*` 分组（**A～F 具名 → G 真交叉 → H 兜底**）与**域默认**能力组合、GENERIC/ARCH、Path B | 活表 |
 | [difficulty-tiers.md](./difficulty-tiers.md) | 开题可写到哪一层（L0–L3）、加价边界 | 活表 |

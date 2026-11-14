@@ -10,22 +10,81 @@
 
 ## 当前主线
 
-> **进行中 · 产品化执行**（真源 [`docs/product-form-maturity.md`](./docs/product-form-maturity.md) §5.1）。  
-> 对标：**软件公司级 B 端运营控制台**，不以「作者肌肉记忆够用」关闭体验项。  
-> 学生包大线（68 域 / 布局闸 / 控件闸 / #3+#4）**已收口**，勿抢产品化波次去扩域。
+> **进行中 · 新人入职上手（波次 10）**（真源 [`docs/product-form-maturity.md`](./docs/product-form-maturity.md) §5.1.1）。  
+> 对标：**最多两人用的正经产品**——拉仓起服、第一单、自然文案；不作坊腔、不装大厂工单腔。  
+> 学生包大线与产品化 0～9 **已收口**；**D1 论文图**仍并行开（parked **m**），不与本波混关。
 
-### 产品化执行波次（下一棒只做「当前波」）
+### 产品化执行波次（摘要）
 
-| 波次 | 口令 | 状态 | 关闭看 |
-|------|------|------|--------|
-| **0** 定位 + 工作副本合入主线 | `产品化波次0` / 按主题 `提交并推送` | **工作副本已推送** · §7 定位仍待勾 | 册 §7 勾选后本波可关；代码堆已拆 4 主题进 main（见下） |
-| **1** 写后状态可信收口 | `做产品化 A` | 部分已做 · 待扫漏 | 册 A1～A4 |
-| **2a** 交付就绪指示 + 错误三件套 | `做产品化 P`（先 P1） | 文档齐 · UI 未开 | P1、P7、A5、A6 |
-| **2b** 导航降维 / 阶段机 | `做产品化 P2` | 未开 | P2、B1、B2 |
-| **2c** 质检交付单页 | `做产品化 P3` | 未开 | P3 |
-| **2d** 陌生人走查 | `产品化走查` | 未开 | P9 → 记录回本文件 |
-| **3** 匹配披露 / 队列 / 列表 + 用语 | `做产品化 P4` / `做用语 O` | 未开 | P4～P6；O1～O2 |
-| **4～7** | 见册 §5.1 | 未开 | C → D/E → G/K/L/M → N（N 默认不做） |
+| 波次 | 状态 |
+|------|------|
+| **0～4、6～9** | **已关**（见册 §5.1） |
+| **5** 材料闭环 | **E 齐；D1 仍开**（parked m） |
+| **7** 多操作者 | **默认不做** |
+| **10** 新人入职上手 | **本会话实现关**（CX/ON0/S0～S3）；验收 [`docs/acceptance/newhire-onboarding-2026-11-09.md`](./docs/acceptance/newhire-onboarding-2026-11-09.md) |
+
+**下一棒**：本波 **`提交并推送`**（出包瘦身 + 端口漂移 + 毕设阶段轨）；或继续预览验收。
+
+### 本会话（2026-11-14）· 手调归论文材料
+
+- **修工厂**：出包「手调文字」从轨旁工具迁回论文材料；八张材料卡齐挂并锚 Overrides 分组；工具只留日志。  
+- **测**：`test_console_product_form_contract` + `test_delivery_stages_contract` 绿。  
+- **未 commit**。
+
+### 上一段（2026-11-14）· 出包门禁按 Job 落库
+
+- **修工厂**：`jobs.gate_report` 存当次质量门禁表（rows/checklist，瘦身无 detail 巨文）；列表只带 `has_gate_report`；`GET /jobs/{id}/gate-report` + 任务队列「门禁」弹层查历史。  
+- **测**：`test_gate_report` 5 绿。  
+- **未 commit**（与阶段轨等同批未推）。
+
+### 上一段（2026-11-14）· 阶段轨按毕设顺序
+
+- **修工厂**：主轨六步；质检交付压短（删产物墙；失败场景合并阻断卡，门禁全文进弹层不抹错）。  
+- **测**：`test_delivery_stages_contract` + product-form / workbench 契约。  
+- **未 commit**。
+
+### 上一段（2026-11-12）· 出包身份/死依赖/README 假表（探针 gf-20261102-235812）
+
+- **修工厂**：`pack_deps` 瘦身（关 AI 裁 spring-ai / lombok / validation / tinycolor）+ `p3lean` 扩库名一致、单启动类、README 假表；骨架 README 改为按本包 schema 填 SQL 示例。  
+- **取证**：工厂工作区库名/包名一致；学生目录 `agri-mall-app` 双包 `agri_mall`+`agri_produce_mall` 为下载后改名残留，非 bake 产物。  
+- **测**：`test_pack_deps` + `test_pack_prune` lean/commission 对口。  
+- **未 commit**；旧 ZIP 须 **重 bake** 才干净。
+
+### 上一段（2026-11-09）· 新人入职上手 CX～S3
+
+- **修工厂**：主路径文案（清洗文案 / 你可以先 / 需要改程序）；launcher `N` 环境检查；README 拉仓开工；开工台/项目空态；MatchTab 核对清单；就绪条 `recoveryHint`。  
+- **测**：`test_console_newhire_copy_contract` + readiness/workbench 契约。  
+- **§3.1**：下载/门禁判定未改；仅呈现与引导。  
+- **未 commit**。
+
+### 上一段（2026-11-07）· 同阶段双 primary 收口
+
+- **修工厂**：就绪条在匹配/生成/质检（非下载）同阶段改为「请在下方…」文案，不放同义主钮；下载仍只在质检强调；生成页「去质检」改 secondary。  
+- **测**：readiness + product-form。  
+- **未 commit**。
+
+### 上一段 · 整厂产品形态验收通过
+
+- W1～W15 + §2.4.1 过；侧栏「连接与用量」。
+
+### 上一段（同日）· 波次 9 全局收（禅道品类）
+
+- 全局扁平面板、密侧栏、条带 stats；Projects/Jobs 工具条+托盘。
+
+### 上一段（同日）· 波次 9 开工（V1+V3）
+
+- 开工台主区 + 详情壳 + Artifacts 去同级 panel 头；`.surface-*` 铺底。
+
+### 上一段（同日）· 波次 9 手册
+
+- 表面册 + 成熟度 §2.5 / 波次 9 落档；UI 待令后已开工。
+
+### 上一段（同日）· 波次 8 整厂产品形态
+
+- **修工厂**：W1～W15 按 §2.4.1 收呈现；详情垫刀保留。  
+- **§3.1**：未改下载/门禁/复审判定。  
+- **测**：`test_console_product_form_contract` + stages/workbench/readiness。  
+- **关闭**：清单已勾；走查仍建议 `整厂产品形态验收`。
 
 **接棒三步**
 
@@ -52,10 +111,87 @@
 
 校验闭环批 1～4、FAQ 专皮等更早已在主线。余下：作者勾 §7 定位 → 关波次 0 → `做产品化 A`。
 
+### 本会话（2026-11-06）· 全做收尾（O2～O4 / E2 / L1 / M1；D1 未关）
+
+- **A O2**：后端下载/复审 API 文案「验收/重打包」；前端匹配兼容旧词。  
+- **B O3/O4**：boss-intent / 00-factory-core 标准名 + `sync-ide-rules`；delivery-audit / maturity 活表文首。  
+- **C E2**：地图 §0「版本或放弃」表。  
+- **D**：D2/D5 按现有门禁与对齐机制勾部分齐；**D1（parked m）不假关**。  
+- **E**：FailAnalysis→Help 码表；发版检查 M1/D1 抽检项。  
+- **F C1**：台账格仍在，须人填数字。  
+- **测**：readiness / schema_modules / write_after 48 绿。未 commit。
+
+### 本会话（2026-11-06）· 波次 2d / P9 陌生人走查（助手伪装新手）
+
+- **环境**：`http://127.0.0.1:5300/` + API `:8000`。
+- **开场 blocker（已热修）**：控制台白屏，`useProjectDetail.js` 误写 `queue Promise` → 改为 `void Promise`；否则无法进任何页。
+- **成功路径**：开工台「可下未发」→ `超新农产品` → 顶栏就绪「可下载 / 下载 ZIP」→ 收到 `agri-produce-mall-app.zip`（主路径约 2 次有效点击）。
+- **阻断路径**：图书借阅单 → 「暂不可下载 ZIP」+ 门禁未过列表 + 主按钮「去质检交付重打包」→ 落到质检交付工作台（同屏）。
+- **残留（不挡 P9 关）**：后端 `download_blocked_reason` 仍含「验圈/合卷」旧词；UI 主按钮已是「重打包」。O2 可再洗 MSG。
+- **结论**：**P9 通过**；波次 2d 关。未宣称材料债/O3 已齐。
+
+### 本会话（2026-11-06）· 波次 3～6 关闭（作者口令：3、4、5、6按顺序）
+
+- **波次 3**：MatchTab 高级折叠；OpsHome「门禁失败/可下未发」；Projects 行内收敛 + undelivered；`glossary.md`；DeliveryReviewPane/Help/opsShared 标准名（验收/重打包/未通过清单/审计检查表）。O3/O4 顺延。  
+- **波次 4**：C1 人工介入率台账（见下）；C2 [`docs/release-checklist.md`](./docs/release-checklist.md)。  
+- **波次 5（诚实）**：README 对外三态；匹配无 SSR；题名映射「文档≠产品」；答辩 PPT 无前端 mock。**未宣称** D1/D2/D5/E2 已齐。  
+- **波次 6**：`SystemInfo.preview_*` + 开工台 N/M；README「最多 3 路」；P8 就绪条唯一 primary。  
+- **2d(P9)**：按作者点名跳过，待 `产品化走查`。  
+- **§3.1**：只改已有路径；无第二套下载/复审判定；逻辑未改。  
+- **测**：跑控制台契约 + canary 门禁（本会话收工）。  
+- **未 commit**（等人令）。
+
+### 人工介入率台账（C1 · 30 天滚动）
+
+> 填法：每开一次「修工厂」修复会话记 1；同期「可下载出包」数作分母。分类只勾主因。
+
+| 窗口起 | 窗口止 | 修复会话 | 出包数 | 介入率 | 匹配 | bake | 门禁 | 控制台 | 材料 |
+|--------|--------|----------|--------|--------|------|------|------|--------|------|
+| 2026-10-10 | 2026-11-09 | （待填） | （待填） | — | | | | | |
+| （说明） | | 本窗口已开；入职走查后按「修工厂会话 / 可下载出包」实填，勿用体感关 C1 | | | | | | | |
+
+### 本会话（2026-11-06）· 波次 2c 关闭（做产品化 P3）
+
+- **修工厂**：质检交付单页 `DeliveryWorkbench`——清洗/门禁/验收/重打包/下载同屏；对照材料下沉。  
+- **改的已有路径**：复用 `DeliveryReviewPane` + `gateRows`/`scrubStudentCopy`/`downloadZip`；`goArtifacts(gates|review)`→滚到工作台。  
+- **无第二套**判定；下载/复审条件未改。  
+- **逻辑变更**：无。  
+- **测**：`test_delivery_workbench_contract` 绿。  
+- **当前波**：下一棒曾为 **`产品化走查`**；作者改令先做 3～6（已关）。
+
+### 本会话（2026-11-06）· 波次 2b 关闭（做产品化 P2 · P2/B1/B2）
+
+- **修工厂**：阶段轨 + 一级 Tab 降维（匹配/生成/质检交付/预览 + 工具）；生成成功默认落地质检交付。  
+- **改的已有路径**：`defaultTabForStatus`（`opsShared`→`deliveryStages`）、`canEnterDetailTab`、`DeliveryStageRail`、`openTools`；日志/微调并入工具。  
+- **无第二套**状态机；下载/门禁条件未改。  
+- **逻辑变更**：无判定语义变更；仅导航呈现与默认落地 Tab（generated/running→artifacts）。  
+- **测**：`test_delivery_stages_contract` 绿。
+
+### 本会话（2026-11-06）· 波次 2a 关闭（做产品化 P · P1/P7/A5/A6）
+
+- **修工厂**：详情顶栏交付就绪指示 + 主路径错误三件套（呈现层）。  
+- **改的已有路径**：`projectIsDownloadable` 同口径 → `deliveryReadiness.js`；`goArtifacts` / `downloadZip` / `scrubStudentCopy` / `retryCurrent`；`ProjectDetail` 页头主下载并入就绪条；`GenerateTab` 失败横幅。  
+- **无第二套**下载判定（仍读 `download_blocked_reason` / `blocking_gates`）；阻断 ≤3。  
+- **逻辑变更**：无（未动 `canDownload` / 门禁键 / 复审通过条件）；仅主操作视觉唯一与导航搬接。  
+- **测**：`test_delivery_readiness_contract` + `test_console_write_after_contract` 绿。
+
+### 本会话（2026-11-06）· 波次 1 关闭（做产品化 A）
+
+- **修工厂**：写后 busy 与权威拉解耦；启停不绑 Maven 长轮询；超时文案；契约测。  
+- **改的已有路径**：`DeliveryReviewPane`（`applyFromWrite` / `refreshAfter`）、`scrubStudentCopy` / `applyDeliveryReviewPanel`、`usePdRuntime.rtAction`、`api.js` 超时。  
+- **无第二套**就绪/下载判定；下载/合卷/验圈条件未改语义。  
+- **逻辑变更**：无（未动 `canDownload` / 门禁键 / 复审通过条件）；启停仅 `rtSettling` 门闩防 busy 提前消后的重复 start（starting 仍可 stop，与改前一致）。  
+- **测**：`pytest tests/test_console_write_after_contract.py` → 7 passed。
+
+### 本会话（2026-11-06）· 波次 0 关闭 · 开波次 1
+
+- §7 勾选 **Single-operator**；README 定位句已写；册 §5.1 波次 0 → 已关。  
+- 波次 1 已同会话收口（见上）。
+
 ### 本会话（2026-11-06）· 拆主题提交并推送
 
 - 上表四笔已 `origin/main`；工作区干净。  
-- **当前波**：0 仅余 §7 勾选；下一代码波 `做产品化 A`。
+- **当时波**：0 仅余 §7；现已关。
 
 ### 本会话（2026-11-06）· §3.1 实现铁律入册
 
