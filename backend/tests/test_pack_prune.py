@@ -1005,6 +1005,59 @@ class PackPruneFactorySelfGateTests(unittest.TestCase):
             + ", ".join(hits[:20]),
         )
 
+    def test_archive_item_detail_pruned_by_face(self) -> None:
+        """详情页按主脸剪异域：订单/预约/工单/内容四套；骨架仍全脸。"""
+        from app.bake.archive_detail_prune import (
+            required_archive_detail_markers,
+            resolve_archive_detail_face,
+            scan_archive_detail_face_leaks,
+        )
+
+        src = BASELINE_FE / "views/user/ArchiveItemDetail.vue"
+        if not src.is_file():
+            self.skipTest("ArchiveItemDetail missing")
+        skeleton = src.read_text(encoding="utf-8")
+        self.assertIn("slotOn", skeleton)
+        self.assertIn("ticketOn", skeleton)
+        self.assertIn("立即借阅", skeleton)
+
+        cases = (
+            (["archive", "order_lines", "favorites"], "order"),
+            (["archive", "slot_reserve"], "slot"),
+            (["archive", "ticket_flow"], "ticket"),
+            (["archive", "content"], "content"),
+        )
+        for caps, face in cases:
+            with self.subTest(face=face):
+                self.assertEqual(resolve_archive_detail_face(caps), face)
+                with tempfile.TemporaryDirectory() as tmp:
+                    dest = Path(tmp) / "ws"
+                    fe = dest / "frontend/src/views/user"
+                    fe.mkdir(parents=True)
+                    out = fe / "ArchiveItemDetail.vue"
+                    shutil.copy2(src, out)
+                    spec = {"domain": "DOM-SHOP", "capabilities": caps}
+                    prune_student_pack(dest, spec)
+                    text = out.read_text(encoding="utf-8")
+                    leaks = scan_archive_detail_face_leaks(text, face)
+                    self.assertEqual(leaks, [], f"{face} leaks: {leaks}")
+                    for m in required_archive_detail_markers(face):
+                        self.assertIn(m, text, f"{face} missing keep {m}")
+                    lean = evaluate_pack_lean_gate(dest, spec)
+                    self.assertTrue(lean["ok"], lean.get("desc"))
+
+        # 未剪则 p3lean 红（订单包仍含借阅话术）
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            fe = dest / "frontend/src/views/user"
+            fe.mkdir(parents=True)
+            shutil.copy2(src, fe / "ArchiveItemDetail.vue")
+            spec = {"domain": "DOM-SHOP", "capabilities": ["order_lines"]}
+            lean = evaluate_pack_lean_gate(dest, spec)
+            self.assertFalse(lean["ok"])
+            detail = (lean.get("detail") or {}).get("archive_detail_face") or []
+            self.assertTrue(detail, lean.get("desc"))
+
 
 if __name__ == "__main__":
     unittest.main()

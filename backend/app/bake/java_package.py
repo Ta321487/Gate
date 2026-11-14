@@ -286,7 +286,42 @@ def remap_student_java_package(
     # 7) 清掉旧编译产物，否则 spring-boot:run 会扫到 ThesisApplication + 新启动类
     _purge_backend_target(workspace / "backend")
 
+    # 8) 脏工作区/半截改名：删掉与目标包并列的其它 *Application 包树
+    purge_sibling_java_packages(workspace, new_pkg)
+
     return new_pkg
+
+
+def purge_sibling_java_packages(workspace: Path, keep_package: str) -> list[str]:
+    """只保留 keep_package 这一棵；同 java 根下其它带 *Application.java 的包目录删掉。"""
+    java_root = Path(workspace) / "backend" / "src" / "main" / "java"
+    if not java_root.is_dir() or not (keep_package or "").strip():
+        return []
+    keep_dir = java_root.joinpath(*keep_package.split("."))
+    removed: list[str] = []
+    for app in list(java_root.rglob("*Application.java")):
+        if not app.is_file():
+            continue
+        pkg_dir = app.parent
+        try:
+            pkg_dir.resolve().relative_to(keep_dir.resolve())
+            continue  # 目标包内
+        except ValueError:
+            pass
+        # 只删「包根」（含 controller 或本启动类所在目录）
+        rel = pkg_dir.relative_to(java_root).as_posix()
+        if pkg_dir.exists():
+            shutil.rmtree(pkg_dir, ignore_errors=True)
+            removed.append(rel)
+        # 清理空祖先
+        parent = pkg_dir.parent
+        while parent != java_root and parent.is_dir() and not any(parent.iterdir()):
+            try:
+                parent.rmdir()
+            except OSError:
+                break
+            parent = parent.parent
+    return removed
 
 
 def _ensure_spring_boot_main_class(pom_text: str, main_class: str) -> str:

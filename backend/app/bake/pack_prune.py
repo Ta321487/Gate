@@ -2532,8 +2532,28 @@ def prune_student_pack(dest: Path, spec: dict[str, Any] | None = None) -> dict[s
     if fe:
         _prune_portal_side_rail(fe, spec, deleted, vue_killed)
 
+    # 档案详情：按能力主脸剪页内异域 CTA/须知（骨架保留全脸）
+    if fe:
+        from app.bake.archive_detail_prune import (
+            prune_archive_item_detail_in_fe,
+            resolve_archive_detail_face,
+        )
+
+        detail_rel = prune_archive_item_detail_in_fe(fe, caps)
+        if detail_rel:
+            deleted.append(
+                f"scrub:ArchiveItemDetail.{resolve_archive_detail_face(caps)}"
+            )
+
     # 工厂注记注释不得进学生包（骨架可写；此处抹掉）
     notes_scrubbed.extend(scrub_factory_notes_in_workspace(dest))
+
+    # 声明了但本题用不到的 pom/yml/前端依赖（关 AI 仍留 DeepSeek 等）
+    from app.bake.pack_deps import scrub_student_pack_deps
+
+    dep_notes = scrub_student_pack_deps(dest, spec)
+    if dep_notes:
+        deleted.extend(dep_notes)
 
     return {
         "domain": domain,
@@ -2672,11 +2692,30 @@ def scan_shell_chrome_leaks(
 def evaluate_pack_lean_gate(
     workspace: Path, spec: dict[str, Any] | None = None
 ) -> dict[str, Any]:
-    """p3lean：未挂岛无残留 + 无工厂注记注释 + 壳件跟软皮（ZIP 最终确认）。"""
+    """p3lean：未挂岛无残留 + 无工厂注记 + 壳件对齐 + 无死依赖 + 库名/单启动类 + README 无假表 + 详情主脸无异域。"""
+    from app.bake.archive_detail_prune import scan_archive_detail_leaks_in_workspace
+    from app.bake.pack_deps import (
+        scan_dead_declared_deps,
+        scan_delivery_identity_issues,
+        scan_readme_schema_phantoms,
+    )
+
     hits = scan_forbidden_island_files(workspace, spec)
     notes = scan_factory_notes_leaks(workspace)
     chrome = scan_shell_chrome_leaks(workspace, spec)
-    ok = not hits and not notes and not chrome
+    dead = scan_dead_declared_deps(workspace, spec)
+    identity = scan_delivery_identity_issues(workspace)
+    phantoms = scan_readme_schema_phantoms(workspace)
+    detail_face = scan_archive_detail_leaks_in_workspace(workspace, spec)
+    ok = (
+        not hits
+        and not notes
+        and not chrome
+        and not dead
+        and not identity
+        and not phantoms
+        and not detail_face
+    )
     parts: list[str] = []
     if hits:
         sample = hits[:8]
@@ -2692,7 +2731,23 @@ def evaluate_pack_lean_gate(
         )
     if chrome:
         parts.append(f"壳件不符：{', '.join(chrome)}")
-    desc = "；".join(parts) if parts else "瘦身通过：无未挂岛、无工厂注记、壳件对齐"
+    if dead:
+        parts.append(f"死依赖：{', '.join(dead[:8])}")
+    if identity:
+        parts.append(f"交付身份：{', '.join(identity[:8])}")
+    if phantoms:
+        parts.append(f"README 假表/列：{', '.join(phantoms[:8])}")
+    if detail_face:
+        sample = detail_face[:8]
+        parts.append(
+            f"详情异域残留 {len(detail_face)}：{', '.join(sample)}"
+            + ("…" if len(detail_face) > len(sample) else "")
+        )
+    desc = (
+        "；".join(parts)
+        if parts
+        else "瘦身通过：无未挂岛、无工厂注记、壳件对齐、无死依赖、库名/启动类一致、详情主脸干净"
+    )
     return {
         "ok": ok,
         "label": "学生包瘦身 · ZIP 最终确认",
@@ -2701,6 +2756,16 @@ def evaluate_pack_lean_gate(
             "forbidden": hits[:40],
             "factory_notes": notes[:40],
             "chrome": chrome,
-            "count": len(hits) + len(notes) + len(chrome),
+            "dead_deps": dead[:40],
+            "identity": identity[:40],
+            "readme_phantoms": phantoms[:40],
+            "archive_detail_face": detail_face[:40],
+            "count": len(hits)
+            + len(notes)
+            + len(chrome)
+            + len(dead)
+            + len(identity)
+            + len(phantoms)
+            + len(detail_face),
         },
     }

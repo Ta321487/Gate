@@ -145,8 +145,7 @@ ${PERSISTENCE_NOTE}
 | 登录后标题、主题色 | `frontend/.env`、`appDelivered.js`、主题样式 |
 | 注册要填哪些资料 | 后端 `domain-profile-fields.json` + 前端资料组件 |
 | 某张表字段 / 样例数据 | `sql/schema.sql`（改完需重新导入或手工 ALTER） |
-| 收货地址 / 口味备注（商城点餐） | 表 `user_address`；下单写入订单的收货与 `taste_note` |
-| 接口逻辑（审核、库存） | `capability/*Store.java` 对应方法 |
+${README_EDIT_EXTRA}| 接口逻辑（审核、库存） | `capability/*Store.java` 对应方法 |
 | 管理端某个列表页 | `views/admin/` 下对应 Vue |
 | 数据库账号密码 | `application.yml` |
 
@@ -177,20 +176,10 @@ sql/schema.sql
 sql/queries-答辩.sql
 ```
 
-可按业务写几条有代表性的，例如（表名以本包 `schema.sql` 为准）：
+可按业务写几条有代表性的，例如（表名已按本包 `schema.sql` 填写）：
 
 ```sql
--- 示例：按状态统计单据数量（把表名换成你库里的实际表）
-SELECT status, COUNT(*) AS cnt
-FROM signup
-GROUP BY status;
-
--- 示例：用户与业务主表关联（按实际外键列调整）
-SELECT u.username, u.nickname, a.title
-FROM sys_user u
-JOIN signup s ON s.username = u.username
-JOIN activity a ON a.id = s.book_id
-WHERE s.status = 'approved';
+${README_SQL_QUERY_EXAMPLES}
 ```
 
 3. 若老师要求「系统里也能查」，再到对应 `*Store.java` 里用 `JdbcTemplate` 接上同一条 SQL（改接口 + 前端展示）。**先有可运行的 `.sql` 文件，再决定要不要进代码。**
@@ -206,16 +195,7 @@ sql/alter-老师要求.sql
 
 ```sql
 USE `${DB_NAME}`;
--- 示例：业务主表加备注
-ALTER TABLE activity ADD COLUMN remark VARCHAR(255) NULL COMMENT '备注' AFTER title;
-
--- 示例：新建辅助表（名称、字段按老师要求改）
-CREATE TABLE IF NOT EXISTS activity_attach (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  activity_id BIGINT NOT NULL,
-  file_name VARCHAR(200) NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+${README_SQL_ALTER_EXAMPLES}
 ```
 
 3. 若页面/接口要用新字段：同步改对应 `*Store.java` 的增删改查，以及前端表单/表格列。  
@@ -245,7 +225,7 @@ sql/
 ## 7. 答辩可以怎么说（简洁版）
 
 1. **${SECURITY_AUTH_LINE}**  
-2. **业务分层**：档案维护、流程单据、订单、时段预约等落在不同 Store，由配置组合启用。  
+2. **业务分层**：${README_BIZ_LAYERS}  
 3. **数据访问**：见上文「技术栈」与持久层说明（JdbcTemplate 或 MyBatis）。  
 4. **角色**：普通用户办理业务；业务管理员处理单据；总管理员维护基础数据与账号。
 
