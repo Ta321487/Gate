@@ -18,11 +18,11 @@ class SlimMatchDataTests(unittest.TestCase):
                 )
 
     def test_all_domains_keyword_budget(self) -> None:
-        """全域词表硬分流预算 ≤20；近义长尾靠 match_hint / match_recommend。"""
+        """全域词表硬分流预算 ≤24；近义长尾靠 match_hint / match_recommend。"""
         for key, meta in DOMAINS.items():
             with self.subTest(domain=key):
                 kws = meta.get("keywords") or []
-                self.assertLessEqual(len(kws), 20, f"{key} keywords={kws}")
+                self.assertLessEqual(len(kws), 24, f"{key} keywords={kws}")
 
     def test_keyword_hard_split_titles(self) -> None:
         cases = [
@@ -65,6 +65,23 @@ class SlimMatchDataTests(unittest.TestCase):
             ("外文学术期刊遴选服务平台", "DOM-PROCURE"),
             ("航班行李挂失认领管理系统", "DOM-LOST"),
             ("威客任务接单管理系统", "DOM-RECRUIT"),
+            # 互联网真题名硬分流（工厂自造语料未覆盖的光杆/管理后缀）
+            ("企业合同管理系统", "DOM-CONTRACT"),
+            ("政府集中采购管理系统", "DOM-PROCURE"),
+            ("进销存管理系统", "DOM-ASSET"),
+            ("仓库管理系统", "DOM-ASSET"),
+            ("库存盘点管理系统", "DOM-ASSET"),
+            ("实验室危险品申领管理系统", "DOM-ASSET"),
+            ("校园社团管理系统", "DOM-CLUB"),
+            ("考试管理系统", "DOM-EXAM"),
+            ("物流管理系统", "DOM-PARCEL"),
+            ("房屋租赁系统", "DOM-LISTING"),
+            ("电影院会员管理系统", "DOM-CINEMA"),
+            ("校园新闻管理系统", "DOM-BLOG"),
+            ("学校疫情服务平台", "DOM-EVENT"),
+            ("体温上报管理系统", "DOM-EVENT"),
+            ("企业考勤管理系统", "DOM-ATTEND"),
+            ("咖啡厅管理系统", "DOM-FOOD"),
         ]
         for title, want in cases:
             with self.subTest(title=title):

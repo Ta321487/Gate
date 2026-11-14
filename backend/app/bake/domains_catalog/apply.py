@@ -9,7 +9,7 @@ from app.bake.gate_contracts import (
 DOMAINS: dict = {
     "DOM-ACTIVITY": {
         "label": "活动报名",
-        # 词表预算 ≤20；景区领票/评选近义等长尾见 match_hint
+        # 词表预算 ≤24；景区领票/评选近义等长尾见 match_hint
         "keywords": [
             "社团活动", "志愿活动", "志愿者", "活动报名", "讲座报名",
             "社团报名", "志愿报名", "三下乡",

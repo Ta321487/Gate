@@ -103,7 +103,10 @@ DOMAINS: dict = {
     "DOM-CERT": {
         "label": "开具证明",
         # 词表只做硬分流；长尾说法交给 match_recommend
-        "keywords": ["开具证明", "在读证明", "在职证明", "成绩单证明", "证明申请", "开证明"],
+        "keywords": [
+            "开具证明", "在读证明", "在职证明", "成绩单证明", "证明申请", "开证明",
+            "证明管理", "收入证明", "实习证明", "工作证明",
+        ],
         "match_hint": "适用：在读/在职/成绩单等证明开具申请审核。勿与成绩更正、资助申请或用章混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
@@ -318,7 +321,10 @@ DOMAINS: dict = {
     "DOM-EXPENSE": {
         "label": "经费报销",
         # 词表只做硬分流；长尾说法交给 match_recommend
-        "keywords": ["经费报销", "报销申请", "费用报销", "差旅报销", "报销审批", "报销单"],
+        "keywords": [
+            "经费报销", "报销申请", "费用报销", "差旅报销", "报销审批", "报销单",
+            "报销管理", "发票", "差旅费", "财务报销",
+        ],
         "match_hint": "适用：经费/差旅报销单审核（无银行直连）。勿与学生资助、用章或开具证明混淆。",
         "entities": ["Archive", "Category", "Ticket", "Notice"],
         "roles": ["user", "admin", "subadmin"],
