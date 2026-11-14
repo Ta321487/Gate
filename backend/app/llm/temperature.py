@@ -66,6 +66,7 @@ TASK_TEMPERATURE: dict[str, float] = {
     "match_recommend": TEMP_STRUCTURED,
     "parse_spec": TEMP_BOUNDED_COPY,
     "qa_report": TEMP_STRUCTURED,
+    "thesis_diagram_audit": TEMP_STRUCTURED,
     "job_fix": TEMP_STRUCTURED,
     "bake_fail_classify": TEMP_STRUCTURED,
     "bake_fail_hint": TEMP_ABSOLUTE,  # 修复提示：宁可死板

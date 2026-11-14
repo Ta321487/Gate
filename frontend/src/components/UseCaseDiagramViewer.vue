@@ -1,54 +1,69 @@
 <template>
-  <div class="uc-viewer" :class="{ 'is-dark': isDark }">
-    <div class="uc-toolbar row mb-12">
-      <div class="uc-zoom-btns row">
-        <n-radio-group
-          v-if="actorOptions.length"
-          :value="actorLocal"
-          size="small"
-          :disabled="loading"
-          @update:value="onActorChange"
-        >
-          <n-radio-button v-for="a in actorOptions" :key="a.id" :value="a.id">
-            {{ a.label }}
-          </n-radio-button>
-        </n-radio-group>
-        <n-button size="small" @click="zoomOut">缩小</n-button>
-        <span class="uc-zoom-label">{{ Math.round(scale * 100) }}%</span>
-        <n-button size="small" @click="zoomIn">放大</n-button>
-        <n-button size="small" @click="resetView">重置视口</n-button>
-        <n-button size="small" :loading="loading" @click="$emit('reload')">重新加载</n-button>
-        <n-button size="small" type="primary" :loading="busy" @click="copyPng">复制图片</n-button>
-        <n-button size="small" type="primary" secondary :loading="busy" @click="downloadPng">下载 PNG</n-button>
-        <n-button size="small" quaternary @click="downloadSvg">下载矢量源</n-button>
-        <n-button size="small" quaternary :loading="mdjBusy" @click="downloadMdj">下载 StarUML (.mdj)</n-button>
+  <div ref="viewerRef" class="uc-viewer diagram-viewer-shell" :class="{ 'is-dark': isDark, 'is-resizing': resizing }">
+    <div class="diagram-chrome">
+      <div class="uc-toolbar row mb-12">
+        <div class="uc-zoom-btns row">
+          <n-radio-group
+            v-if="actorOptions.length"
+            :value="actorLocal"
+            size="small"
+            :disabled="loading"
+            @update:value="onActorChange"
+          >
+            <n-radio-button v-for="a in actorOptions" :key="a.id" :value="a.id">
+              {{ a.label }}
+            </n-radio-button>
+          </n-radio-group>
+          <n-button size="small" @click="zoomOut">缩小</n-button>
+          <span class="uc-zoom-label">{{ Math.round(scale * 100) }}%</span>
+          <n-button size="small" @click="zoomIn">放大</n-button>
+          <n-button size="small" @click="resetView">重置视口</n-button>
+          <n-button size="small" :loading="loading" @click="$emit('reload')">重新加载</n-button>
+          <n-button size="small" type="primary" :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="copyPng">复制图片</n-button>
+          <n-button size="small" type="primary" secondary :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="downloadPng">下载 PNG</n-button>
+          <n-button size="small" quaternary :disabled="rubricBad" :title="exportBlockTitle" @click="downloadSvg">下载矢量源</n-button>
+          <n-button size="small" quaternary :loading="drawioBusy" :disabled="rubricBad" :title="exportBlockTitle" @click="downloadDrawio">下载 Draw.io</n-button>
+          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="copyMermaid">复制 Mermaid</n-button>
+          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="downloadMermaid">下载 .mmd</n-button>
+          <n-button size="small" quaternary :loading="mdjBusy" :disabled="rubricBad" :title="exportBlockTitle" @click="downloadMdj">下载 StarUML (.mdj)</n-button>
+        </div>
+      </div>
+      <DiagramRubricBanner :gate="rubricGate" />
+      <p class="small muted uc-hint mb-8">
+        <template v-if="styleRules.length">
+          客户画法 ·
+          <span v-for="(r, i) in styleRules" :key="i">
+            {{ i + 1 }}.{{ r }}{{ i < styleRules.length - 1 ? '；' : '' }}
+          </span>
+        </template>
+        <template v-else>
+          按角色走查（含岗位）· 序号与一级圈数对齐 · 虚线
+          <code>&lt;&lt;include&gt;&gt;</code> /
+          <code>&lt;&lt;extend&gt;&gt;</code>
+          · 二级动词开头 · 可导出 StarUML
+        </template>
+      </p>
+      <p v-if="sourceNote" class="small muted uc-hint mb-8">{{ sourceNote }}</p>
+      <div v-if="description" class="uc-desc mb-8">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px">
+          <p class="small uc-desc-text">{{ description }}</p>
+          <n-button size="tiny" quaternary @click="copyDesc">复制描述</n-button>
+        </div>
       </div>
     </div>
-    <p class="small muted uc-hint mb-8">
-      <template v-if="styleRules.length">
-        客户画法 ·
-        <span v-for="(r, i) in styleRules" :key="i">
-          {{ i + 1 }}.{{ r }}{{ i < styleRules.length - 1 ? '；' : '' }}
-        </span>
-      </template>
-      <template v-else>
-        按角色走查（含岗位）· 序号与一级圈数对齐 · 虚线
-        <code>&lt;&lt;include&gt;&gt;</code> /
-        <code>&lt;&lt;extend&gt;&gt;</code>
-        · 二级动词开头 · 可导出 StarUML
-      </template>
-    </p>
-    <p v-if="sourceNote" class="small muted uc-hint mb-8">{{ sourceNote }}</p>
-    <div v-if="description" class="uc-desc mb-8">
-      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px">
-        <p class="small uc-desc-text">{{ description }}</p>
-        <n-button size="tiny" quaternary @click="copyDesc">复制描述</n-button>
-      </div>
-    </div>
+    <div
+      class="diagram-resize"
+      title="拖动调整预览高度"
+      @pointerdown="onResizeDown"
+      @pointermove="onResizeMove"
+      @pointerup="onResizeUp"
+      @pointercancel="onResizeUp"
+    />
     <div
       ref="frameRef"
       class="uc-frame"
       :class="{ 'is-panning': panning }"
+      :style="frameStyle"
       @wheel.prevent="onWheel"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
@@ -67,6 +82,8 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { message } from '../api'
 import { isDark } from '../theme'
 import ContentLoading from './ContentLoading.vue'
+import DiagramRubricBanner from './DiagramRubricBanner.vue'
+import { useDiagramFrameResize } from './useDiagramFrameResize'
 
 const props = defineProps({
   svgSource: { type: String, default: '' },
@@ -77,8 +94,16 @@ const props = defineProps({
   sourceNote: { type: String, default: '' },
   styleRules: { type: Array, default: () => [] },
   mdjUrl: { type: String, default: '' },
+  drawioUrl: { type: String, default: '' },
+  mermaidUrl: { type: String, default: '' },
   loading: { type: Boolean, default: false },
+  rubricGate: { type: Object, default: null },
 })
+
+const rubricBad = computed(() => props.rubricGate && props.rubricGate.ok === false)
+const exportBlockTitle = computed(() =>
+  rubricBad.value ? String(props.rubricGate?.note || '论文图规则红，不可导出') : undefined,
+)
 
 const emit = defineEmits(['reload', 'update:actor'])
 
@@ -91,9 +116,26 @@ const panY = ref(0)
 const panning = ref(false)
 const busy = ref(false)
 const mdjBusy = ref(false)
+const drawioBusy = ref(false)
+const mmdBusy = ref(false)
 const actorLocal = ref(String(props.actor || 'user'))
 let panLastX = 0
 let panLastY = 0
+
+const {
+  viewerRef,
+  frameHeight,
+  frameStyle,
+  resizing,
+  onResizeDown,
+  onResizeMove,
+  onResizeUp,
+} = useDiagramFrameResize()
+
+watch(frameHeight, async () => {
+  await nextTick()
+  fitToFrame()
+})
 
 const SCALE_MIN = 0.25
 const SCALE_MAX = 4
@@ -280,6 +322,61 @@ function downloadSvg() {
   triggerDownload(new Blob([raw], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
 }
 
+async function downloadDrawio() {
+  const url = props.drawioUrl
+  if (!url) {
+    message.error('无 Draw.io 下载地址')
+    return
+  }
+  drawioBusy.value = true
+  try {
+    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+    if (!res.ok) throw new Error('drawio')
+    const text = await res.text()
+    triggerDownload(
+      new Blob([text], { type: 'application/xml;charset=utf-8' }),
+      `${fileBase.value}.drawio`,
+    )
+  } catch {
+    message.error('下载 Draw.io 失败')
+  } finally {
+    drawioBusy.value = false
+  }
+}
+
+async function fetchMermaidText() {
+  const url = props.mermaidUrl
+  if (!url) throw new Error('no mermaid url')
+  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+  if (!res.ok) throw new Error('mmd')
+  return await res.text()
+}
+
+async function copyMermaid() {
+  mmdBusy.value = true
+  try {
+    const text = await fetchMermaidText()
+    await navigator.clipboard.writeText(text)
+    message.success('已复制 Mermaid（可贴 diagrams.net）')
+  } catch {
+    message.error('复制 Mermaid 失败')
+  } finally {
+    mmdBusy.value = false
+  }
+}
+
+async function downloadMermaid() {
+  mmdBusy.value = true
+  try {
+    const text = await fetchMermaidText()
+    triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${fileBase.value}.mmd`)
+  } catch {
+    message.error('下载 Mermaid 失败')
+  } finally {
+    mmdBusy.value = false
+  }
+}
+
 async function downloadMdj() {
   const url = props.mdjUrl
   if (!url) {
@@ -310,12 +407,7 @@ async function copyDesc() {
 </script>
 
 <style scoped>
-.uc-viewer {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  max-height: min(86vh, 900px);
-}
+/* 高度 / 拖条见 styles.css · .diagram-viewer-shell */
 .uc-toolbar {
   flex-wrap: wrap;
   gap: 8px;
@@ -351,10 +443,7 @@ async function copyDesc() {
   white-space: pre-wrap;
 }
 .uc-frame {
-  /* 与 E-R 图同口径：固定视口，避免 SVG 固有高度把弹窗撑开 */
   position: relative;
-  height: 52vh;
-  min-height: 320px;
   flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid var(--n-border-color);

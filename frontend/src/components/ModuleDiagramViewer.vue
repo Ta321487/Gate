@@ -1,92 +1,128 @@
 <template>
-  <div class="mod-viewer" :class="{ 'is-dark': isDark }">
-    <div class="mod-toolbar row mb-12">
-      <div class="mod-zoom-btns row">
-        <n-radio-group v-model:value="layoutLocal" size="small" :disabled="loading" @update:value="onLayoutChange">
-          <n-radio-button value="identity">按身份</n-radio-button>
-          <n-radio-button value="biz">按业务</n-radio-button>
-        </n-radio-group>
-        <n-switch
-          size="small"
-          :value="expandLocal"
-          :disabled="loading || layoutLocal !== 'identity'"
-          @update:value="onExpandChange"
-        >
-          <template #checked>展开细节</template>
-          <template #unchecked>展开细节</template>
-        </n-switch>
-        <n-button size="small" @click="zoomOut">缩小</n-button>
-        <span class="mod-zoom-label">{{ Math.round(scale * 100) }}%</span>
-        <n-button size="small" @click="zoomIn">放大</n-button>
-        <n-button size="small" @click="resetView">重置视口</n-button>
-        <n-button
-          size="small"
-          :loading="loading"
-          :title="labelGateBad ? '强制重算（绕过图缓存；修 modules.py 后必点）' : '重新加载'"
-          @click="$emit('reload')"
-        >重新加载</n-button>
-        <n-button
-          size="small"
-          type="primary"
-          :loading="busy"
-          :disabled="labelGateBad"
-          :title="labelGateBad ? '文案红不可导出，先按工厂提示修闸' : undefined"
-          @click="copyPng"
-        >复制图片</n-button>
-        <n-button
-          size="small"
-          type="primary"
-          secondary
-          :loading="busy"
-          :disabled="labelGateBad"
-          :title="labelGateBad ? '文案红不可导出，先按工厂提示修闸' : undefined"
-          @click="downloadPng"
-        >下载 PNG</n-button>
-        <n-button
-          size="small"
-          quaternary
-          :disabled="labelGateBad"
-          :title="labelGateBad ? '文案红不可导出，先按工厂提示修闸' : undefined"
-          @click="downloadSvg"
-        >下载矢量源</n-button>
+  <div ref="viewerRef" class="mod-viewer diagram-viewer-shell" :class="{ 'is-dark': isDark, 'is-resizing': resizing }">
+    <div class="diagram-chrome">
+      <div class="mod-toolbar row mb-12">
+        <div class="mod-zoom-btns row">
+          <n-radio-group v-model:value="layoutLocal" size="small" :disabled="loading" @update:value="onLayoutChange">
+            <n-radio-button value="identity">按身份</n-radio-button>
+            <n-radio-button value="biz">按业务</n-radio-button>
+          </n-radio-group>
+          <n-switch
+            size="small"
+            :value="expandLocal"
+            :disabled="loading || layoutLocal !== 'identity'"
+            @update:value="onExpandChange"
+          >
+            <template #checked>展开细节</template>
+            <template #unchecked>展开细节</template>
+          </n-switch>
+          <n-button size="small" @click="zoomOut">缩小</n-button>
+          <span class="mod-zoom-label">{{ Math.round(scale * 100) }}%</span>
+          <n-button size="small" @click="zoomIn">放大</n-button>
+          <n-button size="small" @click="resetView">重置视口</n-button>
+          <n-button
+            size="small"
+            :loading="loading"
+            :title="labelGateBad ? '强制重算（绕过图缓存；修 modules.py 后必点）' : '重新加载'"
+            @click="$emit('reload')"
+          >重新加载</n-button>
+          <n-button
+            size="small"
+            type="primary"
+            :loading="busy"
+            :disabled="exportBad"
+            :title="exportBlockTitle"
+            @click="copyPng"
+          >复制图片</n-button>
+          <n-button
+            size="small"
+            type="primary"
+            secondary
+            :loading="busy"
+            :disabled="exportBad"
+            :title="exportBlockTitle"
+            @click="downloadPng"
+          >下载 PNG</n-button>
+          <n-button
+            size="small"
+            quaternary
+            :disabled="exportBad"
+            :title="exportBlockTitle"
+            @click="downloadSvg"
+          >下载矢量源</n-button>
+          <n-button
+            size="small"
+            quaternary
+            :loading="drawioBusy"
+            :disabled="exportBad"
+            :title="exportBlockTitle || '同源 Draw.io，可拖框手调'"
+            @click="downloadDrawio"
+          >下载 Draw.io</n-button>
+          <n-button
+            size="small"
+            quaternary
+            :loading="mmdBusy"
+            :disabled="exportBad || !mermaidUrl"
+            :title="exportBlockTitle"
+            @click="copyMermaid"
+          >复制 Mermaid</n-button>
+          <n-button
+            size="small"
+            quaternary
+            :loading="mmdBusy"
+            :disabled="exportBad || !mermaidUrl"
+            :title="exportBlockTitle"
+            @click="downloadMermaid"
+          >下载 .mmd</n-button>
+        </div>
       </div>
-    </div>
-    <p class="small muted mod-hint mb-8">
-      {{
-        layoutLocal === 'biz'
-          ? '按业务拆：业务对象 / 订单…（对照用）；叶子来自交付菜单'
-          : '按身份拆：登录身份 → 一级功能模块（论文常用）；叶子对齐交付菜单，开题只辅助命名；未交付模块不进图；【】（）细节默认不进图'
-      }}
-    </p>
-    <p v-if="layoutMismatch" class="small mod-hint mb-8 mod-warn">
-      界面选的是「按身份」，但图数据仍是「按业务」——请重启工厂后端后再点重新加载。
-    </p>
-    <p
-      v-if="sourceNote"
-      class="small mod-hint mb-8 mod-source-note"
-      :class="labelGateBad ? 'mod-warn' : 'muted'"
-    >{{ sourceNote }}</p>
-    <div v-if="labelGateBad" class="banner fail mod-gate-banner mb-8">
-      <h4>工厂提示 · 文案红</h4>
-      <p class="small">
-        叶子短签未过闸，勿当可贴论文图发出。修工厂
-        <code>backend/app/bake/schema/modules.py</code>
-        清洗（勿只擦本包 SVG）→ 热重载后端 → 点「重新加载」强制重算缓存。
-        仅交付菜单 / domain.schema 叶子本身错时才重 bake。
+      <p class="small muted mod-hint mb-8">
+        {{
+          layoutLocal === 'biz'
+            ? '按业务拆：业务对象 / 订单…（对照用）；叶子来自交付菜单'
+            : '按身份拆：登录身份 → 一级功能模块（论文常用）；叶子对齐交付菜单，开题只辅助命名；未交付模块不进图；【】（）细节默认不进图'
+        }}
       </p>
-      <ul v-if="findingRows.length" class="small mod-findings">
-        <li v-for="(row, i) in findingRows" :key="i">
-          <strong>{{ row.kindZh }}</strong>
-          <span v-if="row.sourceZh" class="muted"> · {{ row.sourceZh }}</span>
-          · {{ row.branch || '（根）' }} → 「{{ row.label || '（空）' }}」
-          <span class="muted">{{ row.detail }}</span>
-        </li>
-      </ul>
+      <p v-if="layoutMismatch" class="small mod-hint mb-8 mod-warn">
+        界面选的是「按身份」，但图数据仍是「按业务」——请重启工厂后端后再点重新加载。
+      </p>
+      <p
+        v-if="sourceNote"
+        class="small mod-hint mb-8 mod-source-note"
+        :class="labelGateBad ? 'mod-warn' : 'muted'"
+      >{{ sourceNote }}</p>
+      <div v-if="labelGateBad" class="banner fail mod-gate-banner mb-8">
+        <h4>工厂提示 · 文案红</h4>
+        <p class="small">
+          叶子短签未过闸，勿当可贴论文图发出。修工厂
+          <code>backend/app/bake/schema/modules.py</code>
+          清洗（勿只擦本包 SVG）→ 热重载后端 → 点「重新加载」强制重算缓存。
+          仅交付菜单 / domain.schema 叶子本身错时才重 bake。
+        </p>
+        <ul v-if="findingRows.length" class="small mod-findings">
+          <li v-for="(row, i) in findingRows" :key="i">
+            <strong>{{ row.kindZh }}</strong>
+            <span v-if="row.sourceZh" class="muted"> · {{ row.sourceZh }}</span>
+            · {{ row.branch || '（根）' }} → 「{{ row.label || '（空）' }}」
+            <span class="muted">{{ row.detail }}</span>
+          </li>
+        </ul>
+      </div>
+      <DiagramRubricBanner :gate="rubricGate" />
     </div>
+    <div
+      class="diagram-resize"
+      title="拖动调整预览高度"
+      @pointerdown="onResizeDown"
+      @pointermove="onResizeMove"
+      @pointerup="onResizeUp"
+      @pointercancel="onResizeUp"
+    />
     <div
       ref="frameRef"
       class="mod-frame"
       :class="{ 'is-panning': panning }"
+      :style="frameStyle"
       @wheel.prevent="onWheel"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
@@ -105,6 +141,8 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { message } from '../api'
 import { isDark } from '../theme'
 import ContentLoading from './ContentLoading.vue'
+import DiagramRubricBanner from './DiagramRubricBanner.vue'
+import { useDiagramFrameResize } from './useDiagramFrameResize'
 
 const props = defineProps({
   svgSource: { type: String, default: '' },
@@ -119,11 +157,21 @@ const props = defineProps({
   /** label_gate.findings：kind/branch/label/detail，可选 source */
   labelGateFindings: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  drawioUrl: { type: String, default: '' },
+  mermaidUrl: { type: String, default: '' },
+  rubricGate: { type: Object, default: null },
 })
 
 const emit = defineEmits(['reload', 'update:layout', 'update:expandDetails'])
 
 const labelGateBad = computed(() => props.labelGateOk === false)
+const rubricBad = computed(() => props.rubricGate && props.rubricGate.ok === false)
+const exportBad = computed(() => labelGateBad.value || rubricBad.value)
+const exportBlockTitle = computed(() => {
+  if (labelGateBad.value) return '文案红不可导出，先按工厂提示修闸'
+  if (rubricBad.value) return String(props.rubricGate?.note || '论文图规则红，不可导出')
+  return undefined
+})
 
 const KIND_ZH = {
   empty: '空叶子',
@@ -159,10 +207,27 @@ const panX = ref(0)
 const panY = ref(0)
 const panning = ref(false)
 const busy = ref(false)
+const drawioBusy = ref(false)
+const mmdBusy = ref(false)
 const layoutLocal = ref(props.layout === 'biz' ? 'biz' : 'identity')
 const expandLocal = ref(!!props.expandDetails)
 let panLastX = 0
 let panLastY = 0
+
+const {
+  viewerRef,
+  frameHeight,
+  frameStyle,
+  resizing,
+  onResizeDown,
+  onResizeMove,
+  onResizeUp,
+} = useDiagramFrameResize()
+
+watch(frameHeight, async () => {
+  await nextTick()
+  fitToFrame()
+})
 
 const SCALE_MIN = 0.25
 const SCALE_MAX = 4
@@ -357,14 +422,77 @@ function downloadSvg() {
   }
   triggerDownload(new Blob([raw], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
 }
+
+async function downloadDrawio() {
+  if (exportBad.value) {
+    message.error(exportBlockTitle.value || '不可导出')
+    return
+  }
+  const url = props.drawioUrl
+  if (!url) {
+    message.error('无 Draw.io 下载地址')
+    return
+  }
+  drawioBusy.value = true
+  try {
+    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+    if (!res.ok) throw new Error('drawio')
+    const text = await res.text()
+    triggerDownload(
+      new Blob([text], { type: 'application/xml;charset=utf-8' }),
+      `${fileBase.value}.drawio`,
+    )
+  } catch {
+    message.error('下载 Draw.io 失败')
+  } finally {
+    drawioBusy.value = false
+  }
+}
+
+async function fetchMermaidText() {
+  const url = props.mermaidUrl
+  if (!url) throw new Error('no mermaid url')
+  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+  if (!res.ok) throw new Error('mmd')
+  return await res.text()
+}
+
+async function copyMermaid() {
+  if (exportBad.value) {
+    message.error(exportBlockTitle.value || '不可导出')
+    return
+  }
+  mmdBusy.value = true
+  try {
+    const text = await fetchMermaidText()
+    await navigator.clipboard.writeText(text)
+    message.success('已复制 Mermaid（可贴 diagrams.net）')
+  } catch {
+    message.error('复制 Mermaid 失败')
+  } finally {
+    mmdBusy.value = false
+  }
+}
+
+async function downloadMermaid() {
+  if (exportBad.value) {
+    message.error(exportBlockTitle.value || '不可导出')
+    return
+  }
+  mmdBusy.value = true
+  try {
+    const text = await fetchMermaidText()
+    triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${fileBase.value}.mmd`)
+  } catch {
+    message.error('下载 Mermaid 失败')
+  } finally {
+    mmdBusy.value = false
+  }
+}
 </script>
 
 <style scoped>
-.mod-viewer {
-  display: flex;
-  flex-direction: column;
-  min-height: 420px;
-}
+/* 高度 / 拖条见 styles.css · .diagram-viewer-shell */
 .mod-toolbar {
   flex-wrap: wrap;
   gap: 8px;
@@ -406,8 +534,7 @@ function downloadSvg() {
   margin-top: 4px;
 }
 .mod-frame {
-  flex: 1;
-  min-height: 360px;
+  flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid var(--n-border-color);
   border-radius: 6px;

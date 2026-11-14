@@ -154,6 +154,59 @@ export const api = {
     const q = new URLSearchParams({ actor })
     return `/api/projects/${id}/schema/usecases.mdj?${q}`
   },
+  usecasesDrawioUrl: (id, { actor = 'user' } = {}) => {
+    const q = new URLSearchParams({ actor })
+    return `/api/projects/${id}/schema/usecases.drawio?${q}`
+  },
+  classesDrawioUrl: (id, { display = 'sample' } = {}) => {
+    const q = new URLSearchParams({ display })
+    return `/api/projects/${id}/schema/classes.drawio?${q}`
+  },
+  erDrawioUrl: (id, { mode = 'total', entity } = {}) => {
+    const q = new URLSearchParams({ mode })
+    if (entity) q.set('entity', entity)
+    return `/api/projects/${id}/schema/er.drawio?${q}`
+  },
+  modulesDrawioUrl: (id, { layout = 'identity', expandDetails = false } = {}) => {
+    const q = new URLSearchParams({
+      layout,
+      expand_details: expandDetails ? 'true' : 'false',
+    })
+    return `/api/projects/${id}/schema/modules.drawio?${q}`
+  },
+  erMmdUrl: (id, { mode = 'total', entity } = {}) => {
+    const q = new URLSearchParams({ mode })
+    if (entity) q.set('entity', entity)
+    return `/api/projects/${id}/schema/er.mmd?${q}`
+  },
+  modulesMmdUrl: (id, { layout = 'identity', expandDetails = false } = {}) => {
+    const q = new URLSearchParams({
+      layout,
+      expand_details: expandDetails ? 'true' : 'false',
+    })
+    return `/api/projects/${id}/schema/modules.mmd?${q}`
+  },
+  classesMmdUrl: (id, { display = 'sample' } = {}) => {
+    const q = new URLSearchParams({ display })
+    return `/api/projects/${id}/schema/classes.mmd?${q}`
+  },
+  usecasesMmdUrl: (id, { actor = 'user' } = {}) => {
+    const q = new URLSearchParams({ actor })
+    return `/api/projects/${id}/schema/usecases.mmd?${q}`
+  },
+  sequencesMmdUrl: (id, { index = 0, ids } = {}) => {
+    const q = new URLSearchParams({ index: String(index) })
+    if (ids) q.set('ids', Array.isArray(ids) ? ids.join(',') : String(ids))
+    return `/api/projects/${id}/schema/sequences.mmd?${q}`
+  },
+  activitiesMmdUrl: (id, { index = 0, ids } = {}) => {
+    const q = new URLSearchParams({ index: String(index) })
+    if (ids) q.set('ids', Array.isArray(ids) ? ids.join(',') : String(ids))
+    return `/api/projects/${id}/schema/activities.mmd?${q}`
+  },
+  architectureDrawioUrl: (id) => `/api/projects/${id}/schema/architecture.drawio`,
+  architectureMmdUrl: (id) => `/api/projects/${id}/schema/architecture.mmd`,
+
   getTestcases: (id, { fields = 6 } = {}) =>
     http.get(`/projects/${id}/schema/testcases`, { params: { fields } }),
   testcasesMdUrl: (id, { fields = 6 } = {}) => {
@@ -224,6 +277,8 @@ export const api = {
   repackDeliveryReview: (id) =>
     http.post(`/projects/${id}/delivery-review/repack`, null, { timeout: 120000 }),
   runDeliveryQa: (id) => http.post(`/projects/${id}/delivery-review/qa`, null, { timeout: 180000 }),
+  runThesisDiagramAudit: (id) =>
+    http.post(`/projects/${id}/schema/thesis-diagram-audit`, null, { timeout: 180000 }),
   scrubStudentCopy: (id) => http.post(`/projects/${id}/scrub-student-copy`, null, { timeout: 120000 }),
   addDeliveryFixNote: (id, text) =>
     http.post(`/projects/${id}/delivery-review/notes`, { text }, { timeout: 120000 }),

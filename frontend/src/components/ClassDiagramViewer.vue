@@ -1,37 +1,52 @@
 <template>
-  <div class="cls-viewer" :class="{ 'is-dark': isDark }">
-    <div class="cls-toolbar row mb-12">
-      <div class="cls-zoom-btns row">
-        <n-radio-group
-          v-if="displayModes.length"
-          :value="displayMode"
-          size="small"
-          class="cls-mode"
-          @update:value="onDisplayMode"
-        >
-          <n-radio-button v-for="m in displayModes" :key="m.id" :value="m.id">
-            {{ m.label }}
-          </n-radio-button>
-        </n-radio-group>
-        <n-button size="small" @click="zoomOut">缩小</n-button>
-        <span class="cls-zoom-label">{{ Math.round(scale * 100) }}%</span>
-        <n-button size="small" @click="zoomIn">放大</n-button>
-        <n-button size="small" @click="resetView">重置视口</n-button>
-        <n-button size="small" :loading="loading" @click="onReload">复位布局</n-button>
-        <n-button size="small" type="primary" :loading="busy" @click="copyPng">复制图片</n-button>
-        <n-button size="small" type="primary" secondary :loading="busy" @click="downloadPng">下载 PNG</n-button>
-        <n-button size="small" quaternary @click="downloadSvg">下载矢量源</n-button>
+  <div ref="viewerRef" class="cls-viewer diagram-viewer-shell" :class="{ 'is-dark': isDark, 'is-resizing': resizing }">
+    <div class="diagram-chrome">
+      <div class="cls-toolbar row mb-12">
+        <div class="cls-zoom-btns row">
+          <n-radio-group
+            v-if="displayModes.length"
+            :value="displayMode"
+            size="small"
+            class="cls-mode"
+            @update:value="onDisplayMode"
+          >
+            <n-radio-button v-for="m in displayModes" :key="m.id" :value="m.id">
+              {{ m.label }}
+            </n-radio-button>
+          </n-radio-group>
+          <n-button size="small" @click="zoomOut">缩小</n-button>
+          <span class="cls-zoom-label">{{ Math.round(scale * 100) }}%</span>
+          <n-button size="small" @click="zoomIn">放大</n-button>
+          <n-button size="small" @click="resetView">重置视口</n-button>
+          <n-button size="small" :loading="loading" @click="onReload">复位布局</n-button>
+          <n-button size="small" type="primary" :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="copyPng">复制图片</n-button>
+          <n-button size="small" type="primary" secondary :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="downloadPng">下载 PNG</n-button>
+          <n-button size="small" quaternary :disabled="rubricBad" :title="exportBlockTitle" @click="downloadSvg">下载矢量源</n-button>
+          <n-button size="small" quaternary :loading="drawioBusy" :disabled="rubricBad" :title="exportBlockTitle" @click="downloadDrawio">下载 Draw.io</n-button>
+          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="copyMermaid">复制 Mermaid</n-button>
+          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="downloadMermaid">下载 .mmd</n-button>
+        </div>
       </div>
+      <DiagramRubricBanner :gate="rubricGate" />
+      <p class="small muted cls-hint mb-8">
+        论文口径：三栏类框（+ 公有 / # 保护 / - 私有）· 六种关系线 · 同图零交叉（拖中只动相连线，松手回拉精炼）· 「论文示例 / 代码全量」· 几何翻车可下 Draw.io 手调（与包同源）
+      </p>
+      <p v-if="sourceNote" class="small muted cls-hint mb-8">{{ sourceNote }}</p>
+      <p v-if="evidenceNote" class="small muted cls-hint mb-8">{{ evidenceNote }}</p>
     </div>
-  <p class="small muted cls-hint mb-8">
-    论文口径：三栏类框（+ 公有 / # 保护 / - 私有）· 六种关系线 · 同图零交叉（拖中只动相连线，松手回拉精炼）· 「论文示例 / 代码全量」
-  </p>
-    <p v-if="sourceNote" class="small muted cls-hint mb-8">{{ sourceNote }}</p>
-    <p v-if="evidenceNote" class="small muted cls-hint mb-8">{{ evidenceNote }}</p>
+    <div
+      class="diagram-resize"
+      title="拖动调整预览高度"
+      @pointerdown="onResizeDown"
+      @pointermove="onResizeMove"
+      @pointerup="onResizeUp"
+      @pointercancel="onResizeUp"
+    />
     <div
       ref="frameRef"
       class="cls-frame"
       :class="{ 'is-dragging-node': !!dragNode, 'is-panning': panning }"
+      :style="frameStyle"
       @wheel.prevent="onWheel"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
@@ -52,6 +67,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { message } from '../api'
 import { isDark } from '../theme'
 import ContentLoading from './ContentLoading.vue'
+import DiagramRubricBanner from './DiagramRubricBanner.vue'
+import { useDiagramFrameResize } from './useDiagramFrameResize'
 
 const props = defineProps({
   svgSource: { type: String, default: '' },
@@ -61,7 +78,15 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   displayMode: { type: String, default: 'sample' },
   displayModes: { type: Array, default: () => [] },
+  drawioUrl: { type: String, default: '' },
+  mermaidUrl: { type: String, default: '' },
+  rubricGate: { type: Object, default: null },
 })
+
+const rubricBad = computed(() => props.rubricGate && props.rubricGate.ok === false)
+const exportBlockTitle = computed(() =>
+  rubricBad.value ? String(props.rubricGate?.note || '论文图规则红，不可导出') : undefined,
+)
 
 const emit = defineEmits(['save-layout', 'reset-layout', 'update:displayMode'])
 
@@ -88,6 +113,8 @@ const panY = ref(0)
 const panning = ref(false)
 const dragNode = ref(null)
 const busy = ref(false)
+const drawioBusy = ref(false)
+const mmdBusy = ref(false)
 const didFitView = ref(false)
 /** 用户手动缩放/平移后，不再因弹窗 resize 强行 fit */
 let userAdjustedView = false
@@ -95,6 +122,16 @@ let fitRetries = 0
 let resizeObs = null
 let frameLastW = 0
 let frameLastH = 0
+
+const {
+  viewerRef,
+  frameStyle,
+  resizing,
+  onResizeDown,
+  onResizeMove,
+  onResizeUp,
+} = useDiagramFrameResize()
+// 预览框高度变化由下方 ResizeObserver 适配，不另 watch 强行 fit
 
 /** nodeId -> { dx, dy } */
 const offsets = new Map()
@@ -1158,15 +1195,66 @@ function downloadSvg() {
   triggerDownload(new Blob([raw], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
 }
 
+async function downloadDrawio() {
+  const url = props.drawioUrl
+  if (!url) {
+    message.error('无 Draw.io 下载地址')
+    return
+  }
+  drawioBusy.value = true
+  try {
+    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+    if (!res.ok) throw new Error('drawio')
+    const text = await res.text()
+    triggerDownload(
+      new Blob([text], { type: 'application/xml;charset=utf-8' }),
+      `${fileBase.value}.drawio`,
+    )
+  } catch {
+    message.error('下载 Draw.io 失败')
+  } finally {
+    drawioBusy.value = false
+  }
+}
+
+async function fetchMermaidText() {
+  const url = props.mermaidUrl
+  if (!url) throw new Error('no mermaid url')
+  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+  if (!res.ok) throw new Error('mmd')
+  return await res.text()
+}
+
+async function copyMermaid() {
+  mmdBusy.value = true
+  try {
+    const text = await fetchMermaidText()
+    await navigator.clipboard.writeText(text)
+    message.success('已复制 Mermaid（可贴 diagrams.net）')
+  } catch {
+    message.error('复制 Mermaid 失败')
+  } finally {
+    mmdBusy.value = false
+  }
+}
+
+async function downloadMermaid() {
+  mmdBusy.value = true
+  try {
+    const text = await fetchMermaidText()
+    triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${fileBase.value}.mmd`)
+  } catch {
+    message.error('下载 Mermaid 失败')
+  } finally {
+    mmdBusy.value = false
+  }
+}
+
 defineExpose({ serializeSvg, downloadSvg, downloadPng, copyPng, resetView })
 </script>
 
 <style scoped>
-.cls-viewer {
-  display: flex;
-  flex-direction: column;
-  min-height: 420px;
-}
+/* 高度 / 拖条见 styles.css · .diagram-viewer-shell */
 .cls-toolbar {
   flex-wrap: wrap;
   gap: 8px;
@@ -1186,9 +1274,7 @@ defineExpose({ serializeSvg, downloadSvg, downloadPng, copyPng, resetView })
 }
 .cls-hint { line-height: 1.5; }
 .cls-frame {
-  flex: 1;
-  min-height: 360px;
-  max-height: min(70vh, 720px);
+  flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 6px;

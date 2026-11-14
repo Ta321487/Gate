@@ -1,59 +1,74 @@
 <template>
-  <div class="er-viewer" :class="{ 'is-dark': isDark }">
-    <div class="er-toolbar row mb-12">
-      <div class="er-zoom-btns row">
-        <n-radio-group v-model:value="modeLocal" size="small" :disabled="loading" @update:value="onModeChange">
-          <n-radio-button value="total">总图</n-radio-button>
-          <n-radio-button value="part">实体属性图</n-radio-button>
-        </n-radio-group>
-        <n-select
-          v-if="modeLocal === 'part'"
-          v-model:value="entityLocal"
-          size="small"
-          :options="entityOptions"
-          :loading="loading"
-          :disabled="loading"
-          placeholder="选择实体"
-          style="width:160px"
-          @update:value="onEntityChange"
-        />
-        <n-button
-          v-if="modeLocal === 'part'"
-          size="small"
-          secondary
-          :loading="loading"
-          @click="$emit('export-all-parts')"
-        >导出全部属性图</n-button>
-        <n-button size="small" @click="zoomOut">缩小</n-button>
-        <span class="er-zoom-label">{{ Math.round(scale * 100) }}%</span>
-        <n-button size="small" @click="zoomIn">放大</n-button>
-        <n-button size="small" @click="resetView">重置视口</n-button>
-        <n-button size="small" :loading="loading" @click="onResetLayout">重置布局</n-button>
-        <n-button size="small" :type="showGrid ? 'primary' : 'default'" secondary @click="showGrid = !showGrid">网格</n-button>
-        <n-select
-          v-model:value="strokePreset"
-          size="small"
-          :options="strokeOptions"
-          :consistent-menu-width="false"
-          style="width:148px"
-          @update:value="applyStrokePreset"
-        />
-        <n-button size="small" type="primary" :loading="busy" @click="copyPng">复制图片</n-button>
-        <n-button size="small" type="primary" secondary :loading="busy" @click="downloadPng">下载 PNG</n-button>
-        <n-button size="small" quaternary @click="downloadSvg">下载矢量源</n-button>
+  <div ref="viewerRef" class="er-viewer diagram-viewer-shell" :class="{ 'is-dark': isDark, 'is-resizing': resizing }">
+    <div class="diagram-chrome">
+      <div class="er-toolbar row mb-12">
+        <div class="er-zoom-btns row">
+          <n-radio-group v-model:value="modeLocal" size="small" :disabled="loading" @update:value="onModeChange">
+            <n-radio-button value="total">总图</n-radio-button>
+            <n-radio-button value="part">实体属性图</n-radio-button>
+          </n-radio-group>
+          <n-select
+            v-if="modeLocal === 'part'"
+            v-model:value="entityLocal"
+            size="small"
+            :options="entityOptions"
+            :loading="loading"
+            :disabled="loading"
+            placeholder="选择实体"
+            style="width:160px"
+            @update:value="onEntityChange"
+          />
+          <n-button
+            v-if="modeLocal === 'part'"
+            size="small"
+            secondary
+            :loading="loading"
+            @click="$emit('export-all-parts')"
+          >导出全部属性图</n-button>
+          <n-button size="small" @click="zoomOut">缩小</n-button>
+          <span class="er-zoom-label">{{ Math.round(scale * 100) }}%</span>
+          <n-button size="small" @click="zoomIn">放大</n-button>
+          <n-button size="small" @click="resetView">重置视口</n-button>
+          <n-button size="small" :loading="loading" @click="onResetLayout">重置布局</n-button>
+          <n-button size="small" :type="showGrid ? 'primary' : 'default'" secondary @click="showGrid = !showGrid">网格</n-button>
+          <n-select
+            v-model:value="strokePreset"
+            size="small"
+            :options="strokeOptions"
+            :consistent-menu-width="false"
+            style="width:148px"
+            @update:value="applyStrokePreset"
+          />
+          <n-button size="small" type="primary" :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="copyPng">复制图片</n-button>
+          <n-button size="small" type="primary" secondary :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="downloadPng">下载 PNG</n-button>
+          <n-button size="small" quaternary :disabled="rubricBad" :title="exportBlockTitle" @click="downloadSvg">下载矢量源</n-button>
+          <n-button size="small" quaternary :loading="drawioBusy" :disabled="rubricBad" :title="exportBlockTitle" @click="downloadDrawio">下载 Draw.io</n-button>
+          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="copyMermaid">复制 Mermaid</n-button>
+          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="downloadMermaid">下载 .mmd</n-button>
+        </div>
       </div>
+      <DiagramRubricBanner :gate="rubricGate" />
+      <p class="small muted er-hint mb-8">
+        {{
+          modeLocal === 'total'
+            ? '概念 E-R：实体 + 动词联系 + 基数（不含属性；中间表已画成 N:M）· 几何翻车可下 Draw.io 手调（与包同源）'
+            : '实体属性图：仅自身属性（不含外键）；按概念实体各导出一张 · 可下 Draw.io 手调'
+        }}
+      </p>
     </div>
-    <p class="small muted er-hint mb-8">
-      {{
-        modeLocal === 'total'
-          ? '概念 E-R：实体 + 动词联系 + 基数（不含属性；中间表已画成 N:M）'
-          : '实体属性图：仅自身属性（不含外键）；按概念实体各导出一张'
-      }}
-    </p>
+    <div
+      class="diagram-resize"
+      title="拖动调整预览高度"
+      @pointerdown="onResizeDown"
+      @pointermove="onResizeMove"
+      @pointerup="onResizeUp"
+      @pointercancel="onResizeUp"
+    />
     <div
       ref="frameRef"
       class="er-frame"
       :class="{ 'is-dragging-node': !!dragNode, 'is-panning': panning }"
+      :style="frameStyle"
       @wheel.prevent="onWheel"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
@@ -87,6 +102,8 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { message } from '../api'
 import { isDark } from '../theme'
 import ContentLoading from './ContentLoading.vue'
+import DiagramRubricBanner from './DiagramRubricBanner.vue'
+import { useDiagramFrameResize } from './useDiagramFrameResize'
 
 const props = defineProps({
   /** 后端初始 SVG（可含 xml 声明） */
@@ -101,7 +118,17 @@ const props = defineProps({
   entityOptions: { type: Array, default: () => [] },
   /** 后端重新拉 SVG 中 */
   loading: { type: Boolean, default: false },
+  /** 同源 .drawio 下载地址 */
+  drawioUrl: { type: String, default: '' },
+  /** 同源 Mermaid 下载地址 */
+  mermaidUrl: { type: String, default: '' },
+  rubricGate: { type: Object, default: null },
 })
+
+const rubricBad = computed(() => props.rubricGate && props.rubricGate.ok === false)
+const exportBlockTitle = computed(() =>
+  rubricBad.value ? String(props.rubricGate?.note || '论文图规则红，不可导出') : undefined,
+)
 
 const emit = defineEmits(['reload', 'update:mode', 'update:entity', 'export-all-parts', 'save-view', 'reset-layout'])
 
@@ -120,6 +147,21 @@ const scale = ref(1)
 const panX = ref(0)
 const panY = ref(0)
 const panning = ref(false)
+
+const {
+  viewerRef,
+  frameHeight,
+  frameStyle,
+  resizing,
+  onResizeDown,
+  onResizeMove,
+  onResizeUp,
+} = useDiagramFrameResize()
+
+watch(frameHeight, async () => {
+  await nextTick()
+  fitToFrame()
+})
 const dragNode = ref(null)
 const strokePreset = ref('normal')
 const showGrid = ref(true)
@@ -127,6 +169,8 @@ const paperW = ref(800)
 const paperH = ref(600)
 const GRID = 10
 const busy = ref(false)
+const drawioBusy = ref(false)
+const mmdBusy = ref(false)
 const modeLocal = ref(props.mode === 'part' ? 'part' : 'total')
 const entityLocal = ref(props.entity || '')
 
@@ -1278,6 +1322,61 @@ function downloadSvg() {
   triggerDownload(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
 }
 
+async function downloadDrawio() {
+  const url = props.drawioUrl
+  if (!url) {
+    message.error('无 Draw.io 下载地址')
+    return
+  }
+  drawioBusy.value = true
+  try {
+    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+    if (!res.ok) throw new Error('drawio')
+    const text = await res.text()
+    triggerDownload(
+      new Blob([text], { type: 'application/xml;charset=utf-8' }),
+      `${fileBase.value}.drawio`,
+    )
+  } catch {
+    message.error('下载 Draw.io 失败')
+  } finally {
+    drawioBusy.value = false
+  }
+}
+
+async function fetchMermaidText() {
+  const url = props.mermaidUrl
+  if (!url) throw new Error('no mermaid url')
+  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+  if (!res.ok) throw new Error('mmd')
+  return await res.text()
+}
+
+async function copyMermaid() {
+  mmdBusy.value = true
+  try {
+    const text = await fetchMermaidText()
+    await navigator.clipboard.writeText(text)
+    message.success('已复制 Mermaid（可贴 diagrams.net）')
+  } catch {
+    message.error('复制 Mermaid 失败')
+  } finally {
+    mmdBusy.value = false
+  }
+}
+
+async function downloadMermaid() {
+  mmdBusy.value = true
+  try {
+    const text = await fetchMermaidText()
+    triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${fileBase.value}.mmd`)
+  } catch {
+    message.error('下载 Mermaid 失败')
+  } finally {
+    mmdBusy.value = false
+  }
+}
+
 async function downloadPng() {
   if (busy.value) return
   busy.value = true
@@ -1342,7 +1441,7 @@ defineExpose({ serializeSvg, downloadSvg, downloadPng, copyPng, resetView })
   margin: 0;
 }
 .er-frame {
-  height: 72vh;
+  flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid var(--line);
   background: var(--er-bg, #fafafa);

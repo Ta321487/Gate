@@ -52,6 +52,17 @@ from app.api.projects.common import (
     router,
 )
 
+
+def _ensure_diagram_export_ok(model: dict | None) -> None:
+    """rubric_gate / 模块 label_gate 红则禁可交导出（打开图仍可看 findings）。"""
+    from app.bake.schema.diagram_rubric import raise_if_export_blocked
+
+    try:
+        raise_if_export_blocked(model)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
 @router.get("/{project_id}/schema", summary="库表结构")
 async def get_schema(project_id: str, db: AsyncSession = Depends(get_db)):
     """表结构 + 推断联系（供产物页展示）。"""
@@ -244,6 +255,7 @@ async def download_er_svg(
     model = pack_er(ws, mode=mode, entity=entity)
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
+    _ensure_diagram_export_ok(model)
     m = str(model.get("er_mode") or mode or "total").strip().lower()
     ent = model.get("er_entity") or entity
     svg = str(model.get("svg") or "")
@@ -254,6 +266,76 @@ async def download_er_svg(
         headers={
             "Cache-Control": "no-store",
             "Content-Disposition": f'inline; filename="{project_id}-er-{suffix}.svg"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/er.drawio", summary="下载 E-R 图 Draw.io")
+async def download_er_drawio(
+    project_id: str,
+    mode: str = Query("total", description="total=总图 part=分图"),
+    entity: str | None = Query(None, description="分图实体表名"),
+    db: AsyncSession = Depends(get_db),
+):
+    """同源 model → .drawio，供 diagrams.net 手调；不替代厂内几何刀。"""
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_drawio import er_model_to_drawio
+    from app.bake.schema.diagram_pack import pack_er
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = pack_er(ws, mode=mode, entity=entity)
+    if not model:
+        raise HTTPException(404, "未找到 sql/schema.sql")
+    _ensure_diagram_export_ok(model)
+    m = str(model.get("er_mode") or mode or "total").strip().lower()
+    ent = model.get("er_entity") or entity
+    body = er_model_to_drawio(model, mode=m, entity=str(ent) if ent else None)
+    suffix = f"part-{(ent or 'entity')}" if m == "part" else "total"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{project_id}-er-{suffix}.drawio"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/er.mmd", summary="下载 E-R 图 Mermaid")
+async def download_er_mmd(
+    project_id: str,
+    mode: str = Query("total", description="total=总图 part=分图"),
+    entity: str | None = Query(None, description="分图实体表名"),
+    db: AsyncSession = Depends(get_db),
+):
+    """同源 model → Mermaid；与 SVG/Draw.io 同一 pack_er。"""
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_mermaid import er_model_to_mermaid
+    from app.bake.schema.diagram_pack import pack_er
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = pack_er(ws, mode=mode, entity=entity)
+    if not model:
+        raise HTTPException(404, "未找到 sql/schema.sql")
+    _ensure_diagram_export_ok(model)
+    m = str(model.get("er_mode") or mode or "total").strip().lower()
+    ent = model.get("er_entity") or entity
+    body = er_model_to_mermaid(model, mode=m, entity=str(ent) if ent else None)
+    suffix = f"part-{(ent or 'entity')}" if m == "part" else "total"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{project_id}-er-{suffix}.mmd"',
         },
     )
 
@@ -329,6 +411,7 @@ async def download_modules_svg(
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
     svg = str(model.get("svg") or "")
     fname = f"{project_id}-modules-{layout_n}.svg"
     return Response(
@@ -337,6 +420,102 @@ async def download_modules_svg(
         headers={
             "Cache-Control": "no-store",
             "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/modules.drawio", summary="下载功能模块图 Draw.io")
+async def download_modules_drawio(
+    project_id: str,
+    layout: str = Query("identity", description="identity=按身份 · biz=按业务"),
+    expand_details: bool = Query(False, description="展开【】（）内细节为下一层"),
+    force: bool = Query(False, description="强制重算（绕过图缓存）"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_drawio import module_model_to_drawio
+    from app.bake.schema.diagram_pack import pack_modules
+    from app.bake.schema.modules import normalize_module_layout
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    layout_n = normalize_module_layout(layout)
+    model = pack_modules(
+        ws,
+        layout=layout_n,
+        expand_details=expand_details,
+        proposal_text=prop,
+        force=force,
+    )
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
+    body = module_model_to_drawio(model)
+    fname = f"{project_id}-modules-{layout_n}.drawio"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/modules.mmd", summary="下载功能模块图 Mermaid")
+async def download_modules_mmd(
+    project_id: str,
+    layout: str = Query("identity", description="identity=按身份 · biz=按业务"),
+    expand_details: bool = Query(False, description="展开【】（）内细节为下一层"),
+    force: bool = Query(False, description="强制重算（绕过图缓存）"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_mermaid import module_model_to_mermaid
+    from app.bake.schema.diagram_pack import pack_modules
+    from app.bake.schema.modules import normalize_module_layout
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    layout_n = normalize_module_layout(layout)
+    model = pack_modules(
+        ws,
+        layout=layout_n,
+        expand_details=expand_details,
+        proposal_text=prop,
+        force=force,
+    )
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
+    body = module_model_to_mermaid(model)
+    fname = f"{project_id}-modules-{layout_n}.mmd"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
         },
     )
 
@@ -375,6 +554,7 @@ async def download_architecture_svg(
     model = pack_architecture(ws, title_fallback=p.title or "管理系统")
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
     svg = str(model.get("svg") or "")
     fname = f"{project_id}-architecture.svg"
     return Response(
@@ -383,6 +563,66 @@ async def download_architecture_svg(
         headers={
             "Cache-Control": "no-store",
             "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/architecture.drawio", summary="下载系统逻辑架构图 Draw.io")
+async def download_architecture_drawio(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_drawio import architecture_model_to_drawio
+    from app.bake.schema.diagram_pack import pack_architecture
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = pack_architecture(ws, title_fallback=p.title or "管理系统")
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
+    body = architecture_model_to_drawio(model)
+    fname = f"{project_id}-architecture.drawio"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/architecture.mmd", summary="下载系统逻辑架构图 Mermaid")
+async def download_architecture_mmd(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_mermaid import architecture_model_to_mermaid
+    from app.bake.schema.diagram_pack import pack_architecture
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = pack_architecture(ws, title_fallback=p.title or "管理系统")
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
+    body = architecture_model_to_mermaid(model)
+    fname = f"{project_id}-architecture.mmd"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
         },
     )
 
@@ -456,6 +696,7 @@ async def download_activities_svg(
         raise HTTPException(400, str(e)) from e
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
     diagrams = model.get("diagrams") or []
     if index >= len(diagrams):
         raise HTTPException(404, "活动图索引超出范围")
@@ -467,6 +708,57 @@ async def download_activities_svg(
         headers={
             "Cache-Control": "no-store",
             "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/activities.mmd", summary="下载系统活动图 Mermaid")
+async def download_activities_mmd(
+    project_id: str,
+    index: int = Query(0, ge=0, le=2, description="第几张活动图 0..2"),
+    ids: str | None = Query(None, description="恰好 3 个候选 id，逗号分隔"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.activity import parse_selection_ids
+    from app.bake.schema.diagram_mermaid import activity_model_to_mermaid
+    from app.bake.schema.diagram_pack import pack_activities
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    try:
+        selection = parse_selection_ids(ids)
+        model = pack_activities(
+            ws,
+            selection=selection,
+            proposal_text=prop,
+            title_fallback=p.title or "管理系统",
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
+    diagrams = model.get("diagrams") or []
+    if index >= len(diagrams):
+        raise HTTPException(404, "活动图索引超出范围")
+    body = activity_model_to_mermaid(model, index=index)
+    fname = f"{project_id}-activity-{index}.mmd"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
         },
     )
 
@@ -540,6 +832,7 @@ async def download_sequences_svg(
         raise HTTPException(400, str(e)) from e
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
     diagrams = model.get("diagrams") or []
     if index >= len(diagrams):
         raise HTTPException(404, "序列图索引超出范围")
@@ -551,6 +844,57 @@ async def download_sequences_svg(
         headers={
             "Cache-Control": "no-store",
             "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/sequences.mmd", summary="下载系统序列图 Mermaid")
+async def download_sequences_mmd(
+    project_id: str,
+    index: int = Query(0, ge=0, le=2, description="第几张序列图 0..2"),
+    ids: str | None = Query(None, description="恰好 3 个候选 id，逗号分隔"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_mermaid import sequence_model_to_mermaid
+    from app.bake.schema.diagram_pack import pack_sequences
+    from app.bake.schema.sequence import parse_selection_ids
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    try:
+        selection = parse_selection_ids(ids)
+        model = pack_sequences(
+            ws,
+            selection=selection,
+            proposal_text=prop,
+            title_fallback=p.title or "管理系统",
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
+    diagrams = model.get("diagrams") or []
+    if index >= len(diagrams):
+        raise HTTPException(404, "序列图索引超出范围")
+    body = sequence_model_to_mermaid(model, index=index)
+    fname = f"{project_id}-sequence-{index}.mmd"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
         },
     )
 
@@ -607,6 +951,7 @@ async def download_classes_svg(
     )
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
+    _ensure_diagram_export_ok(model)
     svg = str(model.get("svg") or "")
     fname = f"{project_id}-classes.svg"
     return Response(
@@ -615,6 +960,80 @@ async def download_classes_svg(
         headers={
             "Cache-Control": "no-store",
             "Content-Disposition": f'inline; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/classes.drawio", summary="下载系统类图 Draw.io")
+async def download_classes_drawio(
+    project_id: str,
+    display: str = Query("sample", description="sample=论文示例精简方法 · full=代码全量"),
+    force: bool = Query(False, description="强制重算（绕过图缓存）"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_drawio import class_model_to_drawio
+    from app.bake.schema.diagram_pack import pack_classes
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = pack_classes(
+        ws,
+        display=display,
+        title_fallback=p.title or "管理系统",
+        force=force,
+    )
+    if not model:
+        raise HTTPException(404, "未找到 sql/schema.sql")
+    _ensure_diagram_export_ok(model)
+    body = class_model_to_drawio(model)
+    fname = f"{project_id}-classes.drawio"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/classes.mmd", summary="下载系统类图 Mermaid")
+async def download_classes_mmd(
+    project_id: str,
+    display: str = Query("sample", description="sample=论文示例精简方法 · full=代码全量"),
+    force: bool = Query(False, description="强制重算（绕过图缓存）"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_mermaid import class_model_to_mermaid
+    from app.bake.schema.diagram_pack import pack_classes
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = pack_classes(
+        ws,
+        display=display,
+        title_fallback=p.title or "管理系统",
+        force=force,
+    )
+    if not model:
+        raise HTTPException(404, "未找到 sql/schema.sql")
+    _ensure_diagram_export_ok(model)
+    body = class_model_to_mermaid(model)
+    fname = f"{project_id}-classes.mmd"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
         },
     )
 
@@ -757,6 +1176,7 @@ async def download_usecases_svg(
         raise HTTPException(400, str(e)) from e
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
     svg = str(model.get("svg") or "")
     safe = side.replace(":", "-")
     fname = f"{project_id}-usecases-{safe}.svg"
@@ -798,12 +1218,101 @@ async def download_usecases_mdj(
         raise HTTPException(400, str(e)) from e
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
     body = export_staruml_mdj(model)
     safe = side.replace(":", "-")
     fname = f"{project_id}-usecases-{safe}.mdj"
     return Response(
         content=body.encode("utf-8"),
         media_type="application/json; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/usecases.drawio", summary="下载用例图 Draw.io")
+async def download_usecases_drawio(
+    project_id: str,
+    actor: str = Query("user", description="user|admin|staff:岗位id|subadmin"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_drawio import usecase_model_to_drawio
+    from app.bake.schema.diagram_pack import pack_usecases
+    from app.bake.schema.usecases import _normalize_actor_id
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    side = _normalize_actor_id(actor or "user")
+    try:
+        model = pack_usecases(ws, actor=side, proposal_text=prop, polish=False)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
+    body = usecase_model_to_drawio(model)
+    safe = side.replace(":", "-")
+    fname = f"{project_id}-usecases-{safe}.drawio"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'attachment; filename="{fname}"',
+        },
+    )
+
+
+@router.get("/{project_id}/schema/usecases.mmd", summary="下载用例图 Mermaid")
+async def download_usecases_mmd(
+    project_id: str,
+    actor: str = Query("user", description="user|admin|staff:岗位id|subadmin"),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_mermaid import usecase_model_to_mermaid
+    from app.bake.schema.diagram_pack import pack_usecases
+    from app.bake.schema.usecases import _normalize_actor_id
+    from app.services.proposal import load_merged_proposal_text
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    prop = ""
+    try:
+        if p.source_path:
+            prop = load_merged_proposal_text(p.source_path) or ""
+    except Exception:
+        prop = ""
+    side = _normalize_actor_id(actor or "user")
+    try:
+        model = pack_usecases(ws, actor=side, proposal_text=prop, polish=False)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    if not model:
+        raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
+    body = usecase_model_to_mermaid(model)
+    safe = side.replace(":", "-")
+    fname = f"{project_id}-usecases-{safe}.mmd"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
         headers={
             "Cache-Control": "no-store",
             "Content-Disposition": f'attachment; filename="{fname}"',
@@ -836,6 +1345,8 @@ async def get_usecase_descriptions(
             prop = load_merged_proposal_text(p.source_path) or ""
     except Exception:
         prop = ""
+    from app.bake.schema.diagram_rubric import attach_rubric_gate
+
     model = load_usecase_description_model(
         ws,
         proposal_text=prop,
@@ -844,7 +1355,7 @@ async def get_usecase_descriptions(
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
-    return model
+    return attach_rubric_gate(model, kind="usecase_desc")
 
 
 @router.get("/{project_id}/schema/usecase-descriptions.md", summary="下载用例描述 Markdown")
@@ -873,6 +1384,8 @@ async def download_usecase_descriptions_md(
             prop = load_merged_proposal_text(p.source_path) or ""
     except Exception:
         prop = ""
+    from app.bake.schema.diagram_rubric import attach_rubric_gate
+
     model = load_usecase_description_model(
         ws,
         proposal_text=prop,
@@ -881,6 +1394,8 @@ async def download_usecase_descriptions_md(
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
+    model = attach_rubric_gate(model, kind="usecase_desc")
+    _ensure_diagram_export_ok(model)
     body = str(model.get("markdown") or "")
     fname = f"{project_id}-usecase-descriptions.md"
     return Response(
@@ -933,6 +1448,7 @@ async def download_testcases_md(
     )
     if not model:
         raise HTTPException(404, "未找到 domain.schema.json")
+    _ensure_diagram_export_ok(model)
     body = str(model.get("markdown") or "")
     fname = f"{project_id}-testcases-{model.get('fields')}.md"
     return Response(
@@ -943,4 +1459,31 @@ async def download_testcases_md(
             "Content-Disposition": f'attachment; filename="{fname}"',
         },
     )
+
+
+@router.post(
+    "/{project_id}/schema/thesis-diagram-audit",
+    response_model=ApiOk,
+    summary="论文图对账（确定性 + 可选 LLM）",
+)
+async def run_thesis_diagram_audit_api(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """手动触发：只审不改。无 Key/预算不足 → 仅 rubric 确定性；有 Key → 补假宣称扫描。"""
+    from app.llm.agents_thesis_diagrams import run_thesis_diagram_audit
+    from app.llm.runtime import load_llm_runtime
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    llm_rt = await load_llm_runtime(db)
+    report = await run_thesis_diagram_audit(
+        db,
+        llm_rt,
+        project_id=p.id,
+        workspace=ws,
+    )
+    return ApiOk(message=str(report.get("summary") or "论文图对账完成"), data=report)
 

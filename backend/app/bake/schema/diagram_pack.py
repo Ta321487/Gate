@@ -20,6 +20,20 @@ def _prop_tag(proposal_text: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
 
 
+def _with_rubric(
+    model: dict[str, Any] | None,
+    *,
+    kind: str,
+    **opts: Any,
+) -> dict[str, Any] | None:
+    """缓存取出后挂 rubric_gate（不进 cache，改规矩无需强刷盘）。"""
+    if not model:
+        return None
+    from app.bake.schema.diagram_rubric import attach_rubric_gate
+
+    return attach_rubric_gate(dict(model), kind=kind, **opts)
+
+
 def pack_er(
     workspace: Path,
     *,
@@ -99,7 +113,12 @@ def pack_er(
         model = dict(model)
         model["svg"] = saved
         model["er_view"] = "user"
-    return model
+    return _with_rubric(
+        model,
+        kind="er",
+        mode=mode_n,
+        entity=use_ent or ent,
+    )
 
 
 def _strip_internal(model: dict[str, Any]) -> dict[str, Any]:
@@ -151,11 +170,12 @@ def pack_classes(
         }
 
     try:
-        return dcache.get_or_build(
+        model = dcache.get_or_build(
             workspace, "classes", params, build, force=force
         )
     except FileNotFoundError:
         return None
+    return _with_rubric(model, kind="classes")
 
 
 def pack_modules(
@@ -198,11 +218,12 @@ def pack_modules(
         return packed, {"model_ms": model_ms, "layout_ms": 0.0, "svg_ms": svg_ms}
 
     try:
-        return dcache.get_or_build(
+        model = dcache.get_or_build(
             workspace, "modules", params, build, force=force
         )
     except FileNotFoundError:
         return None
+    return _with_rubric(model, kind="modules")
 
 
 def pack_architecture(
@@ -232,11 +253,12 @@ def pack_architecture(
         return packed, {"model_ms": model_ms, "layout_ms": 0.0, "svg_ms": svg_ms}
 
     try:
-        return dcache.get_or_build(
+        model = dcache.get_or_build(
             workspace, "architecture", params, build, force=force
         )
     except FileNotFoundError:
         return None
+    return _with_rubric(model, kind="architecture")
 
 
 def _pack_multi_diagram(
@@ -284,9 +306,10 @@ def _pack_multi_diagram(
         return packed, {"model_ms": model_ms, "layout_ms": 0.0, "svg_ms": svg_ms}
 
     try:
-        return dcache.get_or_build(workspace, kind, params, build, force=force)
+        model = dcache.get_or_build(workspace, kind, params, build, force=force)
     except FileNotFoundError:
         return None
+    return _with_rubric(model, kind=kind)
 
 
 def pack_sequences(
@@ -366,11 +389,12 @@ def pack_usecases(
         return packed, {"model_ms": model_ms, "layout_ms": 0.0, "svg_ms": svg_ms}
 
     try:
-        return dcache.get_or_build(
+        model = dcache.get_or_build(
             workspace, "usecases", params, build, force=force
         )
     except FileNotFoundError:
         return None
+    return _with_rubric(model, kind="usecases")
 
 
 def warm_default_diagrams(

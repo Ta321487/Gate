@@ -2,10 +2,11 @@
   <div class="ucd-viewer" :class="{ 'is-dark': isDark }">
     <div class="ucd-toolbar row mb-12">
       <n-button size="small" :loading="loading" @click="$emit('reload')">重新加载</n-button>
-      <n-button size="small" type="primary" @click="copyAll">复制全文（可贴 Word）</n-button>
-      <n-button size="small" type="primary" secondary @click="copyMarkdown">复制 Markdown</n-button>
-      <n-button size="small" quaternary @click="downloadMd">下载 .md</n-button>
+      <n-button size="small" type="primary" :disabled="rubricBad" :title="exportBlockTitle" @click="copyAll">复制全文（可贴 Word）</n-button>
+      <n-button size="small" type="primary" secondary :disabled="rubricBad" :title="exportBlockTitle" @click="copyMarkdown">复制 Markdown</n-button>
+      <n-button size="small" quaternary :disabled="rubricBad" :title="exportBlockTitle" @click="downloadMd">下载 .md</n-button>
     </div>
+    <DiagramRubricBanner :gate="rubricGate" />
     <p class="small muted mb-8">
       {{ sourceNote || '由交付菜单与开题材料推导；事件流对照实包操作，不发明未实现功能。' }}
       <span v-if="count">· 共 {{ count }} 个用例</span>
@@ -54,6 +55,7 @@
 import { computed } from 'vue'
 import { message } from '../api'
 import ContentLoading from './ContentLoading.vue'
+import DiagramRubricBanner from './DiagramRubricBanner.vue'
 import { isDark } from '../theme'
 
 const props = defineProps({
@@ -64,7 +66,13 @@ const props = defineProps({
   count: { type: Number, default: 0 },
   downloadName: { type: String, default: 'usecase-descriptions' },
   loading: { type: Boolean, default: false },
+  rubricGate: { type: Object, default: null },
 })
+
+const rubricBad = computed(() => props.rubricGate && props.rubricGate.ok === false)
+const exportBlockTitle = computed(() =>
+  rubricBad.value ? String(props.rubricGate?.note || '论文图规则红，不可导出') : undefined,
+)
 
 defineEmits(['reload'])
 
