@@ -43,6 +43,22 @@ class ArchiveItemDetailShopTests(unittest.TestCase):
         head = text[:buy_at]
         self.assertNotIn('class="aid-qty"', head)
 
+    def test_farm_attrs_not_jammed_into_meta_line(self) -> None:
+        """产地/采摘走属性行；metaLine 禁再拼「产地/采摘」，避免一行灰字堆满。"""
+        text = DETAIL.read_text(encoding="utf-8")
+        meta_at = text.find("const metaLine = computed")
+        attrs_at = text.find("const detailAttrLines = computed")
+        self.assertGreater(meta_at, 0)
+        self.assertGreater(attrs_at, meta_at)
+        meta_chunk = text[meta_at:attrs_at]
+        self.assertNotIn("bits.push(`产地", meta_chunk)
+        self.assertNotIn("bits.push(`采摘", meta_chunk)
+        skip_at = text.find("const skip = new Set([", attrs_at)
+        self.assertGreater(skip_at, 0)
+        skip_chunk = text[skip_at : skip_at + 220]
+        self.assertNotIn("'region'", skip_chunk)
+        self.assertNotIn("'harvestOn'", skip_chunk)
+
 
 if __name__ == "__main__":
     unittest.main()
