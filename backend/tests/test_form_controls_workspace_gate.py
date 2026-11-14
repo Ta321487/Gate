@@ -52,6 +52,9 @@ class FormControlsWorkspaceGateTests(unittest.TestCase):
             res = evaluate_workspace_form_controls_gate(ws)
             self.assertFalse(res["ok"], res.get("desc"))
             self.assertIn("控件", res["desc"])
+            self.assertIn("\n", res["desc"])
+            self.assertIn("views/BadSelect.vue", res["desc"])
+            self.assertIn("no_select_allow_create", res["desc"])
 
 
 if __name__ == "__main__":

@@ -36,10 +36,12 @@ def evaluate_workspace_form_controls_gate(workspace: Path) -> dict[str, Any]:
             f"已登记例外 {known_hit}）"
         )
     else:
-        preview = "; ".join(str(f) for f in unexpected[:8])
-        desc = f"控件契约 {len(unexpected)}：{preview}"
-        if len(unexpected) > 8:
-            desc += f" …共 {len(unexpected)} 条"
+        # 按条换行：禁止用 "; " 粘成一行，否则弹层/摘要截断时会像「views/ad」半截话
+        lines = [str(f) for f in unexpected]
+        head = lines[:12]
+        desc = f"控件契约 {len(unexpected)}：\n" + "\n".join(head)
+        if len(lines) > 12:
+            desc += f"\n…共 {len(unexpected)} 条"
 
     return {
         "ok": ok,
@@ -49,6 +51,6 @@ def evaluate_workspace_form_controls_gate(workspace: Path) -> dict[str, Any]:
             "finding_count": len(findings),
             "unexpected": len(unexpected),
             "known_hit": known_hit,
-            "preview": [str(f) for f in unexpected[:20]],
+            "preview": lines if not ok else [],
         },
     }

@@ -456,6 +456,14 @@ class TestAiAssistantBake(unittest.TestCase):
         self.assertNotIn("sys_ai_knowledge", sql)
         readme = (ws / "README.md").read_text(encoding="utf-8")
         self.assertNotIn("DeepSeek", readme)
+        pom = (ws / "backend" / "pom.xml").read_text(encoding="utf-8")
+        self.assertNotIn("spring-ai-deepseek", pom)
+        self.assertNotIn("spring-ai-bom", pom)
+        yml = (ws / "backend" / "src" / "main" / "resources" / "application.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("deepseek", yml.lower())
+        self.assertFalse(any((ws / "backend").rglob("DeepSeekClient.java")))
 
     def test_ai_on_sql_and_files_and_readme(self) -> None:
         ws = _bake(

@@ -41,13 +41,14 @@ def evaluate_workspace_layout_gate(workspace: Path) -> dict[str, Any]:
     findings = scan_layout_contracts(src=fe)
     ctr_bad = [f for f in findings if f.key() not in BASELINE_KNOWN_CONTRACTS]
 
-    parts: list[str] = []
+    # 按条换行：禁止 "; " 粘成一行，否则摘要/弹层裁切时会像「views/ad」
+    lines: list[str] = []
     if inv_bad:
-        parts.append(f"台账对账 {len(inv_bad)}：" + "; ".join(str(i) for i in inv_bad[:6]))
+        lines.append(f"台账对账 {len(inv_bad)}：")
+        lines.extend(str(i) for i in inv_bad[:12])
     if ctr_bad:
-        parts.append(
-            f"结构契约 {len(ctr_bad)}：" + "; ".join(str(f) for f in ctr_bad[:6])
-        )
+        lines.append(f"结构契约 {len(ctr_bad)}：")
+        lines.extend(str(f) for f in ctr_bad[:12])
 
     ok = not inv_bad and not ctr_bad
     if ok:
@@ -57,9 +58,10 @@ def evaluate_workspace_layout_gate(workspace: Path) -> dict[str, Any]:
             f"、结构 {sum(1 for f in findings if f.key() in BASELINE_KNOWN_CONTRACTS)}）"
         )
     else:
-        desc = " · ".join(parts)
-        if len(inv_bad) + len(ctr_bad) > 12:
-            desc += f" …共 {len(inv_bad) + len(ctr_bad)} 条"
+        desc = "\n".join(lines)
+        total = len(inv_bad) + len(ctr_bad)
+        if total > 12:
+            desc += f"\n…共 {total} 条"
 
     return {
         "ok": ok,

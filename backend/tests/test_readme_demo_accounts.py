@@ -40,17 +40,30 @@ def test_patch_student_readme_fills_portal(tmp_path: Path):
     dest = tmp_path / "proj"
     dest.mkdir()
     (dest / "README.md").write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    schema_sql = """
+CREATE TABLE IF NOT EXISTS product (id BIGINT, name VARCHAR(64));
+CREATE TABLE IF NOT EXISTS biz_order (id BIGINT, status VARCHAR(16));
+('student', 'student123', 'student', '学生甲'
+"""
     _patch_student_readme(
         dest,
         app_name="宿舍报修管理系统",
         db_name="dorm_demo",
-        schema_sql="('student', 'student123', 'student', '学生甲'",
-        spec={"schema": {"roles": {"user": {"id": "student", "label": "学生"}}}},
+        schema_sql=schema_sql,
+        spec={
+            "schema": {"roles": {"user": {"id": "student", "label": "学生"}}},
+            "capabilities": ["archive", "order_lines"],
+        },
     )
     text = (dest / "README.md").read_text(encoding="utf-8")
     assert "`student`" in text
     assert "`student123`" in text
     assert "学生" in text
     assert "${DEMO_" not in text
+    assert "${README_" not in text
     assert "给学生" not in text
     assert "多数课题" not in text
+    assert "signup" not in text
+    assert "taste_note" not in text
+    assert "`biz_order`" in text or "`product`" in text
+    assert "订单" in text

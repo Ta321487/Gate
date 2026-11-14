@@ -476,6 +476,14 @@ def _bake_project_body(
             logging.getLogger("app.bake").info(
                 "notes_scrub after layout_heal=%s", notes_again[:12]
             )
+        # lean 前再瘦一次依赖（防 heal/叠层把骨架 pom 直声明带回）
+        from app.bake.pack_deps import scrub_student_pack_deps
+
+        dep_again = scrub_student_pack_deps(dest, spec)
+        if dep_again:
+            logging.getLogger("app.bake").info(
+                "deps_scrub after layout_heal=%s", dep_again[:12]
+            )
         leftovers = scan_forbidden_island_files(dest, spec)
         if leftovers:
             raise RuntimeError(
@@ -488,10 +496,17 @@ def _bake_project_body(
         if not lean.get("ok"):
             detail = lean.get("detail") or {}
             bits = []
-            for key in ("factory_notes", "chrome", "forbidden"):
+            for key in (
+                "factory_notes",
+                "chrome",
+                "forbidden",
+                "dead_deps",
+                "identity",
+                "readme_phantoms",
+            ):
                 rows = detail.get(key) or []
                 if rows:
-                    bits.append(f"{key}={','.join(rows[:12])}")
+                    bits.append(f"{key}={','.join(str(x) for x in rows[:12])}")
             raise RuntimeError(
                 "pack_prune 后 ZIP 最终确认未过（p3lean）："
                 + (lean.get("desc") or "")

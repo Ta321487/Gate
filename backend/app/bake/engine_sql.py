@@ -303,6 +303,108 @@ def _demo_portal_desc(spec: dict[str, Any] | None, username: str) -> str:
     return fallback.get(username, "普通用户（门户）：发起/办理本人侧业务")
 
 
+def _readme_schema_bits(
+    schema_sql: str, spec: dict[str, Any] | None = None
+) -> dict[str, str]:
+    """按本包 schema/capabilities 生成 README 二次开发与 SQL 示例（禁止写库外表名）。"""
+    tables = list_create_table_names(schema_sql or "")
+    table_set = set(tables)
+    sql_l = (schema_sql or "").lower()
+    caps = set()
+    if isinstance(spec, dict):
+        caps = {str(c) for c in (spec.get("capabilities") or [])}
+
+    edit_extra = ""
+    if "user_address" in table_set:
+        if "taste_note" in sql_l:
+            edit_extra = (
+                "| 收货地址 / 口味备注 | 表 `user_address`；下单写入订单的收货与 `taste_note` |\n"
+            )
+        else:
+            edit_extra = "| 收货地址 | 表 `user_address`；下单写入订单收货信息 |\n"
+
+    prefer = (
+        "biz_order",
+        "product",
+        "ticket",
+        "signup",
+        "activity",
+        "repair_ticket",
+        "book",
+        "archive_item",
+        "goods",
+    )
+    biz = next((t for t in prefer if t in table_set), None)
+    if not biz:
+        biz = next(
+            (
+                t
+                for t in tables
+                if not t.startswith("sys_") and t not in ("category", "user_address")
+            ),
+            tables[0] if tables else "sys_user",
+        )
+
+    status_table = biz if re.search(rf"(?is)create\s+table[^;]*`?{re.escape(biz)}`?[^;]*\bstatus\b", schema_sql or "") else None
+    if status_table:
+        query = (
+            f"-- 示例：按状态统计（表 `{status_table}` 来自本包 schema.sql）\n"
+            f"SELECT status, COUNT(*) AS cnt\n"
+            f"FROM `{status_table}`\n"
+            f"GROUP BY status;\n"
+            f"\n"
+            f"-- 示例：列出门户用户（按需再 JOIN 业务表）\n"
+            f"SELECT username, nickname, role\n"
+            f"FROM sys_user\n"
+            f"ORDER BY id\n"
+            f"LIMIT 20;"
+        )
+    else:
+        query = (
+            f"-- 示例：统计本包业务表行数（表 `{biz}` 来自本包 schema.sql）\n"
+            f"SELECT COUNT(*) AS cnt FROM `{biz}`;\n"
+            f"\n"
+            f"-- 示例：列出门户用户\n"
+            f"SELECT username, nickname, role\n"
+            f"FROM sys_user\n"
+            f"ORDER BY id\n"
+            f"LIMIT 20;"
+        )
+
+    alter = (
+        f"-- 示例：给本包业务表加备注列（表名以 schema.sql 为准）\n"
+        f"ALTER TABLE `{biz}` ADD COLUMN remark VARCHAR(255) NULL COMMENT '备注';\n"
+        f"\n"
+        f"-- 示例：新建辅助表（名称、字段按老师要求改）\n"
+        f"CREATE TABLE IF NOT EXISTS `{biz}_attach` (\n"
+        f"  id BIGINT PRIMARY KEY AUTO_INCREMENT,\n"
+        f"  ref_id BIGINT NOT NULL,\n"
+        f"  file_name VARCHAR(200) NOT NULL,\n"
+        f"  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n"
+        f");"
+    )
+
+    layer_bits: list[str] = []
+    if "archive" in caps or any(t in table_set for t in ("product", "book", "archive_item", "goods")):
+        layer_bits.append("档案/商品维护")
+    if "ticket_flow" in caps or "signup" in table_set or "ticket" in table_set:
+        layer_bits.append("流程单据")
+    if "order_lines" in caps or "biz_order" in table_set:
+        layer_bits.append("订单")
+    if "reservation" in caps or "slot" in table_set:
+        layer_bits.append("时段预约")
+    if not layer_bits:
+        layer_bits.append("按本包已启用能力划分 Store")
+    layers = "、".join(layer_bits) + "落在不同 Store，由配置组合启用。"
+
+    return {
+        "edit_extra": edit_extra,
+        "query": query,
+        "alter": alter,
+        "layers": layers,
+    }
+
+
 def _patch_student_readme(
     dest: Path,
     *,
@@ -343,6 +445,11 @@ def _patch_student_readme(
     text = text.replace("${SECURITY_AUTH_LINE}", auth_line)
     text = text.replace("${SECURITY_FAQ}", sec_faq)
     text = text.replace("${AI_ASSISTANT_FAQ}", ai_assistant_readme_bits(ai_assistant))
+    bits = _readme_schema_bits(schema_sql or "", spec)
+    text = text.replace("${README_EDIT_EXTRA}", bits["edit_extra"])
+    text = text.replace("${README_SQL_QUERY_EXAMPLES}", bits["query"])
+    text = text.replace("${README_SQL_ALTER_EXAMPLES}", bits["alter"])
+    text = text.replace("${README_BIZ_LAYERS}", bits["layers"])
     from app.bake.cross_path_guide import readme_bits_from_spec
 
     cross_guide = readme_bits_from_spec(spec)

@@ -56,6 +56,8 @@ class LayoutWorkspaceGateTests(unittest.TestCase):
                 or "对账" in res["desc"],
                 res.get("desc"),
             )
+            self.assertIn("\n", res["desc"])
+            self.assertNotIn("; ", res["desc"])
 
 
 if __name__ == "__main__":
