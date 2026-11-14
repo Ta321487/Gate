@@ -18,35 +18,61 @@
         <li v-for="(line, i) in preBakeRisks" :key="i">{{ line }}</li>
       </ul>
     </div>
-    <div v-if="matchWarnings.length" class="banner warn">
+    <div v-if="matchWarnings.length && !alreadyBaked" class="banner warn">
       <h4>匹配说明</h4>
       <ul class="warn-list">
         <li v-for="(w, i) in matchWarnings" :key="i">{{ warningText(w) }}</li>
       </ul>
     </div>
+    <n-collapse
+      v-if="matchWarnings.length && alreadyBaked"
+      class="match-notes-fold mt-12"
+      :default-expanded-names="[]"
+    >
+      <n-collapse-item title="匹配说明（已生成 · 排障时展开）" name="warn">
+        <ul class="warn-list" style="margin:0">
+          <li v-for="(w, i) in matchWarnings" :key="i">{{ warningText(w) }}</li>
+        </ul>
+      </n-collapse-item>
+    </n-collapse>
+    <!-- 依据弱：仍置顶；一般说明折进「说明」免挡确认 -->
     <n-alert
+      v-if="materialWeakHint"
       class="material-weak-tip"
-      :type="materialWeakHint ? 'warning' : 'default'"
+      type="warning"
       :bordered="false"
-      title="开题措辞笼统 / 匹配依据弱时"
+      title="开题依据弱 · 请核清后再确认"
       style="margin:12px 0"
     >
       <p class="small" style="margin:0 0 6px">
-        {{ materialWeakHint
-          ? '出现「依据弱 / 主路径必勾」表示工厂对主路径把握不足：请对照题名与正文核清领域与入口，不得以材料不足为由交差。'
-          : '功能行即使偏于笼统，已确认的开题仍是合同依据；出包不符默认属于匹配、理解或 bake 问题。' }}
+        出现「依据弱 / 主路径必勾」表示对主路径把握不足：请对照题名与正文核清领域与入口，不得以材料不足为由交差。
       </p>
       <ul class="warn-list" style="margin:0">
-        <li>请核清提交方、审核方与完结态；勾选「主路径已核对」表示已确认工厂理解正确，而非为偏差预留退路。</li>
+        <li>勾选「主路径已核对」表示已确认理解正确，而非为偏差预留退路。</li>
         <li>禁止改开题迁就工厂；禁止以「材料薄」为错包开脱。</li>
         <li>
-          说明见
-          <router-link to="/help#help-card-开题笼统时仍要写对">帮助 · 开题笼统时仍要写对</router-link>。
+          <router-link to="/help#help-card-开题笼统时仍要写对">帮助 · 开题笼统时仍要写对</router-link>
         </li>
       </ul>
     </n-alert>
-    <div class="grid-2">
-      <div class="panel">
+    <n-collapse
+      v-else
+      class="match-notes-fold"
+      style="margin:12px 0"
+      :default-expanded-names="[]"
+    >
+      <n-collapse-item title="说明：开题笼统时仍要写对" name="tip">
+        <p class="small" style="margin:0 0 6px">
+          功能行即使偏于笼统，已确认的开题仍是合同依据；出包不符默认属于匹配或理解问题。
+        </p>
+        <p class="small muted" style="margin:0">
+          详见
+          <router-link to="/help#help-card-开题笼统时仍要写对">帮助 · 开题笼统时仍要写对</router-link>
+        </p>
+      </n-collapse-item>
+    </n-collapse>
+    <div class="grid-2 stage-grid">
+      <div class="panel panel-quiet">
         <div class="panel-hd">
           <h3>推荐匹配</h3>
           <span class="pill" :class="matchPillClass">{{ matchPillText }}</span>
@@ -159,45 +185,52 @@
               </n-form-item>
             </div>
           </div>
-          <div class="field" :class="{ locked: !unlocked }" style="margin-top:10px">
-            <n-form-item label="持久层">
-              <n-select
-                v-model:value="form.persistence"
-                :options="persistenceOptions"
-                :disabled="!unlocked || matchBusy"
-                :loading="matchBusy"
-                @update:value="onArchDomChange"
-              />
-            </n-form-item>
-          </div>
-          <div class="field" :class="{ locked: !unlocked }" style="margin-top:10px">
-            <n-form-item label="Spring Security">
-              <n-select
-                v-model:value="form.springSecurity"
-                :options="securityOptions"
-                :disabled="!unlocked || matchBusy"
-                :loading="matchBusy"
-                @update:value="onArchDomChange"
-              />
-            </n-form-item>
-          </div>
-          <div class="field" :class="{ locked: !unlocked }" style="margin-top:10px">
-            <n-form-item label="AI 助手">
-              <n-select
-                v-model:value="form.aiAssistant"
-                :options="aiAssistantOptions"
-                :disabled="!unlocked || matchBusy"
-                :loading="matchBusy"
-                @update:value="onArchDomChange"
-              />
-            </n-form-item>
-          </div>
           <div class="confidence">
             <span class="small muted">置信度</span>
             <div class="bar"><i :style="{ width: displayConf * 100 + '%', background: displayConf >= 0.75 ? 'var(--green)' : 'var(--amber)' }" /></div>
             <strong>{{ displayConf.toFixed(2) }}</strong>
             <span v-if="deviant" class="small muted">已偏离推荐 · 原置信度 {{ (p.confidence || 0).toFixed(2) }}</span>
           </div>
+          <n-collapse class="match-advanced mt-12" :default-expanded-names="[]">
+            <n-collapse-item title="高级：技术栈与能力开关" name="stack">
+              <p class="small muted" style="margin:0 0 10px">
+                默认跟推荐即可。持久层 / 鉴权 / AI 助手仅在解锁后调整；视觉表面请到「生成」页。
+              </p>
+              <div class="field" :class="{ locked: !unlocked }">
+                <n-form-item label="持久层">
+                  <n-select
+                    v-model:value="form.persistence"
+                    :options="persistenceOptions"
+                    :disabled="!unlocked || matchBusy"
+                    :loading="matchBusy"
+                    @update:value="onArchDomChange"
+                  />
+                </n-form-item>
+              </div>
+              <div class="field" :class="{ locked: !unlocked }" style="margin-top:10px">
+                <n-form-item label="Spring Security">
+                  <n-select
+                    v-model:value="form.springSecurity"
+                    :options="securityOptions"
+                    :disabled="!unlocked || matchBusy"
+                    :loading="matchBusy"
+                    @update:value="onArchDomChange"
+                  />
+                </n-form-item>
+              </div>
+              <div class="field" :class="{ locked: !unlocked }" style="margin-top:10px">
+                <n-form-item label="AI 助手">
+                  <n-select
+                    v-model:value="form.aiAssistant"
+                    :options="aiAssistantOptions"
+                    :disabled="!unlocked || matchBusy"
+                    :loading="matchBusy"
+                    @update:value="onArchDomChange"
+                  />
+                </n-form-item>
+              </div>
+            </n-collapse-item>
+          </n-collapse>
           <div
             class="override-banner"
             :class="{
@@ -220,59 +253,67 @@
           </div>
         </div>
       </div>
-      <div class="panel">
+      <div class="panel panel-quiet">
         <div class="panel-hd">
-          <h3>解析摘要 · 生成配置</h3>
+          <h3>开题摘要</h3>
           <div class="row" style="margin:0;gap:6px">
             <CopyIconButton :text="specText" tip="复制配置" />
-            <n-button text size="small" @click="showSpec = true">查看</n-button>
+            <n-button text size="small" @click="showSpec = true">查看全文配置</n-button>
           </div>
         </div>
-        <div class="panel-bd parse-panel">
-          <div class="parse-block">
-            <div class="parse-label">开题解析</div>
-            <div class="parse-title">{{ proposal.title || p.title }}</div>
-            <p v-if="proposal.background" class="parse-bg">{{ proposal.background }}</p>
-            <div v-if="keywordHits.length" class="parse-hits">
-              <span v-for="h in keywordHits" :key="h" class="hit-chip">{{ h }}</span>
-            </div>
-            <div v-if="proposal.feature_lines?.length" class="parse-sec">
-              <div class="parse-sec-hd">开题功能点</div>
-              <ol class="parse-list">
-                <li v-for="(line, i) in proposal.feature_lines" :key="i">{{ line }}</li>
-              </ol>
-            </div>
-            <div v-if="proposal.out_scope_lines?.length" class="parse-sec">
-              <div class="parse-sec-hd">开题写明不在本期</div>
-              <ul class="parse-list plain">
-                <li v-for="(line, i) in proposal.out_scope_lines" :key="i">{{ line }}</li>
-              </ul>
-            </div>
-            <details v-if="proposal.excerpt" class="parse-excerpt">
-              <summary>原文摘录 · {{ proposal.char_count || proposal.excerpt.length }} 字</summary>
-              <pre>{{ proposal.excerpt }}</pre>
-            </details>
-            <p v-if="!proposal.excerpt && !proposal.feature_lines?.length" class="small muted">暂无开题正文摘要（源文件不可读时可另建项目）</p>
+        <div class="panel-bd">
+          <div class="parse-title">{{ proposal.title || p.title }}</div>
+          <p v-if="proposal.background" class="parse-bg small">{{ proposal.background }}</p>
+          <div v-if="keywordHits.length" class="parse-hits" style="margin-top:8px">
+            <span v-for="h in keywordHits" :key="h" class="hit-chip">{{ h }}</span>
           </div>
-          <div class="parse-block">
-            <div class="parse-label">生成配置</div>
-            <dl class="spec-dl">
-              <div><dt>角色</dt><dd>{{ roleSpecText }}</dd></div>
-              <div><dt>实体</dt><dd>{{ (p.spec?.entities || []).join('、') || '—' }}</dd></div>
-              <div><dt>主流程</dt><dd>{{ (p.spec?.flows || []).join('；') || '—' }}</dd></div>
-              <div><dt>基线</dt><dd>{{ (p.spec?.baseline || []).join('、') || '—' }}</dd></div>
-              <div v-if="p.spec?.out_of_mvp?.length"><dt>本期不做</dt><dd>{{ p.spec.out_of_mvp.join('、') }}</dd></div>
-              <div><dt>登录入口</dt><dd>{{ authEntryDisplay }}</dd></div>
-              <div v-if="p.spec?.delivery_slug || p.db_name || p.spec?.maven_artifact"><dt>交付标识</dt><dd>
-                <span v-if="p.spec?.delivery_slug" class="mono">{{ p.spec.delivery_slug }}</span>
-                <template v-if="p.spec?.zip_name"> · {{ p.spec.zip_name }}</template>
-                <template v-if="p.spec?.maven_artifact"> · Maven {{ p.spec.maven_artifact }}</template>
-                <template v-if="p.spec?.java_package"> · {{ p.spec.java_package }}</template>
-                <template v-if="p.db_name"> · 库 {{ p.db_name }}</template>
-              </dd></div>
-            </dl>
-          </div>
+          <n-collapse class="match-advanced mt-12" :default-expanded-names="[]">
+            <n-collapse-item title="高级：功能点 / 生成配置明细" name="parse">
+              <div class="parse-panel">
+                <div class="parse-block">
+                  <div v-if="proposal.feature_lines?.length" class="parse-sec">
+                    <div class="parse-sec-hd">开题功能点</div>
+                    <ol class="parse-list">
+                      <li v-for="(line, i) in proposal.feature_lines" :key="i">{{ line }}</li>
+                    </ol>
+                  </div>
+                  <div v-if="proposal.out_scope_lines?.length" class="parse-sec">
+                    <div class="parse-sec-hd">开题写明不在本期</div>
+                    <ul class="parse-list plain">
+                      <li v-for="(line, i) in proposal.out_scope_lines" :key="i">{{ line }}</li>
+                    </ul>
+                  </div>
+                  <details v-if="proposal.excerpt" class="parse-excerpt">
+                    <summary>原文摘录 · {{ proposal.char_count || proposal.excerpt.length }} 字</summary>
+                    <pre>{{ proposal.excerpt }}</pre>
+                  </details>
+                  <p v-if="!proposal.excerpt && !proposal.feature_lines?.length" class="small muted">暂无开题正文摘要</p>
+                </div>
+                <div class="parse-block">
+                  <div class="parse-label">生成配置</div>
+                  <dl class="spec-dl">
+                    <div><dt>角色</dt><dd>{{ roleSpecText }}</dd></div>
+                    <div><dt>实体</dt><dd>{{ (p.spec?.entities || []).join('、') || '—' }}</dd></div>
+                    <div><dt>主流程</dt><dd>{{ (p.spec?.flows || []).join('；') || '—' }}</dd></div>
+                    <div><dt>基线</dt><dd>{{ (p.spec?.baseline || []).join('、') || '—' }}</dd></div>
+                    <div v-if="p.spec?.out_of_mvp?.length"><dt>本期不做</dt><dd>{{ p.spec.out_of_mvp.join('、') }}</dd></div>
+                    <div><dt>登录入口</dt><dd>{{ authEntryDisplay }}</dd></div>
+                  </dl>
+                </div>
+              </div>
+            </n-collapse-item>
+          </n-collapse>
         </div>
+      </div>
+    </div>
+    <div class="match-checklist panel panel-quiet mb-12">
+      <div class="panel-hd"><h3>确认前快速核对</h3></div>
+      <div class="panel-bd">
+        <ul class="warn-list" style="margin:0">
+          <li>业务类型：推荐是否就是开题在做的事（借阅、报修、商城等）。</li>
+          <li>谁怎么用：管理员 / 店员 / 学生等角色是否对得上开题。</li>
+          <li>对得上再勾选下面确认；没把握先解锁改，或看帮助「第一次怎么出单」。</li>
+        </ul>
       </div>
     </div>
     <div class="gate" :class="{ ok: ack }">
@@ -285,9 +326,9 @@
         :disabled="p.match_confirmed"
         style="display:block;margin-top:10px"
       >
-        主路径已核对：{{ matchPath.scene_label || '—' }}
+        我已看过用法：{{ matchPath.scene_label || '—' }}
         <template v-if="matchPath.entry_label"> · {{ matchPath.entry_label }}</template>
-        <span v-if="matchPath.needs_path_ack" class="path-weak">（开题依据弱，必勾）</span>
+        <span v-if="matchPath.needs_path_ack" class="path-weak">（开题写得笼统，必勾）</span>
       </n-checkbox>
       <n-checkbox
         v-if="needsDomainAck"
@@ -295,15 +336,22 @@
         :disabled="p.match_confirmed"
         style="display:block;margin-top:10px"
       >
-        已人工核域：对照开题确认当前领域与主路径理解正确
-        <span class="path-weak">（低置信或通用壳，必勾）</span>
+        我已对照开题看过业务类型
+        <span class="path-weak">（推荐把握不大，必勾）</span>
       </n-checkbox>
     </div>
     <div class="row mt-16">
       <n-button
+        v-if="p.match_confirmed"
+        size="large"
+        secondary
+        disabled
+      >已确认匹配</n-button>
+      <n-button
+        v-else
         type="primary"
         size="large"
-        :disabled="!ack || p.match_confirmed || (matchPath.needs_path_ack && !ackMainPath) || (needsDomainAck && !ackDomainReview)"
+        :disabled="!ack || (matchPath.needs_path_ack && !ackMainPath) || (needsDomainAck && !ackDomainReview)"
         :loading="matchBusy"
         @click="confirmMatch"
       >
@@ -319,8 +367,8 @@ import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 
 const GENERIC_SHELL_TIP =
-  '通用壳（DOM-GENERIC）：能落到具名 DOM 时优先具名；盖不住多主路径时才降通用并保留 ARCH 并集。' +
-  '禁止为「看起来更行业」而静默改 Dom 标签冒充具名域；行业词浅替换只改可见文案，不改 domain。'
+  '通用壳：能落到具名领域时优先具名；盖不住多主路径时才用通用壳。' +
+  '禁止为「看起来更行业」而静默改领域标签冒充具名域；行业词浅替换只改可见文案。'
 
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath, ackDomainReview, needsDomainAck,

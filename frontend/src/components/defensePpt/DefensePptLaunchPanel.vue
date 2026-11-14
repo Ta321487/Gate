@@ -23,7 +23,7 @@
             >
               取消
             </n-button>
-            <n-button size="small" @click="tab = 'logs'">日志</n-button>
+            <n-button size="small" @click="openTools('logs')">日志</n-button>
           </div>
         </div>
       </div>
@@ -338,6 +338,7 @@ import DefensePptCheckModal from './DefensePptCheckModal.vue'
 
 const {
   tab,
+  openTools,
   pptPhase,
   pptJob,
   pptActing,

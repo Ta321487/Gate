@@ -1,40 +1,28 @@
 <template>
   <div class="delivery-review stack">
-    <div class="row-between" style="align-items:flex-start">
+    <div class="row-between" style="align-items:flex-start;gap:10px">
       <div>
         <div class="small">
           <span class="pill" :class="statusPill">{{ statusLabel }}</span>
           <span v-if="review.round" class="muted" style="margin-left:8px">第 {{ review.round }} 轮</span>
+          <span v-if="metrics.first_pack_direct === true" class="muted" style="margin-left:8px">首包直发</span>
+          <span v-else-if="metrics.first_pack_direct === false" class="muted" style="margin-left:8px">
+            已重打包 {{ metrics.repack_count || 0 }} 次
+          </span>
         </div>
-        <p class="small muted" style="margin:8px 0 0">
-          对照开题材料收窄偏差：已通过项纳入安全区；验圈通过后方可合卷更新交付包。
-        </p>
-        <p v-if="metrics.first_pack_direct === true" class="small muted" style="margin:4px 0 0">
-          首包直发 · 尚未进入复审
-        </p>
-        <p v-else-if="metrics.first_pack_direct === false" class="small muted" style="margin:4px 0 0">
-          已合卷 {{ metrics.repack_count || 0 }} 次
+        <p class="small muted" style="margin:6px 0 0">
+          验收通过后可重打包；下载仍用上方就绪条。
         </p>
       </div>
-      <div class="row" style="margin:0;flex-wrap:wrap;justify-content:flex-end">
+      <div class="row" style="margin:0;flex-wrap:wrap;justify-content:flex-end;gap:6px">
         <span v-if="review.status !== 'active'" :title="tipStart" class="btn-tip-wrap">
-          <n-button
-            size="small"
-            :disabled="disabled || !!busy"
-            :loading="busy === 'start'"
-            @click="onStart"
-          >
+          <n-button size="small" :disabled="disabled || !!busy" :loading="busy === 'start'" @click="onStart">
             进入复审
           </n-button>
         </span>
         <span :title="tipVerify" class="btn-tip-wrap">
-          <n-button
-            size="small"
-            :disabled="disabled || !!busy"
-            :loading="busy === 'verify'"
-            @click="onVerify"
-          >
-            验圈
+          <n-button size="small" :disabled="disabled || !!busy" :loading="busy === 'verify'" @click="onVerify">
+            验收
           </n-button>
         </span>
         <span
@@ -44,38 +32,34 @@
         >
           <n-button
             size="small"
-            type="primary"
+            secondary
             :disabled="disabled || !!busy || scrubBusy"
             :loading="scrubBusy"
             @click="onScrubCopy"
           >
-            工厂清洗文案
+            清洗文案
           </n-button>
         </span>
         <span :title="repackTip" class="btn-tip-wrap">
           <n-button
             size="small"
-            type="primary"
+            secondary
             :disabled="disabled || !canRepack"
             :loading="busy === 'repack'"
             @click="onRepack"
           >
-            合卷
+            重打包
           </n-button>
         </span>
         <span :title="tipQa" class="btn-tip-wrap">
-          <n-button
-            size="small"
-            :disabled="disabled || !!busy"
-            :loading="busy === 'qa'"
-            @click="onQa"
-          >
+          <n-button size="small" quaternary :disabled="disabled || !!busy" :loading="busy === 'qa'" @click="onQa">
             质量摘要
           </n-button>
         </span>
         <span v-if="review.status === 'active'" :title="tipClose" class="btn-tip-wrap">
           <n-button
             size="small"
+            quaternary
             :disabled="disabled || !!busy"
             :loading="busy === 'close' || busy === 'close-rebake'"
             @click="onClose"
@@ -84,86 +68,193 @@
           </n-button>
         </span>
         <span :title="tipHandoff" class="btn-tip-wrap">
-          <n-button
-            size="small"
-            :disabled="disabled"
-            tag="a"
-            :href="handoffUrl"
-            target="_blank"
-          >
-            导出交接包
+          <n-button size="small" quaternary :disabled="disabled" tag="a" :href="handoffUrl" target="_blank">
+            交接包
           </n-button>
         </span>
       </div>
     </div>
 
-    <n-alert
-      v-if="rebakeEscapeNeeded"
-      type="info"
-      :bordered="false"
-      title="须重跑生成时：先结束复审"
-    >
-      <p class="small" style="margin:0">
-        复审进行中会拦截重新生成。仅同步 ZIP 请验圈后合卷；须改工程重出包时，请先
+    <div class="wb-pulse row" style="gap:8px;flex-wrap:wrap;margin:0">
+      <span class="pill" :class="poisonZone.length ? 'pill-amber' : 'pill-green'">
+        待收敛 {{ poisonZone.length }}
+      </span>
+      <span
+        class="pill"
+        :class="[
+          blockingGates.length ? 'pill-amber' : 'pill-green',
+          blockingGates.length ? 'pill-click' : '',
+        ]"
+        :role="blockingGates.length ? 'button' : undefined"
+        :tabindex="blockingGates.length ? 0 : undefined"
+        :title="blockingGates.length ? '查看挡包门禁全文' : undefined"
+        @click="blockingGates.length && (showGateDetails = true)"
+        @keydown.enter.prevent="blockingGates.length && (showGateDetails = true)"
+      >
+        挡包门禁 {{ blockingGates.length }}
+      </span>
+      <span class="pill" :class="openNotes.length ? 'pill-amber' : 'pill-neutral'">
+        偏差 {{ openNotes.length }}
+      </span>
+      <span class="pill pill-neutral">已通过 {{ safeZone.length }}</span>
+    </div>
+
+    <!-- 失败场景：一条阻断卡合并同义告警；门禁全文进弹层，不把页面撑成墙 -->
+    <div v-if="hasBlockSurface" class="block-panel" :class="'tone-' + blockTone">
+      <div class="block-hd row-between" style="align-items:flex-start;gap:8px">
+        <div>
+          <div class="block-title">{{ blockTitle }}</div>
+          <p class="small muted" style="margin:4px 0 0">{{ blockHint }}</p>
+        </div>
         <n-button
-          text
-          type="primary"
-          size="tiny"
+          v-if="rebakeEscapeNeeded"
+          size="small"
+          secondary
           :disabled="disabled || !!busy"
           :loading="busy === 'close-rebake'"
           @click="onCloseAndRebake"
-        >结束复审并去重新生成</n-button>
-        ，勿空等合卷。
-      </p>
-    </n-alert>
-    <n-alert v-if="zipStale" type="warning" :bordered="false" title="交付包未同步">
-      <template v-if="blockingGates.length || regressions.length">
-        工程已变更，当前 ZIP 与 workspace 不一致。合卷须验圈通过；当前门禁或回退未清除时无法合卷。
-        若修复依赖重跑生成，请使用上方「结束复审并去重新生成」。
-      </template>
-      <template v-else>
-        工程已变更，当前 ZIP 与 workspace 不一致。请完成验圈后执行合卷。
-      </template>
-    </n-alert>
-    <n-alert v-if="openNotes.length && !regressions.length" type="warning" :bordered="false" title="仍有未结案偏差登记">
-      请先处理或结案后再合卷（{{ openNotes.length }} 条）
-    </n-alert>
-    <n-alert v-if="regressions.length" type="error" :bordered="false" title="检测到安全区回退">
-      <ul class="reg-list">
-        <li v-for="(r, i) in regressions" :key="i">{{ r.message }}</li>
-      </ul>
-      <p class="small muted" style="margin:8px 0 0">
-        回退通常需改工厂后重出包；请先「结束复审」再重新生成，勿只反复合卷。
-      </p>
-    </n-alert>
-    <n-alert
-      v-if="(blockingGates || []).length && !(regressions || []).length"
-      type="warning"
-      :bordered="false"
-      title="清单已收敛，但质量门禁未过"
-    >
-      毒区只列实装清单；页头「质检未过」通常卡在下面这些门禁（含交付质量摘要）。
-      可用「工厂清洗文案」等当场可修项处理后再验圈；须改 bake / 基线时请结束复审后重新生成。
-      <ul class="reg-list">
-        <li v-for="g in blockingGates" :key="g.key || g.label">
-          {{ g.label }}<span v-if="g.desc" class="muted"> · {{ g.desc }}</span>
+        >
+          结束复审并去重新生成
+        </n-button>
+      </div>
+      <ul class="block-points">
+        <li v-if="rebakeEscapeNeeded">复审锁生成 · 须改工程先结束复审</li>
+        <li v-if="zipStale">ZIP 与工程未同步</li>
+        <li v-if="openNotes.length && !regressions.length">未结案偏差 {{ openNotes.length }} 条</li>
+        <li v-if="regressions.length">已通过清单回退 {{ regressions.length }} 条</li>
+        <li v-if="blockingGates.length && !regressions.length">
+          挡包门禁 {{ blockingGates.length }} 项
+          <template v-if="showScrubCopy"> · 可先清洗文案</template>
         </li>
       </ul>
-      <p v-if="showScrubCopy" class="small muted" style="margin:8px 0 0">
-        工厂腔、工厂注记或壳件（如非市集仍带 PortalSideRail）未过时，用上方「工厂清洗文案」：洗可见文案、抹注记、补裁壳件，不必手改学生包。
-      </p>
-    </n-alert>
+      <div v-if="regressions.length" class="block-preview">
+        <div
+          v-for="(r, i) in regressions.slice(0, 3)"
+          :key="'reg-' + i"
+          class="block-preview-line"
+        >{{ r.message }}</div>
+        <button
+          v-if="regressions.length > 3"
+          type="button"
+          class="block-toggle"
+          @click="showGateDetails = true"
+        >其余 {{ regressions.length - 3 }} 条见全文</button>
+      </div>
+      <div v-if="blockingGates.length" class="block-gates">
+        <div class="block-preview">
+          <div
+            v-for="g in blockingGates.slice(0, 3)"
+            :key="'prev-' + (g.key || g.label)"
+            class="block-preview-line"
+          >
+            <strong>{{ g.label }}</strong>
+          </div>
+        </div>
+        <button type="button" class="block-toggle" @click="showGateDetails = true">
+          查看门禁全文（{{ blockingGates.length }}）· 含说明
+        </button>
+      </div>
+    </div>
 
-    <div class="diag-grid">
-      <div class="review-panel boss-card-panel">
-        <div class="parse-sec-hd row-between" style="align-items:center">
-          <span>老板小卡 · 12 主项 + 理解偏差</span>
+    <n-modal
+      v-model:show="showGateDetails"
+      preset="card"
+      :title="gateModalTitle"
+      class="gate-detail-modal"
+      style="width:min(720px,94vw)"
+      :bordered="false"
+      :segmented="{ content: true }"
+    >
+      <div class="gate-modal-body">
+        <div v-if="regressions.length" class="gate-modal-block">
+          <div class="parse-sec-hd">清单回退</div>
+          <ul class="reg-list gate-full-list">
+            <li v-for="(r, i) in regressions" :key="'mreg-' + i">{{ r.message }}</li>
+          </ul>
+        </div>
+        <div v-if="blockingGates.length" class="gate-modal-block">
+          <div class="parse-sec-hd">挡包门禁 · {{ blockingGates.length }}</div>
+          <ul class="reg-list gate-full-list">
+            <li v-for="g in blockingGates" :key="'mg-' + (g.key || g.label)">
+              <strong class="gate-full-label">{{ g.label }}</strong>
+              <div v-if="g.desc" class="gate-full-desc">{{ g.desc }}</div>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <template #footer>
+        <n-button size="small" @click="showGateDetails = false">关闭</n-button>
+      </template>
+    </n-modal>
+
+    <n-collapse class="review-more" :default-expanded-names="reviewDefaultOpen">
+      <n-collapse-item :title="`复审明细 · 待收敛 ${poisonZone.length} · 门禁 ${blockingGates.length}`" name="diag">
+        <div class="diag-grid">
+          <div class="review-panel diag-side-panel">
+            <div class="diag-side-block">
+              <div class="small" style="font-weight:600;margin-bottom:4px">待收敛 · 未通过清单（{{ poisonZone.length }}）</div>
+              <n-empty v-if="!poisonZone.length" description="暂无待处理清单项" size="small" />
+              <ul v-else class="zone-list">
+                <li v-for="item in poisonZone" :key="'p-' + item.name">{{ item.name }}</li>
+              </ul>
+            </div>
+            <div class="diag-side-block">
+              <div class="small row-between" style="font-weight:600;margin-bottom:4px;align-items:center">
+                <span>挡包门禁（{{ blockingGates.length }}）</span>
+                <n-button
+                  v-if="blockingGates.length"
+                  text
+                  size="tiny"
+                  @click="showGateDetails = true"
+                >查看全文</n-button>
+              </div>
+              <n-empty v-if="!blockingGates.length" description="无未过门禁" size="small" />
+              <ul v-else class="zone-list">
+                <li v-for="g in blockingGates" :key="'g-' + (g.key || g.label)">
+                  {{ g.label }}
+                </li>
+              </ul>
+            </div>
+            <div class="diag-side-block">
+              <div class="small" style="font-weight:600;margin-bottom:4px">已通过清单（{{ safeZone.length }}）</div>
+              <n-empty v-if="!safeZone.length" description="尚无冻结项" size="small" />
+              <ul v-else class="zone-list">
+                <li v-for="item in safeZone" :key="'s-' + item.name">{{ item.name }}</li>
+              </ul>
+            </div>
+            <div class="diag-side-block">
+              <div class="small" style="font-weight:600;margin-bottom:4px">最近验收</div>
+              <p v-if="lastVerifySummary" class="small" style="margin:0">{{ lastVerifySummary }}</p>
+              <p v-else class="small muted" style="margin:0">尚未验收</p>
+            </div>
+            <div class="diag-side-block">
+              <div class="small row-between" style="font-weight:600;margin-bottom:4px;align-items:center">
+                <span>质量摘要（QA）</span>
+                <n-button text size="tiny" :disabled="disabled || !!busy" :loading="busy === 'qa'" @click="onQa">
+                  重跑
+                </n-button>
+              </div>
+              <p v-if="lastQa?.summary" class="small" style="margin:0 0 6px">{{ lastQa.summary }}</p>
+              <p v-else class="small muted" style="margin:0">尚无摘要 · 可点验收或「质量摘要」</p>
+              <ul v-if="lastQaFindings.length" class="zone-list">
+                <li v-for="(f, i) in lastQaFindings" :key="'qa-' + i">
+                  <span class="pill" :class="qaLevelPill(f.level)">{{ f.level || 'info' }}</span>
+                  {{ f.msg }}<span v-if="f.where" class="muted"> · {{ f.where }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </n-collapse-item>
+
+      <n-collapse-item title="审计检查表 · 12 主项 + 理解偏差" name="boss">
+        <div class="row-between" style="align-items:center;margin-bottom:6px">
+          <p class="small muted" style="margin:0">
+            勾选仅保存在本机。机器全绿仍可能理解错——对着开题核。
+            <router-link to="/help#help-card-四痛点">帮助 · 四痛点</router-link>
+          </p>
           <n-button text size="tiny" :disabled="disabled" @click="resetBossChecks">清空勾选</n-button>
         </div>
-        <p class="small muted" style="margin:6px 0 8px">
-          勾选仅保存在本机浏览器，对照右侧毒区 / 验圈 / 质量摘要。机器全绿仍可能理解错——对着开题核。口径见 docs/delivery-audit-rules.md §3.1。
-          <router-link to="/help#help-card-四痛点">帮助 · 四痛点</router-link>
-        </p>
         <div class="boss-check-list">
           <n-checkbox
             v-for="item in bossItems"
@@ -183,137 +274,82 @@
           style="margin-top:8px"
           title="机器绿 ≠ 写对了"
         >
-          已勾「理解偏差」且毒区/挡包门禁为空：对照开题核域、主路径、皮与种子，修工厂；登记偏差写「工厂理解偏差」，禁止甩锅「材料薄」。
+          已勾「理解偏差」且未通过清单/挡包门禁为空：对照开题核域、主路径、皮与种子，修工厂；登记偏差写「工厂理解偏差」，禁止甩锅「材料薄」。
         </n-alert>
-      </div>
-      <div class="review-panel diag-side-panel">
-        <div class="parse-sec-hd">机器毒区 · 验圈 / QA</div>
-        <div class="diag-side-block">
-          <div class="small" style="font-weight:600;margin-bottom:4px">待收敛 · 毒区（{{ poisonZone.length }}）</div>
-          <n-empty v-if="!poisonZone.length" description="暂无待处理清单项" size="small" />
-          <ul v-else class="zone-list">
-            <li v-for="item in poisonZone" :key="'p-' + item.name">{{ item.name }}</li>
-          </ul>
-        </div>
-        <div class="diag-side-block">
-          <div class="small" style="font-weight:600;margin-bottom:4px">挡包门禁（{{ blockingGates.length }}）</div>
-          <n-empty v-if="!blockingGates.length" description="无未过门禁" size="small" />
-          <ul v-else class="zone-list">
-            <li v-for="g in blockingGates" :key="'g-' + (g.key || g.label)">
-              {{ g.label }}<span v-if="g.desc" class="muted"> · {{ g.desc }}</span>
+      </n-collapse-item>
+
+      <n-collapse-item :title="`偏差登记与轮次${openNotes.length ? ` · ${openNotes.length} 条待结案` : ''}`" name="notes">
+        <div v-if="fixNotes.length" class="fix-notes-panel" style="margin:0 0 10px;border:none;padding:0">
+          <div class="parse-sec-hd row-between" style="align-items:center">
+            <span>偏差登记 · {{ openNotes.length }} 条待结案</span>
+            <n-button
+              v-if="doneNotes.length"
+              text
+              size="tiny"
+              @click="showDoneNotes = !showDoneNotes"
+            >
+              {{ showDoneNotes ? '隐藏' : '显示' }}已结案（{{ doneNotes.length }}）
+            </n-button>
+          </div>
+          <ul class="fix-note-list">
+            <li v-for="n in visibleFixNotes" :key="n.id" class="fix-note-item">
+              <div class="fix-note-body">
+                <span class="fix-note-status" :class="n.status === 'done' ? 'done' : 'open'">
+                  {{ n.status === 'done' ? '已结案' : '待处理' }}
+                </span>
+                <span class="fix-note-text">{{ n.text }}</span>
+              </div>
+              <div class="fix-note-actions">
+                <n-button
+                  v-if="n.status !== 'done'"
+                  size="tiny"
+                  secondary
+                  :disabled="disabled || !!busy"
+                  :loading="busy === `note-${n.id}`"
+                  @click="onResolveNote(n.id, true)"
+                >
+                  结案
+                </n-button>
+                <n-button
+                  v-else
+                  size="tiny"
+                  quaternary
+                  :disabled="disabled || !!busy"
+                  :loading="busy === `note-${n.id}`"
+                  @click="onResolveNote(n.id, false)"
+                >
+                  重开
+                </n-button>
+              </div>
             </li>
           </ul>
         </div>
-        <div class="diag-side-block">
-          <div class="small" style="font-weight:600;margin-bottom:4px">最近验圈</div>
-          <p v-if="lastVerifySummary" class="small" style="margin:0">{{ lastVerifySummary }}</p>
-          <p v-else class="small muted" style="margin:0">尚未验圈</p>
+
+        <div class="review-note-row" style="margin-top:0">
+          <n-input
+            v-model:value="noteText"
+            type="textarea"
+            :autosize="{ minRows: 2, maxRows: 4 }"
+            placeholder="登记工厂与开题不一致之处（写「工厂理解偏差」；禁止甩锅材料薄。仅运营可见）"
+            :disabled="disabled || !!busy"
+          />
+          <n-button size="small" secondary :disabled="disabled || !noteText.trim() || !!busy" @click="onAddNote">
+            登记偏差
+          </n-button>
         </div>
-        <div class="diag-side-block">
-          <div class="small row-between" style="font-weight:600;margin-bottom:4px;align-items:center">
-            <span>质量摘要（QA）</span>
-            <n-button text size="tiny" :disabled="disabled || !!busy" :loading="busy === 'qa'" @click="onQa">
-              重跑
-            </n-button>
-          </div>
-          <p v-if="lastQa?.summary" class="small" style="margin:0 0 6px">{{ lastQa.summary }}</p>
-          <p v-else class="small muted" style="margin:0">尚无摘要 · 可点验圈或「质量摘要」</p>
-          <ul v-if="lastQaFindings.length" class="zone-list">
-            <li v-for="(f, i) in lastQaFindings" :key="'qa-' + i">
-              <span class="pill" :class="qaLevelPill(f.level)">{{ f.level || 'info' }}</span>
-              {{ f.msg }}<span v-if="f.where" class="muted"> · {{ f.where }}</span>
-            </li>
-          </ul>
+
+        <div v-if="rounds.length" class="mt-12">
+          <div class="parse-sec-hd">轮次记录</div>
+          <n-data-table size="small" :bordered="false" :columns="roundCols" :data="rounds" :max-height="180" />
         </div>
-      </div>
-    </div>
-
-    <div class="review-grid">
-      <div class="review-panel">
-        <div class="parse-sec-hd">安全区 · 已通过</div>
-        <n-empty v-if="!safeZone.length" description="尚无冻结项" size="small" />
-        <ul v-else class="zone-list">
-          <li v-for="item in safeZone" :key="item.name">{{ item.name }}</li>
-        </ul>
-      </div>
-      <div class="review-panel">
-        <div class="parse-sec-hd">待收敛 · 毒区</div>
-        <n-empty v-if="!poisonZone.length" description="暂无待处理项" size="small" />
-        <ul v-else class="zone-list">
-          <li v-for="item in poisonZone" :key="item.name">{{ item.name }}</li>
-        </ul>
-      </div>
-    </div>
-
-    <div v-if="fixNotes.length" class="fix-notes-panel">
-      <div class="parse-sec-hd row-between" style="align-items:center">
-        <span>偏差登记 · {{ openNotes.length }} 条待结案</span>
-        <n-button
-          v-if="doneNotes.length"
-          text
-          size="tiny"
-          @click="showDoneNotes = !showDoneNotes"
-        >
-          {{ showDoneNotes ? '隐藏' : '显示' }}已结案（{{ doneNotes.length }}）
-        </n-button>
-      </div>
-      <ul class="fix-note-list">
-        <li v-for="n in visibleFixNotes" :key="n.id" class="fix-note-item">
-          <div class="fix-note-body">
-            <span class="fix-note-status" :class="n.status === 'done' ? 'done' : 'open'">
-              {{ n.status === 'done' ? '已结案' : '待处理' }}
-            </span>
-            <span class="fix-note-text">{{ n.text }}</span>
-          </div>
-          <div class="fix-note-actions">
-            <n-button
-              v-if="n.status !== 'done'"
-              size="tiny"
-              type="primary"
-              :disabled="disabled || !!busy"
-              :loading="busy === `note-${n.id}`"
-              @click="onResolveNote(n.id, true)"
-            >
-              结案
-            </n-button>
-            <n-button
-              v-else
-              size="tiny"
-              quaternary
-              :disabled="disabled || !!busy"
-              :loading="busy === `note-${n.id}`"
-              @click="onResolveNote(n.id, false)"
-            >
-              重开
-            </n-button>
-          </div>
-        </li>
-      </ul>
-    </div>
-
-    <div class="review-note-row">
-      <n-input
-        v-model:value="noteText"
-        type="textarea"
-        :autosize="{ minRows: 2, maxRows: 4 }"
-        placeholder="登记工厂与开题不一致之处（写「工厂理解偏差」；禁止甩锅材料薄。仅运营可见）"
-        :disabled="disabled || !!busy"
-      />
-      <n-button size="small" type="primary" :disabled="disabled || !noteText.trim() || !!busy" @click="onAddNote">
-        登记偏差
-      </n-button>
-    </div>
-
-    <div v-if="rounds.length">
-      <div class="parse-sec-hd mt-12">轮次记录</div>
-      <n-data-table size="small" :bordered="false" :columns="roundCols" :data="rounds" :max-height="220" />
-    </div>
+      </n-collapse-item>
+    </n-collapse>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { NAlert, NButton, NCheckbox, NDataTable, NEmpty, NInput } from 'naive-ui'
+import { NAlert, NButton, NCheckbox, NCollapse, NCollapseItem, NDataTable, NEmpty, NInput, NModal } from 'naive-ui'
 import { api, message, confirm } from '../api'
 
 const props = defineProps({
@@ -338,6 +374,21 @@ const busy = ref('')
 const noteText = ref('')
 const localRegressions = ref([])
 const showDoneNotes = ref(false)
+/** 门禁全文默认收起；点 pill /「展开」再看，避免失败页无限变长 */
+const showGateDetails = ref(false)
+
+/** 有待收敛清单时展开复审明细；门禁全文已在上方阻断卡，不重复撑开 */
+const reviewDefaultOpen = computed(() => {
+  const dr = props.deliveryReview || {}
+  const zones = dr.zones || {}
+  const poison = Array.isArray(zones.poison_zone) ? zones.poison_zone : []
+  const notes = Array.isArray(dr.review?.fix_notes)
+    ? dr.review.fix_notes.filter((n) => n && n.status !== 'done')
+    : []
+  if (poison.length) return ['diag']
+  if (notes.length) return ['notes']
+  return []
+})
 
 const BOSS_ITEMS = [
   { key: 'shell', label: '1. 有没有空壳（缺表/API/状态机/写库）？已齐是否「管理能管+用户可产生数据」？' },
@@ -515,7 +566,7 @@ const lastVerifySummary = computed(() => {
       : null,
     src.at ? formatAt(src.at) : null,
   ].filter(Boolean)
-  return parts.join(' · ') || '已有验圈记录'
+  return parts.join(' · ') || '已有验收记录'
 })
 
 const understandGapHint = computed(() => {
@@ -561,37 +612,92 @@ const rebakeEscapeNeeded = computed(() => {
   return blockingGates.value.length > 0 || regressions.value.length > 0
 })
 
-const tipStart = '开始对照开题收窄偏差；可验圈、登记偏差'
-const tipVerify = '本轮验收：重跑门禁与质量摘要；通过项进安全区，清单未过留毒区，门禁未过会单独提示'
+const hasBlockSurface = computed(
+  () =>
+    rebakeEscapeNeeded.value ||
+    zipStale.value ||
+    (openNotes.value.length > 0 && !regressions.value.length) ||
+    regressions.value.length > 0 ||
+    (blockingGates.value.length > 0 && !regressions.value.length),
+)
+
+const blockTone = computed(() => {
+  if (regressions.value.length) return 'error'
+  if (blockingGates.value.length || zipStale.value || openNotes.value.length) return 'warn'
+  return 'info'
+})
+
+const blockTitle = computed(() => {
+  if (regressions.value.length) return '已通过清单回退 · 暂不可重打包'
+  if (blockingGates.value.length) return '质量门禁未过 · 暂不可下载'
+  if (openNotes.value.length) return '仍有未结案偏差'
+  if (zipStale.value) return '交付包未同步'
+  if (rebakeEscapeNeeded.value) return '须重跑生成时：先结束复审'
+  return '当前阻断'
+})
+
+const blockHint = computed(() => {
+  if (regressions.value.length) {
+    return '回退后勿只反复重打包；结束复审 → 改工厂 → 重新生成。'
+  }
+  if (blockingGates.value.length) {
+    return '当场能修就先做再验收；须改生成/基线则结束复审后重跑。标题保留，说明点「查看门禁全文」。'
+  }
+  if (zipStale.value && !blockingGates.value.length) {
+    return '验收通过后执行重打包，使 ZIP 与工程一致。'
+  }
+  if (rebakeEscapeNeeded.value) {
+    return '仅同步 ZIP 请验收后重打包；须改工程请用右侧按钮。'
+  }
+  return ''
+})
+
+const gateModalTitle = computed(() => {
+  if (regressions.value.length && blockingGates.value.length) {
+    return `阻断全文 · 回退 ${regressions.value.length} · 门禁 ${blockingGates.value.length}`
+  }
+  if (regressions.value.length) return `清单回退 · ${regressions.value.length}`
+  return `挡包门禁 · ${blockingGates.value.length}`
+})
+
+watch(
+  () => props.projectId,
+  () => {
+    showGateDetails.value = false
+  },
+)
+
+const tipStart = '开始对照开题收窄偏差；可验收、登记偏差'
+const tipVerify = '本轮验收：重跑门禁与质量摘要；通过项进已通过清单，未过留未通过清单，门禁未过会单独提示'
 const tipQa = '再跑一遍交付质检摘要（不替代门禁）'
 const tipClose = computed(() =>
   rebakeEscapeNeeded.value
-    ? '结束复审后可重新生成；门禁未过时合卷不可用'
+    ? '结束复审后可重新生成；门禁未过时重打包不可用'
     : '结束本轮复审流程（不删已有登记）',
 )
 const tipHandoff = '导出运营交接材料，不进学生 ZIP'
 
 const repackTip = computed(() => {
-  if (canRepack.value) return '验圈通过后更新交付 ZIP，使与工程一致'
-  if (props.disabled) return '工程重新生成中或尚无工作区，暂不可合卷'
+  if (canRepack.value) return '验收通过后更新交付 ZIP，使与工程一致'
+  if (props.disabled) return '工程重新生成中或尚无工作区，暂不可重打包'
   if (busy.value) return '请等待当前操作完成'
   if (regressions.value.length) {
-    return '存在安全区回退，无法合卷；须重出包时请先结束复审再重新生成'
+    return '存在已通过清单回退，无法重打包；须重出包时请先结束复审再重新生成'
   }
-  if (openNotes.value.length) return `仍有 ${openNotes.value.length} 条未结案偏差，请先结案后再合卷`
+  if (openNotes.value.length) return `仍有 ${openNotes.value.length} 条未结案偏差，请先结案后再重打包`
   if (blockingGates.value.length) {
     const labels = blockingGates.value
       .map((g) => (g && g.label) || '')
       .filter(Boolean)
       .slice(0, 3)
       .join('、')
-    return `质量门禁未过（${labels || '见上方提示'}）· 当场可修则处理后验圈；须重跑生成请先结束复审`
+    return `质量门禁未过（${labels || '见上方提示'}）· 当场可修则处理后验收；须重跑生成请先结束复审`
   }
   const rounds = review.value.rounds || []
   const lastRound = rounds.length ? rounds[rounds.length - 1] : null
-  if (!lastRound?.round_pass) return '请先完成验圈通过后再合卷'
-  if (lastRound.monotonic_ok === false) return '验圈单调性未通过，暂不可合卷'
-  return '暂不可合卷'
+  if (!lastRound?.round_pass) return '请先完成验收通过后再重打包'
+  if (lastRound.monotonic_ok === false) return '验收单调性未通过，暂不可重打包'
+  return '暂不可重打包'
 })
 
 const metrics = computed(() => props.deliveryReview?.metrics || {})
@@ -623,9 +729,19 @@ const roundCols = [
   },
 ]
 
+function isTimeoutErr(e) {
+  const code = e?.code || ''
+  return code === 'ECONNABORTED' || /timeout/i.test(String(e?.message || ''))
+}
+
+function timeoutAlignMsg(op) {
+  return `${op}请求超时 · 服务端可能已成功，请刷新对齐状态`
+}
+
 async function onStart() {
   if (busy.value || props.disabled) return
   busy.value = 'start'
+  let wroteOk = false
   try {
     const res = await api.startDeliveryReview(props.projectId)
     const st = res?.data?.review
@@ -638,12 +754,16 @@ async function onStart() {
       })
     }
     message.success('已进入交付复审')
-    await refreshAfter()
+    wroteOk = true
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '进入复审失败')
+    message.error(
+      isTimeoutErr(e) ? timeoutAlignMsg('进入复审') : e?.response?.data?.detail || e?.message || '进入复审失败',
+    )
   } finally {
     busy.value = ''
   }
+  // A2：权威投影放 busy 之后，勿拖住按钮
+  if (wroteOk) void refreshAfter()
 }
 
 async function onScrubCopy() {
@@ -656,6 +776,7 @@ async function onVerify() {
   if (busy.value || props.disabled) return
   busy.value = 'verify'
   localRegressions.value = []
+  let wroteOk = false
   try {
     const raw = await api.verifyDeliveryReview(props.projectId)
     // 兼容直接模型 / { data } 包裹
@@ -665,27 +786,27 @@ async function onVerify() {
     const blocked = Array.isArray(payload.blocking_gates) ? payload.blocking_gates : []
     const failReasons = Array.isArray(payload.fail_reasons) ? payload.fail_reasons.filter(Boolean) : []
     if (payload.monotonic_ok && payload.round_pass) {
-      message.success('验圈通过 · 可执行合卷')
+      message.success('验收通过 · 可执行重打包')
     } else if (!payload.monotonic_ok) {
-      message.warning('验圈未通过 · 存在安全区回退')
+      message.warning('验收未通过 · 存在已通过清单回退')
     } else if (failReasons.length) {
-      message.warning(`验圈未通过 · ${failReasons.join('；')}`)
+      message.warning(`验收未通过 · ${failReasons.join('；')}`)
     } else if (blocked.length) {
       const labels = blocked
         .map((g) => (g && g.label) || '')
         .filter(Boolean)
         .slice(0, 3)
         .join('、')
-      message.warning(`验圈未通过 · 质量门禁未过${labels ? `（${labels}）` : ''}`)
+      message.warning(`验收未通过 · 质量门禁未过${labels ? `（${labels}）` : ''}`)
     } else {
       const pending = Array.isArray(payload.pending_names) ? payload.pending_names.filter(Boolean) : []
       if (pending.length) {
-        message.warning(`验圈未通过 · 待收敛清单：${pending.slice(0, 4).join('、')}`)
+        message.warning(`验收未通过 · 待收敛清单：${pending.slice(0, 4).join('、')}`)
       } else {
-        message.warning('验圈未通过 · 请查看毒区与「质量检查」页')
+        message.warning('验收未通过 · 请查看未通过清单与门禁区')
       }
     }
-    // 响应已含 gates/checklist/zip_*：先 patch 顶层，再轻量拉投影
+    // 响应已含 gates/checklist/zip_*：先 patch 顶层；权威拉在 busy 之后
     applyFromWrite({
       review: payload.review,
       zones: payload.zones,
@@ -696,28 +817,27 @@ async function onVerify() {
       zip_ready: payload.zip_ready,
       download_blocked_reason: payload.download_blocked_reason,
     })
-    await refreshAfter()
+    wroteOk = true
   } catch (e) {
-    const code = e?.code || ''
-    const timedOut =
-      code === 'ECONNABORTED' || /timeout/i.test(String(e?.message || ''))
     message.error(
-      timedOut
-        ? '验圈超时 · 后台可能仍在跑，稍后刷新再看；网络慢时可再点一次'
-        : e?.response?.data?.detail || e?.message || '验圈失败',
+      isTimeoutErr(e)
+        ? '验收超时 · 服务端可能已成功或仍在跑，请刷新对齐状态'
+        : e?.response?.data?.detail || e?.message || '验收失败',
     )
   } finally {
     busy.value = ''
   }
+  if (wroteOk) void refreshAfter()
 }
 
 async function onRepack() {
   if (busy.value || props.disabled || !canRepack.value) return
   busy.value = 'repack'
+  let wroteOk = false
   try {
     const raw = await api.repackDeliveryReview(props.projectId)
     const meta = raw?.data && typeof raw.data === 'object' ? raw.data : {}
-    // 接口已成功：立刻消「未同步」并放开下载条件，勿等整页 load
+    // 接口已成功：立刻消「未同步」并放开下载条件，勿等整页 load / getDeliveryReview
     applyFromWrite({
       zip_stale: false,
       workspace_hash:
@@ -726,25 +846,22 @@ async function onRepack() {
       download_blocked_reason: null,
       status: 'generated',
     })
-    message.success('合卷完成 · 交付包已更新')
-    await refreshAfter()
+    message.success('重打包完成 · 交付包已更新')
+    wroteOk = true
   } catch (e) {
-    const code = e?.code || ''
-    const timedOut =
-      code === 'ECONNABORTED' || /timeout/i.test(String(e?.message || ''))
     message.error(
-      timedOut
-        ? '合卷请求超时 · 若 Network 已显示成功请刷新本页对齐状态'
-        : e?.response?.data?.detail || e?.message || '合卷失败',
+      isTimeoutErr(e) ? timeoutAlignMsg('重打包') : e?.response?.data?.detail || e?.message || '重打包失败',
     )
   } finally {
     busy.value = ''
   }
+  if (wroteOk) void refreshAfter()
 }
 
 async function onQa() {
   if (busy.value || props.disabled) return
   busy.value = 'qa'
+  let wroteOk = false
   try {
     const res = await api.runDeliveryQa(props.projectId)
     if (res.qa?.ok) message.success('质量摘要已通过')
@@ -757,17 +874,21 @@ async function onQa() {
         last_qa: res.qa,
       },
     })
-    await refreshAfter()
+    wroteOk = true
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '质量摘要失败')
+    message.error(
+      isTimeoutErr(e) ? timeoutAlignMsg('质量摘要') : e?.response?.data?.detail || e?.message || '质量摘要失败',
+    )
   } finally {
     busy.value = ''
   }
+  if (wroteOk) void refreshAfter()
 }
 
 async function onClose() {
   if (busy.value || props.disabled) return
   busy.value = 'close'
+  let wroteOk = false
   try {
     const res = await api.closeDeliveryReview(props.projectId)
     const st = res?.data?.review
@@ -775,12 +896,15 @@ async function onClose() {
       applyFromWrite({ review: st })
     }
     message.success('已结束交付复审')
-    await refreshAfter()
+    wroteOk = true
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '结束复审失败')
+    message.error(
+      isTimeoutErr(e) ? timeoutAlignMsg('结束复审') : e?.response?.data?.detail || e?.message || '结束复审失败',
+    )
   } finally {
     busy.value = ''
   }
+  if (wroteOk) void refreshAfter()
 }
 
 async function onCloseAndRebake() {
@@ -796,6 +920,7 @@ async function onCloseAndRebake() {
   )
   if (!ok) return
   busy.value = 'close-rebake'
+  let wroteOk = false
   try {
     const res = await api.closeDeliveryReview(props.projectId)
     const st = res?.data?.review
@@ -803,16 +928,21 @@ async function onCloseAndRebake() {
       applyFromWrite({ review: st })
     }
     message.success('已结束复审 · 请确认选项后重新生成')
-    await refreshAfter()
+    wroteOk = true
+  } catch (e) {
+    message.error(
+      isTimeoutErr(e) ? timeoutAlignMsg('结束复审') : e?.response?.data?.detail || e?.message || '结束复审失败',
+    )
+  } finally {
+    busy.value = ''
+  }
+  if (wroteOk) {
+    void refreshAfter()
     if (typeof props.goGenerate === 'function') {
       props.goGenerate()
     } else {
       emit('go-generate')
     }
-  } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '结束复审失败')
-  } finally {
-    busy.value = ''
   }
 }
 
@@ -820,6 +950,7 @@ async function onAddNote() {
   const text = noteText.value.trim()
   if (!text || busy.value || props.disabled) return
   busy.value = 'note'
+  let wroteOk = false
   try {
     const res = await api.addDeliveryFixNote(props.projectId, text)
     const note = res?.data?.note
@@ -839,17 +970,21 @@ async function onAddNote() {
       })
     }
     message.success('已登记偏差')
-    await refreshAfter()
+    wroteOk = true
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '登记失败')
+    message.error(
+      isTimeoutErr(e) ? timeoutAlignMsg('登记偏差') : e?.response?.data?.detail || e?.message || '登记失败',
+    )
   } finally {
     busy.value = ''
   }
+  if (wroteOk) void refreshAfter()
 }
 
 async function onResolveNote(noteId, done) {
   if (!noteId || busy.value || props.disabled) return
   busy.value = `note-${noteId}`
+  let wroteOk = false
   try {
     await api.resolveDeliveryFixNote(props.projectId, noteId, done)
     // 接口无投影体：本地改 note 状态，再轻量对齐
@@ -864,39 +999,110 @@ async function onResolveNote(noteId, done) {
     })
     applyFromWrite({ review: { ...prev, fix_notes: notes } })
     message.success(done ? '已结案' : '已重开')
-    await refreshAfter()
+    wroteOk = true
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '操作失败')
+    message.error(
+      isTimeoutErr(e) ? timeoutAlignMsg('结案') : e?.response?.data?.detail || e?.message || '操作失败',
+    )
   } finally {
     busy.value = ''
   }
+  if (wroteOk) void refreshAfter()
 }
 </script>
 
 <style scoped>
-.delivery-review .review-grid,
 .delivery-review .diag-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-@media (max-width: 720px) {
-  .delivery-review .review-grid,
-  .delivery-review .diag-grid {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 .review-panel {
   border: 1px solid var(--border, #e8e8e8);
   border-radius: 8px;
   padding: 10px 12px;
-  min-height: 120px;
 }
 .boss-check-list {
-  max-height: 320px;
+  max-height: 240px;
   overflow: auto;
   padding-right: 4px;
 }
+.wb-pulse {
+  padding: 0;
+  align-items: center;
+}
+.wb-pulse .pill {
+  /* 四枚同规格；可点的也不另起 button 高度 */
+  box-sizing: border-box;
+}
+.pill-click {
+  cursor: pointer;
+}
+.pill-click:hover {
+  filter: brightness(1.08);
+}
+.pill-click:focus-visible {
+  outline: 2px solid var(--teal-deep, #3aa8a0);
+  outline-offset: 2px;
+}
+.review-more {
+  margin-top: 2px;
+}
+.block-panel {
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #e8e8e8);
+}
+.block-panel.tone-info {
+  background: rgba(32, 128, 180, 0.08);
+  border-color: rgba(32, 128, 180, 0.35);
+}
+.block-panel.tone-warn {
+  background: rgba(180, 120, 32, 0.1);
+  border-color: rgba(180, 120, 32, 0.4);
+}
+.block-panel.tone-error {
+  background: rgba(180, 48, 48, 0.1);
+  border-color: rgba(180, 48, 48, 0.4);
+}
+.block-title {
+  font-size: 13px;
+  font-weight: 650;
+}
+.block-points {
+  margin: 8px 0 0;
+  padding-left: 1.1em;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.block-gates {
+  margin-top: 8px;
+}
+.block-preview {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.block-preview-line {
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.block-toggle {
+  border: none;
+  background: transparent;
+  color: var(--teal-deep, #3aa8a0);
+  font: inherit;
+  font-size: 12px;
+  padding: 0;
+  margin-top: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+/* 弹层可能 teleport 到 body：正文用非 scoped 规则，避免说明被截断 */
 .boss-check-label {
   font-size: 12px;
   line-height: 1.45;
@@ -982,5 +1188,49 @@ async function onResolveNote(noteId, done) {
 }
 .btn-tip-wrap {
   display: inline-flex;
+}
+</style>
+
+<style>
+/* n-modal teleport 出 scoped；弹层内门禁说明必须整段换行，禁止截断 */
+.gate-detail-modal .gate-modal-body {
+  max-height: min(62vh, 560px);
+  overflow: auto;
+  padding-right: 4px;
+}
+.gate-detail-modal .gate-modal-block + .gate-modal-block {
+  margin-top: 14px;
+}
+.gate-detail-modal .gate-full-list {
+  margin: 8px 0 0;
+  padding-left: 1.1em;
+  list-style: disc;
+}
+.gate-detail-modal .gate-full-list > li {
+  margin-bottom: 12px;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.gate-detail-modal .gate-full-label {
+  display: block;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.gate-detail-modal .gate-full-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted, #888);
+  white-space: pre-wrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 </style>

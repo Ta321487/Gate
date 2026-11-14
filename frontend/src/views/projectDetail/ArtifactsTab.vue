@@ -1,64 +1,38 @@
 <template>
   <div>
-    <div class="panel artifacts-files">
-      <div class="panel-hd">
-        <h3>产物</h3>
-        <span class="small muted">交付文件与工作区路径</span>
-      </div>
-      <div class="panel-bd artifacts-file-grid">
-        <div class="file-row" style="margin:0">
-          <div class="file-row-main">
-            <strong>{{ zipFileName }}</strong>
-            <span class="small muted">{{ zipLockHint }}</span>
-          </div>
-          <n-button size="small" :disabled="!canDownload" :title="downloadBlockedReason" @click="downloadZip">
-            {{ canDownload ? '下载' : '锁定' }}
-          </n-button>
-        </div>
-        <div class="file-row" style="margin:0">
-          <div class="file-row-main">
-            <strong>工程目录</strong>
-            <span class="small muted mono file-path">{{ p.workspace_path || '尚未生成' }}</span>
-          </div>
-          <CopyIconButton v-if="p.workspace_path" :text="p.workspace_path" tip="复制路径" />
-        </div>
-        <div class="file-row" style="margin:0">
-          <div class="file-row-main">
-            <strong>填岛拆解计划</strong>
-            <span class="small muted">{{ fillPlanHint }}</span>
-          </div>
-          <span
-            class="btn-tip-wrap"
-            :title="p.workspace_path ? '只预览 Unit 拆解，不调大模型、不执行填岛' : '生成工作区后可预览填岛拆解'"
-          >
-            <n-button text size="small" :disabled="!p.workspace_path" :loading="fillPlanLoading" @click="openFillPlan">
-              查看
-            </n-button>
-          </span>
-        </div>
-        <div class="file-row" style="margin:0">
-          <div class="file-row-main">
-            <strong>生成配置</strong>
-            <span class="small muted">匹配与生成参数</span>
-          </div>
-          <div class="row" style="margin:0;gap:6px">
-            <CopyIconButton :text="specText" tip="复制配置" />
-            <n-button text size="small" @click="showSpec = true">查看</n-button>
-          </div>
-        </div>
-        <DefensePptArtifactRow />
-      </div>
-    </div>
+    <p v-if="artifactsFrozen" class="small muted artifacts-frozen-hint">
+      工程重新生成中 · 导出类操作暂不可用
+    </p>
 
-    <div class="panel mt-16">
-      <div class="panel-hd">
-        <h3>对照视图</h3>
-        <span class="small muted">
-          {{ artifactsFrozen ? '工程重新生成中 · 导出类操作暂不可用' : '库表 · 论文材料 · 交付复审 · 质量检查 · 答辩 PPT · 仅运营端验收' }}
-        </span>
-      </div>
-      <div class="panel-bd" style="padding-top:4px">
-        <n-tabs v-model:value="artifactView" type="line" size="small" @update:value="onArtifactView">
+    <!-- 质检交付：工作台 + 产物排障 -->
+    <template v-if="pane === 'delivery'">
+      <DeliveryWorkbench
+        :project-id="p.id"
+        :delivery-review="p.delivery_review || {}"
+        :disabled="artifactsFrozen || !p.workspace_path"
+        :can-download="canDownload"
+        :download-blocked-reason="downloadBlockedReason"
+        :gate-cols="gateCols"
+        :gate-rows="gateRows"
+        :check-cols="checkCols"
+        :check-rows="checkRows"
+        :copy-gate-hits="copyGateHits"
+        :show-scrub-copy="copyGateNeedsScrub"
+        :scrub-busy="copyScrubBusy"
+        :scrub-copy="scrubStudentCopy"
+        :reload="refreshDeliveryReviewPanel"
+        :apply-review="applyDeliveryReviewPanel"
+        :go-generate="() => { tab = 'generate' }"
+        @scrub="scrubStudentCopy"
+      />
+    </template>
+
+    <!-- 论文材料主轨：库表 / 论文图 / API（答辩 PPT 已升为主轨独立步） -->
+    <template v-else>
+      <p class="small muted mb-12">
+        对着实包写论文用：库表与 E-R、系统设计/需求/测试图、学生端 API。写完再去「质检交付」打包给老师。
+      </p>
+      <n-tabs v-model:value="artifactView" type="line" size="small" @update:value="onArtifactView">
           <n-tab-pane name="db" tab="数据库">
             <div class="artifact-pane stack">
               <ContentLoading v-if="artifactLoading && !schema" :rows="4" compact />
@@ -237,6 +211,13 @@
           <n-tab-pane name="thesis" tab="论文材料">
             <div class="artifact-pane stack">
               <ContentLoading v-if="artifactLoading" :rows="2" compact block />
+              <template v-else-if="thesisSurface === 'overrides'">
+                <div class="row mb-8" style="justify-content:space-between;align-items:center;gap:8px">
+                  <n-button size="small" quaternary @click="closeThesisOverrides">← 返回材料卡</n-button>
+                  <span class="small muted">只改展示文字与材料勾选；重 bake 后补丁会叠回</span>
+                </div>
+                <OverridesTab />
+              </template>
               <template v-else>
               <p class="small muted mb-8">
                 贴说明书用：系统设计（功能模块图 / 系统逻辑架构图 / 系统类图 / 系统序列图 / 系统活动图）· 需求分析（用例图 / 用例描述表）· 系统测试（软件测试用例）。模块图按身份时以交付菜单为叶子真源，开题「功能模块划分为」只辅助命名（未交付模块不进图）；架构图按交付角色画 B/S 分层；类图实体与外键来自 schema.sql，属性/方法与可见性来自 bake 包 Java（六种关系线、零交叉；默认论文示例可切代码全量，拖拽后回拉重选折线），并与开题 domain.schema 对照；序列图固定 3 张核心功能（可勾选），四槽位与六条画法，文案取自 bake；活动图固定 3 张（可与序列同勾选），三泳道用户/系统/数据库，判断条件写在菱形外侧箭头上；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
@@ -287,12 +268,12 @@
                             @click="card.open"
                           >{{ card.action }}</n-button>
                           <n-button
-                            v-if="card.id === 'modules'"
+                            v-if="card.overrideSection"
                             size="small"
                             quaternary
                             :disabled="artifactsFrozen"
-                            title="跳到微调 Tab 改短签；重 bake 后会叠回"
-                            @click="tab = 'overrides'"
+                            title="在本材料下改展示文字；重 bake 后会叠回"
+                            @click="openThesisOverrides(card.overrideSection)"
                           >手调文字</n-button>
                         </div>
                       </div>
@@ -304,7 +285,7 @@
                         findings 标「机器」→ 修工厂
                         <code>backend/app/bake/schema/modules.py</code>
                         清洗；标「手调」→
-                        <a href="#" @click.prevent="tab = 'overrides'">微调</a>
+                        <a href="#" @click.prevent="openThesisOverrides('modules')">手调文字</a>
                         改短签或恢复机器名。热重载后端后打开图可「重新加载」强制重算。
                         仅当交付菜单 / domain.schema 叶子本身错了才重 bake。
                       </p>
@@ -526,78 +507,8 @@
             </div>
 
           </n-tab-pane>
-
-          <n-tab-pane name="review" tab="交付复审">
-            <div class="artifact-pane">
-              <DeliveryReviewPane
-                :project-id="p.id"
-                :delivery-review="p.delivery_review || {}"
-                :disabled="artifactsFrozen || !p.workspace_path"
-                :reload="refreshDeliveryReviewPanel"
-                :apply-review="applyDeliveryReviewPanel"
-                :show-scrub-copy="copyGateNeedsScrub"
-                :scrub-busy="copyScrubBusy"
-                :scrub-copy="scrubStudentCopy"
-                :go-generate="() => { tab = 'generate' }"
-              />
-            </div>
-
-          </n-tab-pane>
-
-          <n-tab-pane name="gates" tab="质量检查">
-            <div class="artifact-pane stack">
-              <div class="row" style="justify-content:space-between;align-items:center">
-                <div class="small">
-                  质量检查 · 下载条件
-                  <span class="pill" :class="canDownload ? 'pill-green' : 'pill-red'" style="margin-left:8px">
-                    {{ canDownload ? '可下载' : '暂不可下载' }}
-                  </span>
-                </div>
-                <n-button
-                  v-if="copyGateNeedsScrub"
-                  size="small"
-                  type="primary"
-                  :disabled="artifactsFrozen || !p.workspace_path"
-                  :loading="copyScrubBusy"
-                  @click="scrubStudentCopy"
-                >
-                  工厂清洗文案
-                </n-button>
-              </div>
-              <p class="small muted" style="margin:0">
-                机器质检未通过时不可下载。工程变更后请在「交付复审」验圈并合卷。人工履约标记在页头操作。
-              </p>
-              <n-data-table :columns="gateCols" :data="gateRows" :bordered="false" size="small" />
-              <div v-if="copyGateNeedsScrub || copyGateHits.length" class="mt-12">
-                <div class="parse-sec-hd">工厂腔命中 · {{ copyGateHits.length || '—' }} 处</div>
-                <p class="small muted" style="margin:0 0 8px">
-                  点上方「工厂清洗文案」调用工厂 scrub（与出包同源）；不必手改学生包。洗完后到「交付复审」验圈并合卷。
-                </p>
-                <ul v-if="copyGateHits.length" class="zone-list" style="margin:0">
-                  <li v-for="(h, i) in copyGateHits" :key="i">
-                    <strong>{{ h.bad }}</strong>
-                    <span class="muted"> · {{ h.path }}</span>
-                    <div class="small muted" style="margin-top:2px">{{ h.snippet }}</div>
-                  </li>
-                </ul>
-                <p v-else class="small muted" style="margin:0">
-                  门禁未过但未带回命中明细时，仍可直接清洗后验圈。
-                </p>
-              </div>
-              <div class="parse-sec-hd mt-12">清单实装验收</div>
-              <p class="small muted" style="margin:0 0 8px">
-                扫描已生成工程，核对 Spec 清单各项是否在 ZIP 中有对应路由/实现（与生成前「措辞核对」不是同一检查）。
-              </p>
-              <n-data-table :columns="checkCols" :data="checkRows" :bordered="false" size="small" />
-            </div>
-          </n-tab-pane>
-
-          <n-tab-pane name="ppt" tab="答辩 PPT">
-            <DefensePptComparePane />
-          </n-tab-pane>
         </n-tabs>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -606,9 +517,13 @@ import { computed, ref } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 import ContentLoading from '../../components/ContentLoading.vue'
-import DeliveryReviewPane from '../../components/DeliveryReviewPane.vue'
-import DefensePptArtifactRow from '../../components/defensePpt/DefensePptArtifactRow.vue'
-import DefensePptComparePane from '../../components/defensePpt/DefensePptComparePane.vue'
+import DeliveryWorkbench from '../../components/DeliveryWorkbench.vue'
+import OverridesTab from './OverridesTab.vue'
+
+defineProps({
+  /** delivery=质检交付工作台；thesis=论文材料主轨 */
+  pane: { type: String, default: 'delivery' },
+})
 
 const THESIS_GROUP_KEY = 'gf.thesisGroupsOpen'
 const thesisOpen = ref({ design: true, analysis: false, test: false })
@@ -658,7 +573,8 @@ const {
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesLayout, modulesMeta, modulesOk, modulesLabelOk, modulesLabelPending, modulesLabelRed, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openArchitecture, openClasses, openSequences, openActivities, openEr, openFillPlan, openModules,
-  openPreview, openTestcases, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
+  openPreview, openTestcases, openThesisOverrides, closeThesisOverrides, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
+  thesisSurface,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
   refreshJob, refreshRuntime, reload, reloadErSvg, reloadModSvg, reloadTestcases, resetMatch, retryCurrent,
@@ -698,6 +614,7 @@ const thesisGroups = computed(() => [
         title: '功能模块图',
         desc: '按身份 / 按业务切换 · 可展开细节 · 黑白线框 · 复制 PNG 或下载矢量',
         action: '打开模块图',
+        overrideSection: 'modules',
         loading: modLoading.value,
         open: openModules,
       },
@@ -706,6 +623,7 @@ const thesisGroups = computed(() => [
         title: '系统逻辑架构图',
         desc: '角色 → 界面 → Vue → SpringBoot → MySQL · HTTPS · 复制 PNG / 下载 SVG',
         action: '打开架构图',
+        overrideSection: 'architecture',
         loading: archLoading.value,
         open: openArchitecture,
       },
@@ -714,6 +632,7 @@ const thesisGroups = computed(() => [
         title: '系统类图',
         desc: '三栏 UML（+/-/#）· 关联/依赖/继承/实现/聚合/组合 · 零交叉 · 成员取自 Java · 可拖拽导出',
         action: '打开类图',
+        overrideSection: 'classes',
         loading: classLoading.value,
         open: openClasses,
       },
@@ -722,6 +641,7 @@ const thesisGroups = computed(() => [
         title: '系统序列图',
         desc: '固定 3 张 · 勾选交付功能 · 角色/页面/控制器/数据库 · 实线() / 虚线无() · bake 文案',
         action: '打开序列图',
+        overrideSection: 'sequence',
         loading: seqLoading.value,
         open: openSequences,
       },
@@ -730,6 +650,7 @@ const thesisGroups = computed(() => [
         title: '系统活动图',
         desc: '固定 3 张 · 可与序列同勾选 · 用户/系统/数据库 · 菱形条件在箭头上 · bake 文案',
         action: '打开活动图',
+        overrideSection: 'activity',
         loading: actLoading.value,
         open: openActivities,
       },
@@ -744,6 +665,7 @@ const thesisGroups = computed(() => [
         title: '用例图',
         desc: '按角色（含岗位）· 序号对齐一级圈数 · include/extend · 预览 PNG/SVG · StarUML .mdj',
         action: '打开用例图',
+        overrideSection: 'usecase',
         loading: ucLoading.value,
         open: openUsecases,
       },
@@ -752,6 +674,7 @@ const thesisGroups = computed(() => [
         title: '用例描述表',
         desc: '默认 4 个主路径 · 对照交付菜单操作 · 复制可贴 Word',
         action: '打开用例描述',
+        overrideSection: 'usecase_desc',
         loading: ucdLoading.value,
         open: openUsecaseDescriptions,
       },
@@ -766,6 +689,7 @@ const thesisGroups = computed(() => [
         title: '软件测试用例',
         desc: '5～9 字段模板可选（默认 6）· 复制表格 / Markdown',
         action: '打开测试用例',
+        overrideSection: 'testcases',
         loading: tcLoading.value,
         open: openTestcases,
       },

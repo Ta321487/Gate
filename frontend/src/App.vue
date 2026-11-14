@@ -108,7 +108,7 @@ const workNav = [
   { to: '/help', label: '帮助文档', desc: '流程说明与索引', match: ['help'] },
 ]
 const sysNav = [
-  { to: '/llm', label: '大模型', desc: '填岛与用量', match: ['llm'] },
+  { to: '/llm', label: '大模型', desc: '连接与用量', match: ['llm'] },
   { to: '/unsplash', label: 'Unsplash', desc: '图床配置', match: ['unsplash'] },
   { to: '/system', label: '运行环境', desc: '工具链与端口', match: ['system'] },
 ]

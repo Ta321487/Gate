@@ -96,6 +96,28 @@ class DeliveryReviewTests(unittest.TestCase):
         self.assertEqual(blocked[0]["key"], "p3q")
         self.assertIn("质量摘要", blocked[0]["label"])
 
+    def test_blocking_gates_keeps_full_path_desc(self):
+        long_desc = (
+            "控件契约 3：\n"
+            "[no_select_allow_create] views/admin/CategoriesAdmin.vue: "
+            "下拉禁止 allow-create（不可创库外选项；filterable 筛选除外） (form.category)\n"
+            "[no_select_allow_create] views/admin/ArchiveAdmin.vue: "
+            "下拉禁止 allow-create（不可创库外选项；filterable 筛选除外） (form.type)\n"
+            "[no_input_date_handfill] views/user/Profile.vue: "
+            "日期须用日期选择器，禁止 el-input 手填 (form.birthday)"
+        )
+        self.assertGreater(len(long_desc), 160)
+        gates = {
+            "zip_allowed": False,
+            "p3controls": {"ok": False, "label": "控件检查", "desc": long_desc},
+        }
+        blocked = dr.blocking_gates(gates)
+        self.assertEqual(len(blocked), 1)
+        self.assertEqual(blocked[0]["desc"], long_desc)
+        self.assertIn("views/admin/CategoriesAdmin.vue", blocked[0]["desc"])
+        self.assertIn("views/user/Profile.vue", blocked[0]["desc"])
+        self.assertFalse(blocked[0]["desc"].endswith("views/ad"))
+
     def test_blocking_gates_synthetic_when_zip_denied_without_items(self):
         gates = {"overall": False, "zip_allowed": False, "p0a": {"ok": True, "label": "结构"}}
         blocked = dr.blocking_gates(gates)

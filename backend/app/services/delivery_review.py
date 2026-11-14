@@ -276,7 +276,7 @@ def verify_fail_reasons(
     """验圈未过的可读原因（给前端 toast / 面板）。"""
     reasons: list[str] = []
     if not mono_ok:
-        reasons.append("安全区回退")
+        reasons.append("已通过清单回退")
     if not zip_allowed:
         blocked = blocked_gates or []
         if blocked:
@@ -316,7 +316,8 @@ def blocking_gates(gates: dict[str, Any] | None) -> list[dict[str, str]]:
             continue
         label = str(raw.get("label") or key).strip() or key
         desc = str(raw.get("desc") or "").strip()
-        out.append({"key": str(key), "label": label, "desc": desc[:160]})
+        # 禁止 [:160] 裁半截路径（会变成「views/ad」）；全文由弹层滚动
+        out.append({"key": str(key), "label": label, "desc": desc})
     if not out and not g.get("zip_allowed"):
         out.append(
             {
@@ -417,7 +418,7 @@ def open_fix_notes(st: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 def can_repack_after_verify(verify_result: dict[str, Any], review_state: dict[str, Any]) -> tuple[bool, str]:
     if not verify_result.get("monotonic_ok"):
-        return False, "检测到安全区回退 · 请先修复后再合卷"
+        return False, "检测到已通过清单回退 · 请先修复后再重打包"
     if open_fix_notes(review_state):
         return False, "仍有未结案的复审偏差登记 · 请先处理或结案"
     if not verify_result.get("round_pass"):
@@ -429,15 +430,15 @@ def can_repack_after_verify(verify_result: dict[str, Any], review_state: dict[st
         if blocked:
             labels = "、".join(b["label"] for b in blocked[:3])
             return False, (
-                f"质量检查未通过（{labels}）· 当场可修则处理后验圈合卷；"
+                f"质量检查未通过（{labels}）· 当场可修则处理后验收并重打包；"
                 "须重跑生成请先结束复审"
             )
         if int(verify_result.get("open_notes_count") or 0) or open_fix_notes(review_state):
             return False, "仍有未结案的复审偏差登记 · 请先处理或结案"
         pending = int((verify_result.get("round") or {}).get("pending_count") or 0)
         if pending:
-            return False, "仍有待收敛清单项 · 请先验圈通过"
-        return False, "仍有待收敛项或未通过质量检查 · 请先验圈通过"
+            return False, "仍有待收敛清单项 · 请先验收通过"
+        return False, "仍有待收敛项或未通过质量检查 · 请先验收通过"
     return True, ""
 
 

@@ -5,8 +5,8 @@
     <template v-else-if="!pptHasDeck">
       <div class="empty-hint">
         <div class="empty-title">还没有答辩 PPT</div>
-        <div class="empty-desc">到「一键生成」填写封面信息后生成。此处只做预览、改稿与导出。</div>
-        <n-button size="small" class="mt-12" @click="goGeneratePpt">前往一键生成</n-button>
+        <div class="empty-desc">在上方填写封面信息后生成；生成后可在本页预览、改稿与导出。</div>
+        <n-button size="small" class="mt-12" @click="goGeneratePpt">填写封面并生成</n-button>
       </div>
     </template>
 

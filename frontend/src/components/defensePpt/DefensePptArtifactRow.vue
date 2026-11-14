@@ -13,7 +13,7 @@
           工程通过质量检查后可生成
         </template>
         <template v-else>
-          尚未生成 · 在「一键生成」页填写封面后开跑
+          尚未生成 · 在「答辩 PPT」阶段填写封面后开跑
         </template>
       </span>
       <span

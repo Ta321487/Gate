@@ -204,6 +204,18 @@ async def list_projects(
             ]
         elif filter == "review":
             items = [p for p in items if review_status_of(p) == "active"]
+        elif filter == "undelivered":
+            # 可下载未发出：机器可下且履约尚未 delivered（含 none / ready）
+            items = [
+                p
+                for p in items
+                if p.status in ("generated", "running")
+                and project_svc.is_zip_downloadable(p, verify_stale=False)
+                and project_svc.normalize_delivery_mark(
+                    getattr(p, "delivery_mark", None)
+                )
+                != "delivered"
+            ]
         summaries = []
 
         for p in items:

@@ -65,7 +65,7 @@ export function projectStatusLabel(status, opts = {}) {
   if (status === 'generated' || status === 'running') {
     if (mark === 'delivered' || mark === 'ready') return deliveryMarkLabel(mark)
     if (zipReady === false) {
-      if (reason.includes('合卷')) return '已生成 · 待合卷'
+      if (reason.includes('合卷') || reason.includes('重打包')) return '已生成 · 待重打包'
       if (reason.includes('复审偏差') || reason.includes('待结案')) return '已生成 · 待结案'
       if (reason.includes('回退')) return '已生成 · 复审回退'
       if (reason.includes('质量检查') || reason.includes('质检')) return '已生成 · 质检未过'
@@ -114,23 +114,8 @@ export function projectStatusTag(status, opts = {}) {
   return PROJECT_STATUS[status]?.tag || 'default'
 }
 
-/** 进入详情时默认 Tab（与 pane name 对齐） */
-export function defaultTabForStatus(status) {
-  switch (status) {
-    case 'needs_confirm':
-      return 'match'
-    case 'ready':
-    case 'generating':
-      return 'generate'
-    case 'failed':
-      return 'artifacts'
-    case 'generated':
-    case 'running':
-      return 'runtime'
-    default:
-      return 'match'
-  }
-}
+/** 进入详情时默认 Tab（B2：生成成功 → 质检交付 artifacts） */
+export { defaultTabForStatus } from './deliveryStages.js'
 
 export const CHECKLIST_RESULT = {
   done: { label: '已实现', type: 'success', pill: 'pill-green' },
@@ -209,7 +194,22 @@ export function getCatalog({ force = false } = {}) {
 
 export function catalogLabel(list, id) {
   const hit = (list || []).find((x) => x.id === id)
-  return hit?.label || id || '—'
+  // 目录常见中文在 name；勿只读 label，否则列表会裸出 ARCH-*/DOM-*
+  return hit?.name || hit?.label || id || '—'
+}
+
+/** 列表主路径展示：人话；工厂码进 raw（title /「标识」）。 */
+export function formatArchDomParts(catalog, archetype, domain) {
+  const raw = [archetype, domain].filter(Boolean).join(' · ')
+  let label = formatArchDom(catalog, archetype, domain)
+  if (/ARCH-|DOM-/.test(label)) {
+    const parts = label
+      .split('·')
+      .map((s) => s.trim())
+      .filter((s) => s && !/^ARCH-/.test(s) && !/^DOM-/.test(s))
+    label = parts.length ? parts.join(' · ') : '已匹配类型'
+  }
+  return { label: label || '—', raw }
 }
 
 /** 领域级联选项：分组 → 短中文名；value 仍为 DOM-* */

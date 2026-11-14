@@ -1,12 +1,13 @@
 <template>
-  <div>
-    <h1 class="page-title">项目</h1>
-    <p class="page-desc">
-      上传开题并确认分堆以创建项目；下方卡片用于筛选履约状态。当日待办请见「开工台」。细则见「帮助 → 上传与分堆」。
-    </p>
-
-    <div class="row mb-12" style="justify-content:flex-end;gap:8px">
-      <n-button size="small" @click="openSampleProposal">生成测试开题</n-button>
+  <div class="surface-page">
+    <div class="surface-toolbar">
+      <div>
+        <h1 class="page-title">项目</h1>
+        <p class="page-desc">
+          上传开题并确认分堆；列表筛状态。待办见「开工台」。第一次：点右侧「生成测试开题」→ 下载 txt → 拖到下方上传。
+        </p>
+      </div>
+      <n-button size="small" type="primary" @click="openSampleProposal">生成测试开题</n-button>
     </div>
 
     <div
@@ -284,10 +285,10 @@
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-hd">
-          <h3>项目列表</h3>
-          <div class="row" style="margin:0;gap:8px">
+      <div class="surface-tray projects-list-tray">
+        <div class="surface-main-hd">
+          <h2>项目列表</h2>
+          <div class="row" style="margin:0;gap:8px;flex-wrap:wrap">
             <n-button
               size="small"
               :loading="batchBusy"
@@ -310,53 +311,51 @@
             <n-button size="small" :loading="loading" @click="refresh">刷新</n-button>
           </div>
         </div>
-        <div class="panel-bd" style="padding-top:12px">
-          <div class="row mb-12" style="justify-content:space-between">
-            <div class="filter-pills" role="group" aria-label="项目筛选">
-              <button
-                v-for="f in filters"
-                :key="f.id"
-                type="button"
-                class="pill filter-pill"
-                :class="[f.pill, { on: filter === f.id }]"
-                @click="setFilter(f.id)"
-              >{{ f.label }}</button>
-            </div>
-            <n-input v-model:value="q" clearable placeholder="搜索题目 / ID…" style="width:220px" @update:value="onSearch" />
+        <div class="row mb-12" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <div class="filter-pills" role="group" aria-label="项目筛选">
+            <button
+              v-for="f in filters"
+              :key="f.id"
+              type="button"
+              class="pill filter-pill"
+              :class="[f.pill, { on: filter === f.id }]"
+              @click="setFilter(f.id)"
+            >{{ f.label }}</button>
           </div>
-          <n-alert
-            v-if="batchResult"
-            class="mb-12"
-            :type="batchResult.type"
-            closable
-            @close="batchResult = null"
-          >
-            <div class="small">{{ batchResult.text }}</div>
-            <div
-              v-if="batchResult.items?.length"
-              class="small muted"
-              style="margin-top:4px"
-            >{{ batchResult.items.map((i) => `${i.title || i.id}：${i.reason}`).join('；') }}</div>
-          </n-alert>
-          <n-data-table
-            :columns="columns"
-            :data="list"
-            :row-key="r => r.id"
-            :checked-row-keys="checkedRowKeys"
-            :bordered="false"
-            size="small"
-            :loading="loading"
-            @update:checked-row-keys="onCheckedRowKeys"
-          >
-            <template #empty>
-              <div class="empty-hint">
-                <div class="empty-title">暂无项目</div>
-                <div class="empty-desc">上传材料后确认分堆即可创建；同课题会合并，不同课题会拆开</div>
-              </div>
-            </template>
-          </n-data-table>
-          <div class="small muted mt-12">共 {{ list.length }} 条 · 点击行进详情；履约列可直接下载 / 标记</div>
+          <n-input v-model:value="q" clearable placeholder="搜索题目 / ID…" style="width:220px" @update:value="onSearch" />
         </div>
+        <n-alert
+          v-if="batchResult"
+          class="mb-12"
+          :type="batchResult.type"
+          closable
+          @close="batchResult = null"
+        >
+          <div class="small">{{ batchResult.text }}</div>
+          <div
+            v-if="batchResult.items?.length"
+            class="small muted"
+            style="margin-top:4px"
+          >{{ batchResult.items.map((i) => `${i.title || i.id}：${i.reason}`).join('；') }}</div>
+        </n-alert>
+        <n-data-table
+          :columns="columns"
+          :data="list"
+          :row-key="r => r.id"
+          :checked-row-keys="checkedRowKeys"
+          :bordered="false"
+          size="small"
+          :loading="loading"
+          @update:checked-row-keys="onCheckedRowKeys"
+        >
+          <template #empty>
+            <div class="empty-hint">
+              <div class="empty-title">暂无项目</div>
+              <div class="empty-desc">上传材料后确认分堆即可创建。第一次可先「生成测试开题」，再拖回上方上传区。</div>
+            </div>
+          </template>
+        </n-data-table>
+        <div class="small muted mt-12">共 {{ list.length }} 条 · 点击行进详情；履约列可直接下载 / 标记</div>
       </div>
     </template>
   </div>
@@ -373,7 +372,7 @@ import CopyIconButton from '../components/CopyIconButton.vue'
 import {
   debounce,
   domainCascaderOptions,
-  formatArchDom,
+  formatArchDomParts,
   getCatalog,
   projectStatusLabel,
   projectStatusPill,
@@ -390,11 +389,18 @@ const filter = ref('all')
 
 function applyFocusQuery() {
   const focus = route.query.focus
-  if (focus === 'needs_confirm' || focus === 'review') {
+  if (
+    focus === 'needs_confirm'
+    || focus === 'review'
+    || focus === 'fail'
+    || focus === 'undelivered'
+    || focus === 'pending'
+    || focus === 'done'
+  ) {
     filter.value = focus
   }
 }
-/** 与状态/运行列语义对齐：运行中 · 生成中 · 待审 · 可下载 · 已审待发 · 已发出 · 质检未过 */
+/** 与状态/运行列语义对齐；undelivered = 可下载未发出（开工台队列） */
 const filters = [
   { id: 'all', label: '全部', pill: 'pill-neutral' },
   { id: 'needs_confirm', label: '待匹配', pill: 'pill-amber' },
@@ -403,9 +409,10 @@ const filters = [
   { id: 'generating', label: '生成中', pill: 'pill-teal' },
   { id: 'pending', label: '待审', pill: 'pill-amber' },
   { id: 'done', label: '可下载', pill: 'pill-teal' },
+  { id: 'undelivered', label: '可下未发', pill: 'pill-teal' },
   { id: 'ready', label: '已审待发', pill: 'pill-green' },
   { id: 'delivered', label: '已发出', pill: 'pill-neutral' },
-  { id: 'fail', label: '质检未过', pill: 'pill-red' },
+  { id: 'fail', label: '门禁失败', pill: 'pill-red' },
 ]
 const q = ref('')
 const dragover = ref(false)
@@ -982,10 +989,20 @@ const columns = [
     },
   },
   {
-    title: '骨架 · 领域',
+    title: '业务类型',
     key: 'arch',
     render(row) {
-      return formatArchDom(catalog.value, row.archetype, row.domain)
+      // 主路径只显示人话；工厂码经「标识」悬停/title 可查，不挡扫读
+      const { label, raw } = formatArchDomParts(catalog.value, row.archetype, row.domain)
+      if (!raw) return h('span', label)
+      return h('span', { class: 'arch-cell', title: `工厂标识：${raw}` }, [
+        h('span', label),
+        h(
+          'span',
+          { class: 'arch-id-hint muted', title: raw },
+          '标识',
+        ),
+      ])
     },
   },
   {
@@ -1019,55 +1036,43 @@ const columns = [
     },
   },
   {
-    title: '履约',
-    key: 'delivery',
-    width: 200,
+    title: '操作',
+    key: 'actions',
+    width: 168,
     render(row) {
-      const mark = String(row.delivery_mark || 'none')
+      // P6：行内仅预览入口、下载/阻断、进详情；启停与履约标记走批量/详情
       const baked = row.status === 'generated' || row.status === 'running'
       const zipOk = projectIsDownloadable(row) && baked
-      const busy = deliveryBusyId.value === row.id
+      const running = !!(row.backend_running || row.frontend_running)
       const kids = []
-      if (zipOk && mark === 'none') {
-        kids.push(h(NButton, {
-          size: 'tiny',
-          type: 'primary',
-          loading: busy,
-          disabled: busy,
-          onClick: (e) => { e.stopPropagation(); markRowDelivery(row, 'delivered') },
-        }, { default: () => '已发出' }))
-        kids.push(h(NButton, {
-          size: 'tiny',
-          secondary: true,
-          loading: busy,
-          disabled: busy,
-          onClick: (e) => { e.stopPropagation(); markRowDelivery(row, 'ready') },
-        }, { default: () => '暂存' }))
+      if (running && row.frontend_port) {
         kids.push(h(NButton, {
           size: 'tiny',
           quaternary: true,
-          disabled: busy,
-          onClick: (e) => { e.stopPropagation(); downloadRowZip(row) },
-        }, { default: () => '下载' }))
-      } else if (mark === 'ready' && zipOk) {
-        kids.push(h(NButton, {
-          size: 'tiny',
-          type: 'primary',
-          loading: busy,
-          disabled: busy,
-          onClick: (e) => { e.stopPropagation(); downloadAndDeliverRow(row) },
-        }, { default: () => '下载并发出' }))
-      } else if (zipOk) {
+          onClick: (e) => {
+            e.stopPropagation()
+            const host = '127.0.0.1'
+            window.open(`http://${host}:${row.frontend_port}`, '_blank', 'noopener')
+          },
+        }, { default: () => '预览' }))
+      }
+      if (zipOk) {
         kids.push(h(NButton, {
           size: 'tiny',
           secondary: true,
-          disabled: busy,
           onClick: (e) => { e.stopPropagation(); downloadRowZip(row) },
         }, { default: () => '下载' }))
+      } else if (baked) {
+        kids.push(h('span', {
+          class: 'muted small',
+          title: row.download_blocked_reason || '暂不可下载',
+        }, '锁定'))
       }
-      if (!kids.length) {
-        return h('span', { class: 'muted small' }, '—')
-      }
+      kids.push(h(NButton, {
+        size: 'tiny',
+        quaternary: true,
+        onClick: (e) => { e.stopPropagation(); router.push(`/projects/${row.id}`) },
+      }, { default: () => '详情' }))
       return h('div', {
         class: 'row',
         style: 'gap:6px;flex-wrap:wrap',
@@ -1420,6 +1425,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.arch-cell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.arch-id-hint {
+  font-size: 11px;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
 .plan-cluster {
   margin: 0;
   border: 1px solid var(--line-soft);

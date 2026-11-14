@@ -80,13 +80,41 @@ def sync_project_runtime(
     statuses：调用方在线程里已探好的 (backend_status, frontend_status)；传入即跳过探测
     （批量启停用，整批阻塞探测都不落在事件循环里）。
     """
+    settings = get_settings()
+    ws = settings.workspace_dir / project.id
+    ws_path = ws if ws.is_dir() else None
+
+    dirty = False
+    # 登记端口与实占分叉时先对齐（假「启动中」根因）；仅 HTTP 探活路径做，避免列表页扫池
+    if probe_http and statuses is None:
+        be_eff = rt.discover_backend_port(
+            project.id, project.backend_port or 0, workspace=ws_path
+        )
+        fe_eff = rt.discover_frontend_port(
+            project.id, project.frontend_port or 0, workspace=ws_path
+        )
+        if be_eff and be_eff != (project.backend_port or 0) and rt.backend_port_healthy(
+            be_eff
+        ):
+            project.backend_port = be_eff
+            dirty = True
+        if fe_eff and fe_eff != (project.frontend_port or 0) and rt.frontend_port_healthy(
+            fe_eff
+        ):
+            project.frontend_port = fe_eff
+            dirty = True
+
     if statuses is not None:
         be_st, fe_st = statuses
         be = be_st in ("starting", "healthy")
         fe = fe_st in ("starting", "healthy")
     elif probe_http:
-        be_st = rt.backend_status(project.id, project.backend_port)
-        fe_st = rt.frontend_status(project.id, project.frontend_port)
+        be_st = rt.backend_status(
+            project.id, project.backend_port or 0, workspace=ws_path
+        )
+        fe_st = rt.frontend_status(
+            project.id, project.frontend_port or 0, workspace=ws_path
+        )
         be = be_st in ("starting", "healthy")
         fe = fe_st in ("starting", "healthy")
     else:
@@ -98,7 +126,6 @@ def sync_project_runtime(
         )
         be_st = "healthy" if be else "stopped"
         fe_st = "healthy" if fe else "stopped"
-    dirty = False
     if project.backend_running != be or project.frontend_running != fe:
         project.backend_running = be
         project.frontend_running = fe

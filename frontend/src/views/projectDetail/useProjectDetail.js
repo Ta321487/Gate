@@ -19,6 +19,7 @@ import {
   stepStatusMark,
   domainCascaderOptions as buildDomainCascaderOptions,
 } from '../../opsShared'
+import { defaultDeliveryArtifactView } from '../../deliveryStages'
 import {
   FILL_UNIT_KIND_ZH,
   FILL_UNIT_STATUS_ZH,
@@ -97,6 +98,55 @@ const p = ref(null)
 const loadError = ref('')
 const loadErrorCode = ref(500)
 const tab = ref('match')
+/** 工具轨旁只留日志；出包手调挂在论文材料轨（thesisSurface） */
+const toolsView = ref('logs')
+/** 论文材料：cards=材料卡 · overrides=手调文案表 */
+const thesisSurface = ref('cards')
+/** 打开手调时锚到 OverridesTab 左侧分组 id */
+const overridesFocusSection = ref('modules')
+
+const THESIS_OVERRIDE_SECTIONS = {
+  modules: 'modules',
+  architecture: 'architecture',
+  classes: 'classes',
+  sequences: 'sequence',
+  sequence: 'sequence',
+  activities: 'activity',
+  activity: 'activity',
+  usecases: 'usecase',
+  usecase: 'usecase',
+  'usecase-desc': 'usecase_desc',
+  usecase_desc: 'usecase_desc',
+  testcases: 'testcases',
+  menus: 'menus',
+  stale: 'stale',
+}
+
+function openTools(view = 'logs') {
+  // 兼容旧入口：曾把微调塞进工具
+  if (view === 'overrides') {
+    openThesisOverrides()
+    return
+  }
+  toolsView.value = 'logs'
+  tab.value = 'tools'
+}
+
+function openThesisOverrides(sectionId) {
+  const key = sectionId != null ? String(sectionId) : 'modules'
+  overridesFocusSection.value = THESIS_OVERRIDE_SECTIONS[key] || key || 'modules'
+  thesisSurface.value = 'overrides'
+  artifactView.value = 'thesis'
+  tab.value = 'thesis'
+}
+
+function closeThesisOverrides() {
+  thesisSurface.value = 'cards'
+}
+
+function isLogsSurface() {
+  return tab.value === 'tools' && toolsView.value === 'logs'
+}
 const catalog = ref({
   archetypes: [],
   domains: [],
@@ -243,7 +293,7 @@ const apis = ref(null)
 const apiSmokeBusy = ref(false)
 const apiSmokeResult = ref(null)
 const apiSmokeFactoryHint = ref('')
-const artifactView = ref('db')
+const artifactView = ref('thesis')
 const apiQuery = ref('')
 const apiSurface = ref('all')
 const collapsedApis = ref({})
@@ -973,12 +1023,12 @@ const gateRows = computed(() => {
   // 含 p3c/p3d/p3copy/accept：否则 overall 被这些项卡住时 UI 看不见原因
   const keys = [
     'p0a', 'p0b', 'p1', 'p2', 'p3a', 'p3b', 'p3t', 'p3s', 'p3n', 'p3ac', 'p3lean', 'p3layout',
-    'p3q', 'p3copy', 'p3c', 'p3d', 'accept',
+    'p3controls', 'p3q', 'p3copy', 'p3c', 'p3d', 'accept',
   ]
   const levels = {
     p0a: 'P0', p0b: 'P0', p1: 'P1', p2: 'P2',
     p3a: 'P3', p3b: 'P3', p3t: 'P3', p3s: 'P3', p3n: 'P3', p3ac: 'P3', p3lean: 'P3', p3layout: 'P3',
-    p3q: 'P3', p3copy: 'P3', p3c: 'P3', p3d: 'P3', accept: 'P3',
+    p3controls: 'P3', p3q: 'P3', p3copy: 'P3', p3c: 'P3', p3d: 'P3', accept: 'P3',
   }
   return keys
     .filter((k) => g[k] != null)
@@ -1165,16 +1215,24 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
       ackMainPath.value = p.value.match_confirmed
       ackDomainReview.value = p.value.match_confirmed
     }
-    // 仅进入/切项目时同步主 tab；轮询禁止强切，否则无法停在日志页
-    if (syncTab) tab.value = defaultTabForStatus(p.value.status)
+    // 仅进入/切项目时同步主 tab；轮询禁止强切，否则无法停在日志/质检页
+    if (syncTab) {
+      tab.value = defaultTabForStatus(p.value.status)
+      // 生成后默认落论文材料；二级默认论文材料卡
+      if (tab.value === 'thesis') {
+        artifactView.value = defaultDeliveryArtifactView(p.value)
+      }
+    }
     if (!lite && p.value.workspace_path && tab.value === 'runtime') await refreshRuntime(id)
     await refreshJob({ silent: lite })
-    // schema / apis 只在产物 Tab 拉，避免生成轮询疯狂刷
-    if (!lite && tab.value === 'artifacts') await loadArtifactView()
+    // schema / 论文图 / API 在论文材料轨拉；质检交付不再挂对照
+    if (!lite && tab.value === 'thesis') await loadArtifactView()
     // 答辩 PPT 状态：非 lite 全量刷新；lite 时若正在生成则跟 poll
     if (!lite) {
       initPptSkinSeed()
-      await refreshPptStatus({ loadDeck: artifactView.value === 'ppt' })
+      await refreshPptStatus({
+        loadDeck: tab.value === 'ppt' || artifactView.value === 'ppt',
+      })
     } else if (pptPhase.value === 'generating') {
       await refreshPptStatus()
     }
@@ -1333,6 +1391,7 @@ const copyScrubBusy = ref(false)
 async function scrubStudentCopy() {
   if (!p.value?.id || copyScrubBusy.value || artifactsFrozen.value) return
   copyScrubBusy.value = true
+  let wroteOk = false
   try {
     const res = await api.scrubStudentCopy(p.value.id)
     const data = res?.data || {}
@@ -1378,23 +1437,29 @@ async function scrubStudentCopy() {
       download_blocked_reason:
         data.download_blocked_reason
         || p.value.download_blocked_reason
-        || '工程已变更 · 请完成验圈并重新合卷后再下载',
+        || '工程已变更 · 请完成验收并重新重打包后再下载',
     })
     const ok = !!data.copy_ok && data.semantic_ok !== false
     message.success(
       ok
-        ? '学生可见文案已清洗 · 请到交付复审验圈后合卷'
+        ? '学生可见文案已清洗 · 请到质检交付验收后重打包'
         : (res?.message || '已尝试清洗 · 请看是否仍有命中'),
     )
-    try {
-      await refreshDeliveryReviewPanel()
-    } catch {
-      /* 写已成功；投影刷新失败不改 busy / 不弹清洗失败 */
-    }
+    wroteOk = true
   } catch (err) {
-    message.error(err?.response?.data?.detail || err?.message || '清洗失败')
+    const timedOut =
+      err?.code === 'ECONNABORTED' || /timeout/i.test(String(err?.message || ''))
+    message.error(
+      timedOut
+        ? '清洗请求超时 · 服务端可能已成功，请刷新对齐状态'
+        : err?.response?.data?.detail || err?.message || '清洗失败',
+    )
   } finally {
     copyScrubBusy.value = false
+  }
+  // A2：权威投影放 busy 之后；失败不否定写成功
+  if (wroteOk) {
+    void refreshDeliveryReviewPanel().catch(() => {})
   }
 }
 
@@ -1440,8 +1505,35 @@ async function refreshDeliveryReviewPanel() {
 }
 
 function goArtifacts(view = 'db') {
-  artifactView.value = view
-  tab.value = 'artifacts'
+  const v = String(view || 'db')
+  // 清洗/门禁/复审 → 质检交付工作台
+  if (v === 'gates' || v === 'review' || v === 'delivery') {
+    tab.value = 'artifacts'
+    if (artifactView.value === 'gates' || artifactView.value === 'review') {
+      artifactView.value = 'thesis'
+    }
+    void Promise.resolve().then(() => {
+      if (typeof document !== 'undefined') {
+        document.getElementById('delivery-workbench')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      }
+    })
+    return
+  }
+  // 答辩 PPT → 独立主轨阶段
+  if (v === 'ppt') {
+    artifactView.value = 'ppt'
+    tab.value = 'ppt'
+    void loadPptDeck()
+    return
+  }
+  // 库表 / 论文图 / API → 论文材料主轨
+  artifactView.value = v
+  tab.value = 'thesis'
+  // 点阶段「论文材料」回材料卡；手调入口自行设 thesisSurface
+  if (v === 'thesis') thesisSurface.value = 'cards'
   loadArtifactView()
 }
 
@@ -2557,7 +2649,7 @@ async function runGenerateJob(opts = {}) {
   const reviewStatus = p.value?.delivery_review?.review?.status || ''
   if (reviewStatus === 'active' && !opts.skipReviewGuard) {
     const ok = await confirm(
-      '交付复审进行中会拦截重新生成。仅同步 ZIP 请到「产物 → 交付复审」验圈后合卷；须改工程重出包时，请先结束复审再生成。',
+      '交付复审进行中会拦截重新生成。仅同步 ZIP 请到「质检交付」验收后重打包；须改工程重出包时，请先结束复审再生成。',
       {
         title: '复审进行中',
         type: 'warning',
@@ -2746,7 +2838,7 @@ function startPoll() {
     try {
       // 轻量轮询：只刷项目状态/Job/日志，不拉 catalog/schema
       await load({ syncTab: false, lite: true })
-      if (tab.value === 'logs') await loadLog(logSide.value, { silent: true })
+      if (isLogsSurface()) await loadLog(logSide.value, { silent: true })
       const jobActive = currentJob.value
         && ['queued', 'running'].includes(String(currentJob.value.status || ''))
       const generating = p.value?.status === 'generating'
@@ -2754,9 +2846,9 @@ function startPoll() {
         stopPoll()
         stopFillEvents()
         pollSyncHint.value = ''
-        // 结束后补一次完整刷新；人在日志/产物页则不强切 Tab
+        // 结束后补一次完整刷新；人在工具·日志 / 质检交付则不强切（否则 B2 落到质检交付）
         if (p.value) {
-          const keepTab = tab.value === 'logs' || tab.value === 'artifacts'
+          const keepTab = isLogsSurface() || tab.value === 'artifacts'
           await load({ syncTab: !keepTab, lite: false })
         }
       } else if (generating) {
@@ -2776,16 +2868,20 @@ function stopPoll() {
 }
 
 watch(tab, async (v) => {
-  if (v === 'logs') loadLog(logSide.value)
+  if (v === 'tools' && toolsView.value === 'logs') loadLog(logSide.value)
   if (v === 'runtime') refreshRuntime()
   if (v === 'artifacts') {
-    // 从运行页回来时同步预览态；双端 healthy 则清掉过期的「请先启动」提示
+    // 从预览回来时同步运行态；双端 healthy 则清掉过期的「请先启动」提示
     await refreshRuntime()
     if (rt.backend_status === 'healthy' && rt.frontend_status === 'healthy') {
       apiSmokeFactoryHint.value = ''
     }
     loadArtifactView()
   }
+})
+
+watch(toolsView, (v) => {
+  if (tab.value === 'tools' && v === 'logs') loadLog(logSide.value)
 })
 
 watch(artifactsFrozen, (frozen) => {
@@ -3213,6 +3309,12 @@ onUnmounted(() => {
     stopPoll,
     syncPptBiz,
     tab,
+    toolsView,
+    thesisSurface,
+    overridesFocusSection,
+    openTools,
+    openThesisOverrides,
+    closeThesisOverrides,
     tableCopyText,
     tcColumns,
     tcCount,

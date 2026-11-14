@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="genState === 'running'" class="panel mb-16">
+    <div v-if="genState === 'running'" class="panel panel-quiet mb-16">
       <div class="panel-bd">
         <div class="row-between" style="margin-bottom:10px">
           <div style="font-weight:600">{{ jobInFlight && p.status !== 'generating' ? '正在启动生成…' : '正在生成…' }}</div>
@@ -25,7 +25,7 @@
         </div>
         <div class="row mt-12">
           <n-button size="small" type="error" secondary :loading="jobActing === 'cancel'" @click="cancelCurrent">取消任务</n-button>
-          <n-button size="small" @click="tab = 'logs'">打开日志</n-button>
+          <n-button size="small" @click="openTools('logs')">打开日志</n-button>
         </div>
       </div>
     </div>
@@ -34,31 +34,37 @@
       <div v-if="(genState === 'success' || genState === 'live') && canDownload" class="banner success mb-16">
         <h4>{{ genSuccessBannerTitle }}</h4>
         <p class="small muted">{{ genSuccessBannerHint }}</p>
+        <p class="small mt-8"><strong>能否下载：</strong>可以下载 ZIP · 请跟页头顶栏「交付就绪」主操作</p>
         <div class="row mt-12">
-          <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
+          <n-button size="small" secondary @click="goArtifacts('gates')">查看质量检查</n-button>
           <n-button size="small" secondary @click="tab = 'runtime'">前往运行</n-button>
         </div>
       </div>
       <div v-else-if="genState === 'success' || genState === 'live'" class="banner fail mb-16">
-        <h4>已生成，但质量检查未通过，暂不可下载</h4>
-        <p class="small muted">工程与当前验收规则不一致（常见于基线升级后）。可调整下方选项后重新生成，或到「产物」查看未通过项。</p>
+        <h4>已生成，但暂不可下载</h4>
+        <p class="small muted"><strong>原因：</strong>{{ downloadBlockedReason || '质量检查未通过或交付包未就绪' }}</p>
+        <p class="small muted mt-8"><strong>能否下载：</strong>暂不可下载 ZIP</p>
+        <p class="small muted mt-8">你可以先：到「质检交付」看未通过项，能清洗或重打包就先做。不要指望再点一次下载就好。</p>
         <div class="row mt-12">
-          <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
-          <n-button size="small" @click="tab = 'runtime'">前往运行</n-button>
+          <n-button size="small" type="primary" @click="goArtifacts('thesis')">下一步：论文材料</n-button>
+          <n-button size="small" secondary @click="goArtifacts('gates')">去质检交付</n-button>
+          <n-button size="small" secondary @click="tab = 'runtime'">打开预览</n-button>
         </div>
       </div>
       <div v-else-if="genState === 'failed'" class="banner fail mb-16">
         <h4>{{ failedBannerTitle }}</h4>
-        <p class="small muted">{{ currentJob?.error || '生成未完成 · 暂不可下载交付包。可从失败步骤重试或查看日志。' }}</p>
+        <p class="small muted"><strong>原因：</strong>{{ currentJob?.error || '生成未完成' }}</p>
+        <p class="small muted mt-8"><strong>能否下载：</strong>暂不可下载 ZIP</p>
+        <p class="small muted mt-8">你可以先：从失败步骤重试。若同一失败反复出现，记下失败类型再改生成逻辑。</p>
         <div class="row mt-12">
-          <n-button type="primary" size="small" :loading="jobActing === 'retry'" @click="retryCurrent">从失败步骤重试</n-button>
-          <n-button size="small" @click="goArtifacts('gates')">查看质量检查</n-button>
-          <n-button size="small" @click="tab = 'logs'">查看日志</n-button>
+          <n-button type="primary" size="small" :loading="jobActing === 'retry'" @click="retryCurrent">下一步：从失败步骤重试</n-button>
+          <n-button size="small" secondary @click="goArtifacts('gates')">查看质量检查</n-button>
+          <n-button size="small" secondary @click="openTools('logs')">查看日志</n-button>
         </div>
       </div>
     </template>
 
-    <div v-if="showJobSteps" class="panel mb-16">
+    <div v-if="showJobSteps" class="panel panel-quiet mb-16">
       <div class="panel-hd">
         <h3>流水线进度</h3>
         <span class="small muted">{{ genState === 'running' ? ((currentJob?.progress || 0) + '%') : ('任务 #' + (currentJob?.id || '—')) }}</span>
@@ -87,7 +93,7 @@
       </div>
     </div>
 
-    <div v-if="genState !== 'running' && showSoftBakePanel" class="panel mb-16">
+    <div v-if="genState !== 'running' && showSoftBakePanel" class="panel panel-quiet mb-16">
         <div class="panel-hd">
           <h3 class="soft-label-with-tip">
             视觉与生成选项
@@ -327,24 +333,41 @@
               <n-select v-model:value="form.passwordHash" :options="passwordHashOptions" :loading="softSaving" :disabled="softSaving" @update:value="saveSoft" />
             </n-form-item>
           </div>
-          <div v-if="genState !== 'idle'" class="row mt-16">
+          <div v-if="genState !== 'idle'" class="row mt-16" style="gap:8px;flex-wrap:wrap">
             <n-button
-              type="primary"
+              secondary
               :loading="softApplying"
-              title="按当前选项重写工程与交付包；履约标记会清掉"
+              title="按当前选项重写工程与交付包；履约标记会清掉。主路径请跟页头顶栏"
               @click="startGenerate"
             >按当前选项重新生成</n-button>
+            <n-button
+              text
+              size="small"
+              :disabled="!p.workspace_path"
+              :loading="fillPlanLoading"
+              title="只预览拆解计划，不执行写入"
+              @click="openFillPlan"
+            >预览业务配置拆解</n-button>
           </div>
         </div>
       </div>
 
       <div v-if="genState === 'idle'">
-        <div class="panel mb-16">
+        <div class="panel panel-quiet mb-16">
           <div class="panel-bd">
             <div class="row-between">
               <div>
                 <div style="font-weight:600;margin-bottom:4px">{{ p.match_confirmed ? '匹配已确认 · 可以生成' : '请先完成匹配确认' }}</div>
                 <div class="small muted">以基线工程生成为主，AI 仅补业务配置；质量检查未通过前不可下载交付包</div>
+                <n-button
+                  text
+                  size="tiny"
+                  class="mt-8"
+                  :disabled="!p.match_confirmed"
+                  :loading="fillPlanLoading"
+                  title="只预览拆解计划，不执行写入"
+                  @click="openFillPlan"
+                >预览业务配置拆解</n-button>
               </div>
               <span
                 class="btn-tip-wrap"
@@ -355,7 +378,7 @@
             </div>
           </div>
         </div>
-        <div class="panel">
+        <div class="panel panel-quiet">
           <div class="panel-hd">
             <h3>生成流水线</h3>
             <span class="small muted">{{ planSteps.length }} 步 · 顺序执行</span>
@@ -376,14 +399,11 @@
         </div>
       </div>
 
-  <!-- 答辩 PPT：一键生成下半截（唯一开跑入口；程序流水线不含 PPT） -->
-  <DefensePptLaunchPanel />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import DefensePptLaunchPanel from '../../components/defensePpt/DefensePptLaunchPanel.vue'
 import SurfaceStyleTip from './SurfaceStyleTip.vue'
 import { bindPd } from './bindPd'
 const {
@@ -405,7 +425,7 @@ const {
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
   modulesLayout, modulesMeta, modulesOk, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openEr, openFillPlan, openModules,
-  openPreview, openTestcases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
+  openPreview, openTestcases, openTools, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   showContentSurface, contentSurfaceOptions,
   showTradeSurface, tradeSurfaceOptions,

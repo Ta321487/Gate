@@ -21,9 +21,9 @@ MSG_DOWNLOAD_NO_ZIP = "交付包尚未生成或不存在"
 
 MSG_DOWNLOAD_ZIP_MISSING = "ZIP 文件不存在 · 请重新生成"
 
-MSG_DOWNLOAD_ZIP_STALE = "工程已变更 · 请完成验圈并重新合卷后再下载"
+MSG_DOWNLOAD_ZIP_STALE = "工程已变更 · 请完成验收并重新打包后再下载"
 
-MSG_DOWNLOAD_REVIEW_REGRESSION = "复审检测到回退 · 请修复后再验圈"
+MSG_DOWNLOAD_REVIEW_REGRESSION = "复审检测到回退 · 请修复后再验收"
 
 MSG_DOWNLOAD_OPEN_FIX_NOTES = "仍有未结案复审偏差 · 请先处理后再下载"
 

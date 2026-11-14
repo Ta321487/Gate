@@ -414,6 +414,63 @@ function Write-BlockTitle([string]$Title) {
     Write-Host "  $Title" -ForegroundColor Cyan
 }
 
+function Test-CmdAvailable([string]$Name) {
+    return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Show-EnvDoctor {
+    # 新人入职 ON0：缺什么用人话说，不甩堆栈
+    Write-BlockTitle "环境检查（新人）"
+    $rows = @()
+    $py = Get-Command python -ErrorAction SilentlyContinue
+    if ($py) { $rows += @{ ok = $true; text = "Python：已找到（$($py.Source)）" } }
+    else { $rows += @{ ok = $false; text = "缺少 Python 3.11+ · 安装后重开本菜单" } }
+
+    $venvPy = Get-GfBackendVenvPython -RepoRoot $Repo
+    if (Test-Path -LiteralPath $venvPy) {
+        $rows += @{ ok = $true; text = "后端虚拟环境：backend\.venv 已存在" }
+    } else {
+        $rows += @{ ok = $false; text = "缺少 backend\.venv · 进入 backend 执行：python -m venv .venv 再 pip install -r requirements.txt" }
+    }
+
+    if (Test-CmdAvailable "node") { $rows += @{ ok = $true; text = "Node.js：已找到" } }
+    else { $rows += @{ ok = $false; text = "缺少 Node.js 18+ · 装好后再开前端" } }
+
+    if (Test-CmdAvailable "npm") { $rows += @{ ok = $true; text = "npm：已找到" } }
+    else { $rows += @{ ok = $false; text = "缺少 npm（通常随 Node 安装）" } }
+
+    $feMods = Join-Path $Repo "frontend\node_modules"
+    if (Test-Path -LiteralPath $feMods) {
+        $rows += @{ ok = $true; text = "前端依赖：frontend\node_modules 已存在" }
+    } else {
+        $rows += @{ ok = $false; text = "缺少前端依赖 · 进入 frontend 执行：npm install" }
+    }
+
+    if (Test-CmdAvailable "java") { $rows += @{ ok = $true; text = "JDK：java 已找到（预览学生包需要 17）" } }
+    else { $rows += @{ ok = $false; text = "未检测到 java · 预览/构建学生包需要 JDK 17" } }
+
+    if (Test-CmdAvailable "mvn") { $rows += @{ ok = $true; text = "Maven：已找到" } }
+    else { $rows += @{ ok = $false; text = "未检测到 mvn · 学生包构建需要 Maven" } }
+
+    $envFile = Join-Path $Repo "backend\.env"
+    $envExample = Join-Path $Repo "backend\.env.example"
+    if (Test-Path -LiteralPath $envFile) {
+        $rows += @{ ok = $true; text = "配置：backend\.env 已存在" }
+    } elseif (Test-Path -LiteralPath $envExample) {
+        $rows += @{ ok = $false; text = "缺少 backend\.env · 可先复制 .env.example 再按本机改 MySQL 密码" }
+    } else {
+        $rows += @{ ok = $true; text = "配置：未强制 .env（可用默认 SQLite 元库）" }
+    }
+
+    foreach ($r in $rows) {
+        if ($r.ok) { Write-Line ("  [OK] {0}" -f $r.text) "Green" }
+        else { Write-Line ("  [缺] {0}" -f $r.text) "Yellow" }
+    }
+    Write-Line "  齐了之后按 1 开前后端，再打开控制台 http://127.0.0.1:5300" "DarkGray"
+    $missing = @($rows | Where-Object { -not $_.ok }).Count
+    return $missing
+}
+
 function Show-StatusStrip {
     # Light strip: port + health + pidfile; skip heavy WMI unless needed
     $beHealth = Invoke-HealthCheck -TimeoutSec 1
@@ -440,7 +497,7 @@ function Show-StatusStrip {
     else { Write-Host "未启动 " -NoNewline -ForegroundColor Yellow -BackgroundColor DarkYellow }
 
     if (-not $pyExists) {
-        Write-Host "    未找到 Python 环境（backend\.venv）" -ForegroundColor Red
+        Write-Host "    未找到 Python 环境（backend\.venv）· 按 N 查看缺什么" -ForegroundColor Red
     } elseif ($beHealth.ok -and $oursAlive) {
         Write-Host ("    进程 #{0}" -f $oursPid) -ForegroundColor DarkGray
     } elseif ($beHealth.ok) {
@@ -456,6 +513,9 @@ function Show-StatusStrip {
     }
     if (-not $script:AutoKillOnStart) {
         Write-Host "  启动前自动释放：关" -ForegroundColor Yellow
+    }
+    if (-not $pyExists -or -not $beHealth.ok) {
+        Write-Host "  新人提示：按 N 做环境检查（缺 JDK / Node / venv 会用人话列出）" -ForegroundColor DarkGray
     }
 }
 
@@ -489,7 +549,8 @@ function Show-Menu {
     Write-BlockTitle "数据库 / 其他"
     Write-Pair "F" "启动 Compose 库"  "G" "Compose 状态"
     Write-Pair "H" "停止 Compose 库"  "R" "刷新"
-    Write-Pair "V" "检查脚本编码"    "0" "退出" "Gray" "DarkGray"
+    Write-Pair "N" "环境检查（新人）" "V" "检查脚本编码" "Cyan" "Gray"
+    Write-Pair "0" "退出" "" "" "DarkGray" "DarkGray"
 
     Write-Host ""
     Write-Host "  控制台  $UiUrl" -ForegroundColor DarkGray
@@ -610,6 +671,12 @@ function Invoke-Choice([string]$Choice) {
         "A" {
             Open-PathOrUrl $DocsUrl
             Flash-ThenContinue 400
+            return "ok"
+        }
+        "N" {
+            [void](Show-EnvDoctor)
+            if ($script:CliMode) { return "ok" }
+            Pause-Menu "按 Enter 返回菜单..."
             return "ok"
         }
         "B" {

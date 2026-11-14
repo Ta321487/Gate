@@ -1509,8 +1509,10 @@ function onBeforeUnload(e) {
   e.returnValue = ''
 }
 
-onMounted(() => {
-  reload()
+onMounted(async () => {
+  await reload()
+  const focus = pd.overridesFocusSection
+  if (focus && focus !== section.value) await selectSection(focus)
   window.addEventListener('beforeunload', onBeforeUnload)
 })
 onBeforeUnmount(() => {
@@ -1519,6 +1521,12 @@ onBeforeUnmount(() => {
 watch(
   () => p.value?.id,
   () => reload(),
+)
+watch(
+  () => pd.overridesFocusSection,
+  (id) => {
+    if (id && id !== section.value) void selectSection(id)
+  },
 )
 </script>
 

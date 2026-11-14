@@ -111,7 +111,7 @@ async def start_delivery_review(project_id: str, db: AsyncSession = Depends(get_
     project_svc.reset_delivery_mark(p)
     p.zip_ready = False
     await db.commit()
-    return ApiOk(message="已进入交付复审 · 请登记偏差并完成验圈", data={"review": st})
+    return ApiOk(message="已进入交付复审 · 请登记偏差并完成验收", data={"review": st})
 
 
 @router.post("/{project_id}/delivery-review/close", response_model=ApiOk, summary="结束交付复审")
@@ -165,7 +165,7 @@ async def resolve_delivery_fix_note(
     return ApiOk(message="已更新偏差状态")
 
 
-@router.post("/{project_id}/delivery-review/verify", response_model=DeliveryVerifyOut, summary="验圈（重跑门禁与单调性）")
+@router.post("/{project_id}/delivery-review/verify", response_model=DeliveryVerifyOut, summary="验收（重跑门禁与单调性）")
 async def verify_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
     from app.llm.agents import run_qa_agent
     from app.llm.runtime import load_llm_runtime
@@ -182,7 +182,7 @@ async def verify_delivery_review(project_id: str, db: AsyncSession = Depends(get
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
     if p.status == ProjectStatus.generating.value:
-        raise HTTPException(409, "生成中 · 请稍后再验圈")
+        raise HTTPException(409, "生成中 · 请稍后再验收")
     llm_rt = await load_llm_runtime(db)
     try:
         qa = await run_qa_agent(
@@ -219,7 +219,7 @@ async def verify_delivery_review(project_id: str, db: AsyncSession = Depends(get
     return DeliveryVerifyOut(**result)
 
 
-@router.post("/{project_id}/delivery-review/repack", response_model=ApiOk, summary="合卷（重打学生 ZIP）")
+@router.post("/{project_id}/delivery-review/repack", response_model=ApiOk, summary="重打包（重打学生 ZIP）")
 async def repack_delivery_review(project_id: str, db: AsyncSession = Depends(get_db)):
     from app.bake.naming import resolve_slug_from_spec, zip_storage_name
     from app.services.delivery_review import can_repack_after_verify, repack_project, verify_round
@@ -235,7 +235,7 @@ async def repack_delivery_review(project_id: str, db: AsyncSession = Depends(get
         raise HTTPException(400, msg)
     if not project_svc.gates_allow_delivery(p.gates):
         await db.commit()
-        raise HTTPException(400, "质量检查未通过 · 暂不可合卷")
+        raise HTTPException(400, "质量检查未通过 · 暂不可重打包")
     settings = get_settings()
     slug = resolve_slug_from_spec(p.spec, p.domain)
     zip_path = settings.workspace_dir / zip_storage_name(p.id, slug)
@@ -244,7 +244,7 @@ async def repack_delivery_review(project_id: str, db: AsyncSession = Depends(get
     p.zip_ready = True
     p.status = ProjectStatus.generated.value
     await db.commit()
-    return ApiOk(message="合卷完成 · 交付包已与当前工程同步", data=meta)
+    return ApiOk(message="重打包完成 · 交付包已与当前工程同步", data=meta)
 
 
 @router.post("/{project_id}/delivery-review/qa", response_model=DeliveryQaOut, summary="重跑交付质量摘要")
@@ -302,7 +302,7 @@ async def scrub_student_copy(project_id: str, db: AsyncSession = Depends(get_db)
         and result.get("lean_ok", True)
     )
     return ApiOk(
-        message="已清洗文案/注记/壳件 · 请验圈后合卷"
+        message="已清洗文案/注记/壳件 · 请验收后重打包"
         if all_ok
         else "已尝试清洗 · 仍有残留（见命中路径；请确认后端已加载最新 scrub）",
         data=result,

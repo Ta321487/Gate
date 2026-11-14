@@ -1,14 +1,14 @@
 <template>
-  <div>
+  <div class="surface-page">
     <h1 class="page-title">大模型</h1>
     <p class="page-desc">
-      DeepSeek / Gemini 统一管理：Key 仅环境变量；可单开或双开接力。用量与阶段开关共用一套。
+      配置页（非履约主路径）。DeepSeek / Gemini：Key 仅环境变量；可单开或双开接力。用量与阶段开关共用一套。
     </p>
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
     <template v-else>
 
     <div class="panel mb-16">
-      <div class="panel-hd"><h3>作战模式</h3></div>
+      <div class="panel-hd"><h3>连接模式</h3></div>
       <div class="panel-bd">
         <p class="small muted mb-12">{{ modeHint }}</p>
         <p v-if="providerLockHint" class="small warn mb-12">{{ providerLockHint }}</p>
@@ -152,14 +152,14 @@
         <n-form-item label="修复轮次上限">
           <n-input-number v-model:value="form.fix_rounds_max" :min="0" :max="10" style="width:100%" />
         </n-form-item>
-        <n-form-item label="填岛并发 Unit 数">
+        <n-form-item label="业务配置并发数">
           <n-input-number v-model:value="form.fill_unit_concurrency" :min="1" :max="8" style="width:100%" />
         </n-form-item>
         <p class="small muted mb-8">
-          业务配置填充会拆成多个 Unit（文案 / E-R / 模块图 / 用例）并行调用大模型；过大可能触发厂商限流，默认 3。
+          业务配置填充会拆成多个任务并行调大模型（文案 / E-R / 模块图 / 用例）；过大可能限流，默认 3。本页保存后生效。
         </p>
         <div class="row mt-8">
-          <n-button type="primary" size="small" :loading="saving" @click="save">保存连接与预算</n-button>
+          <n-button type="primary" size="small" :loading="saving" @click="save">保存本页设置</n-button>
         </div>
       </div>
     </div>
@@ -179,11 +179,11 @@
           <n-switch v-model:value="form.parse_spec" :disabled="stageLocked('parse_spec')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
-          <div><strong>业务配置填充</strong><div class="small muted">拆解为 Unit 并发：文案 / E-R / 模块图 / 用例；不改业务源码</div></div>
+          <div><strong>业务配置填充</strong><div class="small muted">拆成多任务并发：文案 / E-R / 模块图 / 用例；不改业务源码</div></div>
           <n-switch v-model:value="form.island_fill" :disabled="stageLocked('island_fill')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
-          <div><strong>答辩 PPT 填页</strong><div class="small muted">与填岛同 Unit 流水线；只整形开题∪实包，不编造技术/模块</div></div>
+          <div><strong>答辩 PPT 填页</strong><div class="small muted">与业务配置填充同一流水线；只整形开题∪实包，不编造技术/模块</div></div>
           <n-switch v-model:value="form.defense_ppt" :disabled="stageLocked('defense_ppt')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
@@ -207,7 +207,8 @@
           <n-switch v-model:value="form.qa_report" :disabled="stageLocked('qa_report')" />
         </div>
         <div class="row mt-12">
-          <n-button type="primary" size="small" :loading="saving" @click="save">保存开关</n-button>
+          <n-button size="small" secondary :loading="saving" @click="save">保存阶段开关</n-button>
+          <span class="small muted">与上方「保存本页设置」同一接口；改完开关点此即可</span>
         </div>
       </div>
     </div>

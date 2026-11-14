@@ -1,77 +1,74 @@
 <template>
-  <div class="page-fill">
-    <h1 class="page-title">失败分析</h1>
-    <p class="page-desc">
-      按失败类型汇总并排列处理优先级；处理建议仅供参考。单条任务重试请使用「任务队列」，当日待办请见「开工台」。
-    </p>
+  <div class="page-fill surface-page">
+    <div class="surface-toolbar">
+      <div>
+        <h1 class="page-title">失败分析</h1>
+        <p class="page-desc" style="margin-bottom:0">
+          按失败类型排优先级。重试用「任务队列」；待办见「开工台」。
+        </p>
+      </div>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <n-select
+          v-model:value="rangeKey"
+          size="small"
+          style="width:140px"
+          :options="rangeOptions"
+          @update:value="load"
+        />
+        <n-select
+          v-model:value="filterCode"
+          size="small"
+          clearable
+          filterable
+          placeholder="失败类型"
+          class="fa-code-select"
+          style="width:220px"
+          :options="codeOptions"
+          :consistent-menu-width="false"
+          :filter="filterCodeOption"
+          :render-label="renderCodeLabel"
+          :menu-props="{ class: 'fa-code-menu', style: { minWidth: '300px' } }"
+          @update:value="load"
+        />
+        <n-select
+          v-model:value="filterStep"
+          size="small"
+          clearable
+          placeholder="步骤"
+          style="width:160px"
+          :options="stepOptions"
+          @update:value="load"
+        />
+        <n-select
+          v-model:value="filterDomain"
+          size="small"
+          clearable
+          placeholder="领域"
+          style="width:160px"
+          :options="domainOptions"
+          @update:value="load"
+        />
+        <n-button size="small" :loading="loading" @click="load">刷新</n-button>
+      </div>
+    </div>
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
     <template v-else>
-      <div class="panel mb-16">
-        <div class="panel-hd">
-          <h3>筛选</h3>
-          <div class="row" style="gap:8px;flex-wrap:wrap">
-            <n-select
-              v-model:value="rangeKey"
-              size="small"
-              style="width:140px"
-              :options="rangeOptions"
-              @update:value="load"
-            />
-            <n-select
-              v-model:value="filterCode"
-              size="small"
-              clearable
-              filterable
-              placeholder="失败类型"
-              class="fa-code-select"
-              style="width:220px"
-              :options="codeOptions"
-              :consistent-menu-width="false"
-              :filter="filterCodeOption"
-              :render-label="renderCodeLabel"
-              :menu-props="{ class: 'fa-code-menu', style: { minWidth: '300px' } }"
-              @update:value="load"
-            />
-            <n-select
-              v-model:value="filterStep"
-              size="small"
-              clearable
-              placeholder="步骤"
-              style="width:160px"
-              :options="stepOptions"
-              @update:value="load"
-            />
-            <n-select
-              v-model:value="filterDomain"
-              size="small"
-              clearable
-              placeholder="领域"
-              style="width:160px"
-              :options="domainOptions"
-              @update:value="load"
-            />
-            <n-button size="small" :loading="loading" @click="load">刷新</n-button>
-          </div>
+      <div class="stats fa-stats mb-12">
+        <div class="stat">
+          <div class="label">失败次数</div>
+          <div class="value">{{ data?.totals?.failed ?? 0 }}</div>
         </div>
-        <div class="panel-bd">
-          <div class="stats fa-stats" style="margin-bottom:0">
-            <div class="stat">
-              <div class="label">失败次数</div>
-              <div class="value">{{ data?.totals?.failed ?? 0 }}</div>
-            </div>
-            <div class="stat">
-              <div class="label">失败类型</div>
-              <div class="value">{{ data?.totals?.codes ?? 0 }}</div>
-            </div>
-            <div class="stat">
-              <div class="label">时间范围</div>
-              <div class="value" style="font-size:14px">{{ rangeLabel }}</div>
-            </div>
-          </div>
+        <div class="stat">
+          <div class="label">失败类型</div>
+          <div class="value">{{ data?.totals?.codes ?? 0 }}</div>
+        </div>
+        <div class="stat">
+          <div class="label">时间范围</div>
+          <div class="value" style="font-size:14px">{{ rangeLabel }}</div>
         </div>
       </div>
 
-      <div class="panel mb-16" v-if="priorities.length">
+      <div class="panel panel-quiet mb-16" v-if="priorities.length">
         <div class="panel-hd"><h3>建议优先处理</h3></div>
         <div class="panel-bd">
           <div v-for="p in priorities" :key="p.code" class="fa-priority">
@@ -81,18 +78,29 @@
               <span class="mono muted">{{ p.code }}</span>
             </div>
             <div class="fa-locus">{{ p.fix_locus }}</div>
+            <n-button
+              text
+              size="tiny"
+              tag="a"
+              :href="`/help#help-card-失败类型对照表`"
+              @click.stop
+            >码表说明 →</n-button>
           </div>
         </div>
       </div>
 
-      <div class="grid-2 mb-16">
-        <div class="panel">
+      <!-- 无数据：一块空态，不硬撑「按类型 | 按领域」双列 -->
+      <div v-if="!breakdownHasData" class="surface-tray fa-empty-breakdown mb-16">
+        <div class="empty-hint fa-empty-compact">
+          <div class="empty-title">暂无失败记录</div>
+          <div class="empty-desc">当前时间范围内没有出包失败；放宽筛选或扩大时间后再看分布</div>
+        </div>
+      </div>
+      <div v-else class="grid-2 mb-16 stage-grid">
+        <div class="panel panel-quiet">
           <div class="panel-hd"><h3>按类型</h3></div>
           <div class="panel-bd">
-            <div v-if="!byCode.length" class="empty-hint">
-              <div class="empty-title">暂无失败记录</div>
-              <div class="empty-desc">当前时间范围内没有出包失败</div>
-            </div>
+            <div v-if="!byCode.length" class="small muted">暂无类型分布</div>
             <div v-for="row in byCode" :key="row.code" class="fa-bar-row" @click="filterCode = row.code; load()">
               <span class="fa-code-cell">
                 <span class="fa-code-name">{{ row.label || row.code }}</span>
@@ -103,45 +111,50 @@
             </div>
           </div>
         </div>
-        <div class="panel">
+        <div class="panel panel-quiet">
           <div class="panel-hd"><h3>按领域 / 步骤</h3></div>
           <div class="panel-bd">
-            <div class="small muted mb-8">领域</div>
-            <div v-for="row in byDomain.slice(0, 8)" :key="'d'+row.domain" class="fa-bar-row" @click="filterDomain = row.domain; load()">
-              <span class="fa-code">{{ row.domain }}</span>
-              <span class="fa-bar"><i :style="{ width: barPct(row.count, maxDomain) }" /></span>
-              <span>{{ row.count }}</span>
-            </div>
-            <div class="small muted mb-8 mt-12">步骤</div>
-            <div v-for="row in byStep.slice(0, 8)" :key="'s'+row.step" class="fa-bar-row" @click="filterStep = row.step; load()">
-              <span class="fa-code">{{ row.step }}</span>
-              <span class="fa-bar"><i :style="{ width: barPct(row.count, maxStep) }" /></span>
-              <span>{{ row.count }}</span>
-            </div>
+            <template v-if="byDomain.length">
+              <div class="small muted mb-8">领域</div>
+              <div v-for="row in byDomain.slice(0, 8)" :key="'d'+row.domain" class="fa-bar-row" @click="filterDomain = row.domain; load()">
+                <span class="fa-code">{{ row.domain }}</span>
+                <span class="fa-bar"><i :style="{ width: barPct(row.count, maxDomain) }" /></span>
+                <span>{{ row.count }}</span>
+              </div>
+            </template>
+            <template v-if="byStep.length">
+              <div class="small muted mb-8" :class="{ 'mt-12': byDomain.length }">步骤</div>
+              <div v-for="row in byStep.slice(0, 8)" :key="'s'+row.step" class="fa-bar-row" @click="filterStep = row.step; load()">
+                <span class="fa-code">{{ row.step }}</span>
+                <span class="fa-bar"><i :style="{ width: barPct(row.count, maxStep) }" /></span>
+                <span>{{ row.count }}</span>
+              </div>
+            </template>
+            <div v-if="!byDomain.length && !byStep.length" class="small muted">暂无领域 / 步骤分布</div>
           </div>
         </div>
       </div>
 
-      <div class="panel panel-fill">
-        <div class="panel-hd"><h3>样本</h3></div>
-        <div class="panel-bd panel-bd-fill">
-          <n-data-table
-            :columns="columns"
-            :data="samples"
-            :bordered="false"
-            size="small"
-            :scroll-x="1200"
-            remote
-            :pagination="samplePagination"
-          >
-            <template #empty>
-              <div class="empty-hint">
-                <div class="empty-title">暂无记录</div>
-                <div class="empty-desc">可放宽筛选条件，或扩大时间范围后重试</div>
-              </div>
-            </template>
-          </n-data-table>
+      <div class="surface-tray fa-sample-tray">
+        <div class="surface-main-hd">
+          <h2>样本</h2>
         </div>
+        <n-data-table
+          :columns="columns"
+          :data="samples"
+          :bordered="false"
+          size="small"
+          :scroll-x="1200"
+          remote
+          :pagination="samplePagination"
+        >
+          <template #empty>
+            <div class="empty-hint">
+              <div class="empty-title">暂无记录</div>
+              <div class="empty-desc">可放宽筛选条件，或扩大时间范围后重试</div>
+            </div>
+          </template>
+        </n-data-table>
       </div>
 
       <div v-if="draftCard" class="fa-draft-card">
@@ -257,6 +270,9 @@ const priorities = computed(() => data.value?.priorities || [])
 const byCode = computed(() => data.value?.by_code || [])
 const byDomain = computed(() => data.value?.by_domain || [])
 const byStep = computed(() => data.value?.by_step || [])
+const breakdownHasData = computed(
+  () => byCode.value.length > 0 || byDomain.value.length > 0 || byStep.value.length > 0,
+)
 const samples = computed(() => data.value?.samples || [])
 const maxCode = computed(() => Math.max(1, ...byCode.value.map((x) => x.count)))
 const maxDomain = computed(() => Math.max(1, ...byDomain.value.map((x) => x.count)))
@@ -601,6 +617,12 @@ watch(
 /* 全局 .stats 默认 4 列；本页只有 3 个指标 */
 .fa-stats {
   grid-template-columns: repeat(3, 1fr);
+}
+.fa-empty-breakdown {
+  padding: 8px 12px;
+}
+.fa-empty-compact {
+  padding: 28px 16px;
 }
 .fa-priority {
   padding: 8px 0;

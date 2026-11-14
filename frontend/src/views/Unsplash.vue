@@ -1,8 +1,8 @@
 <template>
-  <div>
+  <div class="surface-page">
     <h1 class="page-title">Unsplash</h1>
     <p class="page-desc">
-      登录氛围图与门户轮播。出包优先读本机缓存；Unsplash 只在缓存未命中时拉图。
+      配置页（非履约主路径）。登录氛围图与门户轮播：出包优先读本机缓存；仅缓存未命中时拉图。
     </p>
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="2" />
     <template v-else>

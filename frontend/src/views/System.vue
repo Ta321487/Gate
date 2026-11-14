@@ -1,13 +1,8 @@
 <template>
-  <div>
+  <div class="surface-page">
     <h1 class="page-title">运行环境</h1>
     <p class="page-desc">
-      本机依赖与端口池（限制同时预览数，不限制选题库存）。服务器部署时设置 GF_PUBLIC_HOST 为对外 IP/域名。
-      工作台后端接口文档见
-      <a href="/docs" target="_blank" rel="noopener">/docs</a>
-      ·
-      <a href="/redoc" target="_blank" rel="noopener">/redoc</a>
-      （与学生端交付包无关）。
+      配置与诊断页（非履约主路径）。本机依赖、端口池与预览配额；不限制选题库存。
     </p>
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
     <template v-else-if="info">
@@ -17,33 +12,36 @@
         <div class="stat"><div class="label">Node</div><div class="value" style="font-size:16px">{{ info.node }}</div></div>
         <div class="stat"><div class="label">学生 MySQL</div><div class="value" style="font-size:14px">{{ info.mysql }}</div></div>
       </div>
-      <div class="grid-2">
-        <div class="panel">
-          <div class="panel-hd">
-            <h3>端口池</h3>
-            <n-button size="small" :loading="loading" @click="load">刷新</n-button>
-          </div>
-          <div class="panel-bd">
-            <div class="small mb-12"><span class="muted">对外地址</span> {{ info.public_host || '127.0.0.1' }} · 监听 {{ info.bind_host || '127.0.0.1' }}</div>
-            <div class="small mb-12">
-              <span class="muted">后端</span> {{ info.backend_ports }}
-              · 占用 {{ formatPorts(info.used_backend) }}
-              <span class="muted">（运行中 {{ formatPorts(info.managed_backend) }} · 可释放 {{ formatPorts(info.idle_backend) }}）</span>
-            </div>
-            <div class="small mb-12">
-              <span class="muted">前端</span> {{ info.frontend_ports }}
-              · 占用 {{ formatPorts(info.used_frontend) }}
-              <span class="muted">（运行中 {{ formatPorts(info.managed_frontend) }} · 可释放 {{ formatPorts(info.idle_frontend) }}）</span>
-            </div>
-            <p class="small muted mb-12">「释放」只清理工作台未托管但仍占端口的进程，不会停止正在预览的项目。</p>
-            <n-button size="small" :loading="freeing" :disabled="!hasIdle" @click="free">
-              释放异常占用{{ hasIdle ? `（${idleCount}）` : '' }}
-            </n-button>
-          </div>
+      <div class="panel">
+        <div class="panel-hd">
+          <h3>端口池</h3>
+          <n-button size="small" :loading="loading" @click="load">刷新</n-button>
         </div>
-        <div class="panel">
-          <div class="panel-hd"><h3>路径 / 库</h3></div>
-          <div class="panel-bd stack">
+        <div class="panel-bd">
+          <div class="small mb-12"><span class="muted">对外地址</span> {{ info.public_host || '127.0.0.1' }} · 监听 {{ info.bind_host || '127.0.0.1' }}</div>
+          <div class="small mb-12">
+            <span class="muted">后端</span> {{ info.backend_ports }}
+            · 占用 {{ formatPorts(info.used_backend) }}
+            <span class="muted">（运行中 {{ formatPorts(info.managed_backend) }} · 可释放 {{ formatPorts(info.idle_backend) }}）</span>
+          </div>
+          <div class="small mb-12">
+            <span class="muted">前端</span> {{ info.frontend_ports }}
+            · 占用 {{ formatPorts(info.used_frontend) }}
+            <span class="muted">（运行中 {{ formatPorts(info.managed_frontend) }} · 可释放 {{ formatPorts(info.idle_frontend) }}）</span>
+          </div>
+          <div class="small mb-12">
+            <span class="muted">预览配额</span>
+            {{ info.preview_running ?? 0 }} / {{ info.preview_max_running ?? 3 }} 路同时运行
+          </div>
+          <p class="small muted mb-12">「释放」只清理工作台未托管但仍占端口的进程，不会停止正在预览的项目。</p>
+          <n-button size="small" :loading="freeing" :disabled="!hasIdle" @click="free">
+            释放异常占用{{ hasIdle ? `（${idleCount}）` : '' }}
+          </n-button>
+        </div>
+      </div>
+      <n-collapse class="mt-12 sys-advanced" :default-expanded-names="[]">
+        <n-collapse-item title="高级：路径 / 库" name="paths">
+          <div class="stack">
             <div class="small path-row">
               <div><span class="muted">运营库</span><br /><span class="mono">{{ info.factory_db || '—' }}</span></div>
               <CopyIconButton v-if="info.factory_db" :text="info.factory_db" tip="复制" />
@@ -65,8 +63,8 @@
               <CopyIconButton v-if="info.cache" :text="info.cache" tip="复制路径" />
             </div>
           </div>
-        </div>
-      </div>
+        </n-collapse-item>
+      </n-collapse>
       <div class="panel mt-16">
         <div class="panel-hd">
           <h3>起包前布局检查</h3>

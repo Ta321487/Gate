@@ -424,9 +424,10 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
     goArtifacts('ppt')
   }
 
-  /** 切到一键生成并滚到答辩 PPT 开跑区 */
+  /** 切到答辩 PPT 阶段并滚到开跑区 */
   function goGeneratePpt() {
-    tab.value = 'generate'
+    tab.value = 'ppt'
+    artifactView.value = 'ppt'
     const scroll = () => {
       document.getElementById('defense-ppt-launch')?.scrollIntoView({
         behavior: 'smooth',
@@ -435,7 +436,6 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
     }
     nextTick(() => {
       scroll()
-      // n-tabs animated 切页后布局再稳一点
       setTimeout(scroll, 160)
     })
   }
