@@ -188,6 +188,126 @@ class SequenceDiagramTests(unittest.TestCase):
         self.assertIn("农产品", blob)
 
 
+    def test_feature_entity_order_reviews_is_review_not_order(self) -> None:
+        """order_reviews_* 含 order 子串，不得把实体错解析成订单。"""
+        from app.bake.schema.sequence import _feature_entity, _build_business_phase
+
+        schema = {
+            "entities": {
+                "order": {"label": "订单"},
+                "review": {"label": "评价"},
+            }
+        }
+        self.assertEqual(
+            _feature_entity(schema, kind="order_reviews_user", menu_label="我的评价"),
+            "评价",
+        )
+        self.assertEqual(
+            _feature_entity(schema, kind="order_reviews_admin", menu_label="评价管理"),
+            "评价",
+        )
+        msgs = _build_business_phase(
+            seq0=0,
+            actor="买家",
+            menu_label="我的评价",
+            entity=_feature_entity(schema, kind="order_reviews_user", menu_label="我的评价"),
+            ops=[{"method": "page", "verb": "分页查询", "summary": ""}],
+            vue_btns=[],
+            kind="order_reviews_user",
+        )
+        blob = " ".join(str(m["text"]) for m in msgs)
+        self.assertIn("评价", blob)
+        self.assertNotIn("分页查询订单", blob)
+        self.assertNotIn("提交订单", blob)
+        self.assertNotIn("保存订单信息", blob)
+
+    def test_cart_and_review_no_container_template_phrases(self) -> None:
+        """购物车/评价写路径禁止「选择购物车」「确认我的评价」容器套话；换题同口径。"""
+        from app.bake.schema.sequence import _build_business_phase, _feature_entity
+
+        schema = {
+            "entities": {
+                "cart": {"label": "购物车"},
+                "order": {"label": "订单"},
+                "review": {"label": "评价"},
+            }
+        }
+        # 故意塞会生成套话的 controller 写操作，也应被 kind 兜底盖住
+        cart_msgs = _build_business_phase(
+            seq0=0,
+            actor="买家",
+            menu_label="购物车",
+            entity=_feature_entity(schema, kind="cart", menu_label="购物车"),
+            ops=[
+                {"method": "page", "verb": "分页查询", "summary": ""},
+                {"method": "add", "verb": "新增", "summary": ""},
+            ],
+            vue_btns=[],
+            kind="cart",
+            side="user",
+        )
+        cart_blob = " ".join(str(m["text"]) for m in cart_msgs)
+        for bad in ("选择购物车", "确认购物车", "新增购物车", "提交购物车", "保存购物车信息"):
+            self.assertNotIn(bad, cart_blob, msg=cart_blob)
+        self.assertIn("核对商品与数量", cart_blob)
+        self.assertIn("去结算", cart_blob)
+        self.assertIn("提交结算", cart_blob)
+
+        rev_msgs = _build_business_phase(
+            seq0=0,
+            actor="买家",
+            menu_label="我的评价",
+            entity=_feature_entity(
+                schema, kind="order_reviews_user", menu_label="我的评价"
+            ),
+            ops=[{"method": "page", "verb": "分页查询", "summary": ""}],
+            vue_btns=[],
+            kind="order_reviews_user",
+            side="user",
+        )
+        rev_blob = " ".join(str(m["text"]) for m in rev_msgs)
+        for bad in ("选择我的评价", "确认我的评价", "选择评价", "新增评价"):
+            self.assertNotIn(bad, rev_blob, msg=rev_blob)
+        self.assertIn("填写评价内容", rev_blob)
+        self.assertIn("提交评价", rev_blob)
+
+        # 图书借阅类：时段预约也不应「选择预约」空套（有 kind 兜底）
+        slot_msgs = _build_business_phase(
+            seq0=0,
+            actor="读者",
+            menu_label="座位预约",
+            entity="预约",
+            ops=[],
+            vue_btns=[],
+            kind="reservations",
+            side="user",
+        )
+        slot_blob = " ".join(str(m["text"]) for m in slot_msgs)
+        self.assertIn("选择可预约项或时段", slot_blob)
+        self.assertNotIn("选择预约", slot_blob)
+        self.assertNotIn("选择座位预约", slot_blob)
+
+        # 冷门加厚 kind：走相位表，不是「选择{菜单}」
+        for kind, needle in (
+            ("blind_pools", "填写奖品权重"),
+            ("my_consigns", "提交寄卖"),
+            ("purchase_permits", "通过或驳回"),
+            ("lookup", "保存字典项"),
+        ):
+            msgs = _build_business_phase(
+                seq0=0,
+                actor="管理员",
+                menu_label="业务配置",
+                entity="配置",
+                ops=[],
+                vue_btns=[],
+                kind=kind,
+                side="admin",
+            )
+            blob = " ".join(str(m["text"]) for m in msgs)
+            self.assertIn(needle, blob, msg=f"{kind}: {blob}")
+            self.assertNotIn("选择业务配置", blob)
+
     def test_op_text_never_leaks_english_method(self) -> None:
         """无中文摘要时，禁止 suggest/getList 等英文方法名进序列图文案。"""
         from app.bake.schema.sequence import _build_business_phase, _leaks_code_ident, _op_text

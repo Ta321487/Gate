@@ -303,6 +303,8 @@ _VUE_FILE_HINTS: dict[str, tuple[str, ...]] = {
     "users": ("UserAdmin", "Users"),
     "category": ("Category",),
     "dm": ("Dm", "Chat"),
+    "order_reviews_user": ("OrderReview", "Review", "MyReview"),
+    "order_reviews_admin": ("OrderReview", "ReviewAdmin", "Review"),
 }
 
 # 仅当所在 Vue 文件已命中本功能时，才允许这些短操作词入选
@@ -528,6 +530,504 @@ def _ent_label(entities: dict[str, Any], key: str) -> str:
     return ""
 
 
+# 与 usecase_descriptions._flow_spec 对齐的短相位（序列四槽位用，禁止容器套话）
+# 缺省 kind 走 _phases_from_flow_spec / 通用兜底，换域不加专线也能像样。
+_KIND_WRITE_PHASES: dict[str, dict[str, str]] = {
+    "cart": {
+        "select": "核对商品与数量",
+        "confirm": "去结算",
+        "submit": "提交结算",
+        "save": "保存订单与明细",
+        "ok": "结算成功",
+    },
+    "order_reviews_user": {
+        "select": "选择已购商品",
+        "confirm": "填写评价内容",
+        "submit": "提交评价",
+        "save": "保存评价信息",
+        "ok": "评价提交成功",
+    },
+    "order_reviews": {
+        "select": "选择已购商品",
+        "confirm": "填写评价内容",
+        "submit": "提交评价",
+        "save": "保存评价信息",
+        "ok": "评价提交成功",
+    },
+    "order_reviews_admin": {
+        "select": "选择待处理评价",
+        "confirm": "处理评价",
+        "submit": "提交评价处理",
+        "save": "保存评价信息",
+        "ok": "评价处理成功",
+    },
+    "my_orders": {
+        "select": "选择订单",
+        "confirm": "确认支付",
+        "submit": "提交支付",
+        "save": "更新订单状态",
+        "ok": "支付成功",
+    },
+    "orders": {
+        "select": "选择待处理订单",
+        "confirm": "办理发货",
+        "submit": "提交订单处理",
+        "save": "保存订单信息",
+        "ok": "订单处理成功",
+    },
+    "addresses": {
+        "select": "选择收货地址",
+        "confirm": "编辑地址信息",
+        "submit": "保存地址",
+        "save": "保存地址信息",
+        "ok": "地址保存成功",
+    },
+    "dm": {
+        "select": "选择会话",
+        "confirm": "填写消息内容",
+        "submit": "发送私信",
+        "save": "保存消息",
+        "ok": "发送成功",
+    },
+    "guestbook_user": {
+        "select": "填写留言内容",
+        "confirm": "确认留言",
+        "submit": "提交留言",
+        "save": "保存留言信息",
+        "ok": "留言提交成功",
+    },
+    "guestbook_admin": {
+        "select": "选择留言",
+        "confirm": "回复留言",
+        "submit": "提交回复",
+        "save": "保存留言状态",
+        "ok": "留言处理成功",
+    },
+    "favorites": {
+        "select": "选择收藏项",
+        "confirm": "取消或管理收藏",
+        "submit": "更新收藏",
+        "save": "保存收藏信息",
+        "ok": "收藏更新成功",
+    },
+    "reserve_user": {
+        "select": "选择可预约项或时段",
+        "confirm": "填写预约信息",
+        "submit": "提交预约",
+        "save": "保存预约信息",
+        "ok": "预约提交成功",
+    },
+    "reservations": {
+        "select": "选择预约记录",
+        "confirm": "办理预约",
+        "submit": "提交办理",
+        "save": "更新预约状态",
+        "ok": "预约办理成功",
+    },
+    "my_tickets": {
+        "select": "填写申请表单",
+        "confirm": "核对申请信息",
+        "submit": "提交申请",
+        "save": "保存单据信息",
+        "ok": "申请提交成功",
+    },
+    "ticket_pending": {
+        "select": "选择待办单据",
+        "confirm": "审核通过或驳回",
+        "submit": "提交审核结果",
+        "save": "更新单据状态",
+        "ok": "审核完成",
+    },
+    "ticket_records": {
+        "select": "选择办理记录",
+        "confirm": "查看办理详情",
+        "submit": "查询记录",
+        "save": "读取办理数据",
+        "ok": "查询完成",
+    },
+    "archive_admin": {
+        "select": "选择主数据记录",
+        "confirm": "填写或编辑必填项",
+        "submit": "保存主数据",
+        "save": "写入主数据",
+        "ok": "主数据保存成功",
+    },
+    "archive_user": {
+        "select": "浏览或检索列表",
+        "confirm": "打开详情",
+        "submit": "查询详情",
+        "save": "读取详情数据",
+        "ok": "展示详情",
+    },
+    "content_user": {
+        "select": "选择公告",
+        "confirm": "阅读正文",
+        "submit": "打开公告",
+        "save": "读取公告内容",
+        "ok": "展示公告",
+    },
+    "content_admin": {
+        "select": "新建公告",
+        "confirm": "填写标题与正文",
+        "submit": "发布公告",
+        "save": "保存公告",
+        "ok": "公告发布成功",
+    },
+    "profile": {
+        "select": "打开个人资料",
+        "confirm": "修改可编辑字段",
+        "submit": "保存资料",
+        "save": "写入个人资料",
+        "ok": "资料保存成功",
+    },
+    "messages": {
+        "select": "选择消息",
+        "confirm": "打开消息详情",
+        "submit": "标记已读",
+        "save": "更新消息状态",
+        "ok": "消息已读",
+    },
+    "users": {
+        "select": "选择用户",
+        "confirm": "启用停用或重置密码",
+        "submit": "提交用户管理",
+        "save": "更新用户状态",
+        "ok": "用户管理成功",
+    },
+    "category": {
+        "select": "选择分类",
+        "confirm": "编辑分类信息",
+        "submit": "保存分类",
+        "save": "写入分类数据",
+        "ok": "分类保存成功",
+    },
+    "lookup": {
+        "select": "选择字典项",
+        "confirm": "编辑字典项",
+        "submit": "保存字典项",
+        "save": "写入字典数据",
+        "ok": "字典保存成功",
+    },
+    "coupons": {
+        "select": "选择优惠券",
+        "confirm": "领取或查看券",
+        "submit": "领取优惠券",
+        "save": "保存领券记录",
+        "ok": "领券成功",
+    },
+    "browse_history": {
+        "select": "查看足迹列表",
+        "confirm": "打开浏览记录",
+        "submit": "查询足迹",
+        "save": "读取足迹数据",
+        "ok": "展示足迹",
+    },
+    "week_calendar": {
+        "select": "切换日期",
+        "confirm": "查看当日安排",
+        "submit": "查询日程",
+        "save": "读取日程数据",
+        "ok": "展示日程",
+    },
+    "deadline": {
+        "select": "选择催办记录",
+        "confirm": "查看逾期详情",
+        "submit": "查询催办",
+        "save": "读取催办数据",
+        "ok": "展示催办",
+    },
+    "archive_logs": {
+        "select": "打开监测表单",
+        "confirm": "填写监测字段",
+        "submit": "提交监测记录",
+        "save": "保存监测数据",
+        "ok": "监测提交成功",
+    },
+    "blind_pools": {
+        "select": "打开盲盒奖池",
+        "confirm": "填写奖品权重与隐藏款",
+        "submit": "保存奖池",
+        "save": "写入奖池配置",
+        "ok": "奖池保存成功",
+    },
+    "group_campaigns": {
+        "select": "选择拼团活动",
+        "confirm": "设置成团人数与截止",
+        "submit": "保存拼团",
+        "save": "写入拼团配置",
+        "ok": "拼团保存成功",
+    },
+    "delivery_slots": {
+        "select": "选择配送时段",
+        "confirm": "填写余量与达达类型",
+        "submit": "保存时段",
+        "save": "写入时段配置",
+        "ok": "时段保存成功",
+    },
+    "price_spans": {
+        "select": "选择加价区间",
+        "confirm": "填写日期与倍率",
+        "submit": "保存加价规则",
+        "save": "写入加价配置",
+        "ok": "加价规则保存成功",
+    },
+    "purchase_permits": {
+        "select": "选择待审申请",
+        "confirm": "通过或驳回",
+        "submit": "提交审核结果",
+        "save": "更新审核状态",
+        "ok": "审核完成",
+    },
+    "my_permits": {
+        "select": "打开购买审核表单",
+        "confirm": "上传审核资料",
+        "submit": "提交购买申请",
+        "save": "保存待审申请",
+        "ok": "申请已提交",
+    },
+    "line_specs": {
+        "select": "选择规格项",
+        "confirm": "新增或停用规格",
+        "submit": "保存规格选项",
+        "save": "写入规格名单",
+        "ok": "规格保存成功",
+    },
+    "lost_clues": {
+        "select": "选择线索留言",
+        "confirm": "查看线索内容",
+        "submit": "打开线索",
+        "save": "读取线索数据",
+        "ok": "展示线索",
+    },
+    "consigns": {
+        "select": "选择待质检寄卖",
+        "confirm": "通过上架或驳回",
+        "submit": "提交质检结果",
+        "save": "更新寄卖状态",
+        "ok": "质检完成",
+    },
+    "my_consigns": {
+        "select": "打开寄卖表单",
+        "confirm": "填写名称期望价与成色",
+        "submit": "提交寄卖",
+        "save": "保存待质检寄卖",
+        "ok": "寄卖已提交",
+    },
+    "open": {
+        "select": "查看主列表或主表单",
+        "confirm": "完成页面主操作",
+        "submit": "提交操作",
+        "save": "保存业务数据",
+        "ok": "操作成功",
+    },
+}
+
+
+def _shorten_flow_action(line: str, *, menu_label: str = "") -> str:
+    """从用例描述长句抽短操作，供序列自调用/提交用。"""
+    s = str(line or "").strip()
+    if not s:
+        return ""
+    # 去掉角色前缀「买家/管理员…」
+    s = re.sub(r"^\{[^}]+\}", "", s)
+    s = re.sub(r"^(买家|商家|管理员|平台管理员|读者|用户|馆员|经办员|员工)", "", s)
+    s = s.strip(" ，,。；;")
+    ml = (menu_label or "").strip()
+    if ml:
+        s = s.replace(f"「{ml}」", "").replace(ml, "")
+    # 常见长句压缩
+    for pat, repl in (
+        (r".*核对(商品与数量|商品).*", "核对商品与数量"),
+        (r".*选择可预约项或时段.*", "选择可预约项或时段"),
+        (r".*填写申请表单.*", "填写申请表单"),
+        (r".*填写评分与评价.*", "填写评价内容"),
+        (r".*执行通过/?同意或驳回.*", "审核通过或驳回"),
+        (r".*执行确认、发货.*", "办理发货"),
+        (r".*新增或编辑.*并填写必填项.*", "填写或编辑必填项"),
+        (r".*选择或新建会话.*发送私信.*", "发送私信"),
+        (r".*填写留言正文并提交.*", "填写留言内容"),
+        (r".*打开一条待办.*", "选择待办单据"),
+        (r".*打开待处理订单.*", "选择待处理订单"),
+        (r".*点击保存.*", "点击保存"),
+        (r".*点击提交.*", "点击提交"),
+        (r".*点击发布或保存.*", "发布或保存"),
+    ):
+        m = re.match(pat, s)
+        if m:
+            return repl if isinstance(repl, str) else (m.group(1) if m.lastindex else s)
+    # 截到约 16 字，避免长叙述进序列框
+    s = re.sub(r"^(在|进入|打开|点击)", "", s).strip()
+    if len(s) > 16:
+        for sep in ("并", "，", ",", "后", "，"):
+            if sep in s:
+                left = s.split(sep, 1)[0].strip()
+                if 4 <= len(left) <= 16:
+                    s = left
+                    break
+        if len(s) > 16:
+            s = s[:16]
+    return s
+
+
+def _phases_from_flow_spec(
+    kind: str,
+    *,
+    stem: str,
+    menu_label: str,
+) -> dict[str, str] | None:
+    """用用例描述 flow 抽 select/confirm/submit，与材料表同源。"""
+    try:
+        from app.bake.schema.usecase_descriptions import _flow_spec
+    except Exception:
+        return None
+    spec = _flow_spec(kind)
+    if not isinstance(spec, dict):
+        return None
+    flow = [str(x).strip() for x in (spec.get("flow") or []) if str(x).strip()]
+    if not flow:
+        return None
+    # 跳过登录/转至界面句，取操作句
+    actions: list[str] = []
+    for line in flow:
+        if any(
+            x in line
+            for x in (
+                "登录成功",
+                "打开系统登录",
+                "系统转至",
+                "系统展示",
+                "系统保存",
+                "系统更新",
+                "系统按",
+                "系统提示",
+                "系统同步",
+                "校验通过",
+            )
+        ):
+            # 系统句有时可作 save/ok，先跳过当 select
+            continue
+        short = _shorten_flow_action(line, menu_label=menu_label)
+        if short and short not in actions:
+            actions.append(short)
+    if not actions:
+        return None
+    st = (stem or menu_label or "业务").strip()
+    ml = (menu_label or "").strip()
+    select = actions[0]
+    confirm = actions[1] if len(actions) > 1 else actions[0]
+    submit = actions[-1] if len(actions) > 2 else (
+        "提交" + (st if st and st not in confirm else "操作")
+    )
+    # 若仍像容器套话则放弃，交给上层其它兜底
+    if _is_container_template_phrase(select, stem=st, menu_label=ml):
+        return None
+    return {
+        "select": select,
+        "confirm": confirm,
+        "submit": submit if not _is_container_template_phrase(submit, stem=st, menu_label=ml) else f"提交{st}变更",
+        "save": f"保存{st}信息" if st else "保存业务数据",
+        "ok": f"{ml or st}成功" if (ml or st) else "操作成功",
+    }
+
+
+def _kind_write_fallbacks(
+    kind: str,
+    *,
+    stem: str,
+    menu_label: str,
+    side: str = "user",
+) -> dict[str, str]:
+    """无可用 Vue/Controller 文案时的写路径措辞。
+
+    优先显式相位表 → 用例描述 flow 同源 → 子串别名 → 禁容器套话的通用兜底。
+    """
+    k = (kind or "").strip().lower()
+    ml = (menu_label or "").strip()
+    st = (stem or ml or "记录").strip()
+    side_n = (side or "user").strip().lower() or "user"
+    adminish = side_n == "admin" or k.endswith("_admin") or k in ("orders",)
+
+    # 侧别优先：同名 kind 在用户侧走用户相位（如 reservations 作座位预约入口）
+    if k == "reservations" and not adminish:
+        return dict(_KIND_WRITE_PHASES["reserve_user"])
+    if k == "guestbook" and not adminish:
+        return dict(_KIND_WRITE_PHASES["guestbook_user"])
+
+    if k in _KIND_WRITE_PHASES:
+        row = dict(_KIND_WRITE_PHASES[k])
+        if k == "archive_admin" and st and st not in ("记录", "主数据"):
+            row["select"] = f"选择{st}"
+            row["confirm"] = f"编辑{st}信息"
+            row["submit"] = f"保存{st}"
+            row["save"] = f"保存{st}信息"
+            row["ok"] = f"{ml or st}成功"
+        return row
+
+    # 别名 / 子串
+    if "review" in k:
+        key = "order_reviews_admin" if adminish else "order_reviews_user"
+        return dict(_KIND_WRITE_PHASES[key])
+    if k in ("my_orders",) or (
+        "order" in k and "review" not in k and k != "cart" and not adminish
+    ):
+        return dict(_KIND_WRITE_PHASES["my_orders"])
+    if k == "orders" or ("order" in k and "review" not in k and adminish):
+        return dict(_KIND_WRITE_PHASES["orders"])
+    if "guestbook" in k:
+        key = "guestbook_admin" if adminish else "guestbook_user"
+        return dict(_KIND_WRITE_PHASES[key])
+    if "reserve" in k or "slot" in k:
+        key = "reservations" if adminish else "reserve_user"
+        return dict(_KIND_WRITE_PHASES.get(key) or _KIND_WRITE_PHASES["reserve_user"])
+    if "ticket" in k:
+        if "pending" in k:
+            return dict(_KIND_WRITE_PHASES["ticket_pending"])
+        if "record" in k:
+            return dict(_KIND_WRITE_PHASES["ticket_records"])
+        return dict(_KIND_WRITE_PHASES["my_tickets"])
+    if "archive" in k:
+        key = "archive_admin" if adminish else "archive_user"
+        row = dict(_KIND_WRITE_PHASES[key])
+        if key == "archive_admin" and st:
+            row["select"] = f"选择{st}"
+            row["confirm"] = f"编辑{st}信息"
+            row["submit"] = f"保存{st}"
+            row["save"] = f"保存{st}信息"
+            row["ok"] = f"{ml or st}成功"
+        return row
+    if "content" in k:
+        key = "content_admin" if adminish else "content_user"
+        return dict(_KIND_WRITE_PHASES[key])
+
+    from_flow = _phases_from_flow_spec(k, stem=st, menu_label=ml)
+    if from_flow:
+        return from_flow
+
+    # 通用：容器名（车/单/夹）勿拼「选择购物车」
+    if st and any(ch in st for ch in ("车", "单", "夹", "篮", "箱")) and len(st) <= 6:
+        return {
+            "select": "选择记录",
+            "confirm": "确认操作",
+            "submit": "提交变更",
+            "save": "保存变更",
+            "ok": f"{ml or st}成功",
+        }
+    return dict(_KIND_WRITE_PHASES["open"])
+
+
+def _is_container_template_phrase(text: str, *, stem: str, menu_label: str = "") -> bool:
+    """识别「选择购物车 / 确认我的订单 / 新增购物车信息」一类套话。"""
+    t = str(text or "").strip()
+    if not t:
+        return False
+    nouns = [n for n in ((stem or "").strip(), (menu_label or "").strip()) if n]
+    for noun in nouns:
+        for verb in ("选择", "确认", "新增", "提交", "保存"):
+            if t == f"{verb}{noun}" or t == f"{verb}{noun}信息":
+                return True
+    return False
+
+
 def _feature_entity(schema: dict[str, Any], *, kind: str, menu_label: str = "") -> str:
     """按功能 kind 解析本图应用的业务实体中文名，禁止无脑用全局 archive 串台。
 
@@ -540,7 +1040,14 @@ def _feature_entity(schema: dict[str, Any], *, kind: str, menu_label: str = "") 
     if kind.startswith("auth_"):
         return ""
 
-    if "order" in kind or kind in ("cart", "my_orders", "orders"):
+    # 须先于 order 子串：order_reviews_* 含 "order"，否则整图文案变成「订单」
+    if "review" in kind or kind.endswith("_reviews"):
+        return _ent_label(entities, "review") or "评价"
+
+    if (
+        ("order" in kind and "review" not in kind)
+        or kind in ("cart", "my_orders", "orders")
+    ):
         if kind == "cart":
             return _ent_label(entities, "cart") or "购物车"
         return _ent_label(entities, "order") or menu_label or archive
@@ -595,11 +1102,19 @@ def _pick_controller(
 ) -> dict[str, Any] | None:
     if not controllers:
         return None
+    # order_reviews* 不得吃到 OrderController（"order" 子串误匹配）
+    is_review = "review" in (kind or "").lower() or "review" in (menu_key or "").lower()
     keys = [
         menu_key.lower().replace("_", ""),
         re.sub(r"[^a-z0-9]", "", menu_label.lower()) if menu_label.isascii() else "",
         "auth" if kind.startswith("auth_") else "",
-        "order" if "order" in kind or "cart" in kind else "",
+        "review" if is_review else "",
+        "orderreview" if is_review else "",
+        (
+            "order"
+            if (not is_review and ("order" in kind or "cart" in kind))
+            else ""
+        ),
         "reserv" if "reserve" in kind else "",
         "ticket" if "ticket" in kind else "",
         "favorite" if kind == "favorites" else "",
@@ -837,6 +1352,7 @@ def _build_business_phase(
     vue_btns: list[str],
     kind: str,
     schema: dict[str, Any] | None = None,
+    side: str = "user",
 ) -> list[dict[str, Any]]:
     msgs: list[dict[str, Any]] = []
     seq = seq0
@@ -844,6 +1360,10 @@ def _build_business_phase(
     reads, writes = _classify_ops(ops)
     demo = _schema_demo_actions(schema)
     extra_short = {v for v in demo.values() if v}
+    stem_early = entity or menu_label
+    kind_fb = _kind_write_fallbacks(
+        kind, stem=stem_early, menu_label=menu_label, side=side
+    )
     # 只保留与本菜单/实体对齐的按钮；无关复合文案自然被拒
     vue_btns = [
         b
@@ -925,19 +1445,31 @@ def _build_business_phase(
         need_write = True
     if need_write:
         # 自调用优先用本功能菜单/实体措辞，不用跨页按钮
+        prefer_select = ("选择", "核对", "填写", "编辑", "新增")
+        if kind == "cart":
+            prefer_select = ("核对", "改数量", "选择商品", "填写", "编辑")
+        elif "review" in kind:
+            prefer_select = ("填写评价", "选择", "填写", "编辑")
         pick = _pick_vue_btn(
             vue_btns,
             menu_label=menu_label,
             entity=entity,
             kind=kind,
-            prefer_substrings=("选择", "新增", "填写", "编辑"),
+            prefer_substrings=prefer_select,
         )
         if pick and not (
-            (entity and entity in pick) or (menu_label and menu_label in pick) or pick in ("新增", "编辑", "填写")
+            (entity and entity in pick)
+            or (menu_label and menu_label in pick)
+            or pick in ("新增", "编辑", "填写", "核对商品与数量", "去结算")
+            or any(x in pick for x in ("核对", "结算", "评价", "支付", "留言", "预约"))
         ):
-            # 「选择xxx」若不含本实体名，改用 schema
+            # 「选择xxx」若不含本实体名，改用 kind 兜底
             pick = ""
-        self1 = pick or (f"选择{stem}" if stem else "选择操作项")
+        if pick and _is_container_template_phrase(
+            pick, stem=stem, menu_label=menu_label
+        ):
+            pick = ""
+        self1 = pick or kind_fb["select"]
         seq += 1
         msgs.append(
             _msg(
@@ -951,7 +1483,7 @@ def _build_business_phase(
             )
         )
 
-        prefer_submit = ("保存", "提交", "确认", "预约", "下单", "发布")
+        prefer_submit = ("保存", "提交", "确认", "预约", "下单", "发布", "结算", "支付")
         if kind == "ticket_pending":
             prefer_submit = tuple(
                 x
@@ -968,6 +1500,14 @@ def _build_business_phase(
             prefer_submit = tuple(
                 x for x in (demo.get("fine_waive"), "保存", "提交", "确认") if x
             )
+        elif kind == "cart":
+            prefer_submit = ("去结算", "结算", "下单", "提交", "确认")
+        elif "review" in kind:
+            prefer_submit = ("提交评价", "发表评价", "保存", "提交", "确认")
+        elif kind in ("my_orders", "orders") or (
+            "order" in kind and "review" not in kind
+        ):
+            prefer_submit = ("支付", "确认支付", "发货", "保存", "提交", "确认")
         submit_btn = _pick_vue_btn(
             vue_btns,
             menu_label=menu_label,
@@ -977,16 +1517,27 @@ def _build_business_phase(
             extra_short=extra_short,
         )
         # 必须是短操作词/域演示动作，或文案里带本菜单/实体；否则退回 schema 措辞
-        allowed_short = set(_SHORT_ACTION_BTNS) | extra_short
+        allowed_short = set(_SHORT_ACTION_BTNS) | extra_short | {
+            "去结算",
+            "结算",
+            "确认支付",
+            "提交评价",
+            "发表评价",
+            "核对商品与数量",
+        }
         if submit_btn and submit_btn not in allowed_short and not (
             (entity and entity in submit_btn) or (menu_label and menu_label in submit_btn)
+        ):
+            submit_btn = ""
+        if submit_btn and _is_container_template_phrase(
+            submit_btn, stem=stem, menu_label=menu_label
         ):
             submit_btn = ""
         # 待办审单：schema 开了批量动作且页面有该按钮时优先画（文案跟 labels）
         batch_lab = str(demo.get("batch_hire") or "").strip()
         if kind == "ticket_pending" and batch_lab and batch_lab in vue_btns:
             submit_btn = batch_lab
-        self2 = submit_btn or (f"确认{menu_label}" if menu_label else (f"保存{stem}" if stem else "确认提交"))
+        self2 = submit_btn or kind_fb["confirm"]
         seq += 1
         msgs.append(
             _msg(
@@ -1004,24 +1555,26 @@ def _build_business_phase(
         submit = ""
         for op in writes:
             t = _op_text(op, entity=entity, menu_label=menu_label)
-            if t:
+            if t and not _is_container_template_phrase(
+                t, stem=stem, menu_label=menu_label
+            ):
                 write_op = op
                 submit = t
                 break
         if submit:
             sub_src = "controller"
         else:
-            submit = f"提交{stem}信息" if stem else "提交信息"
+            submit = kind_fb["submit"]
             sub_src = "schema_label"
         seq += 1
         msgs.append(_msg(seq=seq, frm="page", to="controller", direction="request", text=submit, phase=phase, text_source=sub_src))
 
-        save_t = f"保存{stem}信息" if stem else "保存信息"
+        save_t = kind_fb["save"]
         seq += 1
         msgs.append(_msg(seq=seq, frm="controller", to="db", direction="request", text=save_t, phase=phase, text_source="schema_label"))
         seq += 1
         msgs.append(_msg(seq=seq, frm="db", to="controller", direction="response", text="数据保存成功", phase=phase, text_source="schema_label"))
-        ok = f"{menu_label or stem}成功" if (menu_label or stem) else "操作成功"
+        ok = kind_fb["ok"]
         seq += 1
         msgs.append(_msg(seq=seq, frm="controller", to="page", direction="response", text=ok, phase=phase, text_source="schema_label"))
         seq += 1
@@ -1098,6 +1651,7 @@ def build_diagram_messages(
                 vue_btns=vue_btns,
                 kind=kind,
                 schema=schema,
+                side=side,
             )
         )
     else:
@@ -1115,6 +1669,7 @@ def build_diagram_messages(
                 vue_btns=vue_btns,
                 kind=kind,
                 schema=schema,
+                side=side,
             )
         )
     # 重排序号，并折叠叠词（防「登录登录」）
