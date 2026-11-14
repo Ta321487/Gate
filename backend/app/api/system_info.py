@@ -309,6 +309,8 @@ async def catalog():
         themes_for_domain,
     )
     from app.bake.api_style import CART_MUTATE_STYLES, ITEM_REF_STYLES
+    from app.bake.shell_color_swatches import list_shell_swatches
+    from app.bake.shell_face import theme_shell_previews
 
     t_imp = (time.perf_counter() - t0) * 1000.0
     domain_group_of = {
@@ -340,6 +342,7 @@ async def catalog():
             for gid, glabel, members in DOMAIN_GROUPS
         ],
         "themes_by_domain": {k: themes_for_domain(k) for k in DOMAINS},
+        "theme_shell_previews": theme_shell_previews(),
         "chrome_styles": list(CHROME_STYLES),
         "layout_shells": list(LAYOUT_SHELLS),
         "type_pairings": list(TYPE_PAIRINGS),
@@ -357,6 +360,7 @@ async def catalog():
             "item_ref": list(ITEM_REF_STYLES),
             "cart_mutate": list(CART_MUTATE_STYLES),
         },
+        "shell_color_swatches": list_shell_swatches(),
     }
     log.info(
         "timing route=catalog ms=%.1f import_ms=%.1f db_queries=0",

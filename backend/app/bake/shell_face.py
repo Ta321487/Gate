@@ -35,7 +35,7 @@ _THEME_BLOCK_RE = re.compile(
     re.DOTALL,
 )
 _CSS_VAR_RE = re.compile(
-    r"--portal-(brand|accent|bg|surface|ink|cover)\s*:\s*([^;]+);",
+    r"--portal-(brand|accent|accent-soft|bg|surface|ink|cover)\s*:\s*([^;]+);",
 )
 
 
@@ -100,6 +100,26 @@ def shell_colors_from_theme(theme_id: str | None) -> dict[str, str] | None:
         "cover": cover,
         "glow": accent,
     }
+
+
+def theme_shell_previews() -> dict[str, dict[str, str]]:
+    """控制台线框示意用：与 themes CSS 同源（含 soft=accent-soft）。"""
+    out: dict[str, dict[str, str]] = {}
+    for tid, toks in _theme_token_map().items():
+        brand = toks.get("brand")
+        accent = toks.get("accent")
+        if not brand or not accent:
+            continue
+        soft = toks.get("accent-soft") or toks.get("soft") or accent
+        out[tid] = {
+            "brand": brand,
+            "accent": accent,
+            "bg": toks.get("bg") or "#F4F6F8",
+            "surface": toks.get("surface") or "#FFFFFF",
+            "ink": toks.get("ink") or "#1A1E24",
+            "soft": soft,
+        }
+    return out
 
 
 # 优先开顶栏检索：有 archive 时自动开（审批收件箱主路径弱化，不进本集）
@@ -510,17 +530,32 @@ def resolve_shell_colors(
     title: str = "",
     proposal_text: str = "",
     theme: str | None = None,
+    *,
+    brand_swatch: str | None = None,
+    accent_swatch: str | None = None,
 ) -> dict[str, str]:
-    """有 theme 时跟行业配色；否则才用域/货架皮默认（匹配早期无 theme 的兜底）。"""
+    """有 theme 时跟行业配色；否则才用域/货架皮默认（匹配早期无 theme 的兜底）。
+
+    brand_swatch / accent_swatch：色点池自配 id；空则完全跟派生。
+    """
     derived = shell_colors_from_theme(theme)
     if derived:
-        return derived
-    if domain == "DOM-SHOP":
+        base = derived
+    elif domain == "DOM-SHOP":
         kind = _shop_kind_key(title, proposal_text)
         if kind in _SHOP_KIND_SHELL_COLORS:
-            return dict(_SHOP_KIND_SHELL_COLORS[kind])
-    base = _DOMAIN_SHELL_COLORS.get(domain) or _DEFAULT_SHELL
-    return dict(base)
+            base = dict(_SHOP_KIND_SHELL_COLORS[kind])
+        else:
+            base = dict(_DOMAIN_SHELL_COLORS.get(domain) or _DEFAULT_SHELL)
+    else:
+        base = dict(_DOMAIN_SHELL_COLORS.get(domain) or _DEFAULT_SHELL)
+    if brand_swatch or accent_swatch:
+        from app.bake.shell_color_swatches import overlay_shell_colors
+
+        return overlay_shell_colors(
+            base, brand_swatch=brand_swatch, accent_swatch=accent_swatch
+        )
+    return base
 
 
 def shell_colors_for_pack(
@@ -530,12 +565,22 @@ def shell_colors_for_pack(
     domain: str | None = None,
     title: str | None = None,
 ) -> dict[str, str]:
-    """出包时按当前行业配色重算壳色（避免 spec 里旧货架橙盖住下拉选中的蓝）。"""
+    """出包时按当前行业配色重算壳色（避免 spec 里旧货架橙盖住下拉选中的蓝）。
+
+    有 shell_brand_swatch / shell_accent_swatch 时叠色点池自配。
+    """
     sp = spec if isinstance(spec, dict) else {}
     tid = (theme or sp.get("theme") or "").strip() or None
     dom = str(domain or sp.get("domain") or "")
     tit = str(title or sp.get("title") or "")
-    return resolve_shell_colors(dom, tit, tit, theme=tid)
+    return resolve_shell_colors(
+        dom,
+        tit,
+        tit,
+        theme=tid,
+        brand_swatch=str(sp.get("shell_brand_swatch") or "") or None,
+        accent_swatch=str(sp.get("shell_accent_swatch") or "") or None,
+    )
 
 
 # 农产/文印/花店等「货架市集」皮：顶栏短链 + 右侧图标栏（淘宝感，矢量勿表情）
@@ -593,14 +638,32 @@ def apply_shell_face_to_spec(
     title = str(spec.get("title") or "")
     body = proposal_text or title
     theme = str(spec.get("theme") or "").strip() or None
+    brand_sw = str(spec.get("shell_brand_swatch") or "").strip() or None
+    accent_sw = str(spec.get("shell_accent_swatch") or "").strip() or None
     voice = resolve_card_voice(domain, title, body, spec.get("card_voice"))
-    colors = resolve_shell_colors(domain, title, body, theme=theme)
+    colors = resolve_shell_colors(
+        domain,
+        title,
+        body,
+        theme=theme,
+        brand_swatch=brand_sw,
+        accent_swatch=accent_sw,
+    )
     nav = resolve_shell_nav_style(domain, title, body, spec.get("shell_nav_style"))
     group = domain_group_of(domain)
-    return {
+    out = {
         **spec,
         "card_voice": voice,
         "shell_colors": colors,
         "shell_nav_style": nav,
         "domain_group": group,
     }
+    if brand_sw:
+        out["shell_brand_swatch"] = brand_sw
+    else:
+        out.pop("shell_brand_swatch", None)
+    if accent_sw:
+        out["shell_accent_swatch"] = accent_sw
+    else:
+        out.pop("shell_accent_swatch", None)
+    return out

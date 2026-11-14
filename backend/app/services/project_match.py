@@ -382,6 +382,7 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
             if project.status == ProjectStatus.ready.value:
                 project.status = ProjectStatus.needs_confirm.value
 
+    prev_theme_id = project.theme
     if body.theme is not None:
         allowed = {t["id"] for t in themes_for_domain(project.domain)}
         raw = body.theme
@@ -390,6 +391,7 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         if raw not in allowed:
             raise ValueError("该配色不属于当前行业模板")
         project.theme = raw
+    theme_changed = bool(body.theme is not None and project.theme != prev_theme_id)
     prev_spec = project.spec if isinstance(project.spec, dict) else {}
     reset = bool(body.reset)
     chrome_override = resolve_style_override(
@@ -600,6 +602,54 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
         project.spec["zip_name"] = match_meta.get("zip_name") or zip_download_name(
             match_meta["delivery_slug"], project.id
         )
+
+    # 壳色自配：换行业配色时重置（钉死策略，见 shell-color-swatch-pool.md）
+    from app.bake.shell_color_swatches import (
+        overlay_shell_colors,
+        pair_gate_blockers,
+        validate_swatch_choice,
+    )
+
+    brand_sw = str(prev_spec.get("shell_brand_swatch") or "").strip()
+    accent_sw = str(prev_spec.get("shell_accent_swatch") or "").strip()
+    if reset or theme_changed:
+        brand_sw, accent_sw = "", ""
+    if getattr(body, "shell_brand_swatch", None) is not None and not (reset or theme_changed):
+        brand_sw = str(body.shell_brand_swatch or "").strip()
+    if getattr(body, "shell_accent_swatch", None) is not None and not (reset or theme_changed):
+        accent_sw = str(body.shell_accent_swatch or "").strip()
+    # 换皮当次若同时传自配，仍以重置为准（先跟新皮，再手点）
+    err_b = validate_swatch_choice(brand_sw or None, role="brand")
+    if err_b:
+        raise ValueError(err_b)
+    err_a = validate_swatch_choice(accent_sw or None, role="accent")
+    if err_a:
+        raise ValueError(err_a)
+    base_colors = project.spec.get("shell_colors") if isinstance(project.spec, dict) else None
+    if not isinstance(base_colors, dict):
+        base_colors = {}
+    if brand_sw or accent_sw:
+        project.spec["shell_brand_swatch"] = brand_sw or None
+        project.spec["shell_accent_swatch"] = accent_sw or None
+        if not project.spec.get("shell_brand_swatch"):
+            project.spec.pop("shell_brand_swatch", None)
+        if not project.spec.get("shell_accent_swatch"):
+            project.spec.pop("shell_accent_swatch", None)
+        project.spec["shell_colors"] = overlay_shell_colors(
+            base_colors,
+            brand_swatch=brand_sw or None,
+            accent_swatch=accent_sw or None,
+        )
+        blockers = pair_gate_blockers(
+            project.spec["shell_colors"].get("brand"),
+            project.spec["shell_colors"].get("accent"),
+        )
+        if blockers:
+            raise ValueError("；".join(blockers))
+    else:
+        project.spec.pop("shell_brand_swatch", None)
+        project.spec.pop("shell_accent_swatch", None)
+
     # 仅功能集变化时重置清单；勿用裸 features 冲掉门禁 result
     new_features = project.spec.get("features") or []
     if _feature_names(new_features) != old_feature_names:

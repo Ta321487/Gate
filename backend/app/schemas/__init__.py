@@ -294,6 +294,14 @@ class MatchUpdate(BaseModel):
         default=None,
         description="审批组页内构图 typelist | inboxsteps",
     )
+    shell_brand_swatch: Optional[str] = Field(
+        default=None,
+        description="壳主色色点池 id；空串清除，跟行业配色；不传则保留",
+    )
+    shell_accent_swatch: Optional[str] = Field(
+        default=None,
+        description="壳点缀色色点池 id；空串清除；不传则保留",
+    )
     llm_enabled: Optional[bool] = Field(default=None, description="启用 LLM")
     password_hash: Optional[str] = Field(default=None, description="密码哈希策略")
     unlock: Optional[bool] = Field(default=None, description="解锁匹配")

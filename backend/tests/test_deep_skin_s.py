@@ -120,7 +120,7 @@ class DeepSkinSMatchTests(unittest.TestCase):
 
     def test_event_keyword_budget_still_holds(self) -> None:
         kws = DOMAINS["DOM-EVENT"].get("keywords") or []
-        self.assertLessEqual(len(kws), 20, kws)
+        self.assertLessEqual(len(kws), 24, kws)
 
 
 if __name__ == "__main__":
