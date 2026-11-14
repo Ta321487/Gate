@@ -1,4 +1,9 @@
-"""Agent D：交付 QA（LLM 主审；无模型时结构回退）。"""
+"""Agent D：交付 QA。
+
+硬原则（docs/llm-determinism.md）：不确定 → 确定性。
+**主审是确定性结构闸**（``_structural_findings``）；LLM 只穷尽补闸尚未覆盖的缺口。
+无 Key / 失败时结构闸结果不得消失。LLM 新发现的可复现坑须收进结构闸，禁止只靠再点一次。
+"""
 
 from __future__ import annotations
 
@@ -20,7 +25,8 @@ from app.llm.temperature import temperature_for
 
 _SYS = (
     "你是毕设交付 QA Agent（Drift/Consistency）。"
-    "只报「真真切切影响程序运行或答辩演示」的问题；禁止改代码；少说；无把握宁可不报。\n"
+    "工厂原则：把不确定变成确定性——你只补「结构闸尚未覆盖」的缺口；"
+    "禁止改代码；只报真影响程序运行或答辩演示的问题。\n"
     "只输出 JSON：\n"
     '{"ok":boolean,"summary":string,'
     '"findings":[{"level":"error|warn|info","msg":string,"where":string}],'
@@ -32,10 +38,12 @@ _SYS = (
     "一律不报：措辞好不好听、建议补充、体验优化、文案润色、开题没写的功能遐想、"
     "双口径里「买家键仍是买家句」（管理端另有 Admin/Staff 键时）。\n"
     "说话纪律：\n"
-    "A) 默认 findings/priorities 为空。\n"
+    "A) 【穷尽】对证据包内尚未出现在 structural_findings 的、可判定的程序影响问题，"
+    "一次全部列出；禁止只报前几条、禁止「其余略」；不要重复 structural 已有条文。\n"
     "B) 禁止「建议/宜/不妨/可以更好/优化体验」句式。\n"
     "C) 禁止臆造 capabilities 未挂的缺口。\n"
-    "D) 说不清会挡哪条演示路径 → 不报或 info。\n"
+    "D) 说不清会挡哪条演示路径 → 不报或 info；无把握的单条可不报，"
+    "但不得用「默认空 findings」逃避已能判定的问题。\n"
     "level=error 仅误导答辩/明显错域；where 填文件路径或 schema 字段名。\n"
     "必须以结构化字段为准：entityKeys / menuKeys / staffPackMenus / traits / capabilities / labels；"
     "文件摘录可能被截断，禁止凭摘录臆造未出现在结构化字段里的实体或菜单。\n"
@@ -1333,22 +1341,31 @@ def _lexicon_findings(ctx: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def _fallback_qa(ctx: dict[str, Any]) -> dict[str, Any]:
-    """无 Key / 关 QA 时的结构回退（不写死领域错词表）。
+    """无 Key / 关阶段 / 模型失败：仍跑确定性结构闸（主审不得消失）。
 
-    仅对强信号 error 挡包；弱措辞不做穷举、也不假装 LLM 已审。
+    仅对强信号 error 挡包；弱措辞不做开放式穷举、也不假装 LLM 已审。
     """
     findings = _structural_findings(ctx)
     errors = [f for f in findings if f.get("level") == "error"]
-    summary = "未启用 LLM QA，仅做结构回退检查"
+    summary = "确定性结构闸（未跑 LLM）"
     if errors:
-        summary = f"{summary} · {str(errors[0].get('msg') or '')[:120]}"
+        summary = (
+            f"{summary} · 共 {len(errors)} 条 error · "
+            f"{str(errors[0].get('msg') or '')[:120]}"
+        )
     elif findings:
         summary = f"{summary} · {len(findings)} 条非挡包发现"
+    else:
+        summary = f"{summary} · 未发现挡包项"
     return {
         "summary": summary,
         "findings": findings,
         "ok": not errors,
-        "mode": "fallback",
+        "mode": "deterministic",
+        "structural_primary": True,
+        "llm_used": False,
+        "finding_count": len(findings),
+        "error_count": len(errors),
     }
 
 
@@ -1356,7 +1373,7 @@ def _normalize_findings(raw: Any) -> list[dict[str, str]]:
     out: list[dict[str, str]] = []
     if not isinstance(raw, list):
         return out
-    for item in raw[:24]:
+    for item in raw[:48]:
         if isinstance(item, str):
             out.append({"level": "warn", "msg": item[:200], "where": ""})
             continue
@@ -1550,6 +1567,8 @@ async def run_qa_agent(
     spec: dict[str, Any],
 ) -> dict[str, Any]:
     ctx = _collect_qa_context(workspace, spec)
+    # 原则：确定性结构闸永远先跑；LLM 只补缺口
+    structural = _structural_findings(ctx)
     use_llm = rt.stage_on("qa_report") and rt.configured and await budget_ok(db, project_id, rt)
 
     if not use_llm:
@@ -1560,7 +1579,7 @@ async def run_qa_agent(
             stage="qa_report",
             tokens=0,
             ok=True,
-            detail="回退：仅结构扫描（未调用大模型）",
+            detail="确定性结构闸（未调用大模型）",
         )
         write_qa_report(
             workspace, {**report, "domain": ctx.get("domain"), "title": ctx.get("title")}
@@ -1585,6 +1604,11 @@ async def run_qa_agent(
         "staffPackPages": ctx.get("staffPackPages") or {},
         "missing_files": ctx["missing_files"],
         "file_excerpts": ctx["files"],
+        "structural_findings": structural[:40],
+        "instruction": (
+            "structural_findings 已是确定性主审结果；"
+            "只穷尽补尚未列出的程序影响问题；禁止重复；禁止省略可判定项。"
+        ),
     }
     messages = [
         {"role": "system", "content": _SYS},
@@ -1597,8 +1621,12 @@ async def run_qa_agent(
 
     if not res.ok or not res.data:
         report = _fallback_qa(ctx)
-        report["summary"] = f"LLM QA 失败，回退结构检查 · {res.error or 'no json'}"
+        report["summary"] = (
+            f"大模型失败，保留确定性结构闸 · {res.error or 'no json'} · "
+            f"{report.get('summary') or ''}"
+        )[:800]
         report["mode"] = "fallback_after_llm_error"
+        report["llm_used"] = False
         await record_call(
             db,
             project_id=project_id,
@@ -1617,15 +1645,18 @@ async def run_qa_agent(
     for p in data.get("priorities") or []:
         llm_findings.append({"level": "info", "msg": str(p)[:200], "where": "priority"})
     llm_findings = _filter_findings(llm_findings, ctx)
-    findings = _merge_findings(_structural_findings(ctx), llm_findings)
+    findings = _merge_findings(structural, llm_findings)
 
     # ok 以过滤后的 error 为准，避免模型对 warn 也打 ok=False
-    ok = not any(f.get("level") == "error" for f in findings)
+    errors = [f for f in findings if f.get("level") == "error"]
+    ok = not errors
     summary = str(data.get("summary") or "").strip()
     warn_n = len([f for f in findings if f.get("level") in ("error", "warn")])
     if not summary:
         summary = (
-            f"LLM QA 完成 · {warn_n} 条发现" if warn_n else "LLM QA 未发现明显问题"
+            f"质量摘要完成 · 结构闸+LLM · {len(errors)} 条 error · 共 {len(findings)} 条"
+            if warn_n
+            else "质量摘要未发现影响程序/演示的问题"
         )
     elif ok and warn_n == 0:
         # 模型摘要可能仍写着旧误报；过滤后无问题则改写
@@ -1633,14 +1664,20 @@ async def run_qa_agent(
             r"不一致|写死|无关|未使用|未定义|残留|不建议|需修正|MyTickets|错域",
             summary,
         ):
-            summary = "LLM QA 未发现明显问题"
+            summary = "质量摘要未发现影响程序/演示的问题"
+    elif errors and f"{len(errors)} 条" not in summary:
+        summary = f"{summary} · 共 {len(errors)} 条 error"
     report = {
         "domain": ctx.get("domain"),
         "title": ctx.get("title"),
         "summary": summary[:800],
-        "findings": findings,
+        "findings": findings[:80],
         "ok": ok,
         "mode": "llm",
+        "structural_primary": True,
+        "llm_used": True,
+        "finding_count": len(findings),
+        "error_count": len(errors),
     }
     await record_call(
         db,

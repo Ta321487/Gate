@@ -63,9 +63,7 @@ _CART_KEYS = frozenset({"cart"})
 _ORDER_KEYS = frozenset({
     "my_orders",
     "orders",
-    "addresses",
     "coupons",
-    "order_reviews",
     "blind_pools",
     "group_campaigns",
     "delivery_slots",
@@ -78,6 +76,9 @@ _ORDER_KEYS = frozenset({
     "loss_claims",
     "my_loss",
 })
+# 评价 / 地址与订单分家：否则用例图「管理订单」会 include 评价与地址
+_REVIEW_KEYS = frozenset({"order_reviews"})
+_ADDRESS_KEYS = frozenset({"addresses"})
 _TICKET_KEYS = frozenset({
     "my_tickets",
     "ticket_pending",
@@ -166,6 +167,8 @@ _ADMIN_KEYS = frozenset({"dashboard", "users", "category", "lookup_site", "looku
 # 从子菜单文案抽组名时用的词根（命中多数叶子才采用）
 _BIZ_CORES: dict[str, tuple[str, ...]] = {
     "order": ("订单", "购物", "收货"),
+    "review": ("评价", "评论"),
+    "address": ("地址", "收货地址"),
     "ticket": ("申请", "报修", "工单", "待办", "跟进", "回复", "认领", "报名", "选课", "借阅", "申领"),
     "favorite": ("收藏",),
     "slot": ("预订", "预约", "时段", "挂号"),
@@ -256,7 +259,12 @@ def _biz_id_for_item(key: str, label: str = "") -> str:
         return "archive"
     if k in _CART_KEYS:
         return "cart"
-    if k in _ORDER_KEYS or k.startswith("order_"):
+    if k in _REVIEW_KEYS or k.endswith("_reviews") or "review" in k:
+        return "review"
+    if k in _ADDRESS_KEYS:
+        return "address"
+    # order_* 不含 review（已上收）；避免 order_reviews 再进订单桶
+    if k in _ORDER_KEYS or (k.startswith("order_") and "review" not in k):
         return "order"
     if k in _TICKET_KEYS or "ticket" in k:
         return "ticket"

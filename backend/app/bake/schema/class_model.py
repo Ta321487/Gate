@@ -256,6 +256,16 @@ _COMPOSITION_CHILD_HINTS = (
     "spec",
 )
 
+# 目录主数据 ← 明细行（item_id）是引用，不是组合；勿把 book←borrow 一并砍成关联
+_CATALOG_LINE_PARENTS = (
+    "product",
+    "goods",
+    "archive",
+    "sku",
+    "category",
+)
+_LINE_CHILD_HINTS = ("line", "detail", "entry", "item")
+
 
 def _classify_fk_relation_kind(
     parent: str,
@@ -272,6 +282,13 @@ def _classify_fk_relation_kind(
         return "association"
     if p in _LOOKUP_TABLE_HINTS or p.removeprefix("sys_") in _LOOKUP_TABLE_HINTS:
         return "association"
+    p_stem = p.removeprefix("sys_")
+    child_stem = c.removeprefix("sys_")
+    # product ← order_line(item_id)：行引用商品，不是商品组合行
+    if any(h == p_stem or p_stem.endswith(h) for h in _CATALOG_LINE_PARENTS) and any(
+        h in child_stem for h in _LINE_CHILD_HINTS
+    ):
+        return "association"
     fk_nn = False
     if isinstance(child_cls, dict):
         for a in child_cls.get("attributes") or []:
@@ -285,7 +302,6 @@ def _classify_fk_relation_kind(
             if a.get("fk") and via_l and via_l in col:
                 fk_nn = bool(a.get("not_null")) or bool(a.get("pk"))
                 break
-    child_stem = c.removeprefix("sys_")
     strong_name = any(h in child_stem for h in _COMPOSITION_CHILD_HINTS)
     if cascade or (fk_nn and strong_name):
         return "composition"

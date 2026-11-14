@@ -119,6 +119,18 @@ class ClassDiagramTests(unittest.TestCase):
             _classify_fk_relation_kind("order", "order_item", "order_id", child_cls=detail),
             "composition",
         )
+        # 商品 ← 订单行(item_id)：引用目录，不是组合
+        line_ref = {
+            "attributes": [
+                {"name": "itemId", "column": "item_id", "fk": True, "not_null": True}
+            ]
+        }
+        self.assertEqual(
+            _classify_fk_relation_kind(
+                "product", "order_line", "item_id", child_cls=line_ref
+            ),
+            "association",
+        )
         m = _format_method_display(
             {"name": "page", "visibility": "+", "params": "int page, int size", "return": "Map"}
         )

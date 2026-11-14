@@ -111,6 +111,8 @@ _MERGE_TAIL_ORDER = (
     "content",
     "favorite",
     "cart",
+    "address",
+    "review",
     "seat_select",
     "vote",
     "survey",
@@ -129,6 +131,8 @@ _BIZ_L1_TEMPLATE: dict[str, str] = {
     "messages": "查看通知",
     "slot": "进行预约",
     "order": "管理订单",
+    "review": "管理评价",
+    "address": "管理收货地址",
     "ticket": "办理申请",
     "archive": "浏览业务资料",
     "cart": "管理购物车",
@@ -261,19 +265,14 @@ def _bucket_primary_biz(items: list[dict[str, Any]], fallback: str = "extra") ->
 
 
 def _should_attach_pay_extend(*, side: str, items: list[dict[str, Any]]) -> bool:
-    """仅用户门户、且本桶主业务是下单/预约类时，才挂「进行支付」扩展。"""
+    """仅用户门户订单桶挂「进行支付」；不挂购物车（避免双挂），不因 order_reviews 误触发。"""
     if side != "user":
         return False
     primary = _bucket_primary_biz(items)
-    if primary not in ("order", "cart", "slot", "seat_select"):
+    if primary != "order":
         return False
     keys = [str(x.get("key") or "") for x in items]
-    labs = [str(x.get("label") or "") for x in items]
-    return any(
-        k in ("my_orders", "orders", "cart", "my_reservations", "reservations", "slots")
-        or k.startswith("order")
-        for k in keys
-    ) or any(any(w in x for w in ("订单", "预约", "预订", "购物车")) for x in labs)
+    return any(k in ("my_orders", "orders") for k in keys)
 
 def _actor_label(schema: dict[str, Any], side: str) -> str:
     roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
@@ -504,7 +503,11 @@ def _l1_label_for_biz(biz: str, items: list[dict[str, Any]], side: str) -> str:
 
 
 _AFFINITY_GROUPS: tuple[frozenset[str], ...] = (
-    frozenset({"order", "cart", "favorite", "slot", "seat_select"}),
+    # cart / order / review / address 拆开，禁止「管理订单」吞评价与地址
+    frozenset({"order", "favorite", "slot", "seat_select"}),
+    frozenset({"cart"}),
+    frozenset({"review"}),
+    frozenset({"address"}),
     frozenset({"content", "guestbook", "dm", "doclib"}),
     frozenset({"exam", "survey", "vote"}),
     frozenset({"ticket", "archive", "admin", "stock_io", "e_sign", "timebank"}),
@@ -518,10 +521,19 @@ def _biz_root(biz: str) -> str:
 
 
 def _merge_affinity(a: str, b: str) -> int:
-    """越小越优先合并；同族 0，同亲和组 1，其它 5。"""
+    """越小越优先合并；同族 0，同亲和组 1，其它 5。cart/order/review/address 故意疏远。"""
     ra, rb = _biz_root(a), _biz_root(b)
     if ra == rb:
         return 0
+    if {ra, rb} in (
+        {"order", "cart"},
+        {"order", "review"},
+        {"order", "address"},
+        {"cart", "review"},
+        {"cart", "address"},
+        {"review", "address"},
+    ):
+        return 9
     for g in _AFFINITY_GROUPS:
         if ra in g and rb in g:
             return 1
@@ -944,7 +956,9 @@ def _semantic_l2_pair(
     if biz == "slot" or any(t in blob for t in ("预约", "挂号", "选座")):
         noun = stem if stem not in ("业务", "") else "预约"
         return (f"查看{noun}列表", f"提交{noun}")
-    if biz in ("order", "cart") or any(t in blob for t in ("订单", "购物车")):
+    if biz == "cart" or key == "cart" or "购物车" in blob:
+        return ("查看购物车", "结算下单")
+    if biz == "order" or any(t in blob for t in ("订单",)) or key in ("my_orders", "orders"):
         return ("查看订单列表", "查看订单详情")
     if "评价" in blob or stem == "评价":
         return ("查看评价列表", "发表评价")
