@@ -82,7 +82,8 @@ def test_apply_writes_single_style(tmp_path):
     assert "@@CART_MUTATE" not in order
 
 
-def test_inventory_filters_inactive_variants(tmp_path):
+def test_inventory_lists_source_variants_not_hidden_by_style(tmp_path):
+    """清单对准源码：两套变体都在文件里时都列出，不按 api_style 藏掉。"""
     be = tmp_path / "backend" / "src" / "main" / "java" / "com" / "thesis" / "controller"
     be.mkdir(parents=True)
     (be / "FavoriteController.java").write_text(
@@ -105,7 +106,32 @@ public class FavoriteController {
     )
     paths = {(e["method"], e["path"]) for e in inv["endpoints"]}
     assert ("POST", "/api/favorites/toggle") in paths
-    assert ("POST", "/api/favorites/{itemId}/toggle") not in paths
+    assert ("POST", "/api/favorites/{itemId}/toggle") in paths
+    assert inv["style_mismatch"] == 1
+    assert inv["style_hidden"] == 1
+
+
+def test_inventory_keeps_body_toggle_when_spec_style_missing(tmp_path):
+    """spec 缺 api_style 时默认 path，也不得把源码里的 body 风格藏掉。"""
+    be = tmp_path / "backend" / "src" / "main" / "java" / "com" / "thesis" / "controller"
+    be.mkdir(parents=True)
+    (be / "FavoriteController.java").write_text(
+        """
+package com.thesis.controller;
+@RestController
+@RequestMapping("/api/favorites")
+public class FavoriteController {
+  @PostMapping("/toggle")
+  public Object toggleBody() { return null; }
+}
+""",
+        encoding="utf-8",
+    )
+    inv = load_api_inventory(tmp_path, {})
+    paths = {(e["method"], e["path"]) for e in inv["endpoints"]}
+    assert ("POST", "/api/favorites/toggle") in paths
+    assert inv["count"] == 1
+    assert inv["style_mismatch"] == 1
 
 
 def test_baseline_favorite_is_single_path():

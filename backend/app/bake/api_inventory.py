@@ -1,5 +1,6 @@
 """从学生工作区 Controller 静态扫描 REST 映射，供工厂产物页对照。
 
+清单以工作区源码实有 Mapping 为准（不按 api_style 藏接口、不读运行中 OpenAPI）。
 不依赖运行中的后端；仅供运营端验收，不含于学生交付包。
 """
 
@@ -177,20 +178,25 @@ def _next_handler(src: str, start: int) -> str | None:
 
 
 def _flow_keys_for(path: str, method_name: str, flow_api: dict[str, Any]) -> list[str]:
+    """把 flow_api.need 标到具体端点：路径 need 只精确匹配，方法名 need 只对 handler。
+
+    禁止用 ``/api/archive`` 子串去标 ``/api/archive/by-author`` 整树，否则契约列失真。
+    """
     hits: list[str] = []
-    path_l = path.lower()
-    name_l = method_name.lower()
+    path_n = _normalize_path(path).lower()
+    name_l = (method_name or "").lower()
     for key, rule in (flow_api or {}).items():
         if not isinstance(rule, dict):
             continue
         for need in rule.get("need") or []:
-            token = str(need).strip().lower()
+            token = str(need).strip()
             if not token:
                 continue
-            if token.startswith("/") and token in path_l:
-                hits.append(key)
-                break
-            if not token.startswith("/") and (token in name_l or token in path_l):
+            if token.startswith("/"):
+                if path_n == _normalize_path(token).lower():
+                    hits.append(key)
+                    break
+            elif token.lower() in name_l:
                 hits.append(key)
                 break
     seen: set[str] = set()
@@ -250,7 +256,11 @@ def parse_controller_source(
 
 
 def load_api_inventory(workspace: Path, spec: dict[str, Any] | None = None) -> dict[str, Any] | None:
-    """扫描 workspace 下 Controller，返回分组清单。无 Java 控制器时返回 None。"""
+    """扫描 workspace 下 Controller，返回分组清单。无 Java 控制器时返回 None。
+
+    端点列表 = 源码里实有的 Mapping；``api_style`` 只作旁注，不再把未抽中变体藏掉
+    （bake 正常时源码本就只留一套；spec 缺省/漂移时藏接口会让清单偏离实包）。
+    """
     from app.bake.api_style import (
         api_style_labels,
         api_style_notes,
@@ -278,17 +288,16 @@ def load_api_inventory(workspace: Path, spec: dict[str, Any] | None = None) -> d
         return None
 
     all_eps: list[dict[str, Any]] = []
-    hidden = 0
+    style_mismatch = 0
     for c in controllers:
         kept: list[dict[str, Any]] = []
         for ep in c["endpoints"]:
             tag = _variant_tag(ep["method"], ep["path"])
             if tag:
                 axis, style_id = tag
-                if api_style.get(axis) != style_id:
-                    hidden += 1
-                    continue
                 ep = {**ep, "api_style_axis": axis, "api_style_value": style_id}
+                if api_style.get(axis) != style_id:
+                    style_mismatch += 1
             kept.append(ep)
             all_eps.append({**ep, "controller": c["controller"], "file": c["file"]})
         c["endpoints"] = kept
@@ -315,5 +324,7 @@ def load_api_inventory(workspace: Path, spec: dict[str, Any] | None = None) -> d
         "api_style": api_style,
         "api_style_label": api_style_labels(api_style),
         "api_style_notes": api_style_notes(api_style),
-        "style_hidden": hidden,
+        # 兼容旧前端字段名：不再隐藏，改表示「源码里与宣称风格不一致的变体条数」
+        "style_hidden": style_mismatch,
+        "style_mismatch": style_mismatch,
     }

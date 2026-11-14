@@ -58,7 +58,7 @@ def api_style_notes(style: dict[str, str] | None) -> list[str]:
     """工厂接口清单旁注（不进学生包）。"""
     s = normalize_api_style(style)
     notes: list[str] = [
-        "本课题传参在生成时已写死进源码；清单只展示本套接口。",
+        "本课题传参在生成时已写死进源码；清单按工作区 Controller 实有 Mapping 列出。",
     ]
     if s["item_ref"] == "path":
         notes.append(
