@@ -74,7 +74,7 @@ class ProjectDetail(ProjectSummary):
         default=None, description="不可启动预览的原因；空=可启动"
     )
     delivery_review: dict[str, Any] = Field(
-        default_factory=dict, description="交付复审状态（安全区/毒区/轮次）"
+        default_factory=dict, description="交付复审状态（已通过/未通过清单与轮次）"
     )
 
 
@@ -115,7 +115,7 @@ class DeliveryReviewPanelOut(BaseModel):
     review: dict[str, Any] = Field(default_factory=dict)
     zones: dict[str, Any] = Field(default_factory=dict)
     blocking_gates: list[dict[str, Any]] = Field(
-        default_factory=list, description="未过门禁（毒区不含此项）"
+        default_factory=list, description="未过门禁（未通过清单不含此项）"
     )
     workspace_hash: str = Field(default="")
     zip_stale: bool = Field(default=False)
@@ -125,7 +125,7 @@ class DeliveryReviewPanelOut(BaseModel):
 
 
 class DeliveryVerifyOut(BaseModel):
-    model_config = ConfigDict(title="验圈结果")
+    model_config = ConfigDict(title="验收结果")
 
     round: dict[str, Any] = Field(default_factory=dict)
     gates: dict[str, Any] = Field(default_factory=dict)
@@ -136,7 +136,7 @@ class DeliveryVerifyOut(BaseModel):
     open_notes_count: int = Field(default=0)
     zones: dict[str, Any] = Field(default_factory=dict)
     blocking_gates: list[dict[str, Any]] = Field(default_factory=list)
-    fail_reasons: list[str] = Field(default_factory=list, description="验圈未过原因")
+    fail_reasons: list[str] = Field(default_factory=list, description="验收未过原因")
     pending_names: list[str] = Field(default_factory=list, description="待收敛清单名")
     zip_stale: bool = Field(default=False)
     review: dict[str, Any] = Field(default_factory=dict)
@@ -315,6 +315,14 @@ class JobOut(BaseModel):
     units: list[Any] = Field(default_factory=list, description="页级 Unit（PPT）")
     error: Optional[str] = Field(default=None, description="错误信息")
     error_code: Optional[str] = Field(default=None, description="bake 失败稳定码")
+    has_gate_report: bool = Field(
+        default=False,
+        description="本任务是否已落门禁快照（列表用；全文走 /jobs/{id}/gate-report）",
+    )
+    gate_report: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="本任务门禁快照（rows/checklist/gates）；仅详情接口带全文",
+    )
     started_at: Optional[datetime] = Field(default=None, description="开始时间")
     finished_at: Optional[datetime] = Field(default=None, description="结束时间")
     created_at: Optional[datetime] = Field(default=None, description="创建时间")
@@ -528,6 +536,12 @@ class SystemInfo(BaseModel):
     uploads: str = Field(description="上传目录")
     skeletons: str = Field(description="骨架目录")
     cache: str = Field(default="", description="共享缓存目录（data/cache）")
+    preview_max_running: int = Field(
+        default=3, description="预览并发上限（GF_PREVIEW_MAX_RUNNING）"
+    )
+    preview_running: int = Field(
+        default=0, description="当前托管中预览路数（有托管后端端口的项目数近似）"
+    )
 
 
 class RuntimeState(BaseModel):

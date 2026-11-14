@@ -28,6 +28,7 @@ from app.models import Job, JobKind, JobStatus, Project, ProjectOverrides, Proje
 from app.services.projects import MSG_DOWNLOAD_GATES
 from app.services.proposal import load_merged_proposal_text
 from app.services.bake_fail_classify import classify_bake_error
+from app.services.gate_report import attach_gate_report
 from app.services.delivery_review import (
     apply_qa_to_gates,
     evaluate_workspace_gates,
@@ -340,7 +341,7 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             job.status = JobStatus.failed.value
             _apply_job_error(
                 job,
-                "交付复审进行中 · 不可重跑生成：仅同步 ZIP 请验圈后合卷；须改工程重出包请先结束复审",
+                "交付复审进行中 · 不可重跑生成：仅同步 ZIP 请验收后重打包；须改工程重出包请先结束复审",
             )
             job.finished_at = datetime.now()
             await db.commit()
@@ -663,6 +664,13 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
                     }
                 apply_qa_to_gates(gates, qa)
                 project.gates = {k: v for k, v in gates.items() if k != "checklist"}
+                project.checklist = gates.get("checklist") or []
+                # 本 Job 落门禁快照；新任务新行，不覆盖历史 jobs.gate_report
+                attach_gate_report(
+                    job,
+                    gates,
+                    checklist=project.checklist if isinstance(project.checklist, list) else None,
+                )
                 await append_log(
                     project.id,
                     f"QA · ok={bool(qa.get('ok'))} · mode={qa.get('mode') or '?'} · "
@@ -733,6 +741,14 @@ async def run_job(job_id: int, from_step: int = 0) -> None:
             ):
                 detail = _gate_fail_summary(g_ok)
                 raise RuntimeError(f"门禁未放行，禁止 SUCCESS · {detail}")
+
+            # 续跑跳过门禁步时：仍把当时 project 门禁挂到本 Job（新行，不改历史）
+            if getattr(job, "gate_report", None) is None and g_ok:
+                attach_gate_report(
+                    job,
+                    g_ok,
+                    checklist=project.checklist if isinstance(project.checklist, list) else None,
+                )
 
             job.status = JobStatus.success.value
             job.progress = 100
@@ -810,7 +826,7 @@ def resolve_bake_from_step(project: Project, from_step: int = 0) -> int:
     resolved = forbid_full_rebake(project, step)
     if resolved is None:
         raise ValueError(
-            "交付复审进行中 · 不可重跑生成：仅同步 ZIP 请验圈后合卷；须改工程重出包请先结束复审"
+            "交付复审进行中 · 不可重跑生成：仅同步 ZIP 请验收后重打包；须改工程重出包请先结束复审"
         )
     return int(resolved)
 

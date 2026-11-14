@@ -29,18 +29,37 @@ from app.services.jobs import cancel_job, resume_step_index, start_job
 router = APIRouter(prefix="/api/jobs", tags=["任务"])
 
 
-def _job_out(j: Job, title: str | None = None) -> JobOut:
+def _job_out(
+    j: Job,
+    title: str | None = None,
+    *,
+    include_gate_report: bool = False,
+) -> JobOut:
     item = JobOut.model_validate(j)
     if not item.error_code and j.error:
         item.error_code = ensure_error_code(j)
     item.project_title = title
+    raw = getattr(j, "gate_report", None)
+    item.has_gate_report = isinstance(raw, dict) and bool(raw)
+    # 列表不塞全文；按次查因走 /jobs/{id}/gate-report
+    if not include_gate_report:
+        item.gate_report = None
     return item
 
 
 @router.get("", response_model=list[JobOut], summary="任务列表")
-async def list_jobs(db: AsyncSession = Depends(get_db)):
-    """仅列出程序生成（bake）任务；答辩 PPT 走 /defense-ppt/job。"""
-    result = await db.execute(select(Job).order_by(Job.id.desc()).limit(200))
+async def list_jobs(
+    db: AsyncSession = Depends(get_db),
+    project_id: Optional[str] = Query(None, description="按项目筛选"),
+):
+    """仅列出程序生成（bake）任务；答辩 PPT 走 /defense-ppt/job。
+
+    有快照时 has_gate_report=true；全文按 job 调 gate-report，历史互不覆盖。
+    """
+    q = select(Job).order_by(Job.id.desc()).limit(200)
+    if project_id:
+        q = select(Job).where(Job.project_id == project_id).order_by(Job.id.desc()).limit(200)
+    result = await db.execute(q)
     jobs = [
         j
         for j in result.scalars().all()
@@ -49,8 +68,27 @@ async def list_jobs(db: AsyncSession = Depends(get_db)):
     out = []
     for j in jobs:
         p = await db.get(Project, j.project_id)
-        out.append(_job_out(j, p.title if p else None))
+        out.append(_job_out(j, p.title if p else None, include_gate_report=False))
     return out
+
+
+@router.get("/{job_id}/gate-report", summary="任务门禁快照")
+async def get_job_gate_report(job_id: int, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+    """读取某次出包任务落库的门禁表（不随后续 bake 覆盖）。"""
+    j = await db.get(Job, job_id)
+    if not j:
+        raise HTTPException(404, "任务不存在")
+    report = j.gate_report if isinstance(getattr(j, "gate_report", None), dict) else None
+    if not report:
+        raise HTTPException(404, "该任务无门禁快照（未跑到门禁步或旧数据）")
+    return {
+        "job_id": j.id,
+        "project_id": j.project_id,
+        "status": j.status,
+        "error_code": j.error_code,
+        "finished_at": j.finished_at.isoformat() if j.finished_at else None,
+        "gate_report": report,
+    }
 
 
 @router.get("/fail-analysis", summary="失败分析")
@@ -173,7 +211,7 @@ async def get_job(job_id: int, db: AsyncSession = Depends(get_db)):
     if not j:
         raise HTTPException(404, "任务不存在")
     p = await db.get(Project, j.project_id)
-    return _job_out(j, p.title if p else None)
+    return _job_out(j, p.title if p else None, include_gate_report=True)
 
 
 @router.post("/{job_id}/cancel", response_model=ApiOk, summary="取消任务")

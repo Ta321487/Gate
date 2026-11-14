@@ -258,6 +258,16 @@ def _migrate_project_columns(sync_conn) -> None:
             )
         except Exception:  # noqa: BLE001
             pass
+    if job_cols and "gate_report" not in job_cols:
+        try:
+            if dialect == "sqlite":
+                sync_conn.execute(
+                    text("ALTER TABLE jobs ADD COLUMN gate_report JSON DEFAULT NULL")
+                )
+            else:
+                sync_conn.execute(text("ALTER TABLE jobs ADD COLUMN gate_report JSON NULL"))
+        except Exception:  # noqa: BLE001
+            pass
     try:
         sync_conn.execute(
             text("UPDATE jobs SET kind = 'bake' WHERE kind IS NULL OR kind = ''")

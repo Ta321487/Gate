@@ -189,19 +189,27 @@ export const api = {
   },
   runtime: (id) => http.get(`/projects/${id}/runtime`),
   // 分配端口 / 启停握手可能超过默认 60s；长跑态靠前端轮询，勿用默认超时误杀
+  // silent：由 usePdRuntime 区分超时「可能已受理」与普通失败，避免双 toast
   runtimeAction: (id, side, action) =>
-    http.post(`/projects/${id}/runtime/${side}/${action}`, null, { timeout: 120000 }),
+    http.post(`/projects/${id}/runtime/${side}/${action}`, null, {
+      timeout: 120000,
+      silent: true,
+    }),
   /** 批量预览启停；action=start 对运行中的项目等价重启（服务端串行错峰，可能较久） */
   runtimeBatch: (body) => http.post('/projects/runtime/batch', body, { ...HEAVY_OPTS }),
   logs: (id, side, opts) => http.get(`/projects/${id}/logs/${side}`, opts),
   logsPoll: (id, side) => http.get(`/projects/${id}/logs/${side}`, POLL_OPTS),
   listJobs: (opts) => http.get('/jobs', opts),
   listJobsPoll: () => http.get('/jobs', POLL_OPTS),
+  listJobsByProject: (projectId) =>
+    http.get('/jobs', { params: { project_id: projectId } }),
   getJob: (id) => http.get(`/jobs/${id}`),
+  getJobGateReport: (id) => http.get(`/jobs/${id}/gate-report`),
   cancelJob: (id) => http.post(`/jobs/${id}/cancel`),
   retryJob: (id) => http.post(`/jobs/${id}/retry`),
   deleteJob: (id) => http.delete(`/jobs/${id}`),
-  getProposalDiff: (id) => http.get(`/projects/${id}/proposal-diff`),
+  // 开题措辞核对可能触 LLM / 重读材料，勿用默认 60s
+  getProposalDiff: (id) => http.get(`/projects/${id}/proposal-diff`, { timeout: 120000 }),
   ackPreGenerate: (id) => http.post(`/projects/${id}/delivery-review/ack-pre-generate`),
   // 会算 workspace 指纹，勿用默认 60s
   getDeliveryReview: (id) =>
@@ -227,7 +235,7 @@ export const api = {
   failAnalysis: (params) => http.get('/jobs/fail-analysis', { params }),
   failAnalysisCatalog: () => http.get('/jobs/fail-analysis/catalog'),
   failAnalysisClassifyAssist: (body) =>
-    http.post('/jobs/fail-analysis/classify-assist', body, { timeout: 90000 }),
+    http.post('/jobs/fail-analysis/classify-assist', body, { timeout: 120000 }),
   failAnalysisFixDraft: (body) =>
     http.post('/jobs/fail-analysis/fix-draft', body, { timeout: 120000 }),
   failAnalysisDiscardDraft: (jobId) =>

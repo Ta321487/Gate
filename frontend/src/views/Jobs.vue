@@ -1,52 +1,86 @@
 <template>
-  <div class="page-fill">
-    <h1 class="page-title">任务队列</h1>
-    <p class="page-desc">
-      查看生成任务进度，支持取消与重试。按失败类型排修请使用「失败分析」；当日待办请见「开工台」。
-    </p>
-    <PageSkeleton v-if="!booted" variant="list" />
-    <div v-else class="panel panel-fill">
-      <div class="panel-hd">
-        <h3>任务列表</h3>
-        <div class="row" style="gap:8px;flex-wrap:wrap">
-          <n-button size="small" :loading="loading" @click="refresh">刷新</n-button>
-          <n-button
-            size="small"
-            secondary
-            type="warning"
-            :loading="purgingFinished"
-            :disabled="!finishedCount"
-            @click="purgeFinished"
-          >清空历史（{{ finishedCount }}）</n-button>
-          <n-button
-            size="small"
-            secondary
-            type="error"
-            :loading="purging"
-            @click="purgeOrphans"
-          >清理失效项目残留</n-button>
-        </div>
+  <div class="page-fill surface-page">
+    <div class="surface-toolbar">
+      <div>
+        <h1 class="page-title">任务队列</h1>
+        <p class="page-desc" style="margin-bottom:0">
+          生成进度、取消与重试。排修见「失败分析」；待办见「开工台」。
+        </p>
       </div>
-      <div class="panel-bd panel-bd-fill">
-        <n-data-table
-          :columns="columns"
-          :data="treeList"
-          :row-key="rowKey"
-          :expanded-row-keys="expandedKeys"
-          :bordered="false"
-          :scroll-x="1080"
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <n-button size="small" :loading="loading" @click="refresh">刷新</n-button>
+        <n-button
           size="small"
-          @update:expanded-row-keys="onExpandedKeys"
-        >
-          <template #empty>
-            <div class="empty-hint">
-              <div class="empty-title">暂无任务</div>
-              <div class="empty-desc">在「项目」上传并开始生成后，任务会出现在这里</div>
-            </div>
-          </template>
-        </n-data-table>
+          secondary
+          type="warning"
+          :loading="purgingFinished"
+          :disabled="!finishedCount"
+          @click="purgeFinished"
+        >清空历史（{{ finishedCount }}）</n-button>
+        <n-button
+          size="small"
+          secondary
+          type="error"
+          :loading="purging"
+          @click="purgeOrphans"
+        >清理失效项目残留</n-button>
       </div>
     </div>
+    <PageSkeleton v-if="!booted" variant="list" />
+    <div v-else class="surface-tray panel-fill jobs-tray">
+      <n-data-table
+        :columns="columns"
+        :data="treeList"
+        :row-key="rowKey"
+        :expanded-row-keys="expandedKeys"
+        :bordered="false"
+        :scroll-x="1080"
+        size="small"
+        @update:expanded-row-keys="onExpandedKeys"
+      >
+        <template #empty>
+          <div class="empty-hint">
+            <div class="empty-title">暂无任务</div>
+            <div class="empty-desc">在「项目」上传并开始生成后，任务会出现在这里</div>
+          </div>
+        </template>
+      </n-data-table>
+    </div>
+
+    <n-modal
+      v-model:show="gateModalShow"
+      preset="card"
+      :title="gateModalTitle"
+      style="width:min(920px,94vw)"
+      :bordered="false"
+      size="huge"
+    >
+      <p v-if="gateModalMeta" class="small muted" style="margin:0 0 10px">{{ gateModalMeta }}</p>
+      <n-spin :show="gateModalLoading">
+        <template v-if="gateModalRows.length">
+          <n-data-table
+            :columns="gateModalCols"
+            :data="gateModalRows"
+            :bordered="false"
+            size="small"
+            :max-height="420"
+          />
+          <div v-if="gateModalChecklist.length" class="mt-12">
+            <div class="parse-sec-hd" style="margin:0 0 8px">清单实装</div>
+            <n-data-table
+              :columns="gateCheckCols"
+              :data="gateModalChecklist"
+              :bordered="false"
+              size="small"
+              :max-height="220"
+            />
+          </div>
+        </template>
+        <div v-else-if="!gateModalLoading" class="empty-hint">
+          <div class="empty-desc">该任务无门禁快照（未跑到门禁步或旧数据）</div>
+        </div>
+      </n-spin>
+    </n-modal>
   </div>
 </template>
 
@@ -66,7 +100,69 @@ const loading = ref(false)
 const purging = ref(false)
 const purgingFinished = ref(false)
 const booted = ref(false)
+const gateModalShow = ref(false)
+const gateModalLoading = ref(false)
+const gateModalTitle = ref('门禁快照')
+const gateModalMeta = ref('')
+const gateModalRows = ref([])
+const gateModalChecklist = ref([])
 let timer = null
+
+const gateModalCols = [
+  { title: '级', key: 'level', width: 52 },
+  { title: '检查项', key: 'label', minWidth: 160 },
+  {
+    title: '结果',
+    key: 'ok',
+    width: 72,
+    render: (r) => (r.ok ? '通过' : '未通过'),
+  },
+  { title: '说明', key: 'desc', minWidth: 280 },
+]
+const gateCheckCols = [
+  { title: '清单项', key: 'name', minWidth: 160 },
+  {
+    title: '实现状态',
+    key: 'result',
+    width: 100,
+    render: (r) => {
+      const m = { done: '已覆盖', pending: '未覆盖', out_of_mvp: '范围外' }
+      return m[r.result] || r.result || '—'
+    },
+  },
+]
+
+async function openGateReport(job) {
+  if (!job?.id) return
+  gateModalShow.value = true
+  gateModalLoading.value = true
+  gateModalTitle.value = `门禁快照 · #${job.id}`
+  gateModalMeta.value = ''
+  gateModalRows.value = []
+  gateModalChecklist.value = []
+  try {
+    const data = await api.getJobGateReport(job.id)
+    const report = data?.gate_report || {}
+    const overall = report.overall ? '总评通过' : '总评未通过'
+    const zip = report.zip_allowed ? '可出 ZIP' : '禁 ZIP'
+    const when = data?.finished_at ? new Date(data.finished_at).toLocaleString() : ''
+    gateModalMeta.value = [
+      data?.project_id,
+      overall,
+      zip,
+      data?.error_code || '',
+      when ? `结束 ${when}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+    gateModalRows.value = Array.isArray(report.rows) ? report.rows : []
+    gateModalChecklist.value = Array.isArray(report.checklist) ? report.checklist : []
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    gateModalLoading.value = false
+  }
+}
 
 const finishedCount = computed(
   () => list.value.filter((j) => ['success', 'failed', 'cancelled'].includes(j.status)).length,
@@ -248,7 +344,7 @@ const columns = [
   {
     title: '',
     key: 'actions',
-    width: 260,
+    width: 300,
     render: (r) => {
       if (r.isGroup) return null
       const btns = [
@@ -258,6 +354,13 @@ const columns = [
           onClick: () => router.push(`/projects/${r.project_id}`),
         }, { default: () => '详情' }),
       ]
+      if (r.has_gate_report) {
+        btns.push(h(NButton, {
+          text: true,
+          size: 'small',
+          onClick: () => openGateReport(r),
+        }, { default: () => '门禁' }))
+      }
       if (r.status === 'failed' && r.error_code) {
         btns.push(h(NButton, {
           text: true,
@@ -411,20 +514,21 @@ onUnmounted(() => clearInterval(timer))
 .page-fill {
   display: flex;
   flex-direction: column;
-  /* topbar 52 + content 上下 padding 48 */
-  min-height: calc(100dvh - 100px);
+  min-height: calc(100dvh - 88px);
+}
+.jobs-tray {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: auto;
 }
 .panel-fill {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-.panel-bd-fill {
-  flex: 1;
-  min-height: 0;
-  padding: 0 !important;
-  overflow: auto;
 }
 .job-project { min-width: 240px; }
 .job-title, .job-sub, .job-err {

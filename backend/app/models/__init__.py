@@ -123,6 +123,8 @@ class Job(Base):
     error: Mapped[Optional[str]] = mapped_column(Text)
     # bake 失败稳定码；与 bake_fail_classify / docs/bake-fail-analysis.md 同源
     error_code: Mapped[Optional[str]] = mapped_column(String(64))
+    # 本任务门禁快照（P0–P3 表 + 清单）；每 Job 一行，历史不覆盖
+    gate_report: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
