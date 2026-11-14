@@ -78,6 +78,8 @@
     let reviewActive = false;
     let currentProjectId = "gf-20260717-001";
     let currentDeliveryMark = "none";
+    let projectBaked = false;
+    let currentDetailTab = "materials";
 
     const RECOMMENDED = {
       arch: "ARCH-FLOW · 审核流",
@@ -243,21 +245,23 @@
       document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
       const view = document.getElementById("view-" + name);
       if (view) view.classList.add("active");
-      const navKey = name === "project" ? "home" : name;
+      const navKey = name === "project" ? "projects" : name;
       const nav = document.querySelector(`.nav-item[data-nav="${navKey}"]`);
       if (nav) nav.classList.add("active");
       const title =
         document.getElementById("proj-title")?.textContent?.trim() || "详情";
       const crumbs = {
-        home: [{ label: "毕设港", to: "home" }, { label: "项目" }],
+        home: [{ label: "毕设港", to: "home" }, { label: "开工台" }],
+        projects: [{ label: "毕设港", to: "home" }, { label: "项目" }],
         jobs: [{ label: "毕设港", to: "home" }, { label: "任务队列" }],
+        "fail-analysis": [{ label: "毕设港", to: "home" }, { label: "失败分析" }],
         help: [{ label: "毕设港", to: "home" }, { label: "帮助文档" }],
         llm: [{ label: "毕设港", to: "home" }, { label: "大模型" }],
         unsplash: [{ label: "毕设港", to: "home" }, { label: "Unsplash" }],
         system: [{ label: "毕设港", to: "home" }, { label: "运行环境" }],
         project: [
           { label: "毕设港", to: "home" },
-          { label: "项目", to: "home" },
+          { label: "项目", to: "projects" },
           { label: title },
         ],
       };
@@ -322,7 +326,9 @@
           ["generated", "running"].includes(p.status) && p.zipOk,
         fail: (p) => p.status === "failed",
         pending: (p) => p.zipOk && p.deliveryMark === "none",
+        review: (p) => p.zipOk && p.deliveryMark === "none",
         ready: (p) => p.deliveryMark === "ready",
+        undelivered: (p) => p.zipOk && p.deliveryMark !== "delivered",
         delivered: (p) => p.deliveryMark === "delivered",
       };
       const rows = projects
@@ -350,13 +356,138 @@
       document.getElementById("list-footer").textContent = `共 ${rows.length} 条 · 点击行进详情；履约列可直接下载 / 标记`;
     }
 
-    function setProjectTab(tab) {
-      document.querySelectorAll("#proj-tabs .tab").forEach((t) => {
-        t.classList.toggle("active", t.dataset.tab === tab);
+    function filterFailureSamples() {
+      const code = document.getElementById("fail-code")?.value || "";
+      const step = document.getElementById("fail-step")?.value || "";
+      const domain = document.getElementById("fail-domain")?.value || "";
+      const range = Number(document.getElementById("fail-range")?.value || 90);
+      const rows = [...document.querySelectorAll("#fail-sample-rows .fail-sample")];
+      let visible = 0;
+      const visibleCodes = new Set();
+      rows.forEach((row) => {
+        const show =
+          (!code || row.dataset.code === code) &&
+          (!step || row.dataset.step === step) &&
+          (!domain || row.dataset.domain === domain) &&
+          Number(row.dataset.ageDays) <= range;
+        row.hidden = !show;
+        if (show) {
+          visible += 1;
+          visibleCodes.add(row.dataset.code);
+        }
       });
+      const tbody = document.getElementById("fail-sample-rows");
+      let empty = tbody.querySelector(".fa-no-samples");
+      if (!visible && !empty) {
+        empty = document.createElement("tr");
+        empty.className = "fa-no-samples";
+        empty.innerHTML = '<td colspan="8"><div class="empty-hint"><div class="empty-title">暂无记录</div><div class="empty-desc">可放宽筛选条件，或扩大时间范围后重试</div></div></td>';
+        tbody.appendChild(empty);
+      } else if (visible && empty) {
+        empty.remove();
+      }
+      document.getElementById("fail-count").textContent = visible;
+      document.getElementById("fail-type-count").textContent = visibleCodes.size;
+      document.getElementById("fail-range-label").textContent =
+        document.querySelector("#fail-range option:checked").textContent;
+    }
+
+    function syncStageRail() {
+      const stageForTab = {
+        materials: "materials",
+        match: "match",
+        generate: "generate",
+        thesis: "thesis",
+        ppt: "ppt",
+        delivery: "delivery",
+        artifacts: "delivery",
+      };
+      const activeStage = stageForTab[currentDetailTab] || "";
+      document.querySelectorAll("#proj-tabs [data-tab]").forEach((button) => {
+        const key = button.dataset.tab;
+        const isSideTab = key === "runtime" || key === "logs";
+        const locked =
+          key === "generate" ? !matchConfirmed :
+          ["thesis", "ppt", "delivery", "runtime"].includes(key) ? !projectBaked :
+          false;
+        button.classList.toggle(
+          "is-current",
+          isSideTab
+            ? (key === "runtime" && currentDetailTab === "runtime") ||
+                (key === "logs" && currentDetailTab === "tools")
+            : key === activeStage
+        );
+        button.classList.toggle("is-locked", locked);
+        button.classList.toggle(
+          "is-done",
+          key === "materials" || (key === "match" && matchConfirmed) || (key === "generate" && projectBaked)
+        );
+        button.disabled = locked;
+        if (locked) {
+          button.title = key === "generate" ? "请先完成匹配确认" : "请先完成匹配并生成";
+        } else {
+          button.removeAttribute("title");
+        }
+      });
+
+      const hint = document.getElementById("stage-rail-hint");
+      if (hint) {
+        hint.textContent = !matchConfirmed
+          ? "请先完成匹配确认"
+          : !projectBaked
+            ? "匹配已确认 · 完成生成后可进入论文材料、答辩 PPT 与质检交付"
+            : "工程已生成 · 可继续论文材料、答辩 PPT、质检交付或预览";
+      }
+
+      const pill = document.getElementById("readiness-pill");
+      const impact = document.getElementById("readiness-impact");
+      const readinessHint = document.getElementById("readiness-hint");
+      const action = document.getElementById("readiness-action");
+      if (pill && impact && readinessHint && action) {
+        pill.textContent = projectBaked ? "工程已生成" : matchConfirmed ? "匹配已确认" : "待确认匹配";
+        pill.className = "pill " + (projectBaked ? "pill-green" : matchConfirmed ? "pill-teal" : "pill-amber");
+        impact.textContent = projectBaked
+          ? "工程已生成，可进入论文材料与质检交付"
+          : matchConfirmed
+            ? "完成生成后才能继续交付"
+            : "完成匹配后才能开始生成";
+        readinessHint.textContent = projectBaked
+          ? "按实包整理论文材料，再完成质量检查与交付。"
+          : matchConfirmed
+            ? "匹配已确认；请进入生成阶段构建并检查工程。"
+            : "请核对推荐领域与主路径，再确认匹配。";
+        action.dataset.tab = projectBaked ? "delivery" : matchConfirmed ? "generate" : "match";
+        action.textContent = projectBaked ? "去质检交付" : matchConfirmed ? "去生成" : "去匹配确认";
+      }
+    }
+
+    function setProjectTab(tab) {
+      let target = tab;
+      if (target === "artifacts") target = "delivery";
+      if (target === "logs") target = "tools";
+
+      if (target === "generate" && !matchConfirmed) {
+        toast("请先完成匹配确认，再进入生成");
+        target = "match";
+      } else if (["thesis", "ppt", "delivery", "runtime"].includes(target) && !projectBaked) {
+        toast("请先完成匹配并生成，再进入此阶段");
+        target = matchConfirmed ? "generate" : "match";
+      }
+
+      currentDetailTab = target;
       document.querySelectorAll("#view-project .tab-panel").forEach((p) => p.classList.remove("active"));
-      const panel = document.getElementById("tab-" + tab);
+      const panelName = {
+        thesis: "artifacts",
+        ppt: "artifacts",
+        delivery: "artifacts",
+        tools: "logs",
+      }[target] || target;
+      const panel = document.getElementById("tab-" + panelName);
       if (panel) panel.classList.add("active");
+      if (target === "thesis") setArtifactView("thesis");
+      else if (target === "ppt") setArtifactView("ppt");
+      else if (target === "delivery") setArtifactView("gates");
+      syncStageRail();
     }
 
     function setArtifactView(view) {
@@ -1249,6 +1380,7 @@
 
       const state = demoOverride || p.status;
       matchConfirmed = state !== "needs_confirm";
+      projectBaked = ["generated", "running", "failed", "ppt_ready", "ppt_generating", "ppt_done", "ppt_dirty"].includes(state);
       matchUnlocked = false;
       clearPptBadge();
       applyRecommendedToSelects();
@@ -1271,25 +1403,23 @@
         if (state === "ppt_ready") {
           applyPptPhase("ready");
           fillDemoCover();
-          setProjectTab("generate");
+          setProjectTab("ppt");
           setStatus("已生成 · 可生成答辩 PPT", "pill-green");
         } else if (state === "ppt_generating") {
           applyPptPhase("generating");
-          setProjectTab("generate");
+          setProjectTab("ppt");
           document.getElementById("gen-success").style.display = "none";
           setStatus("答辩 PPT 生成中", "pill-teal");
         } else if (state === "ppt_done") {
           applyPptPhase("done");
           fillDemoCover();
-          setProjectTab("artifacts");
-          setArtifactView("ppt");
+          setProjectTab("ppt");
           renderPptPage(0);
           setStatus("已生成 · 答辩 PPT 就绪", "pill-green");
         } else {
           applyPptPhase("dirty");
           fillDemoCover();
-          setProjectTab("artifacts");
-          setArtifactView("ppt");
+          setProjectTab("ppt");
           renderPptPage(0);
           setStatus("已生成 · PPT 业务脏", "pill-amber");
         }
@@ -1301,10 +1431,10 @@
 
       if (state === "needs_confirm") setProjectTab("match");
       else if (state === "generating") setProjectTab("generate");
-      else if (state === "failed") { setProjectTab("artifacts"); setArtifactView("gates"); }
+      else if (state === "failed") setProjectTab("delivery");
       else if (state === "running") setProjectTab("runtime");
-      else if (state === "generated") setProjectTab("runtime");
-      else setProjectTab("generate");
+      else if (state === "generated") setProjectTab("thesis");
+      else setProjectTab("materials");
 
       pptPhase = "none";
       applyGenState(state === "needs_confirm" ? "idle" : state);
@@ -1320,6 +1450,8 @@
 
     function startGenerate() {
       clearTimeout(genTimer);
+      projectBaked = false;
+      syncStageRail();
       applyGenState("generating");
       setStatus("生成中", "pill-teal");
       setDisabled("btn-download", true);
@@ -1333,16 +1465,46 @@
       }, 400);
       genTimer = setTimeout(() => {
         clearInterval(tick);
+        projectBaked = true;
         applyGenState("generated");
         setStatus("已生成 · 质检通过", "pill-green");
         toast("质量检查已过 · 交付包已解锁");
-        setProjectTab("artifacts");
+        setProjectTab("thesis");
       }, 2000);
     }
 
     function handleAction(action, el, e) {
       if (!action) return;
 
+      if (action === "home-view") {
+        showView(el.dataset.view || "projects");
+        return;
+      }
+      if (action === "home-focus") {
+        const requestedFilter = el.dataset.filter || "all";
+        const filter = requestedFilter === "review" ? "pending" : requestedFilter;
+        document.querySelectorAll("#list-filter button").forEach((button) => {
+          button.classList.toggle("active", button.dataset.f === filter);
+        });
+        renderList(filter, document.getElementById("list-search").value.trim());
+        showView("projects");
+        return;
+      }
+      if (action === "fail-refresh") {
+        toast("失败分析已刷新（静态演示数据）");
+        return;
+      }
+      if (action === "fail-help") {
+        showView("help");
+        return;
+      }
+      if (action === "filter-fail-samples") {
+        const code = el.dataset.code || "";
+        const select = document.getElementById("fail-code");
+        if (select) select.value = code;
+        filterFailureSamples();
+        return;
+      }
       if (action === "crumb-nav") {
         if (e) e.preventDefault();
         const view = el.dataset.view || "home";
@@ -1375,7 +1537,7 @@
       }
       if (action === "reupload") {
         toast("另建项目 · 回到列表上传新开题报告");
-        showView("home");
+        showView("projects");
         return;
       }
       if (action === "toggle-override") {
@@ -1679,6 +1841,7 @@
         return;
       }
       if (action === "demo-gate-pass") {
+        projectBaked = true;
         applyGenState("generated");
         setStatus("已生成 · 质检通过", "pill-green");
         setProjectTab("artifacts");
@@ -2060,7 +2223,7 @@
         return;
       }
 
-      const tab = e.target.closest("#proj-tabs .tab");
+      const tab = e.target.closest("#proj-tabs [data-tab], #readiness-action, #tab-materials [data-tab]");
       if (tab) {
         setProjectTab(tab.dataset.tab);
         return;
@@ -2093,7 +2256,7 @@
       }
 
       if (e.target.id === "back-home" || e.target.closest("#back-home")) {
-        showView("home");
+        showView("projects");
         return;
       }
 
@@ -2136,6 +2299,9 @@
     document.getElementById("list-search").addEventListener("input", (e) => {
       const active = document.querySelector("#list-filter button.active");
       renderList(active?.dataset.f || "all", e.target.value.trim());
+    });
+    ["fail-range", "fail-code", "fail-step", "fail-domain"].forEach((id) => {
+      document.getElementById(id)?.addEventListener("change", filterFailureSamples);
     });
 
     document.getElementById("sel-arch").addEventListener("change", () => {

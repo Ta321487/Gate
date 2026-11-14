@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
@@ -19,8 +19,10 @@
       </div>
       <nav class="nav">
         <div class="nav-label">工作台</div>
-        <div class="nav-item active" data-nav="home"><span class="dot"></span><span>项目</span></div>
+        <div class="nav-item active" data-nav="home"><span class="dot"></span><span>开工台</span></div>
+        <div class="nav-item" data-nav="projects"><span class="dot"></span><span>项目</span></div>
         <div class="nav-item" data-nav="jobs"><span class="dot"></span><span>任务队列</span></div>
+        <div class="nav-item" data-nav="fail-analysis"><span class="dot"></span><span>失败分析</span></div>
         <div class="nav-item" data-nav="help"><span class="dot"></span><span>帮助文档</span></div>
         <div class="nav-label">系统</div>
         <div class="nav-item" data-nav="llm"><span class="dot"></span><span>大模型</span></div>
@@ -66,10 +68,86 @@
       </div>
 
       <div class="content">
-        <!-- ========== HOME ========== -->
-        <section id="view-home" class="view active">
+        <!-- ========== OPS HOME ========== -->
+        <section id="view-home" class="view active surface-ops">
+          <h1 class="page-title">开工台</h1>
+          <p class="page-desc">今日待办与队列入口；建项请至「项目」，按类型排修请至「失败分析」。</p>
+
+          <div class="surface-strip" role="navigation" aria-label="今日指标">
+            <button type="button" class="surface-chip" data-action="home-focus" data-filter="needs_confirm">待匹配<b>1</b></button>
+            <button type="button" class="surface-chip" data-action="home-view" data-view="jobs">生成中<b>1</b></button>
+            <button type="button" class="surface-chip" data-action="home-view" data-view="fail-analysis">近 7 日失败<b>3</b><span class="chip-hint">2 种</span></button>
+            <button type="button" class="surface-chip" data-action="home-focus" data-filter="review">复审中<b>1</b></button>
+            <button type="button" class="surface-chip" data-action="home-focus" data-filter="fail">门禁失败<b>1</b></button>
+            <button type="button" class="surface-chip" data-action="home-focus" data-filter="undelivered">可下未发<b>2</b></button>
+          </div>
+
+          <section class="surface-tray surface-main">
+            <div class="surface-main-hd">
+              <h2>今日要处理</h2>
+              <button type="button" class="btn btn-ghost btn-sm" data-action="home-view" data-view="projects">全部项目 →</button>
+            </div>
+            <div class="surface-main-split">
+              <div>
+                <div class="ops-col-label">待办项目</div>
+                <button class="ops-row" data-action="open-project" data-id="gf-20260717-001">
+                  <span class="ops-tag is-warn">待匹配</span>
+                  <strong>基于 Spring Boot 的图书借阅管理系统</strong>
+                  <span class="ops-row-sub">点进详情继续</span>
+                </button>
+                <button class="ops-row" data-action="open-project" data-id="gf-20260716-011">
+                  <span class="ops-tag is-bad">门禁失败</span>
+                  <strong>校园二手交易平台</strong>
+                  <span class="ops-row-sub">质检未通过 · 暂不可下载</span>
+                </button>
+                <button class="ops-row" data-action="open-project" data-id="gf-20260715-008">
+                  <span class="ops-tag is-teal">可下未发</span>
+                  <strong>停车场预约系统</strong>
+                  <span class="ops-row-sub">机器质检通过 · 等待履约标记</span>
+                </button>
+              </div>
+              <div>
+                <div class="ops-col-hd">
+                  <div class="ops-col-label">最近失败任务</div>
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="home-view" data-view="jobs">任务队列 →</button>
+                </div>
+                <button class="ops-row" data-action="open-project" data-id="gf-20260716-011">
+                  <strong>校园二手交易平台</strong>
+                  <span class="ops-row-sub">业务配置填充 · 查看失败类型</span>
+                </button>
+                <button class="ops-row" data-action="open-project" data-id="gf-20260714-006">
+                  <strong>医院挂号管理系统</strong>
+                  <span class="ops-row-sub">构建验证 · 查看任务详情</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="surface-aside">
+            <div class="surface-aside-hd">
+              <h3>优先排修类型</h3>
+              <button type="button" class="btn btn-ghost btn-sm" data-action="home-view" data-view="fail-analysis">失败分析 →</button>
+            </div>
+            <button class="ops-row" data-action="home-view" data-view="fail-analysis">
+              <strong>2</strong><span>业务配置填充失败</span>
+              <span class="ops-row-sub">点开失败分析查看相关位置</span>
+            </button>
+          </section>
+
+          <footer class="surface-env-line">
+            <span>API <b class="ok">正常</b></span><span class="sep">·</span>
+            <span>布局 <b class="ok">通过</b></span><span class="sep">·</span>
+            <span>控件 <b class="ok">通过</b></span><span class="sep">·</span>
+            <span>Token 182k / 1.0M</span><span class="sep">·</span>
+            <span>预览 1 / 3</span><span class="sep">·</span>
+            <span>履约 待审 2 · 待发 1 · 已发 2</span>
+          </footer>
+        </section>
+
+        <!-- ========== PROJECTS ========== -->
+        <section id="view-projects" class="view">
           <h1 class="page-title">项目</h1>
-          <p class="page-desc">上传开题等材料，确认分堆后创建项目。细则见「帮助 → 上传与分堆」。</p>
+          <p class="page-desc">上传开题并确认分堆；列表筛状态。待办见「开工台」。第一次可先生成测试开题，再拖回上传。</p>
 
           <div class="row mb-12" style="justify-content:flex-end;gap:8px">
             <button type="button" class="btn btn-secondary btn-sm" data-action="open-sample-proposal">生成测试开题</button>
@@ -110,6 +188,7 @@
                   <button data-f="active">运行中</button>
                   <button data-f="generating">生成中</button>
                   <button data-f="done">可下载</button>
+                  <button data-f="undelivered">可下未发</button>
                   <button data-f="pending">待审</button>
                   <button data-f="ready">已审待发</button>
                   <button data-f="delivered">已发出</button>
@@ -159,16 +238,41 @@
             </div>
           </div>
 
-          <div class="tabs" id="proj-tabs">
-            <div class="tab active" data-tab="match">匹配确认</div>
-            <div class="tab" data-tab="generate">一键生成</div>
-            <div class="tab" data-tab="runtime">运行</div>
-            <div class="tab" data-tab="logs">日志</div>
-            <div class="tab" data-tab="artifacts">产物 / 对照</div>
+          <div class="stage-rail" id="proj-tabs" aria-label="交付阶段">
+            <div class="stage-rail-main">
+              <button class="stage is-current" data-tab="materials"><span>1</span>材料</button>
+              <i></i><button class="stage" data-tab="match"><span>2</span>匹配</button>
+              <i></i><button class="stage is-locked" data-tab="generate" title="请先完成匹配确认"><span>3</span>生成</button>
+              <i></i><button class="stage is-locked" data-tab="thesis" title="请先完成匹配并生成"><span>4</span>论文材料</button>
+              <i></i><button class="stage is-locked" data-tab="ppt" title="请先完成匹配并生成"><span>5</span>答辩 PPT</button>
+              <i></i><button class="stage is-locked" data-tab="delivery" title="请先完成匹配并生成"><span>6</span>质检交付</button>
+            </div>
+            <div class="stage-rail-tools">
+              <button class="stage-tool" data-tab="runtime">预览</button>
+              <button class="stage-tool" data-tab="logs">日志</button>
+            </div>
+            <p class="stage-rail-hint" id="stage-rail-hint">请先完成匹配确认</p>
+          </div>
+
+          <div class="tab-panel active" id="tab-materials">
+            <div class="surface-main-hd"><h2>材料</h2><span class="small muted">本单开题 / 任务书来源 · 只读</span></div>
+            <div class="file-row">
+              <span>图书管理系统开题报告.docx · 建项时上传的材料文件</span>
+              <button type="button" class="btn btn-secondary btn-sm" data-tab="match">去匹配确认</button>
+            </div>
+          </div>
+
+          <div class="delivery-ready" id="delivery-ready">
+            <div>
+              <span class="pill pill-amber" id="readiness-pill">待确认匹配</span>
+              <strong id="readiness-impact">完成匹配后才能开始生成</strong>
+              <p class="small muted" id="readiness-hint">请在下方核对推荐领域与主路径，再确认匹配。</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="readiness-action" data-tab="match">去匹配确认</button>
           </div>
 
           <!-- Match -->
-          <div class="tab-panel active" id="tab-match">
+          <div class="tab-panel" id="tab-match">
             <div class="file-row">
               <span>源材料：<strong id="match-file">图书管理系统开题报告.docx</strong> · 1.4 MB</span>
               <button type="button" class="btn btn-ghost btn-sm" data-action="reupload">另建项目</button>
@@ -1242,6 +1346,106 @@
               </div>
             </div>
           </div>
+        </section>
+
+        <!-- ========== FAILURE ANALYSIS ========== -->
+        <section id="view-fail-analysis" class="view">
+          <div class="surface-toolbar">
+            <div>
+              <h1 class="page-title">失败分析</h1>
+              <p class="page-desc" style="margin-bottom:0">按失败类型排优先级。重试用「任务队列」；待办见「开工台」。</p>
+            </div>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <select id="fail-range" aria-label="时间范围">
+                <option value="7">近 7 天</option><option value="30">近 30 天</option><option value="90">近 90 天</option>
+              </select>
+              <select id="fail-code" aria-label="失败类型">
+                <option value="">全部失败类型</option>
+                <option value="BUILD_VERIFY">构建验证失败</option>
+                <option value="ISLAND_FILL">业务配置填充失败</option>
+                <option value="P3_GATE">质量门禁未通过</option>
+              </select>
+              <select id="fail-step" aria-label="失败步骤">
+                <option value="">全部步骤</option><option value="构建验证">构建验证</option><option value="业务配置填充">业务配置填充</option><option value="门禁检查">门禁检查</option>
+              </select>
+              <select id="fail-domain" aria-label="领域">
+                <option value="">全部领域</option><option value="DOM-SHOP">DOM-SHOP</option><option value="DOM-HOSPITAL">DOM-HOSPITAL</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" data-action="fail-refresh">刷新</button>
+            </div>
+          </div>
+
+          <div class="stats fa-stats mb-12">
+            <div class="stat"><div class="label">失败次数</div><div class="value" id="fail-count">3</div></div>
+            <div class="stat"><div class="label">失败类型</div><div class="value" id="fail-type-count">2</div></div>
+            <div class="stat"><div class="label">时间范围</div><div class="value" id="fail-range-label" style="font-size:14px">近 7 天</div></div>
+          </div>
+
+          <section class="panel panel-quiet mb-16">
+            <div class="panel-hd"><h3>建议优先处理</h3></div>
+            <div class="panel-bd">
+              <div class="fa-priority">
+                <div class="fa-priority-main"><strong>2</strong><span>业务配置填充失败</span><span class="mono muted">ISLAND_FILL</span></div>
+                <div class="fa-locus">backend/app/bake/features/</div>
+                <button class="btn btn-ghost btn-sm" data-action="fail-help">码表说明 →</button>
+              </div>
+              <div class="fa-priority">
+                <div class="fa-priority-main"><strong>1</strong><span>构建验证失败</span><span class="mono muted">BUILD_VERIFY</span></div>
+                <div class="fa-locus">学生工程构建阶段</div>
+                <button class="btn btn-ghost btn-sm" data-action="fail-help">码表说明 →</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="grid-2 mb-16 stage-grid">
+            <section class="panel panel-quiet">
+              <div class="panel-hd"><h3>按类型</h3></div>
+              <div class="panel-bd">
+                <button class="fa-bar-row" data-action="filter-fail-samples" data-code="ISLAND_FILL">
+                  <span class="fa-code-cell"><span class="fa-code-name">业务配置填充失败</span><span class="mono muted fa-code-id">ISLAND_FILL</span></span>
+                  <span class="fa-bar"><i style="width:100%"></i></span><span>2</span>
+                </button>
+                <button class="fa-bar-row" data-action="filter-fail-samples" data-code="BUILD_VERIFY">
+                  <span class="fa-code-cell"><span class="fa-code-name">构建验证失败</span><span class="mono muted fa-code-id">BUILD_VERIFY</span></span>
+                  <span class="fa-bar"><i style="width:50%"></i></span><span>1</span>
+                </button>
+              </div>
+            </section>
+            <section class="panel panel-quiet">
+              <div class="panel-hd"><h3>按领域 / 步骤</h3></div>
+              <div class="panel-bd">
+                <div class="small muted mb-8">领域</div>
+                <div class="fa-bar-row"><span class="fa-code">DOM-SHOP</span><span class="fa-bar"><i style="width:100%"></i></span><span>2</span></div>
+                <div class="fa-bar-row"><span class="fa-code">DOM-HOSPITAL</span><span class="fa-bar"><i style="width:50%"></i></span><span>1</span></div>
+                <div class="small muted mb-8 mt-12">步骤</div>
+                <div class="fa-bar-row"><span class="fa-code">业务配置填充</span><span class="fa-bar"><i style="width:100%"></i></span><span>2</span></div>
+                <div class="fa-bar-row"><span class="fa-code">构建验证</span><span class="fa-bar"><i style="width:50%"></i></span><span>1</span></div>
+              </div>
+            </section>
+          </div>
+
+          <section class="surface-tray fa-sample-tray">
+            <div class="surface-main-hd"><h2>样本</h2></div>
+            <div class="panel-bd" style="padding:0;overflow-x:auto">
+              <table>
+                <thead><tr><th>任务</th><th>项目</th><th>类型</th><th>状态</th><th>相关位置</th><th>步骤 / 域</th><th>错误</th><th>操作</th></tr></thead>
+                <tbody id="fail-sample-rows">
+                  <tr class="fail-sample" data-code="ISLAND_FILL" data-step="业务配置填充" data-domain="DOM-SHOP" data-age-days="2">
+                    <td class="mono">#1041</td><td>校园二手交易平台</td><td><span class="mono">ISLAND_FILL</span></td><td><span class="pill pill-red">未解决</span></td>
+                    <td>features/trade.py</td><td>业务配置填充 · DOM-SHOP</td><td>缺少商品规格字段映射</td><td><button class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="failed" data-project="gf-20260716-011">查看任务</button></td>
+                  </tr>
+                  <tr class="fail-sample" data-code="ISLAND_FILL" data-step="业务配置填充" data-domain="DOM-SHOP" data-age-days="5">
+                    <td class="mono">#1039</td><td>校园二手交易平台</td><td><span class="mono">ISLAND_FILL</span></td><td><span class="pill pill-amber">复审中</span></td>
+                    <td>features/trade.py</td><td>业务配置填充 · DOM-SHOP</td><td>订单状态转换校验失败</td><td><button class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="failed" data-project="gf-20260716-011">查看任务</button></td>
+                  </tr>
+                  <tr class="fail-sample" data-code="BUILD_VERIFY" data-step="构建验证" data-domain="DOM-HOSPITAL" data-age-days="12">
+                    <td class="mono">#1037</td><td>医院挂号管理系统</td><td><span class="mono">BUILD_VERIFY</span></td><td><span class="pill pill-red">未解决</span></td>
+                    <td>学生工程构建</td><td>构建验证 · DOM-HOSPITAL</td><td>后端编译未通过</td><td><button class="btn btn-ghost btn-sm" data-action="open-job" data-job-state="failed" data-project="gf-20260714-006">查看任务</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </section>
 
         <!-- ========== JOBS ========== -->
