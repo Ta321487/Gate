@@ -54,7 +54,7 @@
 | [immersion-corners.md](./immersion-corners.md) | 沉浸感边角（毕设加分，非门禁） | 非强制清单 |
 | [surface-lexicon-design.md](./surface-lexicon-design.md) | 话术层（Surface Lexicon）设计与批次 | 设计稿；批 A/B/C 已落地见 HANDOFF |
 | [role-boundary-copy-batch.md](./role-boundary-copy-batch.md) | **换开题抗性诚实账** + **角色边界（L4）**按域族收成结构闸 | 批次册 · §0 常读；`trade`～`fallback` **十组已齐**；L2/L5 仍是长尾 |
-| [pack-overrides.md](./pack-overrides.md) | **出包微调（Overrides）**：八张材料手调、重 bake 重放、UI 定稿、闸与现网统一 | **P0～P3 已落地**（未 commit）· 等人令推送 |
+| [pack-overrides.md](./pack-overrides.md) | **出包微调（Overrides）**：八张材料手调、重 bake 重放、UI 定稿、闸与现网统一 | **P0～P3 已推送**；手调类图重叠去簇不回写盘（P0 验收） |
 | [thesis-diagram-export.md](./thesis-diagram-export.md) | **论文图同源导出**：SVG / Mermaid / Draw.io；正确性红线；几何债延期 | 活表 · M0/M1 开工 |
 | [llm-determinism.md](./llm-determinism.md) | **工厂 LLM 硬原则**：不确定→确定性；审类闸先行、生成类校验回退 | 现行 |
 | [validation-loop-hardening.md](./validation-loop-hardening.md) | **校验闭环加固**：假宣称/错域词 error、FAQ 默认关润色、低置信/GENERIC 强制核域 | **批 1～4 已齐** · 待提交 |

@@ -3,7 +3,7 @@
 > **本文只负责**：论文材料 / 展示文案的 Human-in-the-loop 覆盖层——目标、红线、数据、按图手调范围、分期与验收。  
 > **不写**：能力岛新功能、改开题迁就模板、扫盘替换 `.vue` 中文。  
 > **站队**：修工厂共享钩子；单题补丁可进 DB + `islands`，重 bake **必须可重放**。  
-> **状态（2026-11-04）**：UI §6 已定 · 对账已订 · **P0～P3 代码/文档已落地**（含 hide、序列/活动/用例描述、架构/用例图/测例/菜单/类图短签、invariants/审计一句）；双写收口口径：分文件仍由现网 PUT 写坐标/E-R，Overrides 统一镜像+apply；**工作区未 commit**。
+> **状态（2026-11-15）**：UI §6 已定 · 对账已订 · **P0～P3 已落地并推送** `origin/main`（`47369246` 白名单+元库+API · `b1dc4cbc` 微调 Tab+findings 来源）；双写收口口径：分文件仍由现网 PUT 写坐标/E-R，Overrides 统一镜像+apply。**P0 验收**：手调 `class_layout` 重 bake 保留；重叠框预热可内存去簇，**禁止**回写盘盖掉手调（见 `test_islands_preserve` / `test_unclump_does_not_rewrite_hand_layout_on_disk`）。
 
 相关：[`invariants.md`](./invariants.md)（八张材料真源）· [`delivery-audit-rules.md`](./delivery-audit-rules.md) · 已有零件 `modules.py` label patch · `er_labels.json` · `class_layout.json`。
 

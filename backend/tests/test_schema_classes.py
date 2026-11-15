@@ -761,6 +761,54 @@ public class CategoryController {
         )
         self.assertTrue(separated, msg=f"still overlapping: {a} vs {b}")
 
+    def test_unclump_does_not_rewrite_hand_layout_on_disk(self) -> None:
+        """重叠手调：预热/打开可内存去簇，但不得改写 islands/class_layout.json。"""
+        from app.bake.schema.classes import (
+            load_class_layout_patch,
+            load_class_model,
+            save_class_layout_patch,
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "sql").mkdir()
+            (root / "sql" / "schema.sql").write_text(
+                "CREATE TABLE a (id INT PRIMARY KEY);\n"
+                "CREATE TABLE b (id INT PRIMARY KEY, a_id INT, "
+                "FOREIGN KEY (a_id) REFERENCES a(id));\n",
+                encoding="utf-8",
+            )
+            model0 = load_class_model(root, display_mode="sample")
+            assert model0 is not None
+            ids = list(model0["layout"].keys())
+            self.assertGreaterEqual(len(ids), 2)
+            hand = {
+                ids[0]: {"x": 40.0, "y": 40.0},
+                ids[1]: {"x": 50.0, "y": 55.0},
+            }
+            for tid in ids[2:]:
+                box = model0["layout"][tid]
+                hand[tid] = {"x": float(box["x"]), "y": float(box["y"])}
+            save_class_layout_patch(root, hand, display_mode="sample")
+            before = load_class_layout_patch(root)
+
+            again = load_class_model(root, display_mode="sample")
+            assert again is not None
+            self.assertTrue(
+                again.get("layout_unclumped"),
+                msg="重叠手调应触发内存去簇",
+            )
+            after = load_class_layout_patch(root)
+            self.assertEqual(
+                after,
+                before,
+                msg="去簇不得回写手调 class_layout.json",
+            )
+            self.assertAlmostEqual(after[ids[0]]["x"], 40.0)
+            self.assertAlmostEqual(after[ids[0]]["y"], 40.0)
+            self.assertAlmostEqual(after[ids[1]]["x"], 50.0)
+            self.assertAlmostEqual(after[ids[1]]["y"], 55.0)
+
     def test_class_layout_patch_roundtrip(self) -> None:
         """拖拽布局落盘后重载仍覆盖自动坐标；并按当前框高收紧间距。"""
         from app.bake.schema.classes import (

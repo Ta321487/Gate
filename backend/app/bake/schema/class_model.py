@@ -1221,9 +1221,10 @@ def build_class_model(
         else:
             auto_layout_fresh = True
 
-    # 首次自动排版 / 叠堆推开后都落盘，避免下次仍读旧堆叠坐标或旧 cache
+    # 仅「首次自动排版」落盘。手调叠堆去簇只改内存（出图不糊），禁止回写盘——
+    # 否则 bake 预热会改掉白名单 restore 的 class_layout（pack-overrides §4.4 / P7）。
     if (
-        (auto_layout_fresh or model.get("layout_unclumped"))
+        auto_layout_fresh
         and isinstance(model.get("layout"), dict)
         and model["layout"]
     ):
@@ -1233,17 +1234,17 @@ def build_class_model(
                 model["layout"],
                 display_mode=normalize_class_display_mode(display_mode),
             )
-            if auto_layout_fresh:
-                model["layout_auto_persisted"] = True
-            if model.get("layout_unclumped"):
-                model["layout_unclump_persisted"] = True
+            model["layout_auto_persisted"] = True
         except OSError:
             pass
     return model
 
 
 def _unclump_manual_layout(model: dict[str, Any]) -> None:
-    """人工钉坐标后框高可能变大；若矩形重叠则推开，避免「糊作一团」。"""
+    """人工钉坐标后框高可能变大；若矩形重叠则内存里推开，避免「糊作一团」。
+
+    不落盘：手调坐标仍以 islands/class_layout.json 为准（重 bake 可重放）。
+    """
     layout = model.get("layout")
     if not isinstance(layout, dict) or len(layout) < 2:
         return
