@@ -43,6 +43,37 @@ def test_stamp_rule_error_is_must_fix_llm_is_verify():
     assert hard["level"] == "error"  # 菜单硬不一致保留错级，但仍待核
 
 
+def test_parse_finding_focus_and_enrich_nav_locate_field():
+    from app.llm.agents_thesis_diagrams import enrich_finding_nav, parse_finding_focus
+
+    # 缺槽位「db」：db 不是手调行，不得当检索词（否则表被筛空）
+    f0 = parse_finding_focus("sequences[1]", "缺四槽位「db」")
+    assert f0.get("focus_index") == "1"
+    assert "focus_query" not in f0
+
+    f1 = parse_finding_focus("usecases.cart", "用例「购物车」下挂不对")
+    assert f1.get("focus_query") == "cart"
+
+    f2 = parse_finding_focus("er.entity.product", "")
+    assert f2.get("focus_query") == "product"
+
+    f3 = parse_finding_focus(
+        "sequences[2]",
+        "图题「我的订单序列图」为评价流程，但消息多为订单操作",
+    )
+    assert f3.get("focus_index") == "2"
+    assert f3.get("focus_query") == "我的订单"  # 去掉「序列图」后缀
+
+    nav = enrich_finding_nav(
+        {"level": "error", "msg": "序列图缺四槽位「page」", "where": "sequences[0]"}
+    )
+    assert nav.get("goto") == "sequence"
+    assert nav.get("focus_index") == "0"
+    assert "focus_query" not in nav or not nav.get("focus_query")
+    assert "第 1 张" in (nav.get("fix") or "")
+    assert "检索「page」" not in (nav.get("fix") or "")
+
+
 def test_filter_drops_geometry_noise_and_bad_where():
     from app.llm.agents_thesis_diagrams import enrich_finding_nav
 

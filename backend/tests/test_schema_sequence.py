@@ -110,6 +110,47 @@ class SequenceDiagramTests(unittest.TestCase):
         self.assertEqual(len(ids), 3)
         self.assertEqual(len(set(ids)), 3)
 
+    def test_default_selection_prefers_trade_not_login_slot(self) -> None:
+        """序列图三席不单占纯登录；商城优先购物车/订单主链路。"""
+        cands = list_sequence_candidates(self._schema("DOM-SHOP"))
+        ids = default_sequence_selection(cands)
+        kinds = []
+        by = {c["id"]: c for c in cands}
+        for i in ids:
+            kinds.append(str(by[i].get("kind") or ""))
+        self.assertNotIn("auth_login", kinds)
+        self.assertTrue(
+            {"cart", "my_orders"} <= set(kinds)
+            or ({"cart", "orders"} <= set(kinds))
+            or ({"my_orders", "orders"} <= set(kinds)),
+            msg=kinds,
+        )
+        self.assertNotIn("users", kinds)
+
+    def test_my_orders_confirm_receive_phases(self) -> None:
+        """买家订单写路径默认确认收货；终态文案不是「数据保存成功」。"""
+        from app.bake.schema.sequence import _build_business_phase, _feature_entity
+
+        schema = {"entities": {"order": {"label": "订单"}}}
+        msgs = _build_business_phase(
+            seq0=0,
+            actor="买家",
+            menu_label="我的订单",
+            entity=_feature_entity(schema, kind="my_orders", menu_label="我的订单"),
+            ops=[{"method": "page", "verb": "分页查询", "summary": ""}],
+            vue_btns=["确认收货", "去支付"],
+            kind="my_orders",
+            side="user",
+        )
+        blob = " ".join(str(m["text"]) for m in msgs)
+        self.assertIn("确认收货", blob)
+        self.assertIn("确认收货成功", blob)
+        self.assertNotIn("数据保存成功", blob)
+        self.assertNotIn("支付成功", blob)
+        actor_tail = [m for m in msgs if m.get("from") == "page" and m.get("to") == "actor"]
+        self.assertTrue(actor_tail)
+        self.assertEqual(actor_tail[-1]["text"], "确认收货成功")
+
     def test_shop_messages_carry_delivery_labels(self) -> None:
         model = sequence_model(self._schema("DOM-SHOP"))
         blob = json.dumps(model["diagrams"], ensure_ascii=False)
@@ -307,6 +348,53 @@ class SequenceDiagramTests(unittest.TestCase):
             blob = " ".join(str(m["text"]) for m in msgs)
             self.assertIn(needle, blob, msg=f"{kind}: {blob}")
             self.assertNotIn("选择业务配置", blob)
+
+    def test_workflow_prose_follows_messages_not_sample_essay(self) -> None:
+        """工作流由本图消息改写：步数对齐、含角色与动作、不塞示例范文腔。"""
+        from app.bake.schema.sequence_workflow import workflow_prose_from_diagram
+
+        model = sequence_model(self._schema("DOM-SHOP"))
+        for d in model["diagrams"]:
+            wf = d.get("workflow") or {}
+            self.assertTrue(wf.get("title", "").endswith("的工作流程如下："))
+            self.assertEqual(len(wf["steps"]), len(d["messages"]))
+            self.assertIn(d["actor_label"], wf["plain"])
+            self.assertNotIn("合法性校验", wf["plain"])  # 图无则文无
+            self.assertNotIn("示例论文", wf["plain"])
+            rebuilt = workflow_prose_from_diagram(d)
+            self.assertEqual(rebuilt["plain"], wf["plain"])
+
+    def test_workflow_sentence_mapping_deterministic(self) -> None:
+        from app.bake.schema.sequence_workflow import workflow_prose_from_diagram
+
+        diagram = {
+            "figure_title": "确认收货序列图",
+            "participants": [
+                {"id": "actor", "label": "买家"},
+                {"id": "page", "label": "页面"},
+                {"id": "controller", "label": "控制器"},
+                {"id": "db", "label": "数据库"},
+            ],
+            "messages": [
+                {"seq": 1, "from": "actor", "to": "page", "dir": "request", "text": "打开我的订单"},
+                {"seq": 2, "from": "page", "to": "controller", "dir": "request", "text": "查询订单()"},
+                {"seq": 3, "from": "controller", "to": "db", "dir": "request", "text": "读取订单()"},
+                {"seq": 4, "from": "db", "to": "controller", "dir": "response", "text": "返回订单数据"},
+                {"seq": 5, "from": "controller", "to": "page", "dir": "response", "text": "返回结果"},
+                {"seq": 6, "from": "page", "to": "page", "dir": "self", "text": "确认收货"},
+                {"seq": 7, "from": "page", "to": "actor", "dir": "response", "text": "收货成功"},
+            ],
+        }
+        wf = workflow_prose_from_diagram(diagram)
+        self.assertEqual(wf["title"], "确认收货的工作流程如下：")
+        texts = [s["text"] for s in wf["steps"]]
+        self.assertEqual(texts[0], "买家在页面上打开我的订单。")
+        self.assertEqual(texts[1], "页面向控制器发出请求：查询订单。")
+        self.assertEqual(texts[2], "控制器向数据库读取订单。")
+        self.assertEqual(texts[3], "数据库返回订单数据。")
+        self.assertEqual(texts[4], "控制器向页面返回结果。")
+        self.assertEqual(texts[5], "买家在页面上确认收货。")
+        self.assertEqual(texts[6], "页面向买家反馈：收货成功。")
 
     def test_op_text_never_leaks_english_method(self) -> None:
         """无中文摘要时，禁止 suggest/getList 等英文方法名进序列图文案。"""

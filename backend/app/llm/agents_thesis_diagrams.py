@@ -80,13 +80,102 @@ def _nav_for_where(where: str) -> tuple[str, str]:
     return "", "论文材料 → 对账 findings 对照卡片"
 
 
+_WHERE_INDEX_RE = re.compile(
+    r"^(er|sequences|sequence|activities|activity|usecase_desc|classes|"
+    r"usecases|architecture|modules|testcases)"
+    r"(?:\[(\d+)\])?"
+    r"(?:\.(.+))?$",
+    re.I,
+)
+_MSG_QUOTE_RE = re.compile(r"[「『]([^」』]{1,48})[」』]|[\"']([^\"']{1,48})[\"']")
+# 槽位/结构词：常出现在「缺四槽位「db」」——手调表没有这行，拿去检索必空
+_FOCUS_SKIP_QUERIES = frozenset(
+    {
+        "actor",
+        "page",
+        "controller",
+        "db",
+        "user",
+        "system",
+        "root",
+        "roles",
+        "diagrams",
+        "cases",
+        "count",
+        "markdown",
+        "level1",
+        "conceptual_entities",
+        "from",
+        "to",
+    }
+)
+
+
+def _usable_focus_query(raw: str) -> str:
+    q = str(raw or "").strip()
+    if not q:
+        return ""
+    # 图题引号常带「…序列图」，手调短标题已去掉后缀
+    for suf in ("序列图", "活动图", "用例图", "类图"):
+        if q.endswith(suf) and len(q) > len(suf):
+            q = q[: -len(suf)].rstrip()
+    if q.lower() in _FOCUS_SKIP_QUERIES:
+        return ""
+    return q
+
+
+def parse_finding_focus(where: str, msg: str = "") -> dict[str, str]:
+    """从 where / msg 抽出手调定位：focus_query / focus_index / focus_key。
+
+    有下标 → 第几张图（主定位）；后缀/引号 → 检索词，但跳过槽位名等手调表没有的词。
+    """
+    w = (where or "").strip()
+    out: dict[str, str] = {}
+    m = _WHERE_INDEX_RE.match(w)
+    if m:
+        idx = m.group(2)
+        rest = (m.group(3) or "").strip()
+        if idx is not None and idx != "":
+            out["focus_index"] = str(int(idx))
+        if rest:
+            tail = rest.split(".")[-1].strip()
+            q = _usable_focus_query(tail)
+            if q:
+                out["focus_query"] = q
+                out["focus_key"] = rest
+    if not out.get("focus_query"):
+        for mq in _MSG_QUOTE_RE.finditer(str(msg or "")):
+            cand = _usable_focus_query(mq.group(1) or mq.group(2) or "")
+            if cand:
+                out["focus_query"] = cand
+                break
+    return {k: v for k, v in out.items() if v}
+
+
 def enrich_finding_nav(f: dict[str, str]) -> dict[str, str]:
-    """补 fix / goto，便于前端点跳。已有字段不覆盖。"""
+    """补 fix / goto / 定位字段，便于前端点跳到手调具体行。已有字段不覆盖。"""
     out = dict(f)
-    goto, fix = _nav_for_where(str(out.get("where") or ""))
+    where = str(out.get("where") or "")
+    goto, fix = _nav_for_where(where)
     if goto and not out.get("goto"):
         out["goto"] = goto
-    if fix and not out.get("fix"):
+    focus = parse_finding_focus(where, str(out.get("msg") or ""))
+    for k, v in focus.items():
+        if not out.get(k):
+            out[k] = v
+    # 路径写清「第几张 / 检索词」，避免只跳到分组还靠人翻
+    base_fix = str(out.get("fix") or fix or "").strip()
+    extras: list[str] = []
+    if out.get("focus_index") is not None and str(out.get("focus_index")) != "":
+        tip = f"第 {int(out['focus_index']) + 1} 张/条"
+        if tip not in base_fix:
+            extras.append(tip)
+    q = str(out.get("focus_query") or "").strip()
+    if q and f"检索「{q}」" not in base_fix:
+        extras.append(f"检索「{q}」")
+    if base_fix and extras:
+        out["fix"] = " · ".join([base_fix, *extras])
+    elif not out.get("fix") and fix:
         out["fix"] = fix
     return out
 
@@ -159,6 +248,9 @@ def _norm_findings(raw: Any) -> list[dict[str, str]]:
             row["fix"] = str(item.get("fix"))[:160]
         if item.get("goto"):
             row["goto"] = str(item.get("goto"))[:64]
+        for fk in ("focus_query", "focus_index", "focus_key"):
+            if item.get(fk) is not None and str(item.get(fk)).strip() != "":
+                row[fk] = str(item.get(fk))[:120]
         out.append(row)
     return [f for f in out if f["msg"]]
 

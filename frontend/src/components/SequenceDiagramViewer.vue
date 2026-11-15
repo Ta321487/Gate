@@ -53,6 +53,16 @@
         >图{{ i + 1 }} · {{ shortTitle(d.figure_title) }}</n-button>
       </div>
       <p v-if="sourceNote" class="small muted seq-hint mb-8">{{ sourceNote }}</p>
+      <div v-if="currentWorkflow" class="seq-workflow mb-8">
+        <div class="seq-workflow-head row">
+          <span class="seq-workflow-title">{{ currentWorkflow.title }}</span>
+          <n-button size="tiny" quaternary :disabled="!currentWorkflow.plain" @click="copyWorkflow">复制工作流程</n-button>
+        </div>
+        <p class="small muted seq-hint mb-6">{{ currentWorkflow.source_note || '由本张序列图逐步改写，换题随勾选变化；不套示例范文。' }}</p>
+        <ol class="seq-workflow-steps">
+          <li v-for="s in currentWorkflow.steps || []" :key="s.n">{{ s.text }}</li>
+        </ol>
+      </div>
     </div>
     <div
       class="diagram-resize"
@@ -171,6 +181,28 @@ watch(
 function shortTitle(t) {
   const s = String(t || '').replace(/序列图$/u, '')
   return s.length > 12 ? `${s.slice(0, 12)}…` : s || '功能'
+}
+
+const currentWorkflow = computed(() => {
+  const list = props.diagrams || []
+  const d = list[props.diagramIndex]
+  const wf = d && d.workflow
+  if (!wf || !Array.isArray(wf.steps) || !wf.steps.length) return null
+  return wf
+})
+
+async function copyWorkflow() {
+  const plain = String(currentWorkflow.value?.plain || '').trim()
+  if (!plain) {
+    message.warning('暂无工作流程文案')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(plain)
+    message.success('已复制工作流程（可贴论文）')
+  } catch {
+    message.error('复制失败')
+  }
 }
 
 function onToggle(id, checked) {
@@ -396,6 +428,33 @@ async function downloadMermaid() {
 .seq-tabs {
   flex-wrap: wrap;
   gap: 8px;
+}
+.seq-workflow {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--card, transparent);
+  max-height: 220px;
+  overflow: auto;
+}
+.seq-workflow-head {
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.seq-workflow-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.seq-workflow-steps {
+  margin: 0;
+  padding-left: 1.4em;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.seq-workflow-steps li {
+  margin: 0 0 2px;
 }
 .seq-frame {
   flex: 0 0 auto;

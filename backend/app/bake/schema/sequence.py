@@ -17,10 +17,49 @@ from typing import Any
 from app.bake.schema.testcases import _entity_label, _role_label
 from app.bake.schema.usecase_descriptions import (
     build_usecase_description_candidates,
-    select_usecase_descriptions,
 )
 
 SEQUENCE_COUNT = 3
+
+# 序列图默认选题：每张业务图已内嵌登录，不再单占一席画「纯登录」
+_SEQUENCE_SKIP_KINDS = frozenset({"auth_login", "auth_register"})
+# 壳/辅助菜单：有主路径时让位
+_SEQUENCE_DEMOTE_KINDS = frozenset(
+    {
+        "users",
+        "profile",
+        "messages",
+        "banners",
+        "online_sessions",
+        "schedule_jobs",
+        "site_stat",
+        "open",
+        "content_user",
+        "content_admin",
+        "addresses",
+        "lookup",
+    }
+)
+# 答辩主链路加分（跨域：单据/交易/预约/评价）
+_SEQUENCE_CORE_BOOST: dict[str, int] = {
+    "cart": 42,
+    "my_orders": 40,
+    "orders": 34,
+    "my_tickets": 40,
+    "ticket_pending": 36,
+    "ticket_records": 24,
+    "reserve_user": 38,
+    "reservations": 32,
+    "order_reviews_user": 30,
+    "order_reviews_admin": 22,
+    "order_reviews": 28,
+    "archive_user": 18,
+    "archive_admin": 16,
+    "guestbook_user": 14,
+    "favorites": 12,
+    "dm": 10,
+    "category": 8,
+}
 
 _PARTICIPANTS = ("actor", "page", "controller", "db")
 _PARTICIPANT_LABELS = {
@@ -49,6 +88,7 @@ _METHOD_VERB_ZH: dict[str, str] = {
     "approve": "审核通过",
     "reject": "驳回",
     "confirm": "确认",
+    "confirmreceive": "确认收货",
     "cancel": "取消",
     "submit": "提交",
     "complete": "办结",
@@ -157,21 +197,84 @@ def list_sequence_candidates(
 
 
 def default_sequence_selection(candidates: list[dict[str, Any]]) -> list[str]:
-    """把候选转回 select_usecase_descriptions 可吃的形态再取 3 个 id。"""
-    as_cases = [
-        {
-            "name": c.get("name"),
-            "menu_key": c.get("menu_key"),
-            "side": c.get("side"),
-            "kind": c.get("kind"),
-            "score": c.get("score"),
-            "label": c.get("label"),
-            "actor": c.get("actor"),
-        }
-        for c in candidates
-    ]
-    picked = select_usecase_descriptions(as_cases, count=SEQUENCE_COUNT)
-    return [candidate_id(c) for c in picked]
+    """序列图默认 3 席：主链路优先，跳过纯登录（业务图已带登录序幕）。"""
+    ranked: list[tuple[int, dict[str, Any]]] = []
+    for c in candidates:
+        if not isinstance(c, dict):
+            continue
+        kind = str(c.get("kind") or "").strip()
+        if kind in _SEQUENCE_SKIP_KINDS:
+            continue
+        score = int(c.get("score") or 0) + int(_SEQUENCE_CORE_BOOST.get(kind, 0))
+        if kind in _SEQUENCE_DEMOTE_KINDS:
+            score -= 45
+        ranked.append((score, c))
+    ranked.sort(
+        key=lambda x: (
+            -x[0],
+            0 if str(x[1].get("side") or "") == "user" else 1,
+            str(x[1].get("menu_key") or ""),
+        )
+    )
+
+    picked: list[dict[str, Any]] = []
+    used_keys: set[tuple[str, str]] = set()
+    used_kinds: set[str] = set()
+
+    def _try(c: dict[str, Any]) -> bool:
+        if len(picked) >= SEQUENCE_COUNT:
+            return False
+        side = str(c.get("side") or "")
+        key = str(c.get("menu_key") or "")
+        kind = str(c.get("kind") or "")
+        dedupe = (side, key)
+        if dedupe in used_keys or kind in used_kinds:
+            return False
+        used_keys.add(dedupe)
+        used_kinds.add(kind)
+        picked.append(c)
+        return True
+
+    for _sc, c in ranked:
+        _try(c)
+        if len(picked) >= SEQUENCE_COUNT:
+            break
+
+    # 若三席全是同一端，尝试用另一端高分候选换掉末席
+    if len(picked) == SEQUENCE_COUNT:
+        sides = {str(c.get("side") or "") for c in picked}
+        if len(sides) == 1:
+            want = "admin" if "user" in sides else "user"
+            for _sc, c in ranked:
+                if str(c.get("side") or "") != want:
+                    continue
+                kind = str(c.get("kind") or "")
+                if kind in used_kinds:
+                    continue
+                dedupe = (str(c.get("side") or ""), str(c.get("menu_key") or ""))
+                if dedupe in used_keys:
+                    continue
+                # 换掉得分最低的一席（列表末）
+                drop = picked[-1]
+                used_keys.discard(
+                    (str(drop.get("side") or ""), str(drop.get("menu_key") or ""))
+                )
+                used_kinds.discard(str(drop.get("kind") or ""))
+                picked[-1] = c
+                used_keys.add(dedupe)
+                used_kinds.add(kind)
+                break
+
+    if len(picked) < SEQUENCE_COUNT:
+        # 候选不足时回补（含曾跳过的），避免打不开
+        for c in candidates:
+            if not isinstance(c, dict):
+                continue
+            _try(c)
+            if len(picked) >= SEQUENCE_COUNT:
+                break
+
+    return [candidate_id(c) for c in picked[:SEQUENCE_COUNT]]
 
 
 def parse_selection_ids(raw: str | list[str] | None) -> list[str] | None:
@@ -515,7 +618,7 @@ BROWSE_SEQUENCE_KINDS = frozenset(
         "archive_user",
         "content_user",
         "messages",
-        "my_orders",
+        # my_orders 含确认收货/支付写路径，不进纯浏览
         "ticket_records",
         "favorites",
         "browse_history",
@@ -561,19 +664,27 @@ _KIND_WRITE_PHASES: dict[str, dict[str, str]] = {
         "save": "保存评价信息",
         "ok": "评价处理成功",
     },
+    # 买家订单默认画确认收货（与 MyOrders「确认收货」按钮、参考答辩口径一致）
     "my_orders": {
-        "select": "选择订单",
+        "select": "选择已发货订单",
+        "confirm": "确认收货",
+        "submit": "提交确认收货",
+        "save": "更新订单为已完成",
+        "ok": "确认收货成功",
+    },
+    "my_orders_pay": {
+        "select": "选择待支付订单",
         "confirm": "确认支付",
         "submit": "提交支付",
-        "save": "更新订单状态",
+        "save": "更新订单为已支付",
         "ok": "支付成功",
     },
     "orders": {
-        "select": "选择待处理订单",
+        "select": "选择待发货订单",
         "confirm": "办理发货",
-        "submit": "提交订单处理",
-        "save": "保存订单信息",
-        "ok": "订单处理成功",
+        "submit": "提交发货",
+        "save": "更新订单为已发货",
+        "ok": "发货成功",
     },
     "addresses": {
         "select": "选择收货地址",
@@ -930,12 +1041,23 @@ def _phases_from_flow_spec(
     }
 
 
+def _my_orders_write_phases(vue_btns: list[str] | None = None) -> dict[str, str]:
+    """买家订单：有「确认收货」或未单独强调支付时走收货；仅支付按钮则走支付。"""
+    btns = [str(b or "") for b in (vue_btns or [])]
+    has_recv = any("收货" in b for b in btns)
+    has_pay = any("支付" in b for b in btns)
+    if has_pay and not has_recv:
+        return dict(_KIND_WRITE_PHASES["my_orders_pay"])
+    return dict(_KIND_WRITE_PHASES["my_orders"])
+
+
 def _kind_write_fallbacks(
     kind: str,
     *,
     stem: str,
     menu_label: str,
     side: str = "user",
+    vue_btns: list[str] | None = None,
 ) -> dict[str, str]:
     """无可用 Vue/Controller 文案时的写路径措辞。
 
@@ -952,6 +1074,9 @@ def _kind_write_fallbacks(
         return dict(_KIND_WRITE_PHASES["reserve_user"])
     if k == "guestbook" and not adminish:
         return dict(_KIND_WRITE_PHASES["guestbook_user"])
+
+    if k == "my_orders":
+        return _my_orders_write_phases(vue_btns)
 
     if k in _KIND_WRITE_PHASES:
         row = dict(_KIND_WRITE_PHASES[k])
@@ -970,7 +1095,7 @@ def _kind_write_fallbacks(
     if k in ("my_orders",) or (
         "order" in k and "review" not in k and k != "cart" and not adminish
     ):
-        return dict(_KIND_WRITE_PHASES["my_orders"])
+        return _my_orders_write_phases(vue_btns)
     if k == "orders" or ("order" in k and "review" not in k and adminish):
         return dict(_KIND_WRITE_PHASES["orders"])
     if "guestbook" in k:
@@ -1278,18 +1403,18 @@ def _build_login_phase(
             verify_src = "controller" if op.get("summary") or op.get("method") else "schema_label"
             break
     if not verify:
-        verify = "验证登录信息"
+        verify = "验证账号密码"
         verify_src = "schema_label"
     verify = _collapse_dup_zh(verify)
     seq += 1
     msgs.append(_msg(seq=seq, frm="page", to="controller", direction="request", text=verify, phase=phase, text_source=verify_src))
 
     seq += 1
-    msgs.append(_msg(seq=seq, frm="controller", to="db", direction="request", text=f"查询{actor}信息", phase=phase, text_source="schema_label"))
+    msgs.append(_msg(seq=seq, frm="controller", to="db", direction="request", text=f"查询{actor}账号", phase=phase, text_source="schema_label"))
     seq += 1
-    msgs.append(_msg(seq=seq, frm="db", to="controller", direction="response", text="返回验证信息", phase=phase, text_source="schema_label"))
+    msgs.append(_msg(seq=seq, frm="db", to="controller", direction="response", text=f"返回{actor}资料", phase=phase, text_source="schema_label"))
     seq += 1
-    msgs.append(_msg(seq=seq, frm="controller", to="page", direction="response", text="返回验证信息", phase=phase, text_source="schema_label"))
+    msgs.append(_msg(seq=seq, frm="controller", to="page", direction="response", text="进入系统首页", phase=phase, text_source="schema_label"))
     seq += 1
     msgs.append(_msg(seq=seq, frm="page", to="actor", direction="response", text="登录成功", phase=phase, text_source="schema_label"))
     return msgs
@@ -1361,9 +1486,6 @@ def _build_business_phase(
     demo = _schema_demo_actions(schema)
     extra_short = {v for v in demo.values() if v}
     stem_early = entity or menu_label
-    kind_fb = _kind_write_fallbacks(
-        kind, stem=stem_early, menu_label=menu_label, side=side
-    )
     # 只保留与本菜单/实体对齐的按钮；无关复合文案自然被拒
     vue_btns = [
         b
@@ -1376,6 +1498,13 @@ def _build_business_phase(
             extra_short=extra_short,
         )
     ]
+    kind_fb = _kind_write_fallbacks(
+        kind,
+        stem=stem_early,
+        menu_label=menu_label,
+        side=side,
+        vue_btns=vue_btns,
+    )
 
     open_btn = _pick_vue_btn(
         vue_btns,
@@ -1387,7 +1516,9 @@ def _build_business_phase(
     )
     if not open_btn and menu_label:
         open_btn = next((b for b in vue_btns if menu_label in b), "")
-    open_text = open_btn or (f"打开「{menu_label}」" if menu_label else f"打开{entity or '功能'}")
+    open_text = open_btn or (
+        f"进入{menu_label}" if menu_label else f"进入{entity or '功能页'}"
+    )
     open_src = "vue" if open_btn else "schema_label"
     seq += 1
     msgs.append(_msg(seq=seq, frm="actor", to="page", direction="request", text=open_text, phase=phase, text_source=open_src))
@@ -1409,7 +1540,7 @@ def _build_business_phase(
     msgs.append(_msg(seq=seq, frm="page", to="controller", direction="request", text=page_ctrl, phase=phase, text_source=pc_src))
 
     stem = entity or menu_label
-    db_q = f"查询{stem}信息" if stem else "查询信息"
+    db_q = f"查询{stem}" if stem else "查询数据"
     seq += 1
     msgs.append(_msg(seq=seq, frm="controller", to="db", direction="request", text=db_q, phase=phase, text_source="schema_label"))
     seq += 1
@@ -1419,7 +1550,7 @@ def _build_business_phase(
             frm="db",
             to="controller",
             direction="response",
-            text=f"返回{stem}信息" if stem else "返回查询结果",
+            text=f"返回{stem}列表" if stem else "返回查询结果",
             phase=phase,
             text_source="schema_label",
         )
@@ -1431,7 +1562,7 @@ def _build_business_phase(
             frm="controller",
             to="page",
             direction="response",
-            text=f"返回{stem}信息" if stem else "返回查询结果",
+            text=f"返回{stem}列表" if stem else "返回查询结果",
             phase=phase,
             text_source="schema_label",
         )
@@ -1443,11 +1574,17 @@ def _build_business_phase(
         x in vue_btns for x in ("导出清单", "复制清单")
     ):
         need_write = True
+    if kind == "my_orders" and any(
+        any(k in b for k in ("收货", "支付")) for b in vue_btns
+    ):
+        need_write = True
     if need_write:
         # 自调用优先用本功能菜单/实体措辞，不用跨页按钮
         prefer_select = ("选择", "核对", "填写", "编辑", "新增")
         if kind == "cart":
             prefer_select = ("核对", "改数量", "选择商品", "填写", "编辑")
+        elif kind == "my_orders":
+            prefer_select = ("选择已发货", "选择订单", "选择", "核对")
         elif "review" in kind:
             prefer_select = ("填写评价", "选择", "填写", "编辑")
         pick = _pick_vue_btn(
@@ -1460,8 +1597,8 @@ def _build_business_phase(
         if pick and not (
             (entity and entity in pick)
             or (menu_label and menu_label in pick)
-            or pick in ("新增", "编辑", "填写", "核对商品与数量", "去结算")
-            or any(x in pick for x in ("核对", "结算", "评价", "支付", "留言", "预约"))
+            or pick in ("新增", "编辑", "填写", "核对商品与数量", "去结算", "确认收货")
+            or any(x in pick for x in ("核对", "结算", "评价", "支付", "收货", "留言", "预约"))
         ):
             # 「选择xxx」若不含本实体名，改用 kind 兜底
             pick = ""
@@ -1504,10 +1641,14 @@ def _build_business_phase(
             prefer_submit = ("去结算", "结算", "下单", "提交", "确认")
         elif "review" in kind:
             prefer_submit = ("提交评价", "发表评价", "保存", "提交", "确认")
-        elif kind in ("my_orders", "orders") or (
+        elif kind == "my_orders" or (
+            "order" in kind and "review" not in kind and kind != "orders" and side != "admin"
+        ):
+            prefer_submit = ("确认收货", "收货", "支付", "确认支付", "保存", "提交", "确认")
+        elif kind in ("orders",) or (
             "order" in kind and "review" not in kind
         ):
-            prefer_submit = ("支付", "确认支付", "发货", "保存", "提交", "确认")
+            prefer_submit = ("发货", "配送", "保存", "提交", "确认")
         submit_btn = _pick_vue_btn(
             vue_btns,
             menu_label=menu_label,
@@ -1521,9 +1662,11 @@ def _build_business_phase(
             "去结算",
             "结算",
             "确认支付",
+            "确认收货",
             "提交评价",
             "发表评价",
             "核对商品与数量",
+            "发货",
         }
         if submit_btn and submit_btn not in allowed_short and not (
             (entity and entity in submit_btn) or (menu_label and menu_label in submit_btn)
@@ -1537,7 +1680,28 @@ def _build_business_phase(
         batch_lab = str(demo.get("batch_hire") or "").strip()
         if kind == "ticket_pending" and batch_lab and batch_lab in vue_btns:
             submit_btn = batch_lab
-        self2 = submit_btn or kind_fb["confirm"]
+        # 通用「保存/提交/确认」让位给 kind 相位（如确认收货/去结算），避免盖住业务动词
+        _generic_submit = frozenset({"保存", "提交", "确认", "确定"})
+        phase_confirm = str(kind_fb.get("confirm") or "").strip()
+        if (
+            submit_btn in _generic_submit
+            and phase_confirm
+            and phase_confirm not in _generic_submit
+        ):
+            submit_btn = ""
+        # 页面上有更贴相位的按钮时仍用按钮
+        if not submit_btn and phase_confirm:
+            hit = next(
+                (
+                    b
+                    for b in vue_btns
+                    if phase_confirm in b or b in phase_confirm
+                ),
+                "",
+            )
+            if hit:
+                submit_btn = hit
+        self2 = submit_btn or phase_confirm or kind_fb["confirm"]
         seq += 1
         msgs.append(
             _msg(
@@ -1572,13 +1736,14 @@ def _build_business_phase(
         save_t = kind_fb["save"]
         seq += 1
         msgs.append(_msg(seq=seq, frm="controller", to="db", direction="request", text=save_t, phase=phase, text_source="schema_label"))
+        db_ok = f"{stem}已更新" if stem else "写入成功"
         seq += 1
-        msgs.append(_msg(seq=seq, frm="db", to="controller", direction="response", text="数据保存成功", phase=phase, text_source="schema_label"))
+        msgs.append(_msg(seq=seq, frm="db", to="controller", direction="response", text=db_ok, phase=phase, text_source="schema_label"))
         ok = kind_fb["ok"]
         seq += 1
         msgs.append(_msg(seq=seq, frm="controller", to="page", direction="response", text=ok, phase=phase, text_source="schema_label"))
         seq += 1
-        msgs.append(_msg(seq=seq, frm="page", to="actor", direction="response", text="数据保存成功", phase=phase, text_source="schema_label"))
+        msgs.append(_msg(seq=seq, frm="page", to="actor", direction="response", text=ok, phase=phase, text_source="schema_label"))
     else:
         seq += 1
         msgs.append(
@@ -1733,7 +1898,9 @@ def sequence_model(
         diagrams.append(build_sequence_diagram(c, schema, workspace, index=i))
 
     title = _app_title(schema, title_fallback)
-    return {
+    from app.bake.schema.sequence_workflow import attach_workflow_to_diagrams
+
+    model = {
         "title": title,
         "figure_title": "系统序列图",
         "candidates": candidates,
@@ -1751,6 +1918,7 @@ def sequence_model(
             "相邻对象阶梯传递并带序号",
         ],
     }
+    return attach_workflow_to_diagrams(model)
 
 
 def load_sequence_model(
@@ -1801,7 +1969,9 @@ def load_sequence_model(
         )
     except Exception:  # noqa: BLE001
         pass
-    return model
+    from app.bake.schema.sequence_workflow import attach_workflow_to_diagrams
+
+    return attach_workflow_to_diagrams(model)
 
 
 # —— SVG ——
