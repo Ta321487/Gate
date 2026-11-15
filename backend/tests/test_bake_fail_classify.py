@@ -9,6 +9,8 @@ from app.services.bake_fail_classify import (
     CODES,
     FIX_LOCUS,
     LABELS,
+    _GATE_KEY_TO_CODE,
+    _STEM_RULES,
     catalog_payload,
     classify_bake_error,
     code_from_gates,
@@ -21,9 +23,17 @@ class BakeFailClassifyTests(unittest.TestCase):
         self.assertEqual(set(CODES), set(FIX_LOCUS))
         self.assertEqual(FIX_LOCUS["UNKNOWN"], "待补码表")
 
+    def test_stem_and_gate_maps_only_use_catalog_codes(self):
+        """禁止分类已接线、对照表未入库（如曾漏挂 BAKE_LAYOUT / BAKE_FORM_CONTROLS）。"""
+        used = set(_GATE_KEY_TO_CODE.values()) | {c for _, c in _STEM_RULES}
+        missing = sorted(used - set(CODES))
+        self.assertEqual(missing, [], msg=f"已接线未入库: {missing}")
+
     def test_catalog_covers_all_codes(self):
         cats = {c["code"] for c in catalog_payload()}
         self.assertEqual(cats, set(CODES))
+        self.assertIn("BAKE_LAYOUT", cats)
+        self.assertIn("BAKE_FORM_CONTROLS", cats)
 
     def test_doc_mentions_each_code(self):
         root = Path(__file__).resolve().parents[2]
@@ -57,6 +67,10 @@ class BakeFailClassifyTests(unittest.TestCase):
                 "BAKE_FILE_LOCK",
             ),
             ("工作区文件被占用，无法读写 · 文件 x.java", "BAKE_FILE_LOCK"),
+            ("布局检查未通过 · 布局一眼病", "BAKE_LAYOUT"),
+            ("p3layout 台账对账失败", "BAKE_LAYOUT"),
+            ("控件检查未通过 · allow-create", "BAKE_FORM_CONTROLS"),
+            ("p3controls 控件契约红", "BAKE_FORM_CONTROLS"),
             ("填岛合并失败", "FILL_MERGE"),
             ("骨架不完整", "BUILD_SKELETON"),
             ("编译失败 · [ERROR] ...", "BUILD_COMPILE"),
@@ -89,6 +103,24 @@ class BakeFailClassifyTests(unittest.TestCase):
     def test_accept_gate(self):
         gates = {"accept": {"ok": False, "desc": "reject"}, "overall": False}
         self.assertEqual(code_from_gates(gates), "GATE_ACCEPT")
+
+    def test_layout_and_controls_gate_keys(self):
+        self.assertEqual(
+            code_from_gates({"p3layout": {"ok": False}, "overall": False}),
+            "BAKE_LAYOUT",
+        )
+        self.assertEqual(
+            code_from_gates({"p3controls": {"ok": False}, "overall": False}),
+            "BAKE_FORM_CONTROLS",
+        )
+        layout = classify_bake_error("质量检查未通过", gates={"p3layout": {"ok": False}})
+        self.assertEqual(layout.code, "BAKE_LAYOUT")
+        self.assertEqual(layout.fix_locus, FIX_LOCUS["BAKE_LAYOUT"])
+        controls = classify_bake_error(
+            "质量检查未通过", gates={"p3controls": {"ok": False}}
+        )
+        self.assertEqual(controls.code, "BAKE_FORM_CONTROLS")
+        self.assertEqual(controls.fix_locus, FIX_LOCUS["BAKE_FORM_CONTROLS"])
 
     def test_unknown_no_fake_locus(self):
         got = classify_bake_error("completely novel failure xyzzy")

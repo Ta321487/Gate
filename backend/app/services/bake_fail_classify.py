@@ -31,6 +31,8 @@ CODES: tuple[str, ...] = (
     "BAKE_ADDON_SECURITY",
     "BAKE_PACK_LEAN",
     "BAKE_FILE_LOCK",
+    "BAKE_LAYOUT",
+    "BAKE_FORM_CONTROLS",
     "FILL_MERGE",
     "BUILD_SKELETON",
     "BUILD_COMPILE",
@@ -69,6 +71,8 @@ LABELS: dict[str, str] = {
     "BAKE_ADDON_SECURITY": "Security 叠层",
     "BAKE_PACK_LEAN": "学生包瘦身",
     "BAKE_FILE_LOCK": "工作区文件被占用",
+    "BAKE_LAYOUT": "布局一眼病 / 出包布局闸",
+    "BAKE_FORM_CONTROLS": "可交互控件 / 出包控件闸",
     "FILL_MERGE": "填岛合并",
     "BUILD_SKELETON": "骨架不完整",
     "BUILD_COMPILE": "编译失败",
@@ -108,6 +112,8 @@ FIX_LOCUS: dict[str, str] = {
     "BAKE_ADDON_SECURITY": "backend/app/bake/addons.py",
     "BAKE_PACK_LEAN": "backend/app/bake/pack_prune.py",
     "BAKE_FILE_LOCK": "backend/app/services/project_disk.py · 停预览后从失败步骤重试",
+    "BAKE_LAYOUT": "backend/app/bake/gates/layout_workspace.py · p3layout",
+    "BAKE_FORM_CONTROLS": "backend/app/bake/gates/form_controls_workspace.py · p3controls",
     "FILL_MERGE": "backend/app/llm/unit_flow/merge.py",
     "BUILD_SKELETON": "backend/app/llm/agents_fix.py · 骨架探测",
     "BUILD_COMPILE": "backend/app/llm/agents_fix.py · mvn compile",
@@ -317,6 +323,10 @@ def _code_from_stems(err: str) -> str | None:
             return "BAKE_ARCHIVE_COLUMNS"
         if "未挂岛" in err or "瘦身" in err or "工厂注记" in err:
             return "BAKE_PACK_LEAN"
+        if "布局" in err or "p3layout" in err or "台账对账" in err or "结构契约" in err:
+            return "BAKE_LAYOUT"
+        if "控件" in err or "p3controls" in err or "allow-create" in err:
+            return "BAKE_FORM_CONTROLS"
         return "GATE_OVERALL"
     for stem, code in _STEM_RULES:
         if stem in err:

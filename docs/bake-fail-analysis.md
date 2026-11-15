@@ -44,6 +44,9 @@
 | `BAKE_PERSISTENCE` | copy_bake | `persistence=mybatis/jpa 包仍含` | `bake/persistence.py` | — | 有 |
 | `BAKE_ADDON_SECURITY` | copy_bake | `spring-boot-starter-security` / `Security 叠层缺少` | `bake/addons.py` | — | 有 |
 | `BAKE_PACK_LEAN` | copy_bake / gate | `pack_prune` / 未挂岛 / 工厂注记 / 壳件不符 / p3lean | `bake/pack_prune.py` | `p3lean` | 有 |
+| `BAKE_FILE_LOCK` | copy_bake 等 | `WinError 32` / `工作区文件被占用` / being used by another process | `services/project_disk.py` · 停预览后重试 | — | 有 |
+| `BAKE_LAYOUT` | gate_e2e | 布局检查 / 布局一眼病 / 台账对账 / 结构契约 / p3layout | `bake/gates/layout_workspace.py` | `p3layout` | `test_layout_*` / 出包闸 |
+| `BAKE_FORM_CONTROLS` | gate_e2e | 控件检查 / 控件契约 / allow-create / p3controls | `bake/gates/form_controls_workspace.py` | `p3controls` | `test_form_controls_*` / 出包闸 |
 | `FILL_MERGE` | island_fill | `island merge` / `填岛合并失败` | `llm/unit_flow/merge.py` | — | 有 |
 | `BUILD_SKELETON` | build_verify | `骨架不完整` | `llm/agents_fix.py` | — | 有 |
 | `BUILD_COMPILE` | build_verify | `编译失败` / `mvn compile timeout` | `llm/agents_fix.py` | — | 有 |
