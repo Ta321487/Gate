@@ -2754,11 +2754,20 @@ def evaluate_pack_lean_gate(
             + ("…" if len(detail_face) > len(sample) else "")
         )
     if themes:
-        sample = themes[:8]
-        parts.append(
-            f"异域行业肤 {len(themes)}：{', '.join(sample)}"
-            + ("…" if len(themes) > len(sample) else "")
-        )
+        missing = [t for t in themes if str(t).startswith("theme_missing")]
+        foreign = [t for t in themes if t not in missing]
+        if missing:
+            sample = missing[:8]
+            parts.append(
+                f"本题行业肤缺失 {len(missing)}：{', '.join(sample)}"
+                + ("…" if len(missing) > len(sample) else "")
+            )
+        if foreign:
+            sample = foreign[:8]
+            parts.append(
+                f"异域行业肤 {len(foreign)}：{', '.join(sample)}"
+                + ("…" if len(foreign) > len(sample) else "")
+            )
     desc = (
         "；".join(parts)
         if parts

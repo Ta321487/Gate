@@ -109,6 +109,52 @@ def _write_lean_themes_css(
     themes_css.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _baseline_styles_dir() -> Path | None:
+    try:
+        from app.core.config import get_settings
+
+        root = get_settings().skeletons_dir / "baseline" / "frontend" / "src" / "styles"
+    except Exception:  # noqa: BLE001
+        return None
+    return root if root.is_dir() else None
+
+
+def _rehydrate_theme_from_baseline(
+    styles: Path, theme_id: str
+) -> list[str]:
+    """瘦身后只剩上一档色块时，换 theme / 壳色自配会找不到本题 → 从骨架回补源文件。"""
+    base = _baseline_styles_dir()
+    notes: list[str] = []
+    if base is None:
+        return notes
+    owner = _find_theme_owner(base, theme_id)
+    if owner is None:
+        return notes
+    kind, src = owner
+    themes_dir = styles / "themes"
+    themes_dir.mkdir(parents=True, exist_ok=True)
+    if kind == "file":
+        dest = themes_dir / src.name
+        dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        notes.append(f"theme_rehydrate:themes/{src.name}:{theme_id}")
+    else:
+        # 内联在骨架 themes.css：抽出该 id 写入 themes/{stem}.css
+        raw = src.read_text(encoding="utf-8")
+        block = _extract_blocks_for_theme(raw, theme_id)
+        if not block:
+            return notes
+        stem = theme_id.split("-", 1)[0] or "theme"
+        dest = themes_dir / f"{stem}.css"
+        dest.write_text(f"/* {theme_id} */\n\n{block}\n", encoding="utf-8")
+        notes.append(f"theme_rehydrate:themes/{stem}.css:{theme_id}")
+    # 保证入口存在，后续 scrub 会改写成 lean import
+    themes_css = styles / "themes.css"
+    if not themes_css.is_file():
+        _write_lean_themes_css(themes_css, import_stem=None, body_blocks="")
+        notes.append("theme_rehydrate:themes.css")
+    return notes
+
+
 def scrub_pack_themes(
     workspace: Path, spec: dict[str, Any] | None = None
 ) -> list[str]:
@@ -118,14 +164,16 @@ def scrub_pack_themes(
     if not fe.is_dir():
         return []
     styles = fe / "styles"
+    styles.mkdir(parents=True, exist_ok=True)
     themes_css = styles / "themes.css"
     themes_dir = styles / "themes"
-    if not themes_css.is_file() and not (themes_dir.is_dir() and any(themes_dir.glob("*.css"))):
-        return []
 
     theme_id = resolve_pack_theme_id(spec)
-    owner = _find_theme_owner(styles, theme_id)
     notes: list[str] = []
+    owner = _find_theme_owner(styles, theme_id)
+    if owner is None:
+        notes.extend(_rehydrate_theme_from_baseline(styles, theme_id))
+        owner = _find_theme_owner(styles, theme_id)
     if owner is None:
         notes.append(f"theme_missing:{theme_id}")
         return notes

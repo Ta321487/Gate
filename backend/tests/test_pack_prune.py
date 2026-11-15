@@ -1108,6 +1108,45 @@ class PackPruneFactorySelfGateTests(unittest.TestCase):
                 (lean.get("detail") or {}).get("foreign_themes"), lean.get("desc")
             )
 
+    def test_pack_themes_rehydrate_when_switching_after_scrub(self) -> None:
+        """已瘦成上一档后换 shop-lime：从骨架回补再裁，不得 theme_missing。"""
+        from app.bake.pack_themes import scan_foreign_theme_leaks, scrub_pack_themes
+
+        styles_src = BASELINE_FE / "styles"
+        if not (styles_src / "themes" / "shop.css").is_file():
+            self.skipTest("baseline shop.css missing")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            styles = dest / "frontend/src/styles"
+            styles.mkdir(parents=True)
+            shutil.copy2(styles_src / "themes.css", styles / "themes.css")
+            shutil.copytree(styles_src / "themes", styles / "themes")
+            scrub_pack_themes(
+                dest, {"domain": "DOM-SHOP", "theme": "shop-coral"}
+            )
+            self.assertEqual(
+                scan_foreign_theme_leaks(
+                    dest, {"domain": "DOM-SHOP", "theme": "shop-lime"}
+                ),
+                ["theme_missing:shop-lime"],
+            )
+            notes = scrub_pack_themes(
+                dest, {"domain": "DOM-SHOP", "theme": "shop-lime"}
+            )
+            self.assertTrue(
+                any(n.startswith("theme_rehydrate:") for n in notes), notes
+            )
+            self.assertTrue(any(n.startswith("theme_keep:") for n in notes), notes)
+            self.assertEqual(
+                scan_foreign_theme_leaks(
+                    dest, {"domain": "DOM-SHOP", "theme": "shop-lime"}
+                ),
+                [],
+            )
+            shop = (styles / "themes/shop.css").read_text(encoding="utf-8")
+            self.assertIn('data-theme="shop-lime"', shop)
+            self.assertNotIn('data-theme="shop-coral"', shop)
+
 
 if __name__ == "__main__":
     unittest.main()
