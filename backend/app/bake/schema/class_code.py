@@ -1,8 +1,8 @@
 """从 bake 包 Java（*Store / *Controller）抽取类图属性与方法。
 
-属性优先：Store 行映射 ``m.put("camel", rs.getXxx(...))``（与运行时字段一致）。
-方法：对应源文件中的 public/protected 实例或 static 方法签名（返回类型原样）。
-无代码命中时由调用方回退 SQL 列，禁止臆造 getList/add/del/edit。
+属性：以 ``schema.sql`` 列为真源（调用方已写入）；Java 行映射仅在无 SQL 列时补全。
+方法：按类名/主表亲和度绑到对应实体 Store·Controller，禁止多表上帝类串台。
+无代码命中时方法栏留空，禁止臆造 getList/add/del/edit。
 """
 
 from __future__ import annotations
@@ -78,6 +78,9 @@ _SKIP_METHODS = frozenset(
         "main",
         "configure",
         "bind",
+        "unbind",
+        "enabled",
+        "resetCache",
         "toString",
         "hashCode",
         "equals",
@@ -85,6 +88,11 @@ _SKIP_METHODS = frozenset(
         "notify",
         "notifyAll",
         "getClass",
+        "bool",
+        "str",
+        "boolOrNull",
+        "nz",
+        "requireTable",
     }
 )
 
@@ -100,7 +108,61 @@ _SKIP_PREFIXES = (
     "col",
     "mapRow",
     "seed",
+    "canon",
+    "parse",
 )
+
+# Store/Controller 去后缀后的主表归属：动态 bind 的表名不在源码字面量里，靠此收口，
+# 避免 LoyaltyStore 抢 sys_user、ArchiveStore 抢 category 属性等串台。
+_TYPE_SUFFIXES = (
+    "Store",
+    "Controller",
+    "Service",
+    "Mapper",
+    "Repository",
+    "Entity",
+    "RowMaps",
+)
+
+_STEM_OWNED_TABLES: dict[str, frozenset[str]] = {
+    "order": frozenset(
+        {
+            "order",
+            "orders",
+            "biz_order",
+            "sys_order",
+            "cart",
+            "cart_line",
+            "order_line",
+            "order_item",
+        }
+    ),
+    "archive": frozenset(
+        {
+            "archive",
+            "sys_archive",
+            "category",
+            "book",
+            "product",
+            "item",
+        }
+    ),
+    "loyalty": frozenset({"loyalty", "sys_loyalty", "user_ledger"}),
+    "address": frozenset({"address", "user_address"}),
+    "order_review": frozenset({"order_review"}),
+    "favorite": frozenset({"favorite", "user_favorite", "sys_favorite"}),
+    "dm": frozenset({"dm", "dm_message", "sys_dm_message"}),
+    "guestbook": frozenset({"guestbook", "sys_guestbook"}),
+    "message": frozenset({"message", "sys_message"}),
+    "notice": frozenset({"notice", "sys_notice"}),
+    "banner": frozenset({"banner", "sys_banner"}),
+    "site_stat": frozenset({"site_stat", "sys_site_stat"}),
+    "login_log": frozenset({"login_log", "sys_login_log"}),
+    "auth_session": frozenset({"auth_session", "sys_auth_session"}),
+    "account_cancel": frozenset({"account_cancel", "sys_account_cancel"}),
+    "user": frozenset({"user", "sys_user"}),
+    "category": frozenset({"category", "sys_category"}),
+}
 
 
 def _strip_java_noise(src: str) -> str:
@@ -142,6 +204,51 @@ def _camel_to_snake(name: str) -> str:
     return s.lower()
 
 
+def _class_stem(classname: str) -> str:
+    base = (classname or "").strip()
+    for suf in _TYPE_SUFFIXES:
+        if base.endswith(suf) and len(base) > len(suf):
+            base = base[: -len(suf)]
+            break
+    return _camel_to_snake(base) if base else ""
+
+
+def _table_name_keys(table: str, entity_key: str | None = None) -> set[str]:
+    keys = {table, table.removeprefix("sys_"), table.removeprefix("biz_")}
+    if entity_key:
+        keys.add(entity_key)
+        keys.add(f"sys_{entity_key}")
+        keys.add(f"biz_{entity_key}")
+    return {k for k in keys if k}
+
+
+def _affinity_score(
+    classname: str,
+    table: str,
+    *,
+    entity_key: str | None = None,
+    owned: bool = False,
+) -> int:
+    """类名主表命中优先；bind 归属次之；仅字面量蹭表为 0。"""
+    stem = _class_stem(classname)
+    targets = _table_name_keys(table, entity_key)
+    if not stem:
+        return 10 if owned else 0
+    if stem in targets or f"sys_{stem}" in targets or f"biz_{stem}" in targets:
+        return 100
+    for t in targets:
+        if not t:
+            continue
+        if stem == t or t.endswith(f"_{stem}") or stem.endswith(f"_{t}"):
+            return 90
+        if stem in t or t in stem:
+            return 70
+    if owned:
+        # OrderStore↔cart_line 等：主表组内但类名不含该表
+        return 55
+    return 0
+
+
 def _simplify_return(ret: str) -> str:
     t = re.sub(r"\s+", " ", (ret or "").strip())
     t = t.replace("java.util.", "").replace("java.lang.", "")
@@ -161,11 +268,26 @@ def _vis_mark(mod: str) -> str:
     return "+"
 
 
+# 跨域骨架残留方法名：商城包也会编译进 ArchiveStore，论文类图不应展示
+_SKIP_METHOD_MARKERS = (
+    "trainhour",
+    "carpool",
+    "forumpost",
+    "forumdaily",
+    "userpost",
+    "checkincode",
+    "mutexcode",
+    "isbn",
+    "borrow",
+)
+
 def _should_skip_method(name: str) -> bool:
     if name in _SKIP_METHODS:
         return True
     low = name.lower()
-    return any(low.startswith(p.lower()) for p in _SKIP_PREFIXES)
+    if any(low.startswith(p.lower()) for p in _SKIP_PREFIXES):
+        return True
+    return any(m in low for m in _SKIP_METHOD_MARKERS)
 
 
 def _method_display(vis: str, name: str, params: str, ret: str) -> str:
@@ -304,19 +426,38 @@ def _tables_mentioned(src: str, classname: str) -> set[str]:
                 found.add(g.lower())
     for m in _STR_ASSIGN_RE.finditer(clean):
         found.add(m.group(1).lower())
-    base = classname
-    for suf in ("Store", "Controller", "Service", "Mapper", "Repository", "Entity"):
-        if base.endswith(suf):
-            base = base[: -len(suf)]
-            break
-    if base:
-        snake = _camel_to_snake(base)
-        found.add(snake)
-        found.add(f"sys_{snake}")
-        # Notice → sys_notice
-        if not snake.startswith("sys_"):
-            found.add(snake)
-    return {t for t in found if t and t not in {"string", "select", "from", "where", "set", "null"}}
+    stem = _class_stem(classname)
+    if stem:
+        found.add(stem)
+        found.add(f"sys_{stem}")
+        found.add(f"biz_{stem}")
+    noise = {
+        "string",
+        "select",
+        "from",
+        "where",
+        "set",
+        "null",
+        "all",
+        "if",
+        "year",
+        "normal",
+        "spend",
+        "false",
+        "true",
+        "admin",
+        "information_schema",
+    }
+    return {t for t in found if t and t not in noise}
+
+
+def _index_tables_for_class(classname: str, mentioned: set[str]) -> set[str]:
+    """有主表清单的能力类只挂清单内表，避免 SQL 字面量蹭绑。"""
+    stem = _class_stem(classname)
+    owned = _STEM_OWNED_TABLES.get(stem)
+    if owned is not None:
+        return set(owned)
+    return set(mentioned)
 
 
 def index_java_sources(workspace: Path) -> dict[str, list[dict[str, Any]]]:
@@ -341,14 +482,15 @@ def index_java_sources(workspace: Path) -> dict[str, list[dict[str, Any]]]:
         cm = _CLASS_RE.search(text)
         classname = cm.group(1) if cm else path.stem
         attrs, methods = parse_java_type_members(text)
-        tables = _tables_mentioned(text, classname)
+        mentioned = _tables_mentioned(text, classname)
         # TicketRowMaps → ticket / borrow 等：类名去 RowMaps
         if name.endswith("RowMaps.java") and classname.endswith("RowMaps"):
             base = classname[: -len("RowMaps")]
             if base:
                 snake = _camel_to_snake(base)
-                tables.add(snake)
-                tables.add(f"sys_{snake}")
+                mentioned.add(snake)
+                mentioned.add(f"sys_{snake}")
+        tables = _index_tables_for_class(classname, mentioned)
         rel = str(path.relative_to(workspace)).replace("\\", "/")
         if name.endswith("Entity.java"):
             kind = "entity"
@@ -363,6 +505,7 @@ def index_java_sources(workspace: Path) -> dict[str, list[dict[str, Any]]]:
             score += 8
         if methods:
             score += 4
+        stem = _class_stem(classname)
         entry = {
             "path": rel,
             "class": classname,
@@ -370,6 +513,8 @@ def index_java_sources(workspace: Path) -> dict[str, list[dict[str, Any]]]:
             "attrs": attrs,
             "methods": methods,
             "score": score,
+            "stem": stem,
+            "owned_stem": stem in _STEM_OWNED_TABLES,
         }
         for t in tables:
             by_table.setdefault(t, []).append(entry)
@@ -382,12 +527,8 @@ def resolve_code_bundle_for_table(
     *,
     entity_key: str | None = None,
 ) -> dict[str, Any] | None:
-    """为物理表合并多源：属性优先 Store/RowMaps/Entity，方法优先 Store/Controller。"""
-    keys = {table, table.removeprefix("sys_"), table.removeprefix("biz_")}
-    if entity_key:
-        keys.add(entity_key)
-        keys.add(f"sys_{entity_key}")
-        keys.add(f"biz_{entity_key}")
+    """为物理表合并多源：属性仅高亲和度源；方法按亲和度优先 Controller/Store。"""
+    keys = _table_name_keys(table, entity_key)
     cands: list[dict[str, Any]] = []
     for k in keys:
         cands.extend(index.get(k) or [])
@@ -397,42 +538,77 @@ def resolve_code_bundle_for_table(
     best: dict[str, dict[str, Any]] = {}
     for c in cands:
         p = c["path"]
-        if p not in best or c["score"] > best[p]["score"]:
-            best[p] = c
-    ranked = sorted(best.values(), key=lambda x: (-x["score"], x["path"]))
+        owned = bool(c.get("owned_stem")) and table in (
+            _STEM_OWNED_TABLES.get(str(c.get("stem") or "")) or frozenset()
+        )
+        aff = _affinity_score(
+            str(c.get("class") or ""),
+            table,
+            entity_key=entity_key,
+            owned=owned,
+        )
+        row = dict(c)
+        row["affinity"] = aff
+        prev = best.get(p)
+        if prev is None or (aff, row["score"]) > (prev.get("affinity", 0), prev["score"]):
+            best[p] = row
+
+    ranked = sorted(
+        best.values(),
+        key=lambda x: (-int(x.get("affinity") or 0), -x["score"], x["path"]),
+    )
+    # 论文类图：无亲和度的蹭绑源直接丢弃
+    ranked = [c for c in ranked if int(c.get("affinity") or 0) >= 55]
+    if not ranked:
+        return None
 
     attrs: list[dict[str, Any]] = []
     attr_from = ""
-    for kind in ("store", "rowmaps", "entity", "controller"):
+    attr_aff = 0
+    for kind in ("entity", "rowmaps", "store", "controller"):
         for c in ranked:
-            if c["kind"] == kind and c["attrs"]:
-                attrs = list(c["attrs"])
-                attr_from = c["path"]
-                break
+            if c["kind"] != kind or not c["attrs"]:
+                continue
+            # 属性更严：要类名对得上，避免 ArchiveStore 行映射盖掉 category SQL 列
+            if int(c.get("affinity") or 0) < 70:
+                continue
+            attrs = list(c["attrs"])
+            attr_from = c["path"]
+            attr_aff = int(c.get("affinity") or 0)
+            break
         if attrs:
             break
 
     methods: list[dict[str, Any]] = []
     meth_from = ""
-    for kind in ("store", "controller", "entity"):
-        for c in ranked:
-            if c["kind"] == kind and c["methods"]:
-                methods = list(c["methods"])
-                meth_from = c["path"]
-                break
-        if methods:
-            break
+    meth_class = ""
+    # 方法：亲和度优先，同档 Store > Controller（业务方法名更稳；错表已靠亲和度挡掉）
+    meth_ranked = sorted(
+        [c for c in ranked if c.get("methods")],
+        key=lambda x: (
+            -int(x.get("affinity") or 0),
+            0 if x["kind"] == "store" else 1 if x["kind"] == "controller" else 2,
+            x["path"],
+        ),
+    )
+    if meth_ranked:
+        pick = meth_ranked[0]
+        methods = list(pick["methods"])
+        meth_from = pick["path"]
+        meth_class = pick["class"]
 
     primary = ranked[0]
     return {
         "path": meth_from or attr_from or primary["path"],
-        "class": primary["class"],
+        "class": meth_class or primary["class"],
         "kind": primary["kind"],
         "attrs": attrs,
         "methods": methods,
         "attr_path": attr_from,
         "method_path": meth_from,
         "score": primary["score"],
+        "attr_affinity": attr_aff,
+        "method_affinity": int((meth_ranked[0].get("affinity") if meth_ranked else 0) or 0),
     }
 
 
@@ -451,7 +627,10 @@ def enrich_classes_from_java(
     *,
     entity_key_by_table: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """就地补全 attributes/methods；返回统计。"""
+    """就地补全 attributes/methods；返回统计。
+
+    SQL 列已在骨架里时保持不动（论文属性跟表）；仅无列时才用 Java 行映射。
+    """
     index = index_java_sources(workspace)
     keyed = entity_key_by_table or {}
     hit_attr = 0
@@ -462,26 +641,37 @@ def enrich_classes_from_java(
             continue
         table = str(cls.get("table") or cls.get("id") or "")
         code = resolve_code_bundle_for_table(table, index, entity_key=keyed.get(table))
+        sql_attrs = [
+            a
+            for a in (cls.get("attributes") or [])
+            if isinstance(a, dict) and str(a.get("source") or "") in ("sql", "")
+        ]
+        has_sql_cols = any(str(a.get("column") or "").strip() for a in sql_attrs) or (
+            bool(sql_attrs) and str(cls.get("attr_source") or "") == "sql"
+        )
         if not code:
             cls["code_path"] = ""
             cls["code_class"] = ""
-            cls["attr_source"] = "sql"
+            cls["attr_source"] = "sql" if (cls.get("attributes") or has_sql_cols) else "none"
             cls["method_source"] = "none"
             continue
         linked += 1
         cls["code_path"] = code["path"]
         cls["code_class"] = code["class"]
-        if code["attrs"]:
-            cls["attributes"] = code["attrs"]
-            cls["attr_source"] = "java"
-            hit_attr += 1
-        else:
+        if has_sql_cols:
             for a in cls.get("attributes") or []:
                 if isinstance(a, dict):
                     a.setdefault("source", "sql")
                     a.setdefault("visibility", "-")
-                    a["display"] = f"- {a.get('name')}: {a.get('type')}"
+                    if not a.get("display"):
+                        a["display"] = f"- {a.get('name')}: {a.get('type')}"
             cls["attr_source"] = "sql"
+        elif code["attrs"]:
+            cls["attributes"] = code["attrs"]
+            cls["attr_source"] = "java"
+            hit_attr += 1
+        else:
+            cls["attr_source"] = "none"
         if code["methods"]:
             cls["methods"] = code["methods"]
             cls["method_source"] = "java"
@@ -586,7 +776,7 @@ def merge_oo_relations_into_model(
                 "to_class": to_n,
                 "via": kind,
                 "kind": kind,
-                "label": kind,
+                "label": "",
             }
         )
         added += 1
@@ -718,7 +908,7 @@ def infer_dependency_relations(model: dict[str, Any]) -> int:
                     "to_class": to_name,
                     "via": "type_ref",
                     "kind": "dependency",
-                    "label": "依赖",
+                    "label": "",
                 }
             )
             added += 1

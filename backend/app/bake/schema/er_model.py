@@ -305,7 +305,16 @@ def is_assoc_link(t: Table, tables: list[Table]) -> bool:
     return True
 
 
-def infer_relations(tables: list[Table]) -> list[Relation]:
+def infer_relations(
+    tables: list[Table],
+    *,
+    collapse_links: bool = True,
+) -> list[Relation]:
+    """从表 FK 抽联系。
+
+    ``collapse_links=True``（E-R 总图）：纯 M:N 中间表塌成两父 N:M。
+    ``False``（类图）：保留中间表外键边，禁止再画 User↔Product 这类塌缩边。
+    """
     by_name = {t.name: t for t in tables}
     rels: list[Relation] = []
     seen: set[tuple[str, str, str]] = set()
@@ -329,7 +338,9 @@ def infer_relations(tables: list[Table]) -> list[Relation]:
                     via=c.name,
                 )
             )
-    return collapse_assoc_link_relations(tables, rels)
+    if collapse_links:
+        return collapse_assoc_link_relations(tables, rels)
+    return rels
 
 
 def collapse_assoc_link_relations(

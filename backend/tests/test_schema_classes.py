@@ -306,6 +306,302 @@ class ClassDiagramTests(unittest.TestCase):
         wipe = next(m for m in methods if m["name"] == "wipeCache")
         self.assertEqual(wipe["visibility"], "-")
 
+    def test_sample_mode_hides_shell_and_caps_members(self) -> None:
+        """论文示例签：藏壳表；属性截断；方法签名无 Spring 注解。"""
+        from app.bake.schema.class_model import (
+            _SAMPLE_ATTR_LIMIT,
+            apply_class_display_mode,
+        )
+
+        model = {
+            "classes": [
+                {
+                    "id": "sys_user",
+                    "table": "sys_user",
+                    "name": "User",
+                    "attributes": [
+                        {"name": "id", "type": "Long", "pk": True, "source": "sql"},
+                        {"name": "username", "type": "String", "source": "sql"},
+                        {"name": "password", "type": "String", "source": "sql"},
+                        {"name": "nickname", "type": "String", "source": "sql"},
+                        {"name": "phone", "type": "String", "source": "sql"},
+                        {"name": "failedLoginCount", "type": "Integer", "source": "sql"},
+                        {"name": "lockUntil", "type": "LocalDateTime", "source": "sql"},
+                        {"name": "securityQuestion", "type": "String", "source": "sql"},
+                        {"name": "activationCode", "type": "String", "source": "sql"},
+                        {"name": "adminTags", "type": "String", "source": "sql"},
+                        {"name": "extra1", "type": "String", "source": "sql"},
+                    ],
+                    "methods": [
+                        {
+                            "name": "create",
+                            "visibility": "+",
+                            "params": "@RequestBody Map body, HttpSession session",
+                            "return": "Map<String, Object>",
+                            "source": "java",
+                        }
+                    ],
+                },
+                {
+                    "id": "sys_banner",
+                    "table": "sys_banner",
+                    "name": "Banner",
+                    "attributes": [{"name": "id", "type": "Long", "pk": True}],
+                    "methods": [],
+                },
+                {
+                    "id": "sys_login_log",
+                    "table": "sys_login_log",
+                    "name": "LoginLog",
+                    "attributes": [{"name": "id", "type": "Long", "pk": True}],
+                    "methods": [],
+                },
+                {
+                    "id": "product",
+                    "table": "product",
+                    "name": "Product",
+                    "attributes": [
+                        {"name": "id", "type": "Long", "pk": True},
+                        {"name": "title", "type": "String"},
+                    ],
+                    "methods": [],
+                },
+            ],
+            "associations": [
+                {"from": "sys_banner", "to": "sys_user", "kind": "association"},
+                {"from": "product", "to": "sys_user", "kind": "association"},
+            ],
+        }
+        apply_class_display_mode(model, "sample")
+        ids = {c["id"] for c in model["classes"]}
+        self.assertEqual(ids, {"sys_user", "product"})
+        self.assertIn("sys_banner", model.get("classes_omitted_sample") or [])
+        self.assertEqual(len(model["associations"]), 1)
+        user = next(c for c in model["classes"] if c["id"] == "sys_user")
+        self.assertLessEqual(len(user["attributes"]), _SAMPLE_ATTR_LIMIT)
+        names = [a["name"] for a in user["attributes"]]
+        self.assertIn("id", names)
+        self.assertIn("username", names)
+        # 门锁类后置，截断后不应挤掉业务字段却把 activation 留下一堆
+        self.assertNotIn("activationCode", names)
+        meth = user["methods"][0]["display"]
+        self.assertNotIn("@RequestBody", meth)
+        self.assertNotIn("HttpSession", meth)
+        self.assertIn("Map", meth)
+
+        full = {
+            "classes": [
+                {
+                    "id": "sys_banner",
+                    "table": "sys_banner",
+                    "name": "Banner",
+                    "attributes": [{"name": "id", "type": "Long"}],
+                    "methods": [],
+                }
+            ],
+            "associations": [],
+        }
+        apply_class_display_mode(full, "full")
+        self.assertEqual([c["id"] for c in full["classes"]], ["sys_banner"])
+
+    def test_java_bind_keeps_sql_attrs_and_blocks_god_store(self) -> None:
+        """多表上帝 Store 不得盖掉 SQL 属性；订单/购物车能挂上 Order 方法。"""
+        sql = """
+CREATE TABLE `sys_user` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `username` varchar(64) NOT NULL,
+  `nickname` varchar(64) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+);
+CREATE TABLE `category` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+CREATE TABLE `product` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `title` varchar(120) NOT NULL,
+  `category_id` bigint DEFAULT NULL,
+  `stock` int DEFAULT 0,
+  PRIMARY KEY (`id`)
+);
+CREATE TABLE `cart_line` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `username` varchar(64) NOT NULL,
+  `item_id` bigint NOT NULL,
+  `qty` int NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`)
+);
+CREATE TABLE `biz_order` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `username` varchar(64) NOT NULL,
+  `total_yuan` decimal(10,2) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+CREATE TABLE `order_line` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `order_id` bigint NOT NULL,
+  `item_id` bigint NOT NULL,
+  `qty` int NOT NULL,
+  PRIMARY KEY (`id`)
+);
+CREATE TABLE `user_ledger` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `username` varchar(64) NOT NULL,
+  `delta` decimal(12,2) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+"""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "sql").mkdir()
+            (root / "sql" / "schema.sql").write_text(sql, encoding="utf-8")
+            java_root = (
+                root
+                / "backend"
+                / "src"
+                / "main"
+                / "java"
+                / "com"
+                / "campus"
+                / "demo"
+            )
+            (java_root / "capability").mkdir(parents=True)
+            (java_root / "service").mkdir(parents=True)
+            (java_root / "controller").mkdir(parents=True)
+            (java_root / "capability" / "LoyaltyStore.java").write_text(
+                """
+package com.campus.demo.capability;
+public class LoyaltyStore {
+    private static Map<String,Object> row(java.sql.ResultSet rs) throws Exception {
+        Map<String,Object> m = new LinkedHashMap<>();
+        m.put("balanceYuan", rs.getDouble("balance_yuan"));
+        m.put("delta", rs.getDouble("delta"));
+        return m;
+    }
+    public static void adjustWallet(String username, double delta) {}
+    public static Map pageLedger(String username) { return null; }
+    // 蹭绑：字面量提到 sys_user / biz_order
+    private static final String U = "sys_user";
+    private static final String O = "biz_order";
+    private static final String L = "user_ledger";
+}
+""",
+                encoding="utf-8",
+            )
+            (java_root / "capability" / "ArchiveStore.java").write_text(
+                """
+package com.campus.demo.capability;
+public class ArchiveStore {
+    private static String CAT = "category";
+    private static String ITEM = "book";
+    private static Map<String,Object> row(java.sql.ResultSet rs) throws Exception {
+        Map<String,Object> m = new LinkedHashMap<>();
+        m.put("title", rs.getString("title"));
+        m.put("isbn", rs.getString("isbn"));
+        m.put("stock", rs.getInt("stock"));
+        return m;
+    }
+    public static long addCategory(String name) { return 1; }
+    public static Map addItem(String title) { return null; }
+    public static void addTrainHours(long id, double hours) {}
+    public static void bind(String categoryTable, String itemTable) {}
+}
+""",
+                encoding="utf-8",
+            )
+            (java_root / "capability" / "OrderStore.java").write_text(
+                """
+package com.campus.demo.capability;
+public class OrderStore {
+    private static String CART = "";
+    private static String ORDER = "";
+    private static String LINE = "";
+    public static void bind(String cartTable, String orderTable, String lineTable, boolean q) {}
+    public static Map pageOrders(String username) { return null; }
+    public static void addToCart(String username, long itemId, int qty) {}
+    public static long placeOrder(String username) { return 1; }
+}
+""",
+                encoding="utf-8",
+            )
+            (java_root / "service" / "UserStore.java").write_text(
+                """
+package com.campus.demo.service;
+public class UserStore {
+    private static Map<String,Object> row(java.sql.ResultSet rs) throws Exception {
+        Map<String,Object> m = new LinkedHashMap<>();
+        m.put("id", rs.getLong("id"));
+        m.put("username", rs.getString("username"));
+        m.put("nickname", rs.getString("nickname"));
+        return m;
+    }
+    public static Map getUserById(long id) { return null; }
+    public static void updateUser(long id, String nickname) {}
+}
+""",
+                encoding="utf-8",
+            )
+            (java_root / "controller" / "CategoryController.java").write_text(
+                """
+package com.campus.demo.controller;
+public class CategoryController {
+    public List list() { return null; }
+    public long create(String name) { return 1; }
+    public void update(long id, String name) {}
+    public void delete(long id) {}
+    private boolean bool(Object v) { return false; }
+}
+""",
+                encoding="utf-8",
+            )
+
+            model = build_class_model(root, display_mode="sample")
+            self.assertIsNotNone(model)
+            assert model is not None
+            by = {c["table"]: c for c in model["classes"]}
+
+            user = by["sys_user"]
+            self.assertEqual(user["attr_source"], "sql")
+            self.assertEqual({a["name"] for a in user["attributes"]}, {"id", "username", "nickname"})
+            self.assertNotIn("balanceYuan", {a["name"] for a in user["attributes"]})
+            self.assertNotIn("delta", {a["name"] for a in user["attributes"]})
+            self.assertTrue({m["name"] for m in user["methods"]} & {"getUserById", "updateUser"})
+            self.assertNotIn("adjustWallet", {m["name"] for m in user["methods"]})
+
+            cat = by["category"]
+            self.assertEqual(cat["attr_source"], "sql")
+            self.assertEqual({a["name"] for a in cat["attributes"]}, {"id", "name"})
+            self.assertNotIn("isbn", {a["name"] for a in cat["attributes"]})
+            self.assertNotIn("addTrainHours", {m["name"] for m in cat["methods"]})
+            self.assertTrue({m["name"] for m in cat["methods"]} & {"list", "create", "update", "delete"})
+
+            order = by["biz_order"]
+            self.assertEqual(order["attr_source"], "sql")
+            self.assertIn("totalYuan", {a["name"] for a in order["attributes"]})
+            self.assertNotIn("balanceYuan", {a["name"] for a in order["attributes"]})
+            self.assertTrue(
+                {m["name"] for m in order["methods"]}
+                & {"pageOrders", "placeOrder", "addToCart"}
+            )
+
+            cart = by["cart_line"]
+            self.assertEqual(cart["attr_source"], "sql")
+            self.assertTrue(
+                {m["name"] for m in cart["methods"]}
+                & {"pageOrders", "placeOrder", "addToCart"}
+            )
+
+            product = by["product"]
+            self.assertEqual(product["attr_source"], "sql")
+            self.assertEqual(
+                {a["name"] for a in product["attributes"]},
+                {"id", "title", "categoryId", "stock"},
+            )
+            # Archive 归属 product，应有方法且不是空
+            self.assertTrue(product["methods"])
+
     def test_ortho_path_bends(self) -> None:
         pts = ortho_path(0, 0, 100, 80, 300, 200, 100, 80)
         self.assertGreaterEqual(len(pts), 2)
@@ -618,9 +914,11 @@ class ClassDiagramTests(unittest.TestCase):
             assert model is not None
             self.assertEqual(model.get("display_mode"), "sample")
             notice = next(c for c in model["classes"] if c["table"] == "sys_notice")
-            self.assertEqual(notice["attr_source"], "java")
+            # 属性跟 SQL 列；方法跟 Store
+            self.assertEqual(notice["attr_source"], "sql")
             self.assertEqual(notice["method_source"], "java")
             self.assertTrue(any(a["name"] == "title" for a in notice["attributes"]))
+            self.assertTrue(any(a.get("column") == "title" for a in notice["attributes"]))
             self.assertTrue(str(notice["attributes"][0]["display"]).startswith("- "))
             meth_names = [m["name"] for m in notice["methods"]]
             # 真实方法名；至少命中 page/add 之一
@@ -941,6 +1239,86 @@ class ClassDiagramTests(unittest.TestCase):
             m2 = load_class_model(root, display_mode="sample")
             assert m2 is not None
             self.assertTrue(m2.get("layout_manual") or m2.get("layout"))
+
+    def test_class_keeps_favorite_link_table_no_user_product_collapse(self) -> None:
+        """类图保留 UserFavorite 外键边；禁止塌成 User↔Product 泛关联/收藏直连。"""
+        sql = """
+CREATE TABLE `sys_user` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `username` varchar(64) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_username` (`username`)
+);
+CREATE TABLE `product` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `title` varchar(120) NOT NULL,
+  `owner_username` varchar(64) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`owner_username`) REFERENCES `sys_user` (`username`)
+);
+CREATE TABLE `user_favorite` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `username` varchar(64) NOT NULL,
+  `item_id` bigint NOT NULL,
+  `created_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`username`) REFERENCES `sys_user` (`username`),
+  FOREIGN KEY (`item_id`) REFERENCES `product` (`id`)
+);
+"""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "sql").mkdir()
+            (root / "sql" / "schema.sql").write_text(sql, encoding="utf-8")
+            model = build_class_model(root, display_mode="full")
+            assert model is not None
+            ids = {str(c.get("id")) for c in model["classes"]}
+            self.assertIn("user_favorite", ids)
+            self.assertIn("product", ids)
+            self.assertIn("sys_user", ids)
+
+            def ends(a: dict) -> tuple[str, str]:
+                return str(a.get("from") or ""), str(a.get("to") or "")
+
+            assocs = [a for a in (model.get("associations") or []) if isinstance(a, dict)]
+            # 允许商品→用户的归属 FK；禁止收藏中间表塌成的账号↔商品直连
+            collapsed = [
+                a
+                for a in assocs
+                if set(ends(a)) == {"sys_user", "product"}
+                and str(a.get("via") or "")
+                in ("user_favorite", "收藏", "关联", "")
+            ]
+            self.assertEqual(
+                collapsed,
+                [],
+                msg=f"unexpected collapsed User↔Product edges: {collapsed}",
+            )
+            own = [
+                a
+                for a in assocs
+                if set(ends(a)) == {"sys_user", "product"}
+                and str(a.get("via") or "") == "owner_username"
+            ]
+            self.assertEqual(len(own), 1, msg=own)
+            vias = {str(a.get("via") or "") for a in assocs}
+            self.assertIn("owner_username", vias)
+            self.assertIn("username", vias)
+            self.assertIn("item_id", vias)
+            # 边文案跟外键列，不 scrub 成 E-R 菱形动词
+            labels = {str(a.get("label") or "") for a in assocs}
+            self.assertIn("owner_username", labels)
+            self.assertNotIn("关联", labels)
+            self.assertNotIn("收藏", labels)
+            # 收藏走中间表两端
+            fav_ends = {
+                frozenset(ends(a))
+                for a in assocs
+                if str(a.get("from") or "") == "user_favorite"
+                or str(a.get("to") or "") == "user_favorite"
+            }
+            self.assertIn(frozenset({"user_favorite", "sys_user"}), fav_ends)
+            self.assertIn(frozenset({"user_favorite", "product"}), fav_ends)
 
 
 if __name__ == "__main__":

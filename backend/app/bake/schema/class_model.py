@@ -627,6 +627,45 @@ _DISPLAY_MODES: tuple[tuple[str, str], ...] = (
     ("full", "代码全量"),
 )
 
+# sample 图面不画的壳表（代码全量仍保留；仅论文示例藏）
+_SAMPLE_SHELL_TABLES: frozenset[str] = frozenset(
+    {
+        "sys_auth_session",
+        "sys_login_log",
+        "sys_account_cancel",
+        "sys_notice_ack",
+        "sys_banner",
+        "sys_site_stat",
+        "sys_audit_log",
+        "sys_message_template",
+    }
+)
+
+# sample 属性：安全/门锁等后置；主业务字段优先
+_SAMPLE_ATTR_DEMOTE: frozenset[str] = frozenset(
+    {
+        "password",
+        "profileJson",
+        "superAdmin",
+        "profileEditable",
+        "failedLoginCount",
+        "lockUntil",
+        "mustChangePassword",
+        "passwordChangedAt",
+        "securityQuestion",
+        "securityAnswerHash",
+        "emailActivated",
+        "activationCode",
+        "realNameAcked",
+        "adminTags",
+        "deletedAt",
+        "kicked",
+        "userAgent",
+        "geoHint",
+    }
+)
+_SAMPLE_ATTR_LIMIT = 8
+
 # sample 优先保留的业务方法（仅当代码里真实存在才收录；禁止无代码填空）
 _SAMPLE_METHOD_PREF: tuple[str, ...] = (
     "page",
@@ -640,6 +679,8 @@ _SAMPLE_METHOD_PREF: tuple[str, ...] = (
     "create",
     "insert",
     "save",
+    "place",
+    "submit",
     "update",
     "edit",
     "modify",
@@ -651,8 +692,53 @@ _SAMPLE_METHOD_PREF: tuple[str, ...] = (
     "complete",
     "withdraw",
     "cancel",
+    "cart",
+    "follow",
+    "reply",
 )
-_SAMPLE_METHOD_LIMIT = 6
+_SAMPLE_METHOD_LIMIT = 4
+
+# 共享 Store 挂到多表时：sample 只留与本表语义沾边的方法名
+_SAMPLE_METHOD_TABLE_HINTS: dict[str, tuple[str, ...]] = {
+    "cart_line": ("cart",),
+    "cart": ("cart",),
+    # 空元组=论文示例不挂整单 Store 方法（明细靠组合关系表达）
+    "order_line": (),
+    "biz_order": (
+        "order",
+        "place",
+        "ship",
+        "cancel",
+        "pay",
+        "refund",
+        "advance",
+        "address",
+    ),
+    "product": (
+        "item",
+        "page",
+        "add",
+        "update",
+        "delete",
+        "approve",
+        "stock",
+        "detail",
+    ),
+    "category": ("list", "create", "update", "delete", "categor"),
+}
+
+_PARAM_ANNOT_RE = re.compile(r"@\w+(?:\s*\([^)]*\))?")
+_SPRING_PARAM_NOISE = frozenset(
+    {
+        "HttpSession",
+        "HttpServletRequest",
+        "HttpServletResponse",
+        "Principal",
+        "BindingResult",
+        "Model",
+        "RedirectAttributes",
+    }
+)
 
 
 def normalize_class_display_mode(raw: str | None) -> str:
@@ -679,18 +765,86 @@ def _format_attr_display(a: dict[str, Any], *, force_vis: str | None = None) -> 
     return f"{vis} {name}: {typ}"
 
 
-def _format_method_display(m: dict[str, Any]) -> str:
+def _simplify_java_type(raw: str) -> str:
+    t = re.sub(r"\s+", "", str(raw or "").strip())
+    if not t:
+        return "void"
+    low = t.lower()
+    if low in ("void", "void>"):
+        return "void"
+    if t.startswith("Map"):
+        return "Map"
+    if t.startswith("List"):
+        return "List"
+    if t.startswith("Set"):
+        return "Set"
+    if t.startswith("Optional"):
+        return "Optional"
+    return t.replace("java.util.", "").replace("java.lang.", "")
+
+
+def _split_java_params(params: str) -> list[str]:
+    """按逗号拆形参，忽略泛型 <> 内的逗号。"""
+    chunks: list[str] = []
+    depth = 0
+    cur: list[str] = []
+    for ch in str(params or ""):
+        if ch == "<":
+            depth += 1
+            cur.append(ch)
+        elif ch == ">":
+            depth = max(0, depth - 1)
+            cur.append(ch)
+        elif ch == "," and depth == 0:
+            piece = "".join(cur).strip()
+            if piece:
+                chunks.append(piece)
+            cur = []
+        else:
+            cur.append(ch)
+    tail = "".join(cur).strip()
+    if tail:
+        chunks.append(tail)
+    return chunks
+
+
+def _sample_param_types(params: str) -> list[str]:
+    parts: list[str] = []
+    for p in _split_java_params(params):
+        p = _PARAM_ANNOT_RE.sub(" ", p).strip()
+        if not p:
+            continue
+        toks = [t for t in p.replace("...", " ").split() if t and not t.startswith("@")]
+        if not toks:
+            continue
+        typ = toks[0]
+        if typ in _SPRING_PARAM_NOISE:
+            continue
+        if typ.startswith("Http"):
+            continue
+        parts.append(_simplify_java_type(typ))
+        if len(parts) >= 3:
+            break
+    return parts
+
+
+def _format_method_display(m: dict[str, Any], *, sample: bool = False) -> str:
     """论文格式：+ name(ParamTypes) : ReturnType（无参也写 ()）。"""
     name = str(m.get("name") or "").strip() or "method"
     vis = str(m.get("visibility") or "+")
     if vis not in ("+", "#", "-"):
         vis = "+"
-    ret = str(m.get("return") or "void").strip() or "void"
+    ret = _simplify_java_type(str(m.get("return") or "void")) if sample else (
+        str(m.get("return") or "void").strip() or "void"
+    )
     raw = str(m.get("params") or "").strip()
     if not raw:
         arg = "()"
+    elif sample:
+        parts = _sample_param_types(raw)
+        arg = "(" + ", ".join(parts) + ")" if parts else "()"
     else:
-        parts: list[str] = []
+        parts = []
         for p in raw.split(","):
             p = p.strip()
             if not p:
@@ -699,25 +853,40 @@ def _format_method_display(m: dict[str, Any]) -> str:
             typ = toks[0] if toks else "Object"
             parts.append(typ)
         arg = "(" + ", ".join(parts) + ")"
-    existing = str(m.get("display") or "")
-    if (
-        existing.startswith(vis)
-        and name in existing
-        and "(" in existing
-        and ")" in existing
-        and ":" in existing
-    ):
-        return existing
+    if not sample:
+        existing = str(m.get("display") or "")
+        if (
+            existing.startswith(vis)
+            and name in existing
+            and "(" in existing
+            and ")" in existing
+            and ":" in existing
+        ):
+            return existing
     return f"{vis} {name}{arg} : {ret}"
 
 
 def _sample_attributes(attrs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """论文示例：属性尽量全保留；可见性跟代码（SQL/行映射默认 -，Java field 保留 +/#/-）。"""
-    out: list[dict[str, Any]] = []
-    for a in attrs:
+    """论文示例：业务字段优先，安全门锁后置，最多 _SAMPLE_ATTR_LIMIT 条。"""
+    scored: list[tuple[int, int, dict[str, Any]]] = []
+    for i, a in enumerate(attrs or []):
+        if not isinstance(a, dict):
+            continue
         name = str(a.get("name") or "").strip()
         if not name or name.startswith("_"):
             continue
+        if a.get("pk"):
+            band = 0
+        elif a.get("fk"):
+            band = 1
+        elif name in _SAMPLE_ATTR_DEMOTE:
+            band = 3
+        else:
+            band = 2
+        scored.append((band, i, a))
+    scored.sort(key=lambda x: (x[0], x[1]))
+    out: list[dict[str, Any]] = []
+    for _, _, a in scored[:_SAMPLE_ATTR_LIMIT]:
         row = dict(a)
         vis = str(row.get("visibility") or "-")
         if vis not in ("+", "#", "-"):
@@ -728,8 +897,10 @@ def _sample_attributes(attrs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def _sample_methods(methods: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """论文精简：只展示代码里真实存在的方法，优先 CRUD 名，带 ()：返回类型；禁止模板填空。"""
+def _sample_methods(
+    methods: list[dict[str, Any]], *, table: str = ""
+) -> list[dict[str, Any]]:
+    """论文精简：真实方法 + CRUD/表语义优先；签名去 Spring 注解噪音。"""
     real: list[dict[str, Any]] = []
     for m in methods:
         if not isinstance(m, dict):
@@ -741,11 +912,38 @@ def _sample_methods(methods: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not real:
         return []
 
+    tkey = str(table or "").strip().lower()
+    hint_key = tkey
+    if hint_key not in _SAMPLE_METHOD_TABLE_HINTS:
+        hint_key = tkey.removeprefix("sys_").removeprefix("biz_")
+    if hint_key in _SAMPLE_METHOD_TABLE_HINTS:
+        hints = _SAMPLE_METHOD_TABLE_HINTS[hint_key]
+        if not hints:
+            return []
+        hinted = [
+            m
+            for m in real
+            if any(h in str(m.get("name") or "").lower() for h in hints)
+        ]
+        real = hinted
+        if not real:
+            return []
+
     pref_rank = {n: i for i, n in enumerate(_SAMPLE_METHOD_PREF)}
+
+    def _pref_score(name: str) -> int:
+        low = name.lower()
+        if low in pref_rank:
+            return pref_rank[low]
+        best = 100
+        for pref, i in pref_rank.items():
+            if low.startswith(pref) and len(low) > len(pref):
+                best = min(best, i)
+        return best
 
     def sort_key(m: dict[str, Any]) -> tuple[int, str]:
         n = str(m.get("name") or "")
-        return (pref_rank.get(n.lower(), 100), n.lower())
+        return (_pref_score(n), n.lower())
 
     ranked = sorted(real, key=sort_key)
     picked: list[dict[str, Any]] = []
@@ -755,13 +953,21 @@ def _sample_methods(methods: list[dict[str, Any]]) -> list[dict[str, Any]]:
         key = n.lower()
         if key in seen:
             continue
+        if key.startswith(("begin", "end", "wipe", "reset", "anyenabled")):
+            continue
+        if key.endswith(("table", "column", "enabled")) and key not in (
+            "enabled",
+        ):
+            # lineTable / categoryTable 等内部表名访问
+            if key != "enabled":
+                continue
         seen.add(key)
         row = dict(m)
         if str(row.get("visibility") or "") not in ("+", "#", "-"):
             row["visibility"] = "+"
         if row.get("visibility") == "-":
             continue
-        row["display"] = _format_method_display(row)
+        row["display"] = _format_method_display(row, sample=True)
         row["source"] = str(row.get("source") or "java")
         picked.append(row)
         if len(picked) >= _SAMPLE_METHOD_LIMIT:
@@ -769,11 +975,55 @@ def _sample_methods(methods: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return picked
 
 
+def _filter_sample_shell_classes(model: dict[str, Any]) -> list[str]:
+    """论文示例藏壳表；返回被藏的 table id。"""
+    classes = [c for c in (model.get("classes") or []) if isinstance(c, dict)]
+    keep: list[dict[str, Any]] = []
+    omitted: list[str] = []
+    for cls in classes:
+        tid = str(cls.get("table") or cls.get("id") or "").strip()
+        if tid in _SAMPLE_SHELL_TABLES:
+            omitted.append(tid)
+            continue
+        keep.append(cls)
+    if not omitted:
+        model["classes_omitted_sample"] = []
+        return []
+    keep_ids = {str(c.get("id") or "") for c in keep}
+    model["classes"] = keep
+    model["classes_omitted_sample"] = omitted
+    assocs = []
+    for a in model.get("associations") or []:
+        if not isinstance(a, dict):
+            continue
+        frm = str(a.get("from") or a.get("from_class") or "")
+        to = str(a.get("to") or a.get("to_class") or "")
+        if frm in keep_ids and to in keep_ids:
+            assocs.append(a)
+    model["associations"] = assocs
+    if isinstance(model.get("associations_all"), list):
+        model["associations_all"] = [
+            a
+            for a in model["associations_all"]
+            if isinstance(a, dict)
+            and str(a.get("from") or "") in keep_ids
+            and str(a.get("to") or "") in keep_ids
+        ]
+    layout = model.get("layout")
+    if isinstance(layout, dict):
+        model["layout"] = {k: v for k, v in layout.items() if k in keep_ids}
+    return omitted
+
+
 def apply_class_display_mode(model: dict[str, Any], mode: str | None = "sample") -> dict[str, Any]:
     """就地切换类框属性/方法展示；须在 attach_layout 之前调用（影响框高）。"""
     mode_n = normalize_class_display_mode(mode)
     model["display_mode"] = mode_n
     model["display_modes"] = [{"id": i, "label": lab} for i, lab in _DISPLAY_MODES]
+    if mode_n == "sample":
+        _filter_sample_shell_classes(model)
+    else:
+        model["classes_omitted_sample"] = []
     for cls in model.get("classes") or []:
         if not isinstance(cls, dict):
             continue
@@ -782,22 +1032,23 @@ def apply_class_display_mode(model: dict[str, Any], mode: str | None = "sample")
             cls["_methods_full"] = _clone_members(cls.get("methods"))
         full_a = _clone_members(cls.get("_attrs_full"))
         full_m = _clone_members(cls.get("_methods_full"))
+        table = str(cls.get("table") or cls.get("id") or "")
         if mode_n == "sample":
             cls["attributes"] = _sample_attributes(full_a)
-            cls["methods"] = _sample_methods(full_m)
+            cls["methods"] = _sample_methods(full_m, table=table)
             cls["display_skin"] = "sample"
         else:
             for a in full_a:
                 a["display"] = _format_attr_display(a)
             for m in full_m:
-                m["display"] = _format_method_display(m)
+                m["display"] = _format_method_display(m, sample=False)
             cls["attributes"] = full_a
             cls["methods"] = full_m
             cls["display_skin"] = "full"
     model["_display_mode_note"] = (
-        "显示规则：论文示例（属性 name: Type 含 +/#/-；方法取自实包写作 name() : 返回类型，无代码不填空；私有方法精简不展示）。"
+        "显示规则：论文示例（藏登录会话/日志等壳表；属性业务优先截断；方法取实包 CRUD 语义，去 Spring 注解噪音；私有方法不展示）。"
         if mode_n == "sample"
-        else "显示规则：代码全量（属性与方法签名含 public+/protected#/private-）。"
+        else "显示规则：代码全量（全部表；属性与方法签名含 public+/protected#/private-）。"
     )
     return model
 
@@ -827,7 +1078,8 @@ def build_class_model(
 
     sql = path.read_text(encoding="utf-8", errors="ignore")
     parsed = parse_schema_sql(sql, fk_aliases=fk_aliases)
-    relations = infer_relations(parsed)
+    # 类图保留中间表 FK，禁止 E-R 式 M:N 塌成账号↔商品「收藏/关联」直连
+    relations = infer_relations(parsed, collapse_links=False)
 
     tables: list[dict[str, Any]] = []
     for t in parsed:
@@ -869,6 +1121,13 @@ def build_class_model(
     )
     patch = load_er_label_patch(workspace)
     er_like = apply_er_label_patch(er_like, patch)
+    # E-R 会把 via  scrub 成「关联/收藏」等菱形动词；类图边只标外键列名
+    for r in er_like.get("relations") or []:
+        if not isinstance(r, dict):
+            continue
+        via = str(r.get("via") or "").strip()
+        if via:
+            r["label"] = via
 
     title = ""
     domain_ents = _domain_entity_keys(domain)
