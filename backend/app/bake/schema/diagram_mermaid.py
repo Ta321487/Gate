@@ -126,6 +126,8 @@ def activity_model_to_mermaid(model: dict[str, Any] | None, *, index: int = 0) -
 
 
 def class_model_to_mermaid(model: dict[str, Any] | None) -> str:
+    from app.bake.schema.class_model import class_box_title
+
     model = model if isinstance(model, dict) else {}
     title = str(model.get("figure_title") or model.get("title") or "系统类图")
     lines = _header("classDiagram", title)
@@ -135,7 +137,9 @@ def class_model_to_mermaid(model: dict[str, Any] | None) -> str:
         tid = str(c.get("id") or "")
         mid = mermaid_id(tid, prefix="C_")
         id_map[tid] = mid
-        name = mermaid_label(str(c.get("name") or c.get("label") or tid))
+        name = mermaid_label(
+            class_box_title(c) or str(c.get("name") or c.get("label") or tid)
+        )
         lines.append(f"  class {mid} {{")
         lines.append(f"    {name}")
         for a in (c.get("attributes") or [])[:12]:

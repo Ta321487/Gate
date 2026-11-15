@@ -100,6 +100,34 @@ def sql_type_to_java(sql_type: str) -> str:
     return "String"
 
 
+def class_box_title(cls: dict[str, Any] | None) -> str:
+    """论文类框标题：``Product (商品)``；无中文标签时仅 Pascal 名。
+
+    画法对齐论文模板：类名带中文括号；关联线不挂库列名（见边 label 清空）。
+    """
+    if not isinstance(cls, dict):
+        return ""
+    name = str(cls.get("name") or "").strip()
+    zh = str(cls.get("label") or "").strip()
+    tid = str(cls.get("id") or cls.get("table") or "").strip()
+    if not name:
+        return zh or tid
+    if zh and zh not in (name, tid) and any(ord(ch) > 127 for ch in zh):
+        return f"{name} ({zh})"
+    return name
+
+
+def _scrub_class_edge_labels(model: dict[str, Any]) -> None:
+    """模板画法：关联线不写 FK 列名 / E-R 菱形动词；via/kind 仍保留供结构对账。"""
+    for key in ("associations", "associations_all", "associations_omitted"):
+        rows = model.get(key)
+        if not isinstance(rows, list):
+            continue
+        for a in rows:
+            if isinstance(a, dict):
+                a["label"] = ""
+
+
 def table_to_class_name(table: str) -> str:
     """物理表名 → UML 类名（PascalCase）；``sys_user`` → ``User``。"""
     name = str(table or "").strip()
@@ -409,7 +437,8 @@ def class_model_from_er_tables(
                 "to_class": id_by_table[to],
                 "via": via,
                 "kind": kind,
-                "label": str(r.get("label") or via or ""),
+                # 论文模板画法：线上不挂 FK 列名；结构仍用 via
+                "label": "",
             }
         )
 
@@ -422,8 +451,10 @@ def class_model_from_er_tables(
         "title": title,
         "figure_title": f"{title}类图" if title else "系统类图",
         "source_note": (
-            "关联/聚合/组合来自 sql/schema.sql 外键；继承/实现来自 Java extends/implements；"
-            "依赖来自方法/属性类型引用；属性/方法优先取自 bake 包 Java（含可见性 +/#/-）；"
+            "关联/聚合/组合来自 sql/schema.sql 外键（边不标列名，对齐论文类图模板）；"
+            "继承/实现来自 Java extends/implements；"
+            "依赖来自方法/属性类型引用；类名显示为「Pascal (中文)」；"
+            "属性/方法优先取自 bake 包 Java（含可见性 +/#/-）；"
             "无行映射时属性回退 SQL 列类型；与 domain.schema.json 开题实体对照。"
         ),
         "evidence": evidence,
@@ -1107,7 +1138,7 @@ def build_class_model(
             "left": r.left,
             "right": r.right,
             "via": r.via,
-            "label": r.via,
+            "label": "",
             "cascade": bool(getattr(r, "cascade", False)),
         }
         for r in relations
@@ -1121,13 +1152,10 @@ def build_class_model(
     )
     patch = load_er_label_patch(workspace)
     er_like = apply_er_label_patch(er_like, patch)
-    # E-R 会把 via  scrub 成「关联/收藏」等菱形动词；类图边只标外键列名
+    # E-R 可能 scrub 成「关联/收藏」；类图模板画法：边文案一律空，via 只留结构
     for r in er_like.get("relations") or []:
-        if not isinstance(r, dict):
-            continue
-        via = str(r.get("via") or "").strip()
-        if via:
-            r["label"] = via
+        if isinstance(r, dict):
+            r["label"] = ""
 
     title = ""
     domain_ents = _domain_entity_keys(domain)
@@ -1169,6 +1197,7 @@ def build_class_model(
             model = apply_class_label_overrides(model, labels)
     except Exception:  # noqa: BLE001
         pass
+    _scrub_class_edge_labels(model)
     apply_class_display_mode(model, display_mode)
     patch, saved_mode = load_class_layout_bundle(workspace)
     # 仅当落盘显示规则与当前不同时收紧间距（切 sample/full）；同规则保持拖拽坐标
@@ -1345,7 +1374,7 @@ def load_class_model(
 
 
 def _box_size(cls: dict[str, Any]) -> tuple[float, float]:
-    name = str(cls.get("name") or "")
+    name = class_box_title(cls)
     attr_lines = [
         str(a.get("display") or f"+ {a.get('name')}: {a.get('type')}")
         for a in (cls.get("attributes") or [])

@@ -170,6 +170,8 @@ def _er_part_drawio(model: dict[str, Any], *, entity: str | None) -> str:
 
 
 def class_model_to_drawio(model: dict[str, Any] | None) -> str:
+    from app.bake.schema.class_model import class_box_title
+
     model = model if isinstance(model, dict) else {}
     classes = [c for c in (model.get("classes") or []) if isinstance(c, dict) and c.get("id")]
     assocs = [a for a in (model.get("associations") or []) if isinstance(a, dict)]
@@ -181,7 +183,7 @@ def class_model_to_drawio(model: dict[str, Any] | None) -> str:
         tid = str(cls.get("id") or "")
         cid = stable_cell_id("cls", tid)
         id_map[tid] = cid
-        name = str(cls.get("name") or cls.get("label") or tid)
+        name = class_box_title(cls) or str(cls.get("name") or cls.get("label") or tid)
         attrs = [
             str(a.get("display") or a.get("name") or "")
             for a in (cls.get("attributes") or [])

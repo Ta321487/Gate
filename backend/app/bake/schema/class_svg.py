@@ -26,6 +26,7 @@ from app.bake.schema.class_model import (
     _esc,
     _f,
     _normalize_rel_kind,
+    class_box_title,
 )
 
 _BRIDGE_R = 5.5
@@ -248,7 +249,7 @@ def _draw_class_box(x: float, y: float, w: float, h: float, cls: dict[str, Any])
         f'<rect class="uml-class" x="{_f(x)}" y="{_f(y)}" width="{_f(w)}" height="{_f(h)}" '
         f'fill="#fff" stroke="#000" stroke-width="{_STROKE}"/>'
     )
-    name = str(cls.get("name") or "")
+    name = class_box_title(cls)
     attrs = list(cls.get("attributes") or [])
     methods = list(cls.get("methods") or [])
     y1 = y + _HEADER_H
@@ -261,7 +262,7 @@ def _draw_class_box(x: float, y: float, w: float, h: float, cls: dict[str, Any])
         f'<line x1="{_f(x)}" y1="{_f(y2)}" x2="{_f(x + w)}" y2="{_f(y2)}" '
         f'stroke="#000" stroke-width="{_STROKE}"/>'
     )
-    # 类名垂直居中于标题区
+    # 类名垂直居中于标题区（Pascal + 中文括号，对齐论文模板）
     name_y = y + _HEADER_H * 0.72
     parts.append(
         f'<text x="{_f(x + w / 2)}" y="{_f(name_y)}" text-anchor="middle" '

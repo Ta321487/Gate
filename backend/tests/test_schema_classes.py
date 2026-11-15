@@ -1305,11 +1305,25 @@ CREATE TABLE `user_favorite` (
             self.assertIn("owner_username", vias)
             self.assertIn("username", vias)
             self.assertIn("item_id", vias)
-            # 边文案跟外键列，不 scrub 成 E-R 菱形动词
+            # 论文模板画法：边不挂 FK 列名，也不 scrub 成 E-R「关联/收藏」
             labels = {str(a.get("label") or "") for a in assocs}
-            self.assertIn("owner_username", labels)
+            self.assertEqual(labels, {""}, msg=f"edge labels should be empty: {labels}")
             self.assertNotIn("关联", labels)
             self.assertNotIn("收藏", labels)
+            self.assertNotIn("owner_username", labels)
+            # 类框标题：Pascal + 中文括号
+            from app.bake.schema.class_model import class_box_title
+
+            by_id = {
+                str(c.get("id")): c
+                for c in model["classes"]
+                if isinstance(c, dict)
+            }
+            self.assertEqual(class_box_title(by_id["sys_user"]), "User (用户)")
+            self.assertEqual(class_box_title(by_id["product"]), "Product (商品)")
+            self.assertEqual(
+                class_box_title(by_id["user_favorite"]), "UserFavorite (用户收藏)"
+            )
             # 收藏走中间表两端
             fav_ends = {
                 frozenset(ends(a))
