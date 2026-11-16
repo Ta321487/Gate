@@ -74,6 +74,22 @@ def test_pick_theme_stable_and_varied():
     assert len(seen) >= 3
 
 
+def test_pick_theme_farm_biases_to_shop_lime_not_gold():
+    """农产开题不得种子抽到会员金脏黄壳色（曾混进学生包像「工厂随手色」）。"""
+    from app.bake.themes import preferred_theme_ids
+
+    title = "超新农产品销售网站的设计与实现"
+    seed = f"{title}|DOM-SHOP|theme"
+    assert preferred_theme_ids("DOM-SHOP", title) == ["shop-lime"]
+    assert pick_theme("DOM-SHOP", seed) == "shop-gold"  # 无开题偏置仍可抽金
+    assert pick_theme("DOM-SHOP", seed, title=title) == "shop-lime"
+    assert pick_theme(
+        "DOM-SHOP",
+        "农产品销售系统|DOM-SHOP|theme",
+        title="农产品销售系统",
+    ) == "shop-lime"
+
+
 def test_is_dark_theme_covers_cinema_and_night():
     assert is_dark_theme("media-cinema")
     assert is_dark_theme("media-night")

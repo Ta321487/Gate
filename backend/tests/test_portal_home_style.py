@@ -114,6 +114,32 @@ class PortalHomeStyleTests(unittest.TestCase):
         # mall 不强制登录版式
         self.assertNotEqual(spec.get("auth_template"), "mall")
 
+    def test_mall_cats_tint_follows_brand_not_ink(self):
+        """分类条禁止用 portal-ink 半透磨出工业灰（空横幅时尤其像工厂默认条）。"""
+        import re
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2] / "skeletons/baseline/frontend/src"
+        home = (root / "views/user/PortalHome.css").read_text(encoding="utf-8")
+        voice = (root / "styles/cardVoice.css").read_text(encoding="utf-8")
+        # 主规则（含 background）须跟 brand；media 里的布局覆盖可无色
+        def strip_css_comments(text: str) -> str:
+            return re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+
+        blocks = re.findall(r"\.mall-cats\s*\{([^}]*)\}", home)
+        painted = [strip_css_comments(b) for b in blocks if "background" in b]
+        self.assertTrue(painted, "expected .mall-cats background rule")
+        for block in painted:
+            self.assertIn("portal-brand", block)
+            self.assertNotIn("portal-ink", block)
+        story = strip_css_comments(
+            voice.split("html[data-card-voice='story'] .mall-cats {", 1)[1].split(
+                "}", 1
+            )[0]
+        )
+        self.assertIn("portal-brand", story)
+        self.assertNotIn("portal-ink", story)
+
 
 if __name__ == "__main__":
     unittest.main()

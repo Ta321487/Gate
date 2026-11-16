@@ -189,7 +189,12 @@ async def create_from_uploads(
     db_name = _db_name(
         matched.domain, pid, match_meta["delivery_slug"], reserved=reserved
     )
-    theme = pick_theme(matched.domain, f"{matched.title}|{matched.domain}|theme")
+    theme = pick_theme(
+        matched.domain,
+        f"{matched.title}|{matched.domain}|theme",
+        title=matched.title,
+        proposal_text=summary_text,
+    )
     proposal = summarize_proposal(summary_text, hits)
     proposal["source_files"] = file_info
     spec = build_spec(
@@ -300,7 +305,10 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
             getattr(project, "recommended_ai_assistant", None)
         )
         project.theme = pick_theme(
-            project.domain, f"{project.title}|{project.domain}|theme"
+            project.domain,
+            f"{project.title}|{project.domain}|theme",
+            title=project.title or "",
+            proposal_text=load_merged_proposal_text(project.source_path) or "",
         )
         project.match_locked = True
         project.match_mode = "recommended"
@@ -360,7 +368,11 @@ async def update_match(db: AsyncSession, project: Project, body) -> Project:
                 project.theme = cur
             else:
                 project.theme = pick_theme(
-                    project.domain, f"{project.title}|{project.domain}|theme"
+                    project.domain,
+                    f"{project.title}|{project.domain}|theme",
+                    title=project.title or "",
+                    proposal_text=load_merged_proposal_text(project.source_path)
+                    or "",
                 )
         if getattr(body, "persistence", None) is not None:
             project.persistence = normalize_persistence(body.persistence)

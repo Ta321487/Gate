@@ -218,7 +218,12 @@ async def main() -> None:
         prop = summarize_proposal(text, m.hits)
         prop["excerpt"] = text[:3000]
         prop["text"] = text
-        theme = pick_theme(m.domain, f"{m.title}|{m.domain}|theme")
+        theme = pick_theme(
+            m.domain,
+            f"{m.title}|{m.domain}|theme",
+            title=m.title,
+            proposal_text=text,
+        )
         spec = build_spec(
             m.title,
             m.archetype,

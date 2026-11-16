@@ -88,9 +88,62 @@ def resolve_style_override(
     return None
 
 
-def pick_theme(domain: str, seed: str | None = None) -> str:
-    """按种子从领域配色集中稳定挑选，避免同领域总落第一个。"""
+# 交易域货架皮 → 自动抽签只在这几档里转；人仍可手选全目录（含会员金）。
+# 农产/助农绝不能落到 shop-gold：高饱和脏黄作壳主色又土又像「工厂随手色」。
+_SHOP_KIND_THEME_BIAS: dict[str, tuple[str, ...]] = {
+    "farm": ("shop-lime",),
+    "retail_agri": ("shop-lime",),
+    "retail_market": ("shop-lime", "shop-ocean"),
+}
+
+
+def _shop_kind_for_theme_bias(title: str, proposal_text: str) -> str:
+    """与 shell_face._shop_kind_key 同口径，避免 themes↔shell_face 循环 import。"""
+    from app.bake.scene_scan import shop_catalog_kind, shop_product_kind
+
+    pk = shop_product_kind(title or "", proposal_text or "")
+    if pk == "farm":
+        return "farm"
+    ck = shop_catalog_kind(title or "", proposal_text or "")
+    if ck and ck.startswith("retail_"):
+        return ck
+    if ck == "print":
+        return "print"
+    return pk or ""
+
+
+def preferred_theme_ids(
+    domain: str, title: str = "", proposal_text: str = ""
+) -> list[str] | None:
+    """开题气质偏置的配色子集；None = 全目录抽签。"""
+    if domain != "DOM-SHOP":
+        return None
+    if not (title or proposal_text):
+        return None
+    prefer = _SHOP_KIND_THEME_BIAS.get(
+        _shop_kind_for_theme_bias(title, proposal_text)
+    )
+    if not prefer:
+        return None
+    allowed = {t["id"] for t in themes_for_domain(domain)}
+    ids = [x for x in prefer if x in allowed]
+    return ids or None
+
+
+def pick_theme(
+    domain: str,
+    seed: str | None = None,
+    *,
+    title: str = "",
+    proposal_text: str = "",
+) -> str:
+    """按种子从领域配色集中稳定挑选；SHOP 农产等货架皮偏置子集，避免同域总落第一个或抽到脏暖壳色。"""
     themes = themes_for_domain(domain)
+    prefer = preferred_theme_ids(domain, title, proposal_text)
+    if prefer:
+        catalog = [t for t in themes if t["id"] in prefer]
+        if catalog:
+            return pick_from_catalog(catalog, seed, catalog[0]["id"])
     return pick_from_catalog(themes, seed, default_theme(domain))
 
 
