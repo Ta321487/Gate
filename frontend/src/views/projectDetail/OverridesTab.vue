@@ -116,9 +116,18 @@
               v-model:value="labelQuery"
               size="small"
               clearable
-              placeholder="搜索短签…"
-              style="max-width: 220px"
+              placeholder="搜索位置 / 原词 / 手调…"
+              style="max-width: 240px"
             />
+            <n-select
+              v-model:value="labelDiagram"
+              size="small"
+              clearable
+              placeholder="按图筛选"
+              :options="labelDiagramOptions"
+              style="width: 160px"
+            />
+            <span class="small muted">{{ filteredLabelRows.length }} / {{ labelRows.length }}</span>
             <span class="small muted">
               已勾选 {{ diagramSelected.length || 0 }} 张
               <template v-if="diagramSelected.length">
@@ -150,11 +159,21 @@
           </n-button>
         </div>
         <div class="panel-bd">
+          <div class="table-tools">
+            <n-input
+              v-model:value="archQuery"
+              size="small"
+              clearable
+              placeholder="搜索位置 / 原词 / 手调…"
+              style="max-width: 240px"
+            />
+            <span class="small muted">{{ filteredArchRows.length }} / {{ archRows.length }}</span>
+          </div>
           <p class="small muted tip-line">{{ handEditTip }}改角色框 / 层名显示。</p>
           <n-data-table
             size="small"
             :columns="archColumns"
-            :data="archRows"
+            :data="filteredArchRows"
             :bordered="false"
             :loading="archLoading"
             :max-height="420"
@@ -175,9 +194,10 @@
               v-model:value="classQuery"
               size="small"
               clearable
-              placeholder="搜索类名…"
-              style="max-width: 220px"
+              placeholder="搜索位置 / 原词 / 手调…"
+              style="max-width: 240px"
             />
+            <span class="small muted">{{ filteredClassRows.length }} / {{ classRows.length }}</span>
             <n-button size="tiny" quaternary :loading="classLoading" @click="loadClassRows">重新拉取</n-button>
           </div>
           <p class="small muted tip-line">{{ handEditTip }}拖框请用现有类图画布；本表只改中文显示名。</p>
@@ -200,11 +220,29 @@
           </n-button>
         </div>
         <div class="panel-bd">
+          <div class="table-tools">
+            <n-input
+              v-model:value="ucDiagramQuery"
+              size="small"
+              clearable
+              placeholder="搜索位置 / 原词 / 手调…"
+              style="max-width: 240px"
+            />
+            <n-select
+              v-model:value="ucDiagramKind"
+              size="small"
+              clearable
+              placeholder="按类型筛选"
+              :options="ucDiagramKindOptions"
+              style="width: 140px"
+            />
+            <span class="small muted">{{ filteredUcDiagramRows.length }} / {{ ucDiagramRows.length }}</span>
+          </div>
           <p class="small muted tip-line">{{ handEditTip }}图面隐藏不影响菜单。</p>
           <n-data-table
             size="small"
             :columns="ucDiagramColumns"
-            :data="ucDiagramRows"
+            :data="filteredUcDiagramRows"
             :bordered="false"
             :loading="ucDiagramLoading"
             :max-height="420"
@@ -220,11 +258,29 @@
           </n-button>
         </div>
         <div class="panel-bd">
+          <div class="table-tools">
+            <n-input
+              v-model:value="tcQuery"
+              size="small"
+              clearable
+              placeholder="搜索位置 / 原词 / 手调…"
+              style="max-width: 240px"
+            />
+            <n-select
+              v-model:value="tcCase"
+              size="small"
+              clearable
+              placeholder="按用例筛选"
+              :options="tcCaseOptions"
+              style="width: 160px"
+            />
+            <span class="small muted">{{ filteredTcRows.length }} / {{ tcRows.length }}</span>
+          </div>
           <p class="small muted tip-line">{{ handEditTip }}藏行只影响论文测例表。</p>
           <n-data-table
             size="small"
             :columns="tcColumns"
-            :data="tcRows"
+            :data="filteredTcRows"
             :bordered="false"
             :loading="tcLoading"
             :max-height="420"
@@ -240,11 +296,29 @@
           </n-button>
         </div>
         <div class="panel-bd">
+          <div class="table-tools">
+            <n-input
+              v-model:value="menuQuery"
+              size="small"
+              clearable
+              placeholder="搜索位置 / 原词 / 手调…"
+              style="max-width: 240px"
+            />
+            <n-select
+              v-model:value="menuKind"
+              size="small"
+              clearable
+              placeholder="按类型筛选"
+              :options="menuKindOptions"
+              style="width: 140px"
+            />
+            <span class="small muted">{{ filteredMenuRows.length }} / {{ menuRows.length }}</span>
+          </div>
           <p class="small muted tip-line">{{ handEditTip }}只改显示名，不改菜单 key / 路由 path。</p>
           <n-data-table
             size="small"
             :columns="menuColumns"
-            :data="menuRows"
+            :data="filteredMenuRows"
             :bordered="false"
             :loading="menuLoading"
             :max-height="420"
@@ -272,15 +346,24 @@
             </label>
           </div>
           <n-empty v-else-if="!ucLoading" description="暂无候选，请先生成工程" size="small" />
+          <div class="table-tools" style="margin-top:12px">
+            <n-input
+              v-model:value="ucCellQuery"
+              size="small"
+              clearable
+              placeholder="搜索位置 / 原词 / 手调…"
+              style="max-width: 240px"
+            />
+            <span class="small muted">{{ filteredUcCellRows.length }} / {{ ucCellRows.length }}</span>
+          </div>
           <n-data-table
             size="small"
             :columns="ucCellColumns"
-            :data="ucCellRows"
+            :data="filteredUcCellRows"
             :bordered="false"
             :single-line="false"
             :loading="ucLoading"
             :max-height="420"
-            style="margin-top:12px"
           />
         </div>
       </section>
@@ -408,7 +491,37 @@ const moduleQuery = ref('')
 const moduleBranch = ref(null)
 const moduleLeavesOnly = ref(true)
 const labelQuery = ref('')
+const labelDiagram = ref(null)
+/** diagramId → 图标题（不含「序列图/活动图」后缀） */
+const labelDiagramTitles = ref({})
 const classQuery = ref('')
+const archQuery = ref('')
+const ucDiagramQuery = ref('')
+const ucDiagramKind = ref(null)
+const tcQuery = ref('')
+const tcCase = ref(null)
+const menuQuery = ref('')
+const menuKind = ref(null)
+const ucCellQuery = ref('')
+
+function matchHandQuery(q, ...parts) {
+  if (!q) return true
+  return parts.map((p) => String(p || '')).join(' ').toLowerCase().includes(q)
+}
+
+/** 图 id 形如 user::cart::open，键为 {id}::p:… / ::m:… / ::n:… / ::g:…，不能按首个 :: 切开。 */
+function diagramIdFromLabelKey(key) {
+  const s = String(key || '')
+  const m = s.match(/^(.*)::(?:p|m|n|g):/)
+  return m ? m[1] : ''
+}
+
+function shortDiagramTitle(raw) {
+  return String(raw || '')
+    .replace(/序列图$/u, '')
+    .replace(/活动图$/u, '')
+    .trim()
+}
 
 const staleList = computed(() => {
   const s = payload.value?._stale
@@ -494,6 +607,7 @@ const diagramSelected = computed(() => {
 })
 
 const labelRows = computed(() => {
+  const titles = labelDiagramTitles.value || {}
   const keys = Object.keys(labelMachine.value || {})
   return keys.map((key) => {
     const machine = labelMachine.value[key] || ''
@@ -501,16 +615,34 @@ const labelRows = computed(() => {
       labelEdits.value[key] !== undefined
         ? labelEdits.value[key]
         : (payload.value?.[section.value]?.labels || {})[key] || ''
-    return { key, machine, draft }
+    const diagramId = diagramIdFromLabelKey(key)
+    const diagramTitle = titles[diagramId] || diagramId
+    const slot = key.slice(diagramId.length + 2) // 去掉 "{id}::"
+    return { key, machine, draft, diagramId, diagramTitle, slot }
   })
+})
+
+const labelDiagramOptions = computed(() => {
+  const titles = labelDiagramTitles.value || {}
+  const seen = new Set()
+  const opts = []
+  for (const r of labelRows.value) {
+    if (!r.diagramId || seen.has(r.diagramId)) continue
+    seen.add(r.diagramId)
+    opts.push({ label: titles[r.diagramId] || r.diagramId, value: r.diagramId })
+  }
+  // 标题优先；同标题再比 id
+  opts.sort((a, b) => String(a.label).localeCompare(String(b.label), 'zh') || String(a.value).localeCompare(String(b.value)))
+  return opts
 })
 
 const filteredLabelRows = computed(() => {
   const q = String(labelQuery.value || '').trim().toLowerCase()
-  if (!q) return labelRows.value
-  return labelRows.value.filter((r) =>
-    `${r.key} ${r.machine} ${r.draft}`.toLowerCase().includes(q),
-  )
+  const did = labelDiagram.value
+  return labelRows.value.filter((r) => {
+    if (did && r.diagramId !== did) return false
+    return matchHandQuery(q, r.diagramTitle, r.slot, r.key, r.machine, r.draft)
+  })
 })
 
 const ucPickCount = computed(() => Object.values(ucPick.value).filter(Boolean).length)
@@ -525,6 +657,11 @@ const archRows = computed(() =>
         : (payload.value?.architecture_labels || {})[key] || '',
   })),
 )
+
+const filteredArchRows = computed(() => {
+  const q = String(archQuery.value || '').trim().toLowerCase()
+  return archRows.value.filter((r) => matchHandQuery(q, r.key, r.machine, r.draft))
+})
 
 const classRows = computed(() => {
   const keys = classKeys.value.length
@@ -546,10 +683,7 @@ const classRows = computed(() => {
 
 const filteredClassRows = computed(() => {
   const q = String(classQuery.value || '').trim().toLowerCase()
-  if (!q) return classRows.value
-  return classRows.value.filter((r) =>
-    `${r.key} ${r.machine} ${r.draft}`.toLowerCase().includes(q),
-  )
+  return classRows.value.filter((r) => matchHandQuery(q, r.key, r.machine, r.draft))
 })
 
 const ucDiagramRows = computed(() =>
@@ -567,9 +701,24 @@ const ucDiagramRows = computed(() =>
           : (payload.value?.usecase?.labels || {})[key] || '',
       hidden: key.startsWith('actor:') ? false : hidden,
       isActor: key.startsWith('actor:'),
+      kind: key.startsWith('actor:') ? 'actor' : 'usecase',
     }
   }),
 )
+
+const ucDiagramKindOptions = [
+  { label: '参与者', value: 'actor' },
+  { label: '用例', value: 'usecase' },
+]
+
+const filteredUcDiagramRows = computed(() => {
+  const q = String(ucDiagramQuery.value || '').trim().toLowerCase()
+  const kind = ucDiagramKind.value
+  return ucDiagramRows.value.filter((r) => {
+    if (kind && r.kind !== kind) return false
+    return matchHandQuery(q, r.key, r.machine, r.draft)
+  })
+})
 
 const tcRows = computed(() => {
   const keys = Object.keys(tcMachine.value || {})
@@ -589,6 +738,23 @@ const tcRows = computed(() => {
           : (payload.value?.testcases?.cell_overrides || {})[key] || '',
       hidden,
     }
+  })
+})
+
+const tcCaseOptions = computed(() => {
+  const set = new Set()
+  for (const r of tcRows.value) {
+    if (r.cid) set.add(r.cid)
+  }
+  return [...set].map((id) => ({ label: id, value: id }))
+})
+
+const filteredTcRows = computed(() => {
+  const q = String(tcQuery.value || '').trim().toLowerCase()
+  const cid = tcCase.value
+  return tcRows.value.filter((r) => {
+    if (cid && r.cid !== cid) return false
+    return matchHandQuery(q, r.key, r.cid, r.machine, r.draft)
   })
 })
 
@@ -621,6 +787,20 @@ const menuRows = computed(() => {
   return rows
 })
 
+const menuKindOptions = [
+  { label: '菜单', value: 'menu' },
+  { label: '界面文案', value: 'schema' },
+]
+
+const filteredMenuRows = computed(() => {
+  const q = String(menuQuery.value || '').trim().toLowerCase()
+  const kind = menuKind.value
+  return menuRows.value.filter((r) => {
+    if (kind && r.kind !== kind) return false
+    return matchHandQuery(q, r.path, r.key, r.machine, r.draft)
+  })
+})
+
 const ucCellRows = computed(() => {
   const rows = []
   for (const c of ucCases.value || []) {
@@ -645,6 +825,11 @@ const ucCellRows = computed(() => {
     })
   }
   return rows
+})
+
+const filteredUcCellRows = computed(() => {
+  const q = String(ucCellQuery.value || '').trim().toLowerCase()
+  return ucCellRows.value.filter((r) => matchHandQuery(q, r.path, r.key, r.machine, r.draft))
 })
 
 const dirty = computed(() => {
@@ -982,12 +1167,15 @@ const menuColumns = [
 
 const labelColumns = [
   {
-    title: '键 / 机器原文',
+    title: '图 / 位置 / 原文',
     key: 'key',
     ellipsis: { tooltip: true },
     render: (row) =>
       h('div', { class: 'cell-path' }, [
-        h('code', row.key),
+        h('div', { class: 'path-line' }, [
+          h('span', row.diagramTitle || row.diagramId || '图'),
+          h('span', { class: 'small muted', style: 'margin-left:6px' }, row.slot || ''),
+        ]),
         h('div', { class: 'small muted' }, row.machine),
       ]),
   },
@@ -1299,9 +1487,12 @@ async function loadDiagramLabelRows() {
         ? await api.getSequences(p.value.id, {})
         : await api.getActivities(p.value.id, {})
     const machine = {}
+    const titles = {}
     for (const d of body?.diagrams || []) {
       const did = d.id
       if (!did) continue
+      titles[did] =
+        shortDiagramTitle(d.figure_title || d.title || d.name || d.label) || did
       if (section.value === 'sequence') {
         for (const part of d.participants || []) {
           machine[`${did}::p:${part.id}`] = part.label || ''
@@ -1319,6 +1510,7 @@ async function loadDiagramLabelRows() {
       }
     }
     labelMachine.value = machine
+    labelDiagramTitles.value = titles
     const saved = { ...(payload.value?.[section.value]?.labels || {}) }
     labelBaseline.value = { ...saved }
     labelEdits.value = { ...saved }
@@ -1486,13 +1678,137 @@ async function openClassesPreview() {
   }
 }
 
+function clearTableFilters() {
+  labelQuery.value = ''
+  labelDiagram.value = null
+  classQuery.value = ''
+  archQuery.value = ''
+  ucDiagramQuery.value = ''
+  ucDiagramKind.value = null
+  tcQuery.value = ''
+  tcCase.value = null
+  menuQuery.value = ''
+  menuKind.value = null
+  ucCellQuery.value = ''
+}
+
+function filteredCountForSection() {
+  const sect = section.value
+  if (sect === 'modules') return filteredModuleRows.value.length
+  if (sect === 'sequence' || sect === 'activity') return filteredLabelRows.value.length
+  if (sect === 'classes') return filteredClassRows.value.length
+  if (sect === 'architecture') return filteredArchRows.value.length
+  if (sect === 'usecase') return filteredUcDiagramRows.value.length
+  if (sect === 'testcases') return filteredTcRows.value.length
+  if (sect === 'menus') return filteredMenuRows.value.length
+  if (sect === 'usecase_desc') return filteredUcCellRows.value.length
+  return -1
+}
+
+/** 按图 index / 标题对齐下拉，禁止用「排序后的第 N 项」冒充 sequences[N]。 */
+function pickDiagramFilterId(idx, queryHint) {
+  const opts = labelDiagramOptions.value || []
+  if (!opts.length) return null
+  const titles = labelDiagramTitles.value || {}
+  // 1) 与 load 顺序一致：labelRows 首次出现的 diagramId 顺序 ≈ 出图 selected 序
+  const order = []
+  const seen = new Set()
+  for (const r of labelRows.value || []) {
+    if (!r.diagramId || seen.has(r.diagramId)) continue
+    seen.add(r.diagramId)
+    order.push(r.diagramId)
+  }
+  if (idx != null && !Number.isNaN(Number(idx))) {
+    const byOrder = order[Number(idx)]
+    if (byOrder) return byOrder
+  }
+  const q = String(queryHint || '').trim().toLowerCase()
+  if (q) {
+    const hit = opts.find((o) => {
+      const lab = String(o.label || '').toLowerCase()
+      const id = String(o.value || '').toLowerCase()
+      const full = String(titles[o.value] || '').toLowerCase()
+      return lab.includes(q) || id.includes(q) || full.includes(q) || q.includes(lab)
+    })
+    if (hit) return hit.value
+  }
+  return null
+}
+
+function applyFocusHint() {
+  const hint = pd.overridesFocusHint
+  if (!hint || typeof hint !== 'object') return
+  let q = String(hint.query || '').trim()
+  const idx = hint.index
+  const key = String(hint.key || '').trim()
+  const sect = section.value
+  // 结构词进检索必空（缺槽位「db」时表里根本没有该行）
+  const skipQ = new Set([
+    'actor', 'page', 'controller', 'db', 'user', 'system', 'root',
+    'roles', 'diagrams', 'cases', 'from', 'to',
+  ])
+  if (q && skipQ.has(q.toLowerCase())) q = ''
+
+  if (sect === 'modules') {
+    if (q) moduleQuery.value = q
+    if (key.includes('/')) {
+      const br = key.split('/').filter(Boolean)[0]
+      if (br) moduleBranch.value = br
+    }
+    moduleLeavesOnly.value = false
+  } else if (sect === 'sequence' || sect === 'activity') {
+    const did = pickDiagramFilterId(idx, q)
+    if (did) labelDiagram.value = did
+    // 已用图筛选时，图题检索词可去掉，避免「…序列图」对不上短标题
+    if (did && q && String(labelDiagramTitles.value?.[did] || '').includes(q.replace(/序列图$|活动图$/u, ''))) {
+      q = ''
+    }
+    if (q) labelQuery.value = q
+  } else if (sect === 'classes') {
+    if (q) classQuery.value = q
+  } else if (sect === 'architecture') {
+    if (q) archQuery.value = q
+  } else if (sect === 'usecase') {
+    if (q) ucDiagramQuery.value = q
+  } else if (sect === 'testcases') {
+    if (q) tcQuery.value = q
+  } else if (sect === 'menus') {
+    if (q) menuQuery.value = q
+  } else if (sect === 'usecase_desc') {
+    if (q) ucCellQuery.value = q
+  }
+
+  // 检索落空：先丢掉检索词保留图筛；仍空再清图筛，并提示
+  if (filteredCountForSection() === 0 && (q || labelDiagram.value || moduleQuery.value)) {
+    labelQuery.value = ''
+    moduleQuery.value = ''
+    classQuery.value = ''
+    archQuery.value = ''
+    ucDiagramQuery.value = ''
+    tcQuery.value = ''
+    menuQuery.value = ''
+    ucCellQuery.value = ''
+    if (filteredCountForSection() === 0) {
+      labelDiagram.value = null
+      moduleBranch.value = null
+      message.info('对账定位未匹配到手调行，已展开本表；请按路径文案核对或打开图预览')
+    } else {
+      message.info('检索词未命中，已保留图/分组筛选')
+    }
+  }
+
+  pd.overridesFocusHint = null
+}
+
 async function selectSection(id) {
   section.value = id
+  clearTableFilters()
   if (id === 'sequence' || id === 'activity') {
     const saved = { ...(payload.value?.[id]?.labels || {}) }
     labelBaseline.value = { ...saved }
     labelEdits.value = { ...saved }
     labelMachine.value = {}
+    labelDiagramTitles.value = {}
     await loadDiagramLabelRows()
   }
   if (id === 'usecase_desc') await loadUsecaseDesc()
@@ -1501,6 +1817,7 @@ async function selectSection(id) {
   if (id === 'usecase') await loadUsecaseRows()
   if (id === 'testcases') await loadTestcaseRows()
   if (id === 'menus') await loadMenuRows()
+  applyFocusHint()
 }
 
 function onBeforeUnload(e) {
@@ -1513,6 +1830,7 @@ onMounted(async () => {
   await reload()
   const focus = pd.overridesFocusSection
   if (focus && focus !== section.value) await selectSection(focus)
+  else applyFocusHint()
   window.addEventListener('beforeunload', onBeforeUnload)
 })
 onBeforeUnmount(() => {
@@ -1526,6 +1844,13 @@ watch(
   () => pd.overridesFocusSection,
   (id) => {
     if (id && id !== section.value) void selectSection(id)
+    else applyFocusHint()
+  },
+)
+watch(
+  () => pd.overridesFocusHint,
+  (hint) => {
+    if (hint && section.value) applyFocusHint()
   },
 )
 </script>

@@ -23,7 +23,137 @@
 | **7** 多操作者 | **默认不做** |
 | **10** 上手 | **本会话实现关**（CX/ON0/S0～S3）；验收 [`docs/acceptance/newhire-onboarding-2026-11-09.md`](./docs/acceptance/newhire-onboarding-2026-11-09.md) |
 
-**下一棒**：继续波次 10 预览验收；本轮提交轨迹以 `git log` 为准。
+**下一棒（单结续维护 · 按优先级）**：
+
+| 优先 | 项 | 口令 / 入口 | 现状 |
+|------|----|-------------|------|
+| 1 | **词表待补消缺** | `做词表建议稿`：列名片段+同表已有词 → 确定性「建议中文」一键填；可选批草稿。**禁止** LLM 悬停猜名 | 侧栏/抽屉已齐；待补量仍靠人逐条 |
+| 2 | **资产台落地** | `做资产台` / `做资产台 #n`（真源 [`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md)；parked **q**） | **只立册**，工厂未改 |
+| 3 | **D1 论文图几何** | parked **m**；模块/序列/活动厂内排版仍债 | 导出/rubric 已齐 ≠ 初开可读 |
+| 4 | **旧题 canary** | `test_audit_group_canaries`：`DOM-ACTIVITY`→`DOM-CLUB` | 厂级红，非单题 |
+| 5 | **AOCI 收尾** | 本批新路径（`zh_lexicon` / `system_zh_lexicon` / `schema_thesis_export` / `ZhLexicon.vue` / `LongOpWait` / `longOpSession` / `mdRender` 等）→ scope acknowledge → `aoci_maintain` | 推送后做；MCP 挂则停手重启 |
+
+**本批提交主题**（2026-11-16 拆推）：文案口径 → 资产台册 → 词表+Stripe+主题色 → 论文图材料 → 等待态 I2 → 手调/对账 UX → 本交接。轨迹以 `git log` 为准。  
+**勿提交**：根目录学生 `.docx`、`er-*.drawio` 草稿、`backend/` 下短随机名临时文件。
+
+### 本会话（2026-11-16）· 学生可见文案口径（本域角色 · 修复全域）
+
+- **站队**：**修工厂**（规则口径；非擦包）。
+- **修**：`student-copy` 本域本端口吻 + **范围明示全域**（禁只修 SHOP/当面包）；资产台 §1.2 / parked **q** 同钉「口吻按域 ≠ 机制按域」；已 sync Trae。
+- **提交**：本批主题 1。
+
+### 本会话（2026-11-16）· 工厂可维护资产台（方向册 + parked q）
+
+- **站队**：**修工厂**（只立册，不改 bake/UI）。
+- **写**：[`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md)——词表同构十二选项；#1～#3 细案；与 m/j/p/e 划界。
+- **park**：碎另案 **q**；`docs/README.md` 已挂索引。
+- **口令**：`做资产台` / `做资产台 #n`。
+- **未改代码** · **提交**：本批主题 2 · **续**：工厂落地见上表优先 2。
+
+### 本会话（2026-11-16）· 工厂词表维护（COMMENT）+ Stripe 结构 + 主题色
+
+- **站队**：**修工厂**（列名英文；中文进 `factory_zh_lexicon` → bake `COMMENT`；全域全皮可维护）。
+- **已有**：表/API/迁入 er_zh 一种子；bake `annotate_sql_comments`；图一保存回写 schema.sql COMMENT；侧栏「词表维护」。
+- **2026-11-16**：去掉 `zh_lexicon._SHELL_COLUMN_SEED`，履约/售后壳列并入 `er_zh._COMMON_COL_ZH`；迁入补缺走全量种子。
+- **本轮**：§3.5 Stripe；`ZhLexicon` R1～R7；顶栏**主题色**色板（港湾/潮汐/晴空/竹青/朱砂/岩灰，`localStorage` + Naive 主色联动）。
+- **你这边**：硬刷新 → 顶栏色点切换；「词表维护」看抽屉锁定/中性占位；旧包需重 bake 才带 COMMENT。
+- **提交**：本批主题 3 · **未做完**：待补消缺（上表优先 1）；不做 ❓+LLM 悬停。
+
+### 本会话（2026-11-15）· 类图中文与多分类中间表
+
+- **站队**：**修工厂**（共有：`StockNotify` 无中文；`product_category` 拆段撞成「健身用品分类」与 Category 双框）。
+- **修**：`er_zh` 补 `stock_notify`/`product_category`；sample 藏 `product_category`（全量仍画「多分类关联」）。
+- **测**：`test_schema_classes` **27 绿**。方木类图 cache 已清。
+- **提交**：随本批「论文图材料」主题。硬刷新 → 类图 force/重开。
+
+### 本会话（2026-11-15）· 方木交付审计（只报告）
+
+- **对象**：`gf-20261026-233153` · `DOM-SHOP` · 方木健身用品电商。
+- **结论**：**部分有**（主交易链齐；支付文案像真支付宝/微信；表 23 张超舒适区；类图项已跟修；`menus.subadmin` 空靠 `staffPackMenus`）。
+- **旧题回归**：`test_audit_group_canaries` **1 红**（`DOM-ACTIVITY` 被匹配成 `DOM-CLUB`）——厂级，非本单独有。
+- **未做浏览器扫**。
+
+### 本会话（2026-11-15）· 类图模板画法（边不挂列名）
+
+- **站队**：**修工厂**（论文模板只定画法：线上不写 FK 列名；类框 `Pascal (中文)`；结构仍跟 `schema.sql` + Store，不抄模板里的 Coupon/Seller 清单）。
+- **修**：`class_box_title` + `_scrub_class_edge_labels`；SVG / Draw.io / Mermaid 同源；`via` 仅留结构对账。
+- **测**：`test_schema_classes` **26 绿**（含边 label 全空 + 标题中文括号）。
+- **提交**：`203b268d`。农产 `gf-20261102-235812` sample 类图 cache 已清。
+- **你这边**：硬刷新 → 系统类图 force/重开再导出；旧 drawio（带 `publisher_username` 的）作废。
+
+### 本会话（2026-11-15）· 失败码漏挂入库
+
+- **站队**：**修工厂**（`BAKE_LAYOUT` / `BAKE_FORM_CONTROLS` 分类已接线、对照表未入库）。
+- **修**：补进 `CODES`/`LABELS`/`FIX_LOCUS` + `docs/bake-fail-analysis.md`（顺带补文档缺的 `BAKE_FILE_LOCK`）；测钉「stem/gate 映射 ⊆ CODES」。
+- **测**：`test_bake_fail_classify`。
+- **未 commit**。
+
+### 本会话（2026-11-15）· 等待态产品化满分（I2）
+
+- **站队**：**修工厂**（验收/启停/论文对账长任务中间态；短加载统一 `ContentLoading`）。
+- **修**：`LongOpWait` + `longOpSession`；`DeliveryReviewPane` 阶段提示与刷新可恢复；Runtime / 论文对账挂同件；Help/Projects/Jobs 短加载。
+- **测**：`test_console_wait_state_contract`；成熟度册 I2 ✅。
+- **提交**：本批主题「等待态 I2」。
+
+### 本会话（2026-11-15）· 对账「去处理」定位到手调行
+
+- **站队**：**修工厂**（跳转不只到图分组，还带 focus_query / focus_index）。
+- **根因（查空）**：①「缺槽位「db」」把结构词当检索，表里无此行；②`opts[index]` 用的是标题排序后的下拉，不是 `sequences[N]`；③图题带「序列图」对手调短标题对不上。
+- **修**：跳过槽位/结构检索词；图筛按出图顺序；短标题；筛空则回退并提示。
+- **测**：`test_parse_finding_focus_and_enrich_nav_locate_field` 绿。
+- **提交**：本批主题「手调/对账 UX」。硬刷新后再点「去处理」。
+
+### 本会话（2026-11-15）· 类图禁 User↔Product 塌缩「关联/收藏」
+
+- **站队**：**修工厂**（不盯死「关联」「收藏」字面：E-R M:N 塌缩 + 菱形动词进了类图）。
+- **修**：`infer_relations(collapse_links=False)` 专供类图；边 `via` 只留结构、**线上文案空**（模板画法，见上节）；E-R 总图仍塌中间表。
+- **测**：`test_class_keeps_favorite_link_table_no_user_product_collapse` + ER collapse；后并入 `203b268d`。
+- **你这边**：重开类图 / force 出图即可。
+
+### 本会话（2026-11-15）· 换主题色 theme_missing 误报异域肤
+
+- **现象**：`p3lean`「异域行业肤 1：theme_missing:shop-lime」——改生鲜青绿/壳色后，盘上仍是上一档瘦身 CSS。
+- **修工厂**：`scrub_pack_themes` 找不到本题块时从骨架 `themes/*` 回补再裁；闸文案拆成「本题行业肤缺失」vs「异域行业肤」。
+- **测**：`test_pack_themes_rehydrate_when_switching_after_scrub`（整组 `pack_themes`）。
+- **未 commit**。重 bake / 再跑门禁即可。
+
+### 本会话（2026-11-15）· 手调区检索扩到各材料表
+
+- **站队**：**修工厂**（搜索/筛选不应只挂功能模块图）。
+- **修**：`OverridesTab` 各长表统一「搜索位置 / 原词 / 手调」；序列/活动按图、用例按类型、测例按用例、菜单按类型；切换分组清筛选。
+- **提交**：本批主题「手调/对账 UX」。硬刷新 → 出包微调各左侧分组可见工具条。
+
+### 本会话（2026-11-15）· 序列图 → 工作流程文案（进组件）
+
+- **站队**：**修工厂**（任意选题：本张序列消息逐步改写为编号流程；不套示例范文、不发明图外步骤）。
+- **修**：`sequence_workflow.py`；`sequence_model`/`load_sequence_model` 挂 `diagram.workflow`；控制台 `SequenceDiagramViewer` 当前图下展示 +「复制工作流程」。
+- **测**：`test_workflow_*` + `test_exactly_three` **3 绿**（整文件未全跑）。
+- **未 commit**。
+- **你这边**：硬刷新 → 打开系统序列图，切图看工作流程区；可贴论文。
+
+### 本会话（2026-11-15）· 序列图主链路默认选题 + 确认收货
+
+- **站队**：**修工厂**（跨域：默认三席不再单占纯登录；交易/单据优先；`my_orders` 默认确认收货；去「数据保存成功」套话）。
+- **修**：`sequence.default_sequence_selection`；`_KIND_WRITE_PHASES`/`BROWSE`；通用「保存」让位业务相位。农产 `overrides.sequence.selected_ids` 清空以吃默认。
+- **测**：`test_schema_sequence` **17 绿**。农产默认：购物车 / 我的订单(确认收货) / 订单管理(发货)。
+- **未 commit**。
+- **你这边**：硬刷新 → 序列图 force/重开；若仍旧勾选可清空微调里的序列勾选。
+
+### 本会话（2026-11-15）· 类图论文示例再精简
+
+- **站队**：**修工厂**（仍在「论文示例（精简方法）」签：藏壳表、属性截断、方法去 Spring 噪音/按表语义筛）。
+- **修**：`class_model.apply_class_display_mode(sample)` 藏 auth/login/banner 等；属性业务优先最多 8；方法最多 4；`order_line` 不挂整单 Store。
+- **测**：`test_schema_classes` **25 绿**。农产 sample ≈14 类。
+- **未 commit**。核对稿：`gf-20261102-235812-类图-论文示例精简.drawio`。
+- **你这边**：类图保持「论文示例」签 → force/重开再导出。
+
+### 本会话（2026-11-15）· 类图跟实包、禁上帝 Store 串台
+
+- **站队**：**修工厂**（论文类图乱：属性被 Loyalty/Archive 行映射盖掉，方法蹭错表；不以参考图加券/店铺）。
+- **修**：`class_code` 按 Store 主表归属收口索引 + 亲和度绑方法；**属性以 schema.sql 为准**；跳过跨域噪音方法；sample 方法前缀优先（`addItem`/`placeOrder`）。
+- **测**：`test_schema_classes` **24 绿**（含 `test_java_bind_keeps_sql_attrs_and_blocks_god_store`）。农产包抽查：User/Category/Order 属性干净，Category→Controller CRUD，订单/购物车→OrderStore。
+- **未 commit**。
+- **你这边**：硬刷新后打开系统类图（已清 `gf-20261102-235812` 类图 cache）；若仍旧图可对账 force。
 
 ### 本会话（2026-11-15）· 近义匹配、架构文档与控制台原型收尾
 
@@ -45,6 +175,14 @@
 - **测**：`test_pack_prune -k pack_themes` 绿。  
 - **未 commit**（`pack_themes.py` 仍 `??`）。  
 - **你这边**：重启后端后**重 bake** 才吃到；手边旧目录不会自动变瘦。骨架 `skeletons/.../themes.css` 全库是真源，故意不砍。
+
+### 本会话（2026-11-15）· Overrides P0 验收红（手调类图去簇回写）
+
+- **站队**：**修工厂**（代码已推 `47369246`/`b1dc4cbc`，但 P0 验收未绿 → 完工不成立）。  
+- **根因**：bake 预热 `load_class_model` 对手调重叠框内存去簇后**回写** `islands/class_layout.json`，盖掉白名单 restore；非重叠坐标本可保留。  
+- **已做**：去簇只留内存、仅「首次自动排版」落盘；钉 `test_unclump_does_not_rewrite_hand_layout_on_disk`；台账 [`pack-overrides.md`](./docs/pack-overrides.md) / 本节与下节「未 commit / 测绿」对齐。  
+- **测**：`test_unclump_*` 2 绿；`test_rebake_keeps_module_labels_and_class_layout` **1 绿**（约 3min；先前 FileNotFound 为并发脏盘假红）。  
+- **未 commit**（等人令）。
 
 ### 本会话（2026-11-15）· 壳色色点池 P0～P3
 
@@ -303,9 +441,8 @@
 - **原因**：闸红时卡禁打开；未列 findings；图缓存不跟 `modules.py`，重载像没修。
 - **已做**：文案红仍可打开；卡/弹窗工厂提示 + findings；`force` 绕过缓存；红时禁导出。
 - **假绿收口**：未拉图不得「可导出」→「待核验」；进论文材料页 `ensureModulesMeta` 预检闸；真红才「文案红」、真绿才「可导出」。
-- **Overrides P0～P3**：[`docs/pack-overrides.md`](./docs/pack-overrides.md)——白名单 bake、元库+API、模块短签/hide、序列·活动·用例描述勾选与短签、架构/用例图/测例/菜单/类图、`invariants`+交付审计一句。测：`test_overrides_payload`（含 hide/class）绿；`test_islands_preserve` 绿。**工作区未提交**。
-- **你这边**：说 **`提交并推送`**（建议拆主题）；真机点微调 Tab 验收。
-- **已推送**：计划册对账订正；实现待你令 commit。
+- **Overrides P0～P3**：[`docs/pack-overrides.md`](./docs/pack-overrides.md)——白名单 bake、元库+API、模块短签/hide、序列·活动·用例描述勾选与短签、架构/用例图/测例/菜单/类图、`invariants`+交付审计一句。**已推送** `47369246` / `b1dc4cbc`。P0 验收曾红（预热去簇回写手调坐标）→ 见上节 2026-11-15 修；`test_overrides_payload`（含 hide/class）绿。
+- **你这边**：说 **`提交并推送`**（本轮去簇不回写 + 台账）；真机点微调 Tab 验收。
 
 ### 本会话（2026-11-03）· 农产下单 NPE · Map.get→doubleValue
 
