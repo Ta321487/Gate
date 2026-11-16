@@ -33,7 +33,7 @@
       :mask-closable="false"
       @after-leave="onPlanLeave"
     >
-      <div v-if="planLoading" class="muted">正在解析并分堆…</div>
+      <ContentLoading v-if="planLoading" :rows="3" compact show-label label="正在解析并分堆" />
       <template v-else-if="planData">
         <p class="small muted" style="margin:0 0 12px">
           {{ planData.notes || '请核对下方分堆后确认创建。' }}
@@ -368,6 +368,7 @@ import { NButton } from 'naive-ui'
 import { api, confirm, message } from '../api'
 import { collectUploadMaterials, MAX_UPLOAD_MATERIALS } from '../uploadMaterials'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import ContentLoading from '../components/ContentLoading.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
 import {
   debounce,

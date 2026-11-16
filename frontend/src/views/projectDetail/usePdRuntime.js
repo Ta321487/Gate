@@ -262,6 +262,7 @@ export function usePdRuntime({ p, tab, route, ctx }) {
     rtAnyBusy,
     rtAllBusy,
     rtGenerating,
+    rtSettling,
     rtBeLive,
     rtFeLive,
     rtAnyLive,

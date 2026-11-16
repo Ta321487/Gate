@@ -75,6 +75,23 @@
       </div>
     </div>
 
+    <div v-if="longOpVisible" class="panel panel-quiet mb-12">
+      <div class="panel-bd">
+        <LongOpWait
+          :title="longOpTitle"
+          :phases="longOpPhases"
+          :phase-seconds="longOpPhaseSeconds"
+          :started-at="longOpStartedAt"
+          :hint="longOpHint"
+        />
+        <div v-if="recoverAlign" class="row mt-8" style="margin:0">
+          <n-button size="small" secondary :loading="recoverBusy" @click="alignAfterRecover">
+            立即对齐状态
+          </n-button>
+        </div>
+      </div>
+    </div>
+
     <div class="wb-pulse row" style="gap:8px;flex-wrap:wrap;margin:0">
       <span class="pill" :class="poisonZone.length ? 'pill-amber' : 'pill-green'">
         待收敛 {{ poisonZone.length }}
@@ -348,9 +365,11 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { NAlert, NButton, NCheckbox, NCollapse, NCollapseItem, NDataTable, NEmpty, NInput, NModal } from 'naive-ui'
 import { api, message, confirm } from '../api'
+import LongOpWait from './LongOpWait.vue'
+import { clearLongOp, markLongOp, peekLongOp } from '../utils/longOpSession'
 
 const props = defineProps({
   projectId: { type: String, required: true },
@@ -376,6 +395,123 @@ const localRegressions = ref([])
 const showDoneNotes = ref(false)
 /** 门禁全文默认收起；点 pill /「展开」再看，避免失败页无限变长 */
 const showGateDetails = ref(false)
+
+/** I2：验收/摘要/重打包/清洗 中间态 + 刷新可恢复 */
+const recoverAlign = ref(false)
+const recoverBusy = ref(false)
+const recoverKind = ref('')
+const longOpStartedAt = ref(0)
+
+const LONG_OP_META = {
+  verify: {
+    title: '正在验收…',
+    phases: [
+      { key: 'qa', label: '质量摘要' },
+      { key: 'gates', label: '门禁与单调性' },
+      { key: 'ready', label: '对齐交付就绪' },
+    ],
+    phaseSeconds: [35, 50, 40],
+  },
+  qa: {
+    title: '正在拉质量摘要…',
+    phases: [
+      { key: 'qa', label: '质量摘要' },
+      { key: 'gates', label: '刷新门禁投影' },
+    ],
+    phaseSeconds: [45, 30],
+  },
+  repack: {
+    title: '正在重打包…',
+    phases: [
+      { key: 'check', label: '校验验收条件' },
+      { key: 'zip', label: '打包交付 ZIP' },
+      { key: 'sync', label: '同步就绪状态' },
+    ],
+    phaseSeconds: [15, 40, 20],
+  },
+  scrub: {
+    title: '正在清洗文案…',
+    phases: [
+      { key: 'scan', label: '扫描学生可见文案' },
+      { key: 'write', label: '写回工程' },
+    ],
+    phaseSeconds: [25, 35],
+  },
+}
+
+const activeLongKind = computed(() => {
+  if (busy.value === 'verify') return 'verify'
+  if (busy.value === 'qa') return 'qa'
+  if (busy.value === 'repack') return 'repack'
+  if (props.scrubBusy) return 'scrub'
+  if (recoverAlign.value && recoverKind.value) return recoverKind.value
+  return ''
+})
+
+const longOpVisible = computed(() => !!activeLongKind.value)
+const longOpMeta = computed(() => LONG_OP_META[activeLongKind.value] || null)
+const longOpTitle = computed(() => {
+  if (recoverAlign.value && !busy.value && !props.scrubBusy) {
+    const label = LONG_OP_META[recoverKind.value]?.title?.replace(/…$/, '') || '上次长操作'
+    return `${label}可能仍在跑或已完成 · 正在对齐`
+  }
+  return longOpMeta.value?.title || '仍在运行…'
+})
+const longOpPhases = computed(() => longOpMeta.value?.phases || [])
+const longOpPhaseSeconds = computed(() => longOpMeta.value?.phaseSeconds || [])
+const longOpHint = computed(() => {
+  if (recoverAlign.value && !busy.value && !props.scrubBusy) {
+    return '刷新后仍保留等待语义：点「立即对齐」或稍候自动对齐；勿重复连点验收。'
+  }
+  return ''
+})
+
+watch(
+  () => [busy.value, props.scrubBusy, props.projectId],
+  ([b, scrub, id]) => {
+    const kind =
+      b === 'verify' || b === 'qa' || b === 'repack' ? b : scrub ? 'scrub' : ''
+    if (kind && id) {
+      markLongOp(id, kind)
+      if (!longOpStartedAt.value) longOpStartedAt.value = Date.now()
+      recoverAlign.value = false
+    } else if (!kind && !recoverAlign.value) {
+      longOpStartedAt.value = 0
+    }
+  },
+)
+
+watch(
+  () => props.scrubBusy,
+  (v, prev) => {
+    if (prev && !v) clearLongOp(props.projectId)
+  },
+)
+
+async function alignAfterRecover({ silent = false } = {}) {
+  if (recoverBusy.value) return
+  recoverBusy.value = true
+  try {
+    await refreshAfter()
+    clearLongOp(props.projectId)
+    recoverAlign.value = false
+    recoverKind.value = ''
+    if (!silent) message.info('状态已对齐')
+  } catch {
+    if (!silent) message.warning('对齐未完成 · 请稍后再试或硬刷新')
+  } finally {
+    recoverBusy.value = false
+  }
+}
+
+onMounted(() => {
+  const peeked = peekLongOp(props.projectId)
+  if (!peeked?.kind || !LONG_OP_META[peeked.kind]) return
+  recoverKind.value = peeked.kind
+  recoverAlign.value = true
+  longOpStartedAt.value = peeked.at || Date.now()
+  void alignAfterRecover({ silent: true })
+})
 
 /** 有待收敛清单时展开复审明细；门禁全文已在上方阻断卡，不重复撑开 */
 const reviewDefaultOpen = computed(() => {
@@ -777,6 +913,7 @@ async function onVerify() {
   busy.value = 'verify'
   localRegressions.value = []
   let wroteOk = false
+  let keepSession = false
   try {
     const raw = await api.verifyDeliveryReview(props.projectId)
     // 兼容直接模型 / { data } 包裹
@@ -819,13 +956,17 @@ async function onVerify() {
     })
     wroteOk = true
   } catch (e) {
-    message.error(
-      isTimeoutErr(e)
-        ? '验收超时 · 服务端可能已成功或仍在跑，请刷新对齐状态'
-        : e?.response?.data?.detail || e?.message || '验收失败',
-    )
+    if (isTimeoutErr(e)) {
+      keepSession = true
+      recoverKind.value = 'verify'
+      recoverAlign.value = true
+      message.error('验收超时 · 服务端可能已成功或仍在跑，请刷新对齐状态')
+    } else {
+      message.error(e?.response?.data?.detail || e?.message || '验收失败')
+    }
   } finally {
     busy.value = ''
+    if (!keepSession) clearLongOp(props.projectId)
   }
   if (wroteOk) void refreshAfter()
 }
@@ -834,6 +975,7 @@ async function onRepack() {
   if (busy.value || props.disabled || !canRepack.value) return
   busy.value = 'repack'
   let wroteOk = false
+  let keepSession = false
   try {
     const raw = await api.repackDeliveryReview(props.projectId)
     const meta = raw?.data && typeof raw.data === 'object' ? raw.data : {}
@@ -849,11 +991,17 @@ async function onRepack() {
     message.success('重打包完成 · 交付包已更新')
     wroteOk = true
   } catch (e) {
-    message.error(
-      isTimeoutErr(e) ? timeoutAlignMsg('重打包') : e?.response?.data?.detail || e?.message || '重打包失败',
-    )
+    if (isTimeoutErr(e)) {
+      keepSession = true
+      recoverKind.value = 'repack'
+      recoverAlign.value = true
+      message.error(timeoutAlignMsg('重打包'))
+    } else {
+      message.error(e?.response?.data?.detail || e?.message || '重打包失败')
+    }
   } finally {
     busy.value = ''
+    if (!keepSession) clearLongOp(props.projectId)
   }
   if (wroteOk) void refreshAfter()
 }
@@ -862,6 +1010,7 @@ async function onQa() {
   if (busy.value || props.disabled) return
   busy.value = 'qa'
   let wroteOk = false
+  let keepSession = false
   try {
     const res = await api.runDeliveryQa(props.projectId)
     if (res.qa?.ok) message.success('质量摘要已通过')
@@ -876,11 +1025,17 @@ async function onQa() {
     })
     wroteOk = true
   } catch (e) {
-    message.error(
-      isTimeoutErr(e) ? timeoutAlignMsg('质量摘要') : e?.response?.data?.detail || e?.message || '质量摘要失败',
-    )
+    if (isTimeoutErr(e)) {
+      keepSession = true
+      recoverKind.value = 'qa'
+      recoverAlign.value = true
+      message.error(timeoutAlignMsg('质量摘要'))
+    } else {
+      message.error(e?.response?.data?.detail || e?.message || '质量摘要失败')
+    }
   } finally {
     busy.value = ''
+    if (!keepSession) clearLongOp(props.projectId)
   }
   if (wroteOk) void refreshAfter()
 }
@@ -1067,7 +1222,8 @@ async function onResolveNote(noteId, done) {
 }
 .block-title {
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .block-points {
   margin: 8px 0 0;

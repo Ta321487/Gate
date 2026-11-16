@@ -1,5 +1,15 @@
 <template>
   <div>
+    <div v-if="rtSettling || rtAnyBusy" class="panel panel-quiet mb-16">
+      <div class="panel-bd">
+        <LongOpWait
+          title="启停进行中…"
+          :phases="rtWaitPhases"
+          :phase-seconds="[8, 20, 30]"
+          hint="仍在运行：前后端过渡态会自动刷新；可停在本页等待，勿重复点启动。"
+        />
+      </div>
+    </div>
     <div class="row-between mb-16">
       <span class="small muted">库 <span class="mono">{{ p.db_name || '—' }}</span><CopyIconButton v-if="p.db_name" :text="p.db_name" tip="复制库名" /></span>
       <div class="row" style="margin:0">
@@ -94,6 +104,14 @@
 import { computed, unref } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
+import LongOpWait from '../../components/LongOpWait.vue'
+
+const rtWaitPhases = [
+  { key: 'req', label: '提交启停请求' },
+  { key: 'boot', label: '进程拉起 / 关闭' },
+  { key: 'ready', label: '等待可访问' },
+]
+
 const {
   FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH, PORTAL_HOME_FALLBACK, TYPE_PAREN_KEY, _runtimeSettled, _tailLines, ack, ackMainPath,
   alreadyBaked, apiCopyText, apiGroupCopyText, apiQuery, apiSmokeBusy, apiSmokeFactoryHint, apiSmokeResult, apiSurface,
@@ -119,7 +137,7 @@ const {
   refreshJob, refreshRuntime, reload, reloadErSvg, reloadModSvg, reloadTestcases, resetMatch, retryCurrent,
   roleSpecText, route, router, rt, rtAction, rtAllBusy, rtAnyBusy, rtAnyLive,
   rtBeLive, rtBothLive, rtBusyBe, rtBusyFe, rtCanRestartAll, rtCanStartAll, rtCanStopAll, rtFeLive,
-  rtGenerating, rtPendingAll, rtStartBlockedReason, runApiSmoke, runGenerateJob, runtimeCanStop, runtimeLogView, runtimeStatusLabel,
+  rtGenerating, rtSettling, rtPendingAll, rtStartBlockedReason, runApiSmoke, runGenerateJob, runtimeCanStop, runtimeLogView, runtimeStatusLabel,
   runtimeStatusPill, runtimeTransient, saveSoft, sceneOptions, schema, schemaErGapCount, securityDeviant, securityLabel,
   securityOn, securityOptions, showDelete, showEr, showFillPlan, showJobSteps, showModules, showPreGenerate,
   showSoftBakePanel, showSpec, showTestcases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,

@@ -56,30 +56,29 @@
       size="huge"
     >
       <p v-if="gateModalMeta" class="small muted" style="margin:0 0 10px">{{ gateModalMeta }}</p>
-      <n-spin :show="gateModalLoading">
-        <template v-if="gateModalRows.length">
+      <ContentLoading v-if="gateModalLoading && !gateModalRows.length" :rows="4" compact show-label label="加载门禁快照" />
+      <template v-else-if="gateModalRows.length">
+        <n-data-table
+          :columns="gateModalCols"
+          :data="gateModalRows"
+          :bordered="false"
+          size="small"
+          :max-height="420"
+        />
+        <div v-if="gateModalChecklist.length" class="mt-12">
+          <div class="parse-sec-hd" style="margin:0 0 8px">清单实装</div>
           <n-data-table
-            :columns="gateModalCols"
-            :data="gateModalRows"
+            :columns="gateCheckCols"
+            :data="gateModalChecklist"
             :bordered="false"
             size="small"
-            :max-height="420"
+            :max-height="220"
           />
-          <div v-if="gateModalChecklist.length" class="mt-12">
-            <div class="parse-sec-hd" style="margin:0 0 8px">清单实装</div>
-            <n-data-table
-              :columns="gateCheckCols"
-              :data="gateModalChecklist"
-              :bordered="false"
-              size="small"
-              :max-height="220"
-            />
-          </div>
-        </template>
-        <div v-else-if="!gateModalLoading" class="empty-hint">
-          <div class="empty-desc">该任务无门禁快照（未跑到门禁步或旧数据）</div>
         </div>
-      </n-spin>
+      </template>
+      <div v-else class="empty-hint">
+        <div class="empty-desc">该任务无门禁快照（未跑到门禁步或旧数据）</div>
+      </div>
     </n-modal>
   </div>
 </template>
@@ -90,6 +89,7 @@ import { useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { api, message, confirm } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import ContentLoading from '../components/ContentLoading.vue'
 import { JOB_STATUS, jobStepLabel, statusPillNode } from '../opsShared'
 
 const router = useRouter()

@@ -73,7 +73,7 @@
               </table>
             </div>
             <div v-if="card.liveTable === 'failCatalog'" class="help-table-wrap">
-              <p v-if="catalogLoading" class="muted">正在加载对照表…</p>
+              <ContentLoading v-if="catalogLoading" :rows="3" compact show-label label="正在加载对照表" />
               <p v-else-if="catalogError" class="muted">{{ catalogError }}</p>
               <p v-else-if="!failCatalogRows.length" class="muted">没有匹配的失败类型</p>
               <table v-else class="help-table">
@@ -130,6 +130,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { NEmpty, NInput } from 'naive-ui'
 import { api } from '../api'
+import ContentLoading from '../components/ContentLoading.vue'
 
 const route = useRoute()
 const query = ref('')
@@ -633,8 +634,8 @@ const sections = [
         bullets: [
           '字段类型按标准 MySQL 写法（如 varchar(60)）；可切换合并类型 / 类型·长度分列。',
           '单表复制为制表符文本，可贴 Word「文本转换成表格」。',
-          '库表数量 6～15 张（含平台表）。',
-          'E-R 总图为概念设计（实体 + 联系 + 基数；中间表画成 N:M）；实体属性图只含自身字段（无外键）。可复制 PNG / 下载矢量；可批量导出属性图；几何翻车可下同源 Draw.io 手调，或复制 Mermaid 贴 diagrams.net。',
+          '物理全量可含辅助表；「6～15」看论文概念实体数，不拿物理张数打红。出包硬顶另计费（平台壳可豁免）。',
+          'E-R 总图默认「论文概念」精简（藏登录/会话等壳表，角色收回用户；实体 + 联系 + 基数；中间表画成 N:M），可切「全量」对账；实体属性图只含自身字段（无外键）。物理表在「表结构」全量列出（业务/辅助分显）；可一键复制/下载「逻辑设计 + 物理设计」正文（同源 schema.sql，含辅助表、禁止编造）。可复制 PNG / 下载矢量；「导出全部 Draw.io」一文件多页（每实体一页）；几何翻车可下同源 Draw.io 手调。',
         ],
       },
       {
