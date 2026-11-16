@@ -1389,6 +1389,10 @@ def domain_sql(
         item_table=resolved_item,
         archetypes=arches_for_sql,
     )
+    # 词表 → COMMENT（列名仍英文）；老师打开 schema.sql 可见中文说明
+    from app.services.zh_lexicon import annotate_sql_comments
+
+    text = annotate_sql_comments(text, domain=domain or "", skin="")
     # 演示日历不在 bake 时写死「今天」：交付后隔月答辩仍靠启动时 SeedCalendarAligner 平移
     return (
         text.replace("${DB_NAME}", db_name)

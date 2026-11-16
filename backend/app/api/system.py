@@ -14,6 +14,7 @@ from app.api import system_info as _system_info  # noqa: F401
 from app.api import system_tools as _system_tools  # noqa: F401
 from app.api import system_unsplash as _system_unsplash  # noqa: F401
 from app.api import system_usage as _system_usage  # noqa: F401
+from app.api import system_zh_lexicon as _system_zh_lexicon  # noqa: F401
 
 # main.py 启动时水合 DeepSeek
 from app.api.system_deepseek import _get_ds_row, _hydrate_ds_settings  # noqa: F401

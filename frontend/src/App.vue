@@ -72,14 +72,31 @@
               </template>
             </nav>
           </div>
-          <button
-            type="button"
-            class="theme-toggle"
-            :title="isDark ? '切换日间模式' : '切换夜间模式'"
-            @click="toggleTheme"
-          >
-            {{ isDark ? '日间' : '夜间' }}
-          </button>
+          <div class="theme-controls">
+            <div class="accent-swatches" role="radiogroup" aria-label="主题色">
+              <button
+                v-for="p in ACCENT_PRESETS"
+                :key="p.id"
+                type="button"
+                class="accent-swatch"
+                role="radio"
+                :aria-checked="accentId === p.id ? 'true' : 'false'"
+                :aria-label="p.label"
+                :title="p.label"
+                :class="{ active: accentId === p.id }"
+                :style="{ '--swatch': accentSwatch(p) }"
+                @click="applyAccent(p.id)"
+              />
+            </div>
+            <button
+              type="button"
+              class="theme-toggle"
+              :title="isDark ? '切换日间模式' : '切换夜间模式'"
+              @click="toggleTheme"
+            >
+              {{ isDark ? '日间' : '夜间' }}
+            </button>
+          </div>
         </header>
         <div class="content">
           <router-view />
@@ -94,7 +111,20 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { zhCN, dateZhCN } from 'naive-ui'
 import { detailCrumb } from './opsShared'
-import { isDark, naiveTheme, naiveThemeOverrides, toggleTheme } from './theme'
+import {
+  ACCENT_PRESETS,
+  accentId,
+  applyAccent,
+  accentColors,
+  isDark,
+  naiveTheme,
+  naiveThemeOverrides,
+  toggleTheme,
+} from './theme'
+
+function accentSwatch(preset) {
+  return accentColors(isDark.value ? 'dark' : 'light', preset.id).primary
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -110,6 +140,7 @@ const workNav = [
 const sysNav = [
   { to: '/llm', label: '大模型', desc: '连接与用量', match: ['llm'] },
   { to: '/unsplash', label: 'Unsplash', desc: '图床配置', match: ['unsplash'] },
+  { to: '/zh-lexicon', label: '词表维护', desc: '列/表中文 COMMENT', match: ['zh-lexicon'] },
   { to: '/system', label: '运行环境', desc: '工具链与端口', match: ['system'] },
 ]
 

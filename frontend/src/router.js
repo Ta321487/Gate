@@ -8,6 +8,7 @@ import Help from './views/Help.vue'
 import Llm from './views/Llm.vue'
 import Unsplash from './views/Unsplash.vue'
 import System from './views/System.vue'
+import ZhLexicon from './views/ZhLexicon.vue'
 import ErrorPage from './views/ErrorPage.vue'
 
 const router = createRouter({
@@ -29,6 +30,7 @@ const router = createRouter({
     { path: '/gemini', redirect: '/llm' },
     { path: '/unsplash', name: 'unsplash', component: Unsplash, meta: { crumb: 'Unsplash' } },
     { path: '/system', name: 'system', component: System, meta: { crumb: '运行环境' } },
+    { path: '/zh-lexicon', name: 'zh-lexicon', component: ZhLexicon, meta: { crumb: '词表维护' } },
     {
       path: '/error/500',
       name: 'error-500',

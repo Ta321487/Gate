@@ -93,9 +93,19 @@ export const api = {
     http.delete(`/projects/${id}`, { params: { keep_db: keepDb }, ...HEAVY_OPTS }),
   downloadUrl: (id) => `/api/projects/${id}/download`,
   getSchema: (id) => http.get(`/projects/${id}/schema`),
-  getEr: (id, { mode = 'total', entity } = {}) =>
+  /** 论文 4.6.2/4.6.3：逻辑+物理设计正文，同源 schema.sql */
+  getThesisDbExport: (id, { typeParen = true } = {}) =>
+    http.get(`/projects/${id}/schema/thesis-db-export`, {
+      params: { type_paren: typeParen },
+      timeout: 120000,
+    }),
+  getEr: (id, { mode = 'total', entity, display = 'sample' } = {}) =>
     http.get(`/projects/${id}/schema/er`, {
-      params: { mode, ...(entity ? { entity } : {}) },
+      params: {
+        mode,
+        display,
+        ...(entity ? { entity } : {}),
+      },
       timeout: 120000,
     }),
   putErLabels: (id, body) => http.put(`/projects/${id}/schema/er-labels`, body),
@@ -162,10 +172,14 @@ export const api = {
     const q = new URLSearchParams({ display })
     return `/api/projects/${id}/schema/classes.drawio?${q}`
   },
-  erDrawioUrl: (id, { mode = 'total', entity } = {}) => {
-    const q = new URLSearchParams({ mode })
+  erDrawioUrl: (id, { mode = 'total', entity, display = 'sample' } = {}) => {
+    const q = new URLSearchParams({ mode, display })
     if (entity) q.set('entity', entity)
     return `/api/projects/${id}/schema/er.drawio?${q}`
+  },
+  erPartsDrawioUrl: (id, { display = 'sample' } = {}) => {
+    const q = new URLSearchParams({ display })
+    return `/api/projects/${id}/schema/er-parts.drawio?${q}`
   },
   modulesDrawioUrl: (id, { layout = 'identity', expandDetails = false } = {}) => {
     const q = new URLSearchParams({
@@ -174,8 +188,8 @@ export const api = {
     })
     return `/api/projects/${id}/schema/modules.drawio?${q}`
   },
-  erMmdUrl: (id, { mode = 'total', entity } = {}) => {
-    const q = new URLSearchParams({ mode })
+  erMmdUrl: (id, { mode = 'total', entity, display = 'sample' } = {}) => {
+    const q = new URLSearchParams({ mode, display })
     if (entity) q.set('entity', entity)
     return `/api/projects/${id}/schema/er.mmd?${q}`
   },
@@ -228,8 +242,8 @@ export const api = {
   /** 学生端全量冒烟：静默全局 toast，由页面自绘工厂/学生错误 */
   smokeStudentApis: (id) =>
     http.post(`/projects/${id}/apis/smoke`, null, { silent: true, timeout: 120000 }),
-  erSvgUrl: (id, { mode = 'total', entity } = {}) => {
-    const q = new URLSearchParams({ mode })
+  erSvgUrl: (id, { mode = 'total', entity, display = 'sample' } = {}) => {
+    const q = new URLSearchParams({ mode, display })
     if (entity) q.set('entity', entity)
     return `/api/projects/${id}/schema/er.svg?${q}`
   },
@@ -321,6 +335,13 @@ export const api = {
   layoutGate: () => http.get('/system/layout-gate', { timeout: 120000 }),
   /** 可交互控件检查摘要（C1～C3 契约；出包另挂 p3controls） */
   formControlsGate: () => http.get('/system/form-controls-gate', { timeout: 120000 }),
+  /** 工厂级中文词表（列/表/词根；bake COMMENT 真源） */
+  zhLexicon: (params) => http.get('/system/zh-lexicon', { params }),
+  zhLexiconMeta: () => http.get('/system/zh-lexicon/meta', { timeout: 60000 }),
+  zhLexiconMigrate: () => http.post('/system/zh-lexicon/migrate'),
+  zhLexiconGaps: () => http.get('/system/zh-lexicon/gaps', { timeout: 120000 }),
+  zhLexiconUpsert: (body) => http.put('/system/zh-lexicon', body),
+  zhLexiconDelete: (id) => http.delete(`/system/zh-lexicon/${id}`),
   catalog: () => http.get('/catalog'),
   sampleProposalPacks: () => http.get('/tools/sample-proposal/packs'),
   sampleProposal: (body) =>

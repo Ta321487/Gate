@@ -81,6 +81,39 @@ class ConsoleSurfaceContractTest(unittest.TestCase):
         src = (FE / "views" / "Help.vue").read_text(encoding="utf-8")
         self.assertIn("surface-page", src)
 
+    def test_zh_lexicon_stripe_structure(self):
+        """配置/字典列表页 §3.5：工具条 + stats + tabs + panel 表 + 右抽屉 + 分页。"""
+        src = (FE / "views" / "ZhLexicon.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("ZH_MAX_LEN", src)
+        self.assertIn("zhDupWarn", src)
+        self.assertIn("show-count", src)
+        self.assertIn("domainSelectLabel", src)
+        self.assertNotIn("仅全局", src)
+        self.assertNotIn("按域筛选", src)
+        # 数字条只展示；切视图只走 n-tabs（禁 stats 双切）
+        self.assertNotIn('role="button"', src)
+        self.assertNotIn("<h3>词条列表</h3>", src)
+        self.assertNotIn("<h3>待补中文</h3>", src)
+
+    def test_ops_accent_presets(self):
+        theme = (FE / "theme.js").read_text(encoding="utf-8")
+        app = (FE / "App.vue").read_text(encoding="utf-8")
+        self.assertIn("ACCENT_PRESETS", theme)
+        self.assertIn("gf-ops-accent", theme)
+        self.assertIn("id: 'harbor'", theme)
+        self.assertIn("id: 'berry'", theme)
+        self.assertIn("applyAccent", theme)
+        self.assertIn("accent-swatches", app)
+        self.assertIn("applyAccent", app)
+
 
 if __name__ == "__main__":
     unittest.main()

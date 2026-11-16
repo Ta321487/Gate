@@ -32,6 +32,17 @@ async def lifespan(_app: FastAPI):
             _hydrate_ds_settings(get_settings(), cfg)
     except Exception:  # noqa: BLE001
         pass
+    # 工厂词表：空库迁入 er_zh 种子并热更新内存映射
+    try:
+        from app.core.database import SessionLocal
+        from app.services.zh_lexicon import migrate_seed_if_empty
+
+        async with SessionLocal() as db:
+            await migrate_seed_if_empty(db)
+    except Exception:  # noqa: BLE001
+        from app.services.zh_lexicon import bootstrap_from_seed
+
+        bootstrap_from_seed()
     # 重启后无内存 Task 的 running 任务会永远卡在进度条（如 pack=91%）
     try:
         from app.services.jobs import fail_orphaned_jobs

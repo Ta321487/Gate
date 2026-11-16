@@ -11,9 +11,27 @@ CREATE_TABLE_RE = re.compile(
 )
 
 
-def inject_missing_columns(body: str, columns: list[tuple[str, str]]) -> str:
+def _col_pair(item: tuple | list) -> tuple[str, str]:
+    """兼容 (name, ddl) 与 (name, ddl, zh)；zh 写入 COMMENT。"""
+    name = str(item[0])
+    ddl = str(item[1])
+    zh = str(item[2]).strip() if len(item) > 2 and item[2] else ""
+    if not zh:
+        try:
+            from app.services.zh_lexicon import suggested_column_zh
+
+            zh = suggested_column_zh(name) or ""
+        except Exception:  # noqa: BLE001
+            zh = ""
+    if zh and "COMMENT" not in ddl.upper():
+        safe = zh.replace("'", "").replace('"', "")[:64]
+        ddl = f"{ddl.rstrip()} COMMENT '{safe}'"
+    return name, ddl
+
+
+def inject_missing_columns(body: str, columns: list[tuple]) -> str:
     lower = body.lower()
-    missing = [(name, ddl) for name, ddl in columns if name.lower() not in lower]
+    missing = [_col_pair(item) for item in columns if str(item[0]).lower() not in lower]
     if not missing:
         return body
     m = re.search(r"(?m)^(\s*created_at\b)", body)
