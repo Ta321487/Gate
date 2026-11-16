@@ -8,6 +8,7 @@ import unittest
 from app.bake.schema.er_model import (
     Table,
     Column,
+    apply_er_display_mode,
     is_assoc_link,
     schema_model,
 )
@@ -240,6 +241,83 @@ CREATE TABLE ticket_expense_line (
         self.assertNotEqual(rel_lab, "进度")
         svg = render_er_svg(m, mode="total")
         self.assertIn('data-id="entity:ticket_expense_line"', svg)
+
+    def test_sample_display_hides_shells_and_collapses_roles(self) -> None:
+        """论文概念：壳表不进图；角色拆分收回 sys_user，保证各开题概念图可交。"""
+        m = schema_model(_SHOP_SQL)
+        m["tables"] = list(m["tables"]) + [
+            {
+                "name": "sys_auth_session",
+                "label": "认证会话",
+                "assoc_link": False,
+                "columns": [{"name": "id", "pk": True}],
+            },
+            {
+                "name": "sys_user:user",
+                "label": "买家",
+                "role_of": "sys_user",
+                "role_id": "user",
+                "columns": [],
+            },
+            {
+                "name": "sys_user:admin",
+                "label": "管理员",
+                "role_of": "sys_user",
+                "role_id": "admin",
+                "columns": [],
+            },
+        ]
+        m["relations"] = list(m.get("relations") or []) + [
+            {
+                "name": "r_sess",
+                "left": "sys_user:user",
+                "right": "sys_auth_session",
+                "via": "username",
+                "card_left": "1",
+                "card_right": "n",
+                "label": "登录",
+            },
+            {
+                "name": "r_hier",
+                "left": "sys_user:admin",
+                "right": "sys_user:user",
+                "via": "appoint",
+                "card_left": "1",
+                "card_right": "n",
+                "label": "管辖",
+            },
+            {
+                "name": "r_order_role",
+                "left": "sys_user:user",
+                "right": "biz_order",
+                "via": "username",
+                "card_left": "1",
+                "card_right": "n",
+                "label": "下单",
+            },
+        ]
+        sample = apply_er_display_mode(m, "sample")
+        names = {t["name"] for t in sample["tables"] if isinstance(t, dict)}
+        self.assertNotIn("sys_auth_session", names)
+        self.assertNotIn("sys_user:user", names)
+        self.assertNotIn("sys_user:admin", names)
+        self.assertIn("sys_user", names)
+        self.assertIn("biz_order", names)
+        for r in sample.get("relations") or []:
+            self.assertFalse(str(r.get("left") or "").startswith("sys_user:"))
+            self.assertFalse(str(r.get("right") or "").startswith("sys_user:"))
+            self.assertNotEqual(r.get("left"), r.get("right"))
+        self.assertTrue(
+            any(
+                r.get("left") == "sys_user" and r.get("right") == "biz_order"
+                for r in (sample.get("relations") or [])
+            )
+        )
+        self.assertNotIn("sys_auth_session", set(sample.get("conceptual_entities") or []))
+        full = apply_er_display_mode(m, "full")
+        full_names = {t["name"] for t in full["tables"] if isinstance(t, dict)}
+        self.assertIn("sys_user:user", full_names)
+        self.assertIn("sys_auth_session", full_names)
 
 
 if __name__ == "__main__":

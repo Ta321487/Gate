@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, message, confirm } from '../../api'
+import { renderMarkdown } from '../../mdRender'
 import { softThemeSwatch } from '../../softThemeSwatches.js'
 import { useDefensePpt } from '../../ppt/useDefensePpt.js'
 import {
@@ -104,6 +105,8 @@ const toolsView = ref('logs')
 const thesisSurface = ref('cards')
 /** 打开手调时锚到 OverridesTab 左侧分组 id */
 const overridesFocusSection = ref('modules')
+/** 对账「去处理」定位：检索词 / 第几张图 / 行键 */
+const overridesFocusHint = ref(null)
 
 const THESIS_OVERRIDE_SECTIONS = {
   modules: 'modules',
@@ -132,9 +135,23 @@ function openTools(view = 'logs') {
   tab.value = 'tools'
 }
 
-function openThesisOverrides(sectionId) {
+function openThesisOverrides(sectionId, hint) {
   const key = sectionId != null ? String(sectionId) : 'modules'
   overridesFocusSection.value = THESIS_OVERRIDE_SECTIONS[key] || key || 'modules'
+  if (hint && typeof hint === 'object') {
+    overridesFocusHint.value = {
+      query: String(hint.query || hint.focus_query || '').trim(),
+      index:
+        hint.index != null && hint.index !== ''
+          ? Number(hint.index)
+          : hint.focus_index != null && hint.focus_index !== ''
+            ? Number(hint.focus_index)
+            : null,
+      key: String(hint.key || hint.focus_key || '').trim(),
+    }
+  } else {
+    overridesFocusHint.value = null
+  }
   thesisSurface.value = 'overrides'
   artifactView.value = 'thesis'
   tab.value = 'thesis'
@@ -218,6 +235,7 @@ const {
   rtAnyBusy,
   rtAllBusy,
   rtGenerating,
+  rtSettling,
   rtBeLive,
   rtFeLive,
   rtAnyLive,
@@ -280,6 +298,10 @@ const showUsecases = ref(false)
 const showTestcases = ref(false)
 const showUsecaseDescriptions = ref(false)
 const erLoading = ref(false)
+const thesisDbExportBusy = ref(false)
+const showThesisDbExport = ref(false)
+const thesisDbExportKind = ref('combined')
+const thesisDbExportPayload = ref(null)
 const modLoading = ref(false)
 const ucLoading = ref(false)
 const tcLoading = ref(false)
@@ -304,6 +326,7 @@ const collapsedApis = ref({})
 const erSvgSource = ref('')
 const erLayoutKey = ref(0)
 const erMode = ref('total')
+const erDisplay = ref('sample')
 const erEntity = ref('')
 const modSvgSource = ref('')
 const modLayoutKey = ref(0)
@@ -956,6 +979,28 @@ const artifactsFrozen = computed(() => genState.value === 'running')
 const artifactsFrozenReason = '工程正在重新生成，完成后可再打开'
 const schemaErGapCount = computed(() => Number(schema.value?.er_gap_count || 0))
 
+/** 物理全量 ≠ 概念 6～15：同源 summary，禁止拿壳表总数打红「不符合」 */
+const schemaTableSummary = computed(() => {
+  const s = schema.value?.table_summary
+  if (s && typeof s === 'object') return s
+  const tables = (schema.value?.tables || []).filter(
+    (t) => t && !t.role_of && !String(t.name || '').includes(':'),
+  )
+  const conceptual = (schema.value?.conceptual_entities || []).filter(Boolean)
+  const n = conceptual.length || tables.length
+  return {
+    physical: tables.length,
+    business: tables.length,
+    shell: 0,
+    conceptual: conceptual.length,
+    comfort_n: n,
+    comfort_min: 6,
+    comfort_max: 15,
+    comfort_ok: n >= 6 && n <= 15,
+    comfort_basis: conceptual.length ? 'conceptual' : 'business',
+  }
+})
+
 async function putErLabelPatch(body) {
   if (!p.value?.id || artifactsFrozen.value || erLabelSaving.value) return null
   erLabelSaving.value = true
@@ -1216,6 +1261,8 @@ watch(typeParenMode, (v) => {
   try {
     localStorage.setItem(TYPE_PAREN_KEY, v ? '1' : '0')
   } catch { /* ignore */ }
+  thesisDbExportPayload.value = null
+  if (showThesisDbExport.value) openThesisDbExport()
 })
 
 /** 解析 MySQL 类型 → 标准小写 + 可选长度参数 */
@@ -1255,6 +1302,153 @@ function tableCopyText(t) {
   }
   const body = rows.map((cols) => cols.join('\t')).join('\n')
   return `${title}\n\n${body}`
+}
+
+async function fetchThesisDbExport() {
+  if (!p.value?.id) throw new Error('no project')
+  const body = await api.getThesisDbExport(p.value.id, {
+    typeParen: !!typeParenMode.value,
+  })
+  return body || {}
+}
+
+const thesisDbExportText = computed(() => {
+  const body = thesisDbExportPayload.value || {}
+  const key =
+    thesisDbExportKind.value === 'logical' || thesisDbExportKind.value === 'physical'
+      ? thesisDbExportKind.value
+      : 'combined'
+  return String(body[key] || '').trim()
+})
+
+const thesisDbExportHtml = computed(() => {
+  const body = thesisDbExportPayload.value || {}
+  const key =
+    thesisDbExportKind.value === 'logical' || thesisDbExportKind.value === 'physical'
+      ? thesisDbExportKind.value
+      : 'combined'
+  return String(body[`${key}_html`] || '').trim()
+})
+
+/** 弹窗预览：优先渲染 *_md（含主键下划线/外键波浪线），与下载 .md 同源 */
+const thesisDbExportPreviewHtml = computed(() => {
+  const body = thesisDbExportPayload.value || {}
+  const key =
+    thesisDbExportKind.value === 'logical' || thesisDbExportKind.value === 'physical'
+      ? thesisDbExportKind.value
+      : 'combined'
+  const mdSrc = String(body[`${key}_md`] || '').trim()
+  if (mdSrc) return renderMarkdown(mdSrc)
+  // 后备：旧缓存只有 html
+  const raw = String(body[`${key}_html`] || '').trim()
+  if (!raw) return ''
+  const m = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+  return (m ? m[1] : raw).trim()
+})
+
+async function writeThesisClipboard(html, text) {
+  const plain = String(text || '').trim()
+  const rich = String(html || '').trim()
+  if (!plain && !rich) throw new Error('empty')
+  if (rich && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': new Blob([rich], { type: 'text/html' }),
+        'text/plain': new Blob([plain || rich], { type: 'text/plain' }),
+      }),
+    ])
+    return
+  }
+  await navigator.clipboard.writeText(plain || rich)
+}
+
+/** 预览弹窗：一次拉同源稿，逻辑/物理/全文切换，复制与下载共用同一份 */
+async function openThesisDbExport() {
+  if (!p.value || thesisDbExportBusy.value || artifactsFrozen.value) return
+  if (!schema.value?.tables?.length) return
+  thesisDbExportBusy.value = true
+  try {
+    thesisDbExportPayload.value = await fetchThesisDbExport()
+    if (!thesisDbExportKind.value) thesisDbExportKind.value = 'combined'
+    showThesisDbExport.value = true
+  } catch {
+    message.error('加载库表论文稿失败')
+  } finally {
+    thesisDbExportBusy.value = false
+  }
+}
+
+async function copyThesisDbExport(kind) {
+  if (!p.value || artifactsFrozen.value) return
+  const key =
+    kind === 'logical' || kind === 'physical' || kind === 'combined'
+      ? kind
+      : thesisDbExportKind.value === 'logical' || thesisDbExportKind.value === 'physical'
+        ? thesisDbExportKind.value
+        : 'combined'
+  try {
+    let body = thesisDbExportPayload.value
+    if (!body) {
+      if (thesisDbExportBusy.value) return
+      thesisDbExportBusy.value = true
+      try {
+        body = await fetchThesisDbExport()
+        thesisDbExportPayload.value = body
+      } finally {
+        thesisDbExportBusy.value = false
+      }
+    }
+    const text = String(body?.[key] || '').trim()
+    const html = String(body?.[`${key}_html`] || '').trim()
+    if (!text && !html) {
+      message.warning('未生成库表论文稿')
+      return
+    }
+    await writeThesisClipboard(html, text)
+    const tip =
+      key === 'logical'
+        ? '已复制逻辑设计（可贴 4.6.2）'
+        : key === 'physical'
+          ? `已复制物理设计表格（${body.table_count || ''} 张，粘贴 Word 即成表）`
+          : `已复制全文（${body.table_count || ''} 张表，物理为表格）`
+    message.success(tip)
+  } catch {
+    message.error('复制库表论文稿失败')
+  }
+}
+
+async function downloadThesisDbExport() {
+  if (!p.value || artifactsFrozen.value) return
+  try {
+    let body = thesisDbExportPayload.value
+    if (!body) {
+      if (thesisDbExportBusy.value) return
+      thesisDbExportBusy.value = true
+      try {
+        body = await fetchThesisDbExport()
+        thesisDbExportPayload.value = body
+      } finally {
+        thesisDbExportBusy.value = false
+      }
+    }
+    // 下载与测例/用例描述统一 .md；复制 Word 仍走 HTML 白底黑字
+    const md = String(body?.combined_md || '').trim()
+    const text = String(body?.combined || '').trim()
+    if (!md && !text) {
+      message.warning('未生成库表论文稿')
+      return
+    }
+    const blob = new Blob([md || text], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${p.value.id || 'db'}-库表逻辑与物理设计.md`
+    a.click()
+    URL.revokeObjectURL(url)
+    message.success(`已下载 .md（${body.table_count || ''} 张表，同源 schema.sql）`)
+  } catch {
+    message.error('下载库表论文稿失败')
+  }
 }
 
 /** 表卡片折叠（点表头空白处切换；复制按钮自带 stop） */
@@ -1790,7 +1984,10 @@ async function fetchErSvg() {
 
 async function loadErPack() {
   if (!p.value) return
-  const params = { mode: erMode.value }
+  const params = {
+    mode: erMode.value,
+    display: erDisplay.value === 'full' ? 'full' : 'sample',
+  }
   if (erMode.value === 'part' && erEntity.value) params.entity = erEntity.value
   const body = await api.getEr(p.value.id, params)
   // 合并表清单，供分图实体下拉；保留 svg 在 schema 上供 svgFromPack
@@ -1829,8 +2026,15 @@ async function saveErView(payload) {
   if (!p.value || !payload?.svg) return
   const mode = payload.mode === 'part' ? 'part' : 'total'
   const entity = mode === 'part' ? (payload.entity || '') : ''
+  const display = payload.display === 'full' || erDisplay.value === 'full' ? 'full' : 'sample'
   try {
-    await api.putErView(p.value.id, { mode, entity, svg: payload.svg, reset: false })
+    await api.putErView(p.value.id, {
+      mode,
+      entity,
+      display,
+      svg: payload.svg,
+      reset: false,
+    })
   } catch {
     /* 拦截器已提示 */
   }
@@ -1842,7 +2046,8 @@ async function resetErLayout() {
   try {
     const mode = erMode.value === 'part' ? 'part' : 'total'
     const entity = mode === 'part' ? (erEntity.value || '') : ''
-    await api.putErView(p.value.id, { mode, entity, svg: '', reset: true })
+    const display = erDisplay.value === 'full' ? 'full' : 'sample'
+    await api.putErView(p.value.id, { mode, entity, display, svg: '', reset: true })
     await loadErPack()
     erLayoutKey.value += 1
     message.success('已恢复自动排版')
@@ -1887,14 +2092,20 @@ const erEntityOptions = computed(() => {
 
 const erDrawioUrl = computed(() => {
   if (!p.value?.id) return ''
-  const params = { mode: erMode.value === 'part' ? 'part' : 'total' }
+  const params = {
+    mode: erMode.value === 'part' ? 'part' : 'total',
+    display: erDisplay.value === 'full' ? 'full' : 'sample',
+  }
   if (params.mode === 'part' && erEntity.value) params.entity = erEntity.value
   return api.erDrawioUrl(p.value.id, params)
 })
 
 const erMmdUrl = computed(() => {
   if (!p.value?.id) return ''
-  const params = { mode: erMode.value === 'part' ? 'part' : 'total' }
+  const params = {
+    mode: erMode.value === 'part' ? 'part' : 'total',
+    display: erDisplay.value === 'full' ? 'full' : 'sample',
+  }
   if (params.mode === 'part' && erEntity.value) params.entity = erEntity.value
   return api.erMmdUrl(p.value.id, params)
 })
@@ -2541,12 +2752,17 @@ async function onErMode(v) {
   await reloadErSvg()
 }
 
+async function onErDisplay(v) {
+  erDisplay.value = v === 'full' ? 'full' : 'sample'
+  await reloadErSvg()
+}
+
 async function onErEntity(v) {
   erEntity.value = v || ''
   if (erMode.value === 'part') await reloadErSvg()
 }
 
-/** 按概念实体逐张拉分图并触发浏览器下载（依赖 bake 预热缓存则快） */
+/** 全部实体属性图 → 一个多页 .drawio（diagrams.net 左侧切页） */
 async function exportAllErParts() {
   if (!p.value || erLoading.value) return
   const opts = erEntityOptions.value
@@ -2555,23 +2771,20 @@ async function exportAllErParts() {
     return
   }
   erLoading.value = true
-  let ok = 0
   try {
-    for (const opt of opts) {
-      const body = await api.getEr(p.value.id, { mode: 'part', entity: opt.value })
-      const svg = svgFromPack(body)
-      if (!svg) continue
-      const lab = opt.label || opt.value
-      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${p.value.id || 'er'}-实体属性-${lab}.svg`
-      a.click()
-      URL.revokeObjectURL(url)
-      ok += 1
-    }
-    message.success(ok ? `已导出 ${ok} 张实体属性图` : '未能导出')
+    const display = erDisplay.value === 'full' ? 'full' : 'sample'
+    const url = `${api.erPartsDrawioUrl(p.value.id, { display })}&t=${Date.now()}`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error('er-parts-drawio')
+    const text = await res.text()
+    const blob = new Blob([text], { type: 'application/xml;charset=utf-8' })
+    const href = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = href
+    a.download = `${p.value.id || 'er'}-实体属性-全部.drawio`
+    a.click()
+    URL.revokeObjectURL(href)
+    message.success(`已导出 ${opts.length} 页实体属性图（Draw.io）`)
   } catch {
     message.error('批量导出实体属性图失败')
   } finally {
@@ -3240,6 +3453,7 @@ onUnmounted(() => {
     erLayoutKey,
     erLoading,
     erMode,
+    erDisplay,
     erSvgSource,
     exportPptx,
     failedBannerTitle,
@@ -3331,6 +3545,7 @@ onUnmounted(() => {
     onArtifactView,
     onDelete,
     onErEntity,
+    onErDisplay,
     onErMode,
     exportAllErParts,
     onModulesExpandDetails,
@@ -3455,6 +3670,7 @@ onUnmounted(() => {
     rtCanStopAll,
     rtFeLive,
     rtGenerating,
+    rtSettling,
     rtPendingAll,
     rtStartBlockedReason,
     runThesisDiagramAudit,
@@ -3474,6 +3690,7 @@ onUnmounted(() => {
     sceneOptions,
     schema,
     schemaErGapCount,
+    schemaTableSummary,
     securityDeviant,
     securityLabel,
     securityOn,
@@ -3552,10 +3769,21 @@ onUnmounted(() => {
     toolsView,
     thesisSurface,
     overridesFocusSection,
+    overridesFocusHint,
     openTools,
     openThesisOverrides,
     closeThesisOverrides,
     tableCopyText,
+    thesisDbExportBusy,
+    showThesisDbExport,
+    thesisDbExportKind,
+    thesisDbExportPayload,
+    thesisDbExportText,
+    thesisDbExportHtml,
+    thesisDbExportPreviewHtml,
+    openThesisDbExport,
+    copyThesisDbExport,
+    downloadThesisDbExport,
     tcColumns,
     tcCount,
     tcDownloadBase,

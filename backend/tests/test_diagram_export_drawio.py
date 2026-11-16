@@ -8,6 +8,7 @@ from app.bake.schema.diagram_drawio import (
     architecture_model_to_drawio,
     class_model_to_drawio,
     er_model_to_drawio,
+    er_parts_bundle_to_drawio,
     expected_architecture_vertex_ids,
     expected_class_vertex_ids,
     expected_er_vertex_ids,
@@ -91,6 +92,57 @@ def test_er_part_drawio_excludes_fk_column_names():
     assert "user_id" not in xml
     assert "用户编号" not in xml
     assert "金额" in xml
+    # 陈氏：实体单框 + 属性椭圆，禁止「表名&#xa;属性」糊成一格
+    assert "ellipse;" in xml
+    assert xml.count("ellipse;") >= 2
+    assert "订单&#xa;" not in xml
+    assert stable_cell_id("era", "orders.id") in parse_drawio_vertex_ids(xml)
+    assert stable_cell_id("era", "orders.amount") in parse_drawio_vertex_ids(xml)
+
+
+def test_er_parts_bundle_drawio_multipage():
+    users = {
+        "er_entity": "users",
+        "tables": [
+            {
+                "name": "users",
+                "label": "用户",
+                "own_columns": [
+                    {"name": "id", "label": "编号"},
+                    {"name": "username", "label": "用户名"},
+                ],
+                "columns": [
+                    {"name": "id", "label": "编号"},
+                    {"name": "username", "label": "用户名"},
+                ],
+            }
+        ],
+    }
+    orders = {
+        "er_entity": "orders",
+        "tables": [
+            {
+                "name": "orders",
+                "label": "订单",
+                "own_columns": [
+                    {"name": "id", "label": "编号"},
+                    {"name": "amount", "label": "金额"},
+                ],
+                "columns": [
+                    {"name": "id", "label": "编号"},
+                    {"name": "user_id", "label": "用户编号", "fk": True},
+                    {"name": "amount", "label": "金额"},
+                ],
+            }
+        ],
+    }
+    xml = er_parts_bundle_to_drawio([users, orders])
+    assert xml.count("<diagram ") == 2
+    assert "用户-实体属性" in xml
+    assert "订单-实体属性" in xml
+    assert "金额" in xml
+    assert "user_id" not in xml
+    assert xml.count("</mxfile>") == 1
 
 
 def test_class_drawio_homology():

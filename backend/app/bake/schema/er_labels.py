@@ -837,12 +837,18 @@ def apply_er_label_patch(model: dict, patch: dict | None) -> dict:
         tname = str(t.get("name") or "")
         if tname in tmap:
             t["label"] = tmap[tname]
-        for c in t.get("columns") or []:
-            if not isinstance(c, dict):
-                continue
-            key = (tname, str(c.get("name") or ""))
-            if key in cmap:
-                c["label"] = cmap[key]
+        for bucket in ("columns", "core_columns", "own_columns"):
+            for c in t.get(bucket) or []:
+                if not isinstance(c, dict):
+                    continue
+                cname = str(c.get("name") or "")
+                # 工厂 COMMON 精确键优先，旧手工/LLM 补丁不得锁死论文稿
+                if cname in _COMMON_COL_ZH:
+                    c["label"] = _COMMON_COL_ZH[cname]
+                    continue
+                key = (tname, cname)
+                if key in cmap:
+                    c["label"] = cmap[key]
     for r in model.get("relations") or []:
         if not isinstance(r, dict):
             continue
@@ -903,11 +909,12 @@ def save_er_label_patch(workspace: Path, patch: dict) -> Path:
 
 
 def apply_manual_er_labels(workspace: Path, incoming: dict | None) -> dict:
-    """人工补/改展示中文名：合并进 islands/er_labels.json，不改 schema.sql。
+    """人工补/改中文名：写入 islands/er_labels.json，并回写 sql/schema.sql 列 COMMENT。
 
-    返回最新 schema 模型（已打补丁）与缺口统计。
+    列名英文标识符不动。返回最新 schema 模型与缺口统计。
     """
     from app.bake.schema.er_model import build_schema_model
+    from app.services.zh_lexicon import write_column_comment_in_sql
 
     incoming = incoming or {}
     clean = sanitize_er_label_patch(incoming)
@@ -924,6 +931,22 @@ def apply_manual_er_labels(workspace: Path, incoming: dict | None) -> dict:
         mode="manual",
     )
     save_er_label_patch(workspace, merged)
+
+    # 列中文 → schema.sql COMMENT（老师可见）
+    sql_path = workspace / "sql" / "schema.sql"
+    if sql_path.is_file():
+        sql = sql_path.read_text(encoding="utf-8", errors="ignore")
+        cols_patch = clean.get("columns") if isinstance(clean.get("columns"), dict) else {}
+        for table, cmap in cols_patch.items():
+            if not isinstance(cmap, dict):
+                continue
+            for col, zh in cmap.items():
+                if zh:
+                    sql = write_column_comment_in_sql(
+                        sql, table=str(table), column=str(col), zh=str(zh)
+                    )
+        sql_path.write_text(sql, encoding="utf-8")
+
     model = build_schema_model(workspace, with_er_patch=True)
     if not model:
         raise FileNotFoundError("未找到 sql/schema.sql")

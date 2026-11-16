@@ -17,19 +17,37 @@ _MAX_SVG = 1_500_000
 _SVG_RE = re.compile(r"<svg\b", re.I)
 
 
-def view_params(mode: str, entity: str | None) -> dict[str, str]:
+def view_params(
+    mode: str,
+    entity: str | None,
+    *,
+    display: str = "sample",
+) -> dict[str, str]:
     mode_n = "part" if (mode or "").strip().lower() == "part" else "total"
     ent = (entity or "").strip() if mode_n == "part" else ""
-    return {"mode": mode_n, "entity": ent}
+    disp = "full" if str(display or "").strip().lower() == "full" else "sample"
+    return {"mode": mode_n, "entity": ent, "display": disp}
 
 
-def _path(workspace: Path, mode: str, entity: str | None) -> Path:
-    return Path(workspace) / _DIR / f"{param_key(view_params(mode, entity))}.json"
+def _path(
+    workspace: Path,
+    mode: str,
+    entity: str | None,
+    *,
+    display: str = "sample",
+) -> Path:
+    return Path(workspace) / _DIR / f"{param_key(view_params(mode, entity, display=display))}.json"
 
 
-def load_user_svg(workspace: Path, mode: str, entity: str | None) -> str | None:
+def load_user_svg(
+    workspace: Path,
+    mode: str,
+    entity: str | None,
+    *,
+    display: str = "sample",
+) -> str | None:
     """指纹一致才返回用户 SVG，否则当没存过。"""
-    path = _path(workspace, mode, entity)
+    path = _path(workspace, mode, entity, display=display)
     if not path.is_file():
         return None
     try:
@@ -48,11 +66,18 @@ def load_user_svg(workspace: Path, mode: str, entity: str | None) -> str | None:
     return svg
 
 
-def save_user_svg(workspace: Path, mode: str, entity: str | None, svg: str) -> dict[str, Any]:
+def save_user_svg(
+    workspace: Path,
+    mode: str,
+    entity: str | None,
+    svg: str,
+    *,
+    display: str = "sample",
+) -> dict[str, Any]:
     text = (svg or "").strip()
     if len(text) > _MAX_SVG or not _SVG_RE.search(text) or "<script" in text.lower():
         raise ValueError("不是可保存的 E-R 图")
-    path = _path(workspace, mode, entity)
+    path = _path(workspace, mode, entity, display=display)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "version": 1,
@@ -63,8 +88,14 @@ def save_user_svg(workspace: Path, mode: str, entity: str | None, svg: str) -> d
     return {"ok": True, "bytes": len(text)}
 
 
-def clear_user_svg(workspace: Path, mode: str, entity: str | None) -> bool:
-    path = _path(workspace, mode, entity)
+def clear_user_svg(
+    workspace: Path,
+    mode: str,
+    entity: str | None,
+    *,
+    display: str = "sample",
+) -> bool:
+    path = _path(workspace, mode, entity, display=display)
     if not path.is_file():
         return False
     path.unlink()

@@ -39,21 +39,29 @@ def pack_er(
     *,
     mode: str = "total",
     entity: str | None = None,
+    display: str = "sample",
     force: bool = False,
 ) -> dict[str, Any] | None:
-    """E-R 总图/分图：一次返回 model + svg；按 mode/entity 缓存。"""
+    """E-R 总图/分图：一次返回 model + svg；按 mode/entity/display 缓存。
+
+    display 默认 sample=论文概念精简（藏壳表、角色收回用户），保证各开题概念图可交；
+    full=含角色拆分与壳表，供对账。物理表清单仍走 schema 全量，不由此裁切。
+    """
     from app.bake.schema.er import (
+        apply_er_display_mode,
         collect_english_gaps,
         count_er_gaps,
         load_schema_model,
+        normalize_er_display,
         render_er_svg,
     )
 
     mode_n = (mode or "total").strip().lower()
     if mode_n not in ("total", "part"):
         mode_n = "total"
+    display_n = normalize_er_display(display)
     ent = (entity or "").strip() or None
-    params: dict[str, Any] = {"mode": mode_n}
+    params: dict[str, Any] = {"mode": mode_n, "display": display_n}
     if mode_n == "part":
         params["entity"] = ent or ""
 
@@ -62,6 +70,7 @@ def pack_er(
         model = load_schema_model(workspace)
         if not model:
             raise FileNotFoundError("er: no schema.sql")
+        model = apply_er_display_mode(model, display_n)
         model_ms = (time.perf_counter() - t0) * 1000.0
         conceptual = [
             str(x)
@@ -89,6 +98,7 @@ def pack_er(
         packed["svg"] = svg
         packed["er_mode"] = mode_n
         packed["er_entity"] = use_ent
+        packed["er_display"] = display_n
         packed["conceptual_entities"] = conceptual
         packed["er_gap_count"] = count_er_gaps(collect_english_gaps(model))
         return packed, {
@@ -108,7 +118,7 @@ def pack_er(
     use_ent = ent if mode_n == "part" else None
     if mode_n == "part" and not use_ent:
         use_ent = str(model.get("er_entity") or "") or None
-    saved = load_user_svg(workspace, mode_n, use_ent)
+    saved = load_user_svg(workspace, mode_n, use_ent, display=display_n)
     if saved:
         model = dict(model)
         model["svg"] = saved
@@ -428,7 +438,7 @@ def warm_default_diagrams(
 
     _one(
         "er",
-        lambda: pack_er(ws, mode="total", force=True),
+        lambda: pack_er(ws, mode="total", display="sample", force=True),
     )
     # 每个概念实体一张实体属性图（无外键），避免答辩前逐个点开
     try:
@@ -443,7 +453,9 @@ def warm_default_diagrams(
         for _ent in _ents:
             _one(
                 f"er_part:{_ent}",
-                lambda e=_ent: pack_er(ws, mode="part", entity=e, force=True),
+                lambda e=_ent: pack_er(
+                    ws, mode="part", entity=e, display="sample", force=True
+                ),
             )
     except Exception as e:
         logger.warning("warm er parts list failed: %s", e)

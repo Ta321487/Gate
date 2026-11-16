@@ -1,14 +1,17 @@
 """论文图 → Draw.io（.drawio / mxGraph），只读 pack_* 叠补丁后的 model。
 
 几何允许丑；必须可拖。结构 id 与 model 对齐，供同源测试。
+实体属性分图与预览同构：陈氏矩形实体 + 椭圆属性 + 无箭头连线（禁止糊成单框换行列表）。
 """
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from app.bake.schema.diagram_export import (
     build_mxfile,
+    build_mxfile_pages,
     er_own_column_names,
     mx_edge,
     mx_vertex,
@@ -17,7 +20,7 @@ from app.bake.schema.diagram_export import (
 
 _ENT_STYLE = (
     "rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;"
-    "fontColor=#000000;align=center;verticalAlign=middle;"
+    "fontColor=#000000;align=center;verticalAlign=middle;fontStyle=1;fontSize=13;"
 )
 _DIAMOND_STYLE = (
     "rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;"
@@ -32,6 +35,13 @@ _ATTR_STYLE = (
     "text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;"
     "spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];"
     "portConstraint=eastwest;fontSize=11;"
+)
+_ATTR_ELLIPSE_STYLE = (
+    "ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;"
+    "fontColor=#000000;align=center;verticalAlign=middle;fontSize=11;"
+)
+_ATTR_EDGE = (
+    "endArrow=none;startArrow=none;html=1;rounded=0;strokeColor=#000000;"
 )
 _MODULE_STYLE = _ENT_STYLE
 _ACTOR_STYLE = (
@@ -72,13 +82,14 @@ def _er_total_drawio(model: dict[str, Any]) -> str:
         and not t.get("assoc_link")
         and not t.get("role_of")
     ]
-    # 角色拆分实体也要进总图
-    role_tables = [
-        t
-        for t in (model.get("tables") or [])
-        if isinstance(t, dict) and t.get("name") and t.get("role_of")
-    ]
-    tables = tables + role_tables
+    # full 才把角色拆分实体拼回总图；sample（论文概念）已收回单一用户
+    if str(model.get("er_display") or "sample").strip().lower() == "full":
+        role_tables = [
+            t
+            for t in (model.get("tables") or [])
+            if isinstance(t, dict) and t.get("name") and t.get("role_of")
+        ]
+        tables = tables + role_tables
     rels = [r for r in (model.get("relations") or []) if isinstance(r, dict)]
 
     cells: list[str] = []
@@ -140,7 +151,33 @@ def _er_total_drawio(model: dict[str, Any]) -> str:
     )
 
 
-def _er_part_drawio(model: dict[str, Any], *, entity: str | None) -> str:
+def _er_part_attr_cols(table: dict[str, Any]) -> list[dict[str, Any]]:
+    """自身属性列（与预览 / er_own_column_names 同源，保留 pk 等标记）。"""
+    own = table.get("own_columns")
+    if isinstance(own, list) and own:
+        return [
+            c
+            for c in own
+            if isinstance(c, dict) and str(c.get("name") or "").strip()
+        ]
+    out: list[dict[str, Any]] = []
+    for c in table.get("columns") or []:
+        if not isinstance(c, dict) or c.get("fk"):
+            continue
+        if str(c.get("name") or "").strip():
+            out.append(c)
+    return out
+
+
+def _er_text_w(s: str, px: float = 12.0) -> float:
+    w = 0.0
+    for ch in str(s or ""):
+        w += px if ord(ch) > 127 else px * 0.55
+    return w
+
+
+def _er_part_page(model: dict[str, Any], *, entity: str | None) -> dict[str, Any]:
+    """单张实体属性图页（陈氏：矩形实体 + 椭圆属性 + 连线；供单文件或多页 bundle）。"""
     ent = (entity or str(model.get("er_entity") or "")).strip()
     table = None
     for t in model.get("tables") or []:
@@ -148,25 +185,112 @@ def _er_part_drawio(model: dict[str, Any], *, entity: str | None) -> str:
             table = t
             break
     if not table:
-        return build_mxfile([], diagram_name=ent or "实体属性")
+        return {
+            "id": stable_cell_id("page", ent or "empty"),
+            "name": ent or "实体属性",
+            "cells": [],
+            "page_w": 600,
+            "page_h": 400,
+        }
 
     title = str(table.get("label") or ent)
-    names = er_own_column_names(table)
+    attrs = _er_part_attr_cols(table)
+    m = len(attrs)
+    ent_w = max(100.0, _er_text_w(title, 13) + 28)
+    ent_h = 44.0
+    max_rx = 28.0
+    for c in attrs:
+        lab = str(c.get("label") or c.get("name") or "")
+        max_rx = max(max_rx, max(28.0, _er_text_w(lab, 11) / 2 + 12))
+    clear_box = math.hypot(ent_w / 2, ent_h / 2) + max_rx + 36
+    if m <= 1:
+        ar = clear_box
+    else:
+        need = (2 * max_rx + 24) / (2 * math.sin(math.pi / m))
+        ar = max(clear_box, need)
+    page_w = int(max(600, 2 * ar + max_rx * 2 + 120))
+    page_h = int(max(500, 2 * ar + max_rx * 2 + 120))
+    cx, cy = page_w / 2.0, page_h / 2.0
+
     cells: list[str] = []
     box_id = stable_cell_id("erp", ent)
-    attr_lines: list[str] = [title]
-    for c in table.get("own_columns") or []:
-        if not isinstance(c, dict) or c.get("fk"):
-            continue
-        attr_lines.append(str(c.get("label") or c.get("name") or "").strip())
-    if len(attr_lines) == 1:
-        attr_lines.extend(names)
-    value = "\n".join(x for x in attr_lines if x)
-    h = max(80, 28 + len(attr_lines) * 22)
     cells.append(
-        mx_vertex(box_id, value, x=80, y=60, w=240, h=h, style=_ENT_STYLE)
+        mx_vertex(
+            box_id,
+            title,
+            x=cx - ent_w / 2,
+            y=cy - ent_h / 2,
+            w=ent_w,
+            h=ent_h,
+            style=_ENT_STYLE,
+        )
     )
-    return build_mxfile(cells, diagram_name=f"{title}-实体属性", page_w=600, page_h=max(400, h + 120))
+    for ai, col in enumerate(attrs):
+        cname = str(col.get("name") or "").strip()
+        if not cname:
+            continue
+        lab = str(col.get("label") or cname).strip() or cname
+        ang = (-math.pi / 2.0) if m == 1 else (-math.pi / 2.0 + 2 * math.pi * ai / m)
+        ax = cx + ar * math.cos(ang)
+        ay = cy + ar * math.sin(ang)
+        aw = max(56.0, _er_text_w(lab, 11) + 24)
+        ah = 36.0
+        attr_id = stable_cell_id("era", f"{ent}.{cname}")
+        style = _ATTR_ELLIPSE_STYLE
+        if col.get("pk"):
+            style = f"{style}fontStyle=4;"
+        cells.append(
+            mx_vertex(
+                attr_id,
+                lab,
+                x=ax - aw / 2,
+                y=ay - ah / 2,
+                w=aw,
+                h=ah,
+                style=style,
+            )
+        )
+        cells.append(
+            mx_edge(
+                stable_cell_id("ere", f"{ent}.{cname}"),
+                source=box_id,
+                target=attr_id,
+                value="",
+                style=_ATTR_EDGE,
+            )
+        )
+
+    return {
+        "id": stable_cell_id("page", ent),
+        "name": f"{title}-实体属性",
+        "cells": cells,
+        "page_w": page_w,
+        "page_h": page_h,
+    }
+
+
+def _er_part_drawio(model: dict[str, Any], *, entity: str | None) -> str:
+    page = _er_part_page(model, entity=entity)
+    return build_mxfile(
+        page["cells"],
+        diagram_name=page["name"],
+        page_w=page["page_w"],
+        page_h=page["page_h"],
+        diagram_id=page["id"],
+    )
+
+
+def er_parts_bundle_to_drawio(
+    models: list[dict[str, Any]] | None,
+) -> str:
+    """多张实体属性图 → 一个多页 .drawio（diagrams.net 左侧可切页）。"""
+    pages: list[dict[str, Any]] = []
+    for model in models or []:
+        if not isinstance(model, dict):
+            continue
+        ent = str(model.get("er_entity") or "").strip()
+        pages.append(_er_part_page(model, entity=ent or None))
+    return build_mxfile_pages(pages)
 
 
 def class_model_to_drawio(model: dict[str, Any] | None) -> str:
@@ -480,7 +604,21 @@ def expected_er_vertex_ids(model: dict[str, Any], *, mode: str = "total", entity
     mode_n = (mode or "total").strip().lower()
     if mode_n == "part":
         ent = (entity or str(model.get("er_entity") or "")).strip()
-        return {stable_cell_id("erp", ent)} if ent else set()
+        if not ent:
+            return set()
+        out = {stable_cell_id("erp", ent)}
+        table = next(
+            (
+                t
+                for t in (model.get("tables") or [])
+                if isinstance(t, dict) and str(t.get("name") or "") == ent
+            ),
+            None,
+        )
+        if isinstance(table, dict):
+            for cname in er_own_column_names(table):
+                out.add(stable_cell_id("era", f"{ent}.{cname}"))
+        return out
     out: set[str] = set()
     for t in model.get("tables") or []:
         if not isinstance(t, dict) or not t.get("name"):

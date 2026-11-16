@@ -8,11 +8,11 @@
           <n-button size="small" @click="zoomIn">放大</n-button>
           <n-button size="small" @click="resetView">重置视口</n-button>
           <n-button size="small" :loading="loading" @click="$emit('reload')">重新加载</n-button>
-          <n-button size="small" type="primary" :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="copyPng">复制图片</n-button>
-          <n-button size="small" type="primary" secondary :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="downloadPng">下载 PNG</n-button>
-          <n-button size="small" quaternary :disabled="rubricBad" :title="exportBlockTitle" @click="downloadSvg">下载矢量源</n-button>
-          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="copyMermaid">复制 Mermaid</n-button>
-          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="downloadMermaid">下载 .mmd</n-button>
+          <n-button size="small" type="primary" :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="copyPng">复制当前图</n-button>
+          <n-button size="small" type="primary" secondary :loading="busy" :disabled="rubricBad" :title="exportBlockTitle" @click="downloadPng">下载当前 PNG</n-button>
+          <n-button size="small" quaternary :disabled="rubricBad" :title="exportBlockTitle" @click="downloadSvg">下载当前矢量源</n-button>
+          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="copyMermaid">复制当前 Mermaid</n-button>
+          <n-button size="small" quaternary :loading="mmdBusy" :disabled="rubricBad || !mermaidUrl" :title="exportBlockTitle" @click="downloadMermaid">下载当前 .mmd</n-button>
         </div>
       </div>
       <DiagramRubricBanner :gate="rubricGate" />
@@ -323,9 +323,9 @@ async function copyPng() {
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
     if (!blob) throw new Error('png')
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-    message.success('已复制图片')
+    message.success('已复制当前图')
   } catch {
-    message.error('复制失败，可改下 PNG')
+    message.error('复制失败，可改下当前 PNG')
   } finally {
     busy.value = false
   }
@@ -339,7 +339,7 @@ async function downloadPng() {
     if (!blob) throw new Error('png')
     triggerDownload(blob, `${fileBase.value}.png`)
   } catch {
-    message.error('下载 PNG 失败')
+    message.error('下载当前 PNG 失败')
   } finally {
     busy.value = false
   }
@@ -367,9 +367,9 @@ async function copyMermaid() {
   try {
     const text = await fetchMermaidText()
     await navigator.clipboard.writeText(text)
-    message.success('已复制 Mermaid（可贴 diagrams.net）')
+    message.success('已复制当前 Mermaid（可贴 diagrams.net）')
   } catch {
-    message.error('复制 Mermaid 失败')
+    message.error('复制当前 Mermaid 失败')
   } finally {
     mmdBusy.value = false
   }
@@ -381,7 +381,7 @@ async function downloadMermaid() {
     const text = await fetchMermaidText()
     triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${fileBase.value}.mmd`)
   } catch {
-    message.error('下载 Mermaid 失败')
+    message.error('下载当前 Mermaid 失败')
   } finally {
     mmdBusy.value = false
   }

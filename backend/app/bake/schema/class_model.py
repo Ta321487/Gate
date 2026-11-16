@@ -658,7 +658,8 @@ _DISPLAY_MODES: tuple[tuple[str, str], ...] = (
     ("full", "代码全量"),
 )
 
-# sample 图面不画的壳表（代码全量仍保留；仅论文示例藏）
+# sample 图面不画的壳表 / 纯 M:N 关联表（代码全量仍保留；仅论文示例藏）
+# product_category：多分类中间表；论文示例只留 Category，避免与「分类」撞名双框
 _SAMPLE_SHELL_TABLES: frozenset[str] = frozenset(
     {
         "sys_auth_session",
@@ -669,6 +670,7 @@ _SAMPLE_SHELL_TABLES: frozenset[str] = frozenset(
         "sys_site_stat",
         "sys_audit_log",
         "sys_message_template",
+        "product_category",
     }
 )
 

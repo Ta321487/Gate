@@ -139,7 +139,8 @@ const detailDefaultOpen = computed(() => [])
 .wb-title {
   margin: 0;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .wb-summary {
   padding: 2px 0 0;

@@ -1382,6 +1382,92 @@ CREATE TABLE `user_favorite` (
             self.assertIn(frozenset({"user_favorite", "sys_user"}), fav_ends)
             self.assertIn(frozenset({"user_favorite", "product"}), fav_ends)
 
+    def test_sample_hides_product_category_and_stock_notify_has_zh(self) -> None:
+        """多分类中间表论文示例藏；到货通知表有中文标题（禁拆段撞名）。"""
+        from app.bake.schema.class_model import class_box_title
+        from app.bake.schema.er_zh import _INFRA_TABLE_ZH
+
+        self.assertEqual(_INFRA_TABLE_ZH.get("stock_notify"), "到货通知")
+        self.assertEqual(_INFRA_TABLE_ZH.get("product_category"), "多分类关联")
+
+        sql = """
+CREATE TABLE `category` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+CREATE TABLE `product` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `title` varchar(120) NOT NULL,
+  `category_id` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`)
+);
+CREATE TABLE `product_category` (
+  `item_id` bigint NOT NULL,
+  `category_id` bigint NOT NULL,
+  PRIMARY KEY (`item_id`, `category_id`)
+);
+CREATE TABLE `stock_notify` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `item_id` bigint NOT NULL,
+  `username` varchar(64) NOT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `notified_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+);
+"""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "sql").mkdir()
+            (root / "sql" / "schema.sql").write_text(sql, encoding="utf-8")
+            # 模拟域皮：product→健身用品、category 菜单长名，勿让中间表拆段撞名
+            (root / "domain.schema.json").write_text(
+                json.dumps(
+                    {
+                        "title": "测题",
+                        "entities": {
+                            "archive": {"key": "product", "label": "健身用品", "fields": []}
+                        },
+                        "menus": {
+                            "admin": [
+                                {"key": "category", "label": "健身用品分类"}
+                            ]
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            sample = build_class_model(root, display_mode="sample")
+            assert sample is not None
+            sample_ids = {str(c.get("id")) for c in sample["classes"]}
+            self.assertNotIn("product_category", sample_ids)
+            self.assertIn("category", sample_ids)
+            self.assertIn("stock_notify", sample_ids)
+            self.assertIn(
+                "product_category",
+                sample.get("classes_omitted_sample") or [],
+            )
+            by = {
+                str(c.get("id")): c
+                for c in sample["classes"]
+                if isinstance(c, dict)
+            }
+            self.assertEqual(
+                class_box_title(by["stock_notify"]), "StockNotify (到货通知)"
+            )
+
+            full = build_class_model(root, display_mode="full")
+            assert full is not None
+            full_by = {
+                str(c.get("id")): c for c in full["classes"] if isinstance(c, dict)
+            }
+            self.assertIn("product_category", full_by)
+            self.assertEqual(
+                class_box_title(full_by["product_category"]),
+                "ProductCategory (多分类关联)",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

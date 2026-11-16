@@ -76,6 +76,8 @@ class Column:
     fk_table: str | None = None
     not_null: bool = False
     unique: bool = False
+    auto_increment: bool = False
+    comment: str | None = None
 
 
 @dataclass
@@ -144,6 +146,13 @@ def parse_schema_sql(
             is_unique = "UNIQUE" in upper
             if is_unique:
                 unique_cols.add(cname)
+            comment = None
+            try:
+                from app.services.zh_lexicon import extract_comment_from_line
+
+                comment = extract_comment_from_line(line)
+            except Exception:  # noqa: BLE001
+                comment = None
             cols.append(
                 Column(
                     name=cname,
@@ -151,6 +160,8 @@ def parse_schema_sql(
                     pk=is_pk,
                     not_null="NOT NULL" in upper,
                     unique=is_unique,
+                    auto_increment="AUTO_INCREMENT" in upper,
+                    comment=comment,
                 )
             )
 
@@ -436,8 +447,133 @@ def _own_attr_columns(cols: list[Column]) -> list[Column]:
     return [c for c in cols if not c.fk]
 
 
+# 论文概念总图不画：登录/会话/审计壳与纯 M:N 中间表矩形（物理表仍在 schema / 4.6.3）
+# 与类图 sample 壳表对齐，保证各开题概念图密度接近样例论文
+_ER_SAMPLE_SHELL_TABLES: frozenset[str] = frozenset(
+    {
+        "sys_auth_session",
+        "sys_login_log",
+        "sys_account_cancel",
+        "sys_notice_ack",
+        "sys_banner",
+        "sys_site_stat",
+        "sys_audit_log",
+        "sys_message_template",
+        "product_category",
+    }
+)
+
+ER_DISPLAY_MODES: tuple[tuple[str, str], ...] = (
+    ("sample", "论文概念（精简）"),
+    ("full", "全量（含角色拆分/壳表）"),
+)
+
+
+def normalize_er_display(raw: str | None) -> str:
+    m = str(raw or "sample").strip().lower()
+    return "full" if m == "full" else "sample"
+
+
+def _collapse_role_side(name: str) -> str:
+    n = str(name or "").strip()
+    if n.startswith("sys_user:"):
+        return "sys_user"
+    return n
+
+
+def _is_sample_shell_table(name: str) -> bool:
+    n = str(name or "").strip()
+    if not n:
+        return False
+    if n in _ER_SAMPLE_SHELL_TABLES:
+        return True
+    base = n.split(":", 1)[0]
+    return base in _ER_SAMPLE_SHELL_TABLES
+
+
+def apply_er_display_mode(
+    model: dict,
+    mode: str | None = "sample",
+) -> dict:
+    """论文概念精简：藏壳表、角色拆分收回单一「用户」、去掉角色间虚边。
+
+    full=现网全量（角色拆分 + 壳表联系仍可见）。
+    不改 schema.sql；只影响论文 E-R 图面与导出。
+    """
+    mode_n = normalize_er_display(mode)
+    out = dict(model) if isinstance(model, dict) else {}
+    out["er_display"] = mode_n
+    if mode_n == "full":
+        out["tables_omitted_sample"] = []
+        out["conceptual_entities"] = conceptual_entity_names(out)
+        return out
+
+    omitted: list[str] = []
+    tables: list[dict] = []
+    for t in out.get("tables") or []:
+        if not isinstance(t, dict):
+            continue
+        name = str(t.get("name") or "").strip()
+        if not name:
+            continue
+        if t.get("role_of"):
+            omitted.append(name)
+            continue
+        if _is_sample_shell_table(name):
+            omitted.append(name)
+            continue
+        tables.append(dict(t))
+
+    kept = {str(t.get("name") or "") for t in tables}
+    # 角色边收回 sys_user 后，确保物理用户表仍在图上
+    if "sys_user" not in kept:
+        raw_user = next(
+            (
+                t
+                for t in (model.get("tables") or [])
+                if isinstance(t, dict) and str(t.get("name") or "") == "sys_user"
+            ),
+            None,
+        )
+        if raw_user:
+            row = dict(raw_user)
+            row.pop("role_of", None)
+            row.pop("role_id", None)
+            tables.append(row)
+            kept.add("sys_user")
+
+    seen_rel: set[tuple[str, str, str]] = set()
+    relations: list[dict] = []
+    for r in out.get("relations") or []:
+        if not isinstance(r, dict):
+            continue
+        left = _collapse_role_side(str(r.get("left") or ""))
+        right = _collapse_role_side(str(r.get("right") or ""))
+        if not left or not right or left == right:
+            continue
+        if left not in kept or right not in kept:
+            continue
+        if _is_sample_shell_table(left) or _is_sample_shell_table(right):
+            continue
+        via = str(r.get("via") or "")
+        key = (left, right, via)
+        if key in seen_rel:
+            continue
+        seen_rel.add(key)
+        row = dict(r)
+        row["left"] = left
+        row["right"] = right
+        relations.append(row)
+
+    out["tables"] = tables
+    out["relations"] = relations
+    out["tables_omitted_sample"] = omitted
+    out["conceptual_entities"] = conceptual_entity_names(out)
+    return out
+
+
 def conceptual_entity_names(model: dict) -> list[str]:
-    """分图/属性图可选实体：非中间表、非角色拆分逻辑实体。"""
+    """分图/属性图可选实体：非中间表、非角色拆分逻辑实体、非论文壳表。"""
     out: list[str] = []
     for t in model.get("tables") or []:
         if not isinstance(t, dict):
@@ -447,8 +583,11 @@ def conceptual_entity_names(model: dict) -> list[str]:
         if t.get("role_of"):
             continue
         name = str(t.get("name") or "").strip()
-        if name:
-            out.append(name)
+        if not name:
+            continue
+        if _is_sample_shell_table(name):
+            continue
+        out.append(name)
     return out
 
 
@@ -471,6 +610,26 @@ def annotate_assoc_links(model: dict, tables: list[Table]) -> dict:
     model["link_tables"] = sorted(link_names)
     model["conceptual_entities"] = conceptual_entity_names(model)
     return model
+
+
+def _column_display_label(
+    col: Column,
+    table_name: str,
+    czh: dict[str, str],
+    tcols: dict[str, dict[str, str]],
+    tzh: dict[str, str],
+) -> str:
+    """展示用中文：COMMON/域表精确键优先于 SQL COMMENT，避免旧注释锁死论文稿。"""
+    name = str(col.name or "")
+    if name and name in czh:
+        return czh[name]
+    scoped = (tcols.get(table_name) or {}).get(name) if name else None
+    if scoped:
+        return str(scoped)
+    comment = (col.comment or "").strip()
+    if comment:
+        return comment
+    return _col_zh(name, table_name, czh, tcols, tzh)
 
 
 def schema_model(
@@ -497,21 +656,24 @@ def schema_model(
                 "columns": [
                     {
                         **asdict(c),
-                        "label": _col_zh(c.name, t.name, czh, tcols, tzh),
+                        "label": _column_display_label(c, t.name, czh, tcols, tzh),
+                        "suggested_zh": _col_zh(c.name, t.name, czh, tcols, tzh),
                     }
                     for c in t.columns
                 ],
                 "core_columns": [
                     {
                         **asdict(c),
-                        "label": _col_zh(c.name, t.name, czh, tcols, tzh),
+                        "label": _column_display_label(c, t.name, czh, tcols, tzh),
+                        "suggested_zh": _col_zh(c.name, t.name, czh, tcols, tzh),
                     }
                     for c in pick_core_attrs(t.columns)
                 ],
                 "own_columns": [
                     {
                         **asdict(c),
-                        "label": _col_zh(c.name, t.name, czh, tcols, tzh),
+                        "label": _column_display_label(c, t.name, czh, tcols, tzh),
+                        "suggested_zh": _col_zh(c.name, t.name, czh, tcols, tzh),
                     }
                     for c in _own_attr_columns(t.columns)
                 ],

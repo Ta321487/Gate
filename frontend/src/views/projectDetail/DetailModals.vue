@@ -132,6 +132,44 @@
       <pre class="spec-preview" style="max-height:60vh">{{ specText }}</pre>
     </n-modal>
     <n-modal
+      v-model:show="showThesisDbExport"
+      preset="card"
+      title="库表论文稿（逻辑 / 物理设计）"
+      style="width:min(880px,96vw)"
+    >
+      <p class="small muted" style="margin-top:0;margin-bottom:8px">
+        同源 <span class="mono">sql/schema.sql</span>，禁止编造。逻辑设计：横线=主键、波浪线=外键（MD 渲染）。预览跟测例日夜表色；复制可贴 Word；下载 .md 与测例统一。
+      </p>
+      <div class="row" style="margin:0 0 8px;gap:8px;flex-wrap:wrap;align-items:center">
+        <n-radio-group v-model:value="thesisDbExportKind" size="small" :disabled="thesisDbExportBusy">
+          <n-radio-button value="logical">逻辑设计</n-radio-button>
+          <n-radio-button value="physical">物理设计</n-radio-button>
+          <n-radio-button value="combined">全文</n-radio-button>
+        </n-radio-group>
+        <n-button
+          size="small"
+          :disabled="!(thesisDbExportHtml || thesisDbExportText) || artifactsFrozen"
+          :loading="thesisDbExportBusy"
+          @click="copyThesisDbExport()"
+        >复制当前</n-button>
+        <n-button
+          size="small"
+          quaternary
+          :disabled="!(thesisDbExportPayload?.combined_md || thesisDbExportPayload?.combined) || artifactsFrozen"
+          :loading="thesisDbExportBusy"
+          @click="downloadThesisDbExport"
+        >下载全文 .md</n-button>
+      </div>
+      <div class="thesis-db-frame" :class="{ 'is-dark': isDark }">
+        <div
+          v-if="thesisDbExportPreviewHtml"
+          class="thesis-db-paper"
+          v-html="thesisDbExportPreviewHtml"
+        />
+        <pre v-else class="thesis-db-fallback">{{ thesisDbExportText || '（空）' }}</pre>
+      </div>
+    </n-modal>
+    <n-modal
       v-model:show="showEr"
       preset="card"
       title="E-R 图（线框）"
@@ -145,6 +183,7 @@
         :svg-source="erSvgSource"
         :download-name="erDownloadBase"
         :mode="erMode"
+        :display-mode="erDisplay"
         :entity="erEntity"
         :entity-options="erEntityOptions"
         :loading="erLoading"
@@ -152,6 +191,7 @@
         :mermaid-url="erMmdUrl"
         :rubric-gate="erRubricGate"
         @update:mode="onErMode"
+        @update:display-mode="onErDisplay"
         @update:entity="onErEntity"
         @save-view="saveErView"
         @reset-layout="resetErLayout"
@@ -347,6 +387,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { bindPd } from './bindPd'
+import { isDark } from '../../theme'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 import ArchitectureDiagramViewer from '../../components/ArchitectureDiagramViewer.vue'
 import SequenceDiagramViewer from '../../components/SequenceDiagramViewer.vue'
@@ -377,7 +418,7 @@ const {
   catalog, checkCols, checkRows, chromeOptions, collapsedApis, collapsedTables, commitColZh, commitRelZh,
   commitTableZh, confirmDelete, confirmHint, confirmMatch, confirmPreGenerate, currentJob, deleteBlocked,
   deleteBlockedReason, deleting, deliveryBusy, deliveryMark, deviant, displayConf, domCascaderOptions, downloadAndDeliver,
-  downloadBlockedReason, downloadZip, downloadZipLabel, entryOptions, erDownloadBase, erDrawioUrl, erMmdUrl, erRubricGate, erEntity, erEntityOptions, erLabelSaving,
+  downloadBlockedReason, downloadZip, downloadZipLabel, entryOptions, erDownloadBase, erDrawioUrl, erMmdUrl, erRubricGate, erDisplay, erEntity, erEntityOptions, erLabelSaving,
   erLayoutKey, erLoading, erMode, erSvgSource, exportAllErParts, failedBannerTitle, fetchErSvg, fetchModSvg, fillEventSource,
   fillLiveCols, fillLiveRows, fillLiveSnap, fillLiveSummary, fillLiveVisible, fillPlanCols, fillPlanHint,
   fillPlanLoading, fillPlanRows, filteredApiGroups, filteredLog, form, formatSize, frontendAddr, gateCols,
@@ -387,7 +428,7 @@ const {
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modDrawioUrl, modMmdUrl, modLayoutKey, modLoading, modSvgSource,
   modulesExpandDetails, modulesLayout, modulesMeta, modulesOk, modulesLabelFindings, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
-  onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, onUsecaseActor, openArchitecture, openClasses, openEr, openFillPlan, openModules,
+  onErDisplay, onErEntity, onErMode, onModulesExpandDetails, onModulesLayout, onPathChange, onTcFields, onUsecaseActor, openArchitecture, openClasses, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openUsecaseDescriptions, openUsecases, openSequences, onSeqApplySelection, onSeqDiagramIndex, openActivities, onActApplySelection, onActDiagramIndex, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   persistenceLabel, persistenceOptions, planSteps, pollFailStreak, pollInFlight, pollSyncHint, pollTimer, portalHomeOptions,
   preGenBusy, preGenReady, preGenStackWarnings, preGenTechDual, proposal, proposalDiff, putErLabelPatch, recommendedArchesText,
@@ -400,7 +441,7 @@ const {
   showSoftBakePanel, showSpec, showTestcases, showUsecaseDescriptions, showUsecases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
-  tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
+  tableCopyText, thesisDbExportBusy, showThesisDbExport, thesisDbExportKind, thesisDbExportPayload, thesisDbExportText, thesisDbExportHtml, thesisDbExportPreviewHtml, copyThesisDbExport, downloadThesisDbExport, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucDownloadBase, ucLayoutKey, ucLoading, ucDrawioUrl, ucMmdUrl, ucMdjUrl, ucSvgSource,
   ucdCases, ucdCount, ucdDownloadBase, ucdIntro, ucdLoading, ucdMarkdown, ucdRubricGate, ucdSourceNote,
   undoDelivery, undoDeliveryLabel, unlocked, usecaseActor, usecaseMeta, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,

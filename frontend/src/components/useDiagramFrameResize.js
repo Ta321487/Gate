@@ -78,7 +78,8 @@ export function useDiagramFrameResize() {
     detachWindowListeners()
     moveBound = (ev) => {
       if (!resizing.value) return
-      frameHeight.value = clampHeight(startH + (ev.clientY - startY))
+      // 分栏：手柄下移 → 上方变高、预览变矮；上移 → 预览变高
+      frameHeight.value = clampHeight(startH - (ev.clientY - startY))
     }
     upBound = () => {
       resizing.value = false
@@ -91,7 +92,7 @@ export function useDiagramFrameResize() {
 
   function onResizeMove(e) {
     if (!resizing.value) return
-    frameHeight.value = clampHeight(startH + (e.clientY - startY))
+    frameHeight.value = clampHeight(startH - (e.clientY - startY))
   }
 
   function onResizeUp() {

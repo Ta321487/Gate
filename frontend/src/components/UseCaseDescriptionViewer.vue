@@ -224,21 +224,23 @@ function downloadMd() {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  background: #fff;
-  color: #111;
+  background: var(--surface, #fff);
+  color: var(--ink, #0f172a);
 }
 .ucd-table th,
 .ucd-table td {
-  border: 1px solid #000;
+  border: 1px solid var(--line, #cbd5e1);
   padding: 8px 10px;
   vertical-align: top;
+  color: inherit;
+  background: transparent;
 }
 .ucd-table th {
   width: 96px;
   text-align: center;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
-  background: #fff;
+  background: color-mix(in srgb, var(--ink, #0f172a) 6%, var(--surface, #fff));
 }
 .ucd-flow {
   margin: 0;
@@ -247,17 +249,28 @@ function downloadMd() {
 .ucd-flow li {
   margin: 2px 0;
 }
+/* 预览跟测例同一套日夜；复制 Word 仍走 htmlForWord 白底黑字 */
 .ucd-viewer.is-dark .ucd-frame {
-  background: var(--surface-2);
+  background: #0f161e;
+  border-color: #334155;
+  color: #e8eef2;
+}
+.ucd-viewer.is-dark .ucd-intro,
+.ucd-viewer.is-dark .ucd-cap,
+.ucd-viewer.is-dark .ucd-table-title {
+  color: inherit;
 }
 .ucd-viewer.is-dark .ucd-table {
-  background: var(--surface);
-  color: var(--text);
+  background: transparent;
+  color: inherit;
 }
 .ucd-viewer.is-dark .ucd-table th,
 .ucd-viewer.is-dark .ucd-table td {
-  border-color: var(--line);
-  background: var(--surface);
-  color: var(--text);
+  border-color: #334155;
+  background: transparent;
+  color: inherit;
+}
+.ucd-viewer.is-dark .ucd-table th {
+  background: color-mix(in srgb, #fff 8%, transparent);
 }
 </style>

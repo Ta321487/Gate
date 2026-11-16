@@ -391,7 +391,7 @@ onMounted(load)
 }
 .ops-title {
   min-width: 0;
-  font-weight: 550;
+  font-weight: 600;
 }
 .ops-tag {
   font-size: 11px;

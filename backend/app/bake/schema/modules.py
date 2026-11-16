@@ -20,6 +20,11 @@ _MODULE_LABELS_REL = Path("islands") / "module_labels.json"
 # home / dashboard = 门户首页与管理端落地页，不是论文功能模块叶子
 _SKIP_MENU_KEYS = frozenset({"home", "dashboard"})
 
+# 运维/壳菜单：实包装得有，论文模块图默认不进；开题点名（广告位/定时/在线用户）才留
+_THESIS_SHELL_MENU_KEYS = frozenset(
+    {"banners", "schedule_jobs", "scheduled_tasks", "online_sessions"}
+)
+
 # identity=按登录身份（默认）；biz=按业务；side 兼容旧参 → identity
 MODULE_LAYOUTS = ("identity", "biz")
 DEFAULT_MODULE_LAYOUT = "identity"
@@ -305,6 +310,27 @@ def _node(nid: str, label: str, *, source: str, children: list[dict] | None = No
     out: dict[str, Any] = {"id": nid, "label": label, "source": source}
     if children:
         out["children"] = children
+    return out
+
+
+def _menus_for_thesis_modules(
+    menus: list[Any] | None,
+    *,
+    proposal_text: str = "",
+) -> list[Any]:
+    """过滤运维壳菜单；开题正文点到该菜单名/键语义才保留。"""
+    items = [m for m in (menus or []) if isinstance(m, dict)]
+    if not items:
+        return []
+    blob = proposal_text or ""
+    out: list[Any] = []
+    for it in items:
+        key = str(it.get("key") or "").strip()
+        if key not in _THESIS_SHELL_MENU_KEYS:
+            out.append(it)
+            continue
+        if blob and _menu_keys_for_module_text(blob, [it]):
+            out.append(it)
     return out
 
 
@@ -982,6 +1008,10 @@ def _menu_keys_for_module_text(text: str, menu_items: list[dict[str, Any]]) -> l
             t in blob for t in ("定时任务", "定时", "调度")
         ):
             hits.append(key)
+        elif key == "online_sessions" and any(
+            t in blob for t in ("在线用户", "在线会话", "在线人数")
+        ):
+            hits.append(key)
     out: list[str] = []
     seen: set[str] = set()
     for k in hits:
@@ -1463,12 +1493,15 @@ def _staff_identity_section(
     post: dict[str, Any],
     *,
     material_sec: dict[str, Any] | None = None,
+    proposal_text: str = "",
 ) -> dict[str, Any] | None:
     """已交付岗位 → 身份枝；有材料段则用开题命名并对齐 menus，否则回落岗位 menus。"""
     post_lab = str(post.get("label") or post.get("id") or "").strip()
     if not post_lab:
         return None
-    staff_menus = _staff_menu_items(schema, post)
+    staff_menus = _menus_for_thesis_modules(
+        _staff_menu_items(schema, post), proposal_text=proposal_text
+    )
     if not staff_menus:
         return None
     branch_lab = (
@@ -1499,12 +1532,17 @@ def _model_by_identity_from_schema(
     *,
     title: str,
     expand_details: bool = False,
+    proposal_text: str = "",
 ) -> dict[str, Any]:
     roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
     menus = schema.get("menus") if isinstance(schema.get("menus"), dict) else {}
     caps = {str(c) for c in (schema.get("capabilities") or [])}
-    user_menus = menus.get("user") or []
-    admin_menus = menus.get("admin") or []
+    user_menus = _menus_for_thesis_modules(
+        menus.get("user") or [], proposal_text=proposal_text
+    )
+    admin_menus = _menus_for_thesis_modules(
+        menus.get("admin") or [], proposal_text=proposal_text
+    )
     has_user = bool(user_menus) or "org_users" in caps
 
     # 顺序对齐用例图/架构图：用户 → 岗位（商家等）→ 管理员
@@ -1520,7 +1558,7 @@ def _model_by_identity_from_schema(
             }
         )
     for post in _delivered_staff_posts(schema):
-        sec = _staff_identity_section(schema, post)
+        sec = _staff_identity_section(schema, post, proposal_text=proposal_text)
         if sec:
             sections.append(sec)
     if admin_menus:
@@ -1553,7 +1591,10 @@ def _model_by_identity(
 ) -> dict[str, Any]:
     """按身份：交付 menus 为真源；开题枚举只辅助命名，未交付模块丢弃。"""
     base = _model_by_identity_from_schema(
-        schema, title=title, expand_details=expand_details
+        schema,
+        title=title,
+        expand_details=expand_details,
+        proposal_text=proposal_text,
     )
     sections = parse_identity_modules(proposal_text, schema=schema)
     parse_warnings: list[dict[str, str]] = []
@@ -1572,8 +1613,12 @@ def _model_by_identity(
     roles = schema.get("roles") if isinstance(schema.get("roles"), dict) else {}
     menus = schema.get("menus") if isinstance(schema.get("menus"), dict) else {}
     caps = {str(c) for c in (schema.get("capabilities") or [])}
-    user_menus = menus.get("user") or []
-    admin_menus = menus.get("admin") or []
+    user_menus = _menus_for_thesis_modules(
+        menus.get("user") or [], proposal_text=proposal_text
+    )
+    admin_menus = _menus_for_thesis_modules(
+        menus.get("admin") or [], proposal_text=proposal_text
+    )
     has_user = bool(user_menus) or "org_users" in caps
 
     used: set[int] = set()
@@ -1616,7 +1661,9 @@ def _model_by_identity(
         mat = _pick_material_section(
             sections, slot="staff", role_lab=post_lab, used=used
         )
-        sec = _staff_identity_section(schema, post, material_sec=mat)
+        sec = _staff_identity_section(
+            schema, post, material_sec=mat, proposal_text=proposal_text
+        )
         if sec:
             aligned.append(sec)
 

@@ -45,11 +45,18 @@
                     {{ schema ? '已解析' : (p.workspace_path ? '暂无表结构' : '未生成') }}
                   </span>
                 </div>
-                <div class="row" style="margin:0;gap:8px">
+                <div class="row" style="margin:0;gap:8px;flex-wrap:wrap">
                   <label v-if="schema?.tables?.length" class="type-mode-switch small">
                     <n-switch v-model:value="typeParenMode" size="small" :disabled="artifactsFrozen" />
                     <span class="muted">{{ typeParenMode ? '类型 varchar(60)' : '类型分列 varchar | 60' }}</span>
                   </label>
+                  <n-button
+                    size="small"
+                    :disabled="!schema?.tables?.length || artifactsFrozen"
+                    :loading="thesisDbExportBusy"
+                    :title="artifactsFrozen ? artifactsFrozenReason : '同源 schema.sql · 预览逻辑/物理设计，再复制或下载'"
+                    @click="openThesisDbExport"
+                  >库表论文稿</n-button>
                   <n-button
                     size="small"
                     :disabled="!schema?.tables?.length || artifactsFrozen"
@@ -59,11 +66,14 @@
                   >E-R 图</n-button>
                 </div>
               </div>
-              <div class="small muted">数据表结构 · 建议 6～15 张表 · E-R 供「数据库设计」章节 · 中文名改完点勾或回车保存（只影响论文/E-R，不改库表英文标识）</div>
+              <div class="small muted">数据表结构（物理全量）· 逻辑/物理设计同源 schema.sql · 中文名保存进列 COMMENT（英文列名不动）· 有建议可直接确认 · 库设计阶段在此补洞</div>
               <template v-if="schema?.tables?.length">
-                <div class="small">当前 <strong>{{ schema.tables.length }}</strong> 张
-                  <span :class="(schema.tables.length >= 6 && schema.tables.length <= 13) ? 'muted' : 'text-danger'">
-                    （{{ schema.tables.length >= 6 && schema.tables.length <= 15 ? '符合' : '不符合' }} 6~15）
+                <div class="small">
+                  物理全量 <strong>{{ schemaTableSummary.physical }}</strong> 张
+                  <span class="muted">（业务 {{ schemaTableSummary.business }} · 辅助 {{ schemaTableSummary.shell }}）</span>
+                  <span class="muted"> · 概念实体 <strong>{{ schemaTableSummary.comfort_n }}</strong></span>
+                  <span :class="schemaTableSummary.comfort_ok ? 'muted' : 'text-danger'">
+                    （{{ schemaTableSummary.comfort_ok ? '符合' : '不符合' }} 6~15）
                   </span>
                   <span
                     v-if="schemaErGapCount > 0"
@@ -130,20 +140,20 @@
                           <input
                             class="zh-edit col-zh"
                             :class="{
-                              'zh-gap': !c.page_missing && labelLooksLatin(c.label || c.name),
-                              'zh-unbound': c.page_missing,
+                              'zh-gap': !c.page_missing && labelLooksLatin(c.label || c.name) && !colZhDisplay(c),
+                              'zh-unbound': c.page_missing && !colZhDisplay(c),
                             }"
-                            :value="c.label || ''"
-                            :placeholder="c.page_missing ? '页面上没有这一列' : c.name"
+                            :value="colZhDisplay(c)"
+                            :placeholder="colZhPlaceholder(c)"
                             :disabled="artifactsFrozen || erLabelSaving"
-                            :title="c.page_missing ? '页面上没有这一列' : (artifactsFrozen ? artifactsFrozenReason : '改中文属性名')"
+                            :title="colZhTitle(c)"
                             @keydown.enter.prevent="($event) => commitColZh(t, c, $event.target)"
                           />
                           <button
                             type="button"
                             class="zh-ok-btn"
                             :disabled="artifactsFrozen || erLabelSaving"
-                            title="保存中文名"
+                            title="保存中文名（写入 COMMENT）"
                             aria-label="保存中文名"
                             @mousedown.prevent
                             @click="($event) => commitColZh(t, c, $event.currentTarget.previousElementSibling)"
@@ -152,7 +162,8 @@
                               <path fill="currentColor" d="M9.55 17.6 4.9 12.95l1.4-1.4 3.25 3.25 7.15-7.15 1.4 1.4z" />
                             </svg>
                           </button>
-                          <span v-if="c.page_missing" class="zh-unbound-note">页面上没有这一列</span>
+                          <span v-if="c.page_missing && !colZhDisplay(c)" class="zh-unbound-note">库注释未写 · 可留英文</span>
+                          <span v-else-if="c.suggested_zh && labelLooksLatin(c.label || c.name)" class="zh-unbound-note">建议 · 点勾写入</span>
                         </span>
                         <template v-if="typeParenMode">
                           <span class="col-type muted">{{ parseMysqlType(c.type).full }}</span>
@@ -234,6 +245,16 @@
                 >论文图对账</n-button>
                 <span class="small muted">有 Key 时补假宣称扫描；无 Key 只跑规则闸。不改图、不每 bake 自动打。</span>
               </div>
+              <div v-if="thesisAuditBusy" class="panel panel-quiet mb-8">
+                <div class="panel-bd">
+                  <LongOpWait
+                    title="正在对账论文图…"
+                    :phases="thesisAuditPhases"
+                    :phase-seconds="[20, 45, 30]"
+                    hint="仍在运行：规则闸与可选假宣称扫描。可离开本页；完成后结果会出现在下方。"
+                  />
+                </div>
+              </div>
               <div v-if="thesisAuditReport" class="banner mb-8" :class="thesisAuditMustFix.length ? 'fail' : ''">
                 <h4>
                   对账
@@ -252,7 +273,7 @@
                 </p>
                 <p class="small muted" style="margin:4px 0 0">
                   <strong>须改</strong>＝规则闸铁证，该处理；
-                  <strong>待核</strong>＝LLM/规则留意，打开材料卡核对后再决定。点「去处理」跳转。
+                  <strong>待核</strong>＝LLM/规则留意，打开材料卡核对后再决定。点「去处理」会进手调并尽量定位到对应图/检索词。
                 </p>
                 <div v-if="thesisAuditMustFix.length" style="margin-top:10px">
                   <h4 style="margin:0 0 6px;font-size:13px">须改 · {{ thesisAuditMustFix.length }}</h4>
@@ -574,13 +595,43 @@ import { computed, ref } from 'vue'
 import { bindPd } from './bindPd'
 import CopyIconButton from '../../components/CopyIconButton.vue'
 import ContentLoading from '../../components/ContentLoading.vue'
+import LongOpWait from '../../components/LongOpWait.vue'
 import DeliveryWorkbench from '../../components/DeliveryWorkbench.vue'
+
+function colZhDisplay(c) {
+  const label = String(c?.label || '').trim()
+  const suggested = String(c?.suggested_zh || '').trim()
+  if (label && !/[A-Za-z]/.test(label.replace(/(?:AI|FAQ|API|ID|URL|SQL)/gi, ''))) return label
+  if (suggested && !/[A-Za-z]/.test(suggested)) return suggested
+  return label
+}
+
+function colZhPlaceholder(c) {
+  if (String(c?.suggested_zh || '').trim()) return `建议：${c.suggested_zh}`
+  if (c?.page_missing) return '库注释未写 · 可留英文'
+  return c?.name || ''
+}
+
+function colZhTitle(c) {
+  if (artifactsFrozen?.value) return artifactsFrozenReason?.value || ''
+  if (String(c?.suggested_zh || '').trim() && /[A-Za-z]/.test(String(c?.label || c?.name || ''))) {
+    return '已给建议中文，点勾写入 COMMENT'
+  }
+  if (c?.page_missing) return '库设计阶段可补中文并写入 COMMENT；无把握可留英文'
+  return '改中文属性名（写入 COMMENT）'
+}
 import OverridesTab from './OverridesTab.vue'
 
 defineProps({
   /** delivery=质检交付工作台；thesis=论文材料主轨 */
   pane: { type: String, default: 'delivery' },
 })
+
+const thesisAuditPhases = [
+  { key: 'rules', label: '确定性规则闸' },
+  { key: 'llm', label: '可选假宣称扫描' },
+  { key: 'summary', label: '汇总对账结果' },
+]
 
 const THESIS_GROUP_KEY = 'gf.thesisGroupsOpen'
 const thesisOpen = ref({ design: true, analysis: false, test: false })
@@ -643,7 +694,7 @@ const {
   showSoftBakePanel, showSpec, showTestcases, smokeDetailFromAxios, smokeDetailText, smokePillClass, smokeRowClass, smokeStatusLabel,
   softApplying, softBakeHint, softSaving, softThemeWireStyle, softVisualWireStyle, specText, startFillEvents, startGenerate,
   startPoll, statusLabel, statusPill, stepStatusLabel, stepStatusMark, stopFillEvents, stopPoll, tab,
-  tableCopyText, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
+  tableCopyText, thesisDbExportBusy, openThesisDbExport, schemaTableSummary, tcColumns, tcCount, tcDownloadBase, tcFields, tcLoading, tcMarkdown, tcRows,
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, ucLoading, ucdLoading, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint, archLoading, classLoading, seqLoading, actLoading,
   archMeta, classMeta, seqMeta, actMeta, usecaseMeta, ucdRubricGate,
@@ -666,11 +717,34 @@ const thesisAuditVerify = computed(() => {
   return thesisAuditFindings.value.filter((f) => !mustIds.has(`${f.where}|${f.msg}`))
 })
 
-/** 对账 finding → 打开手调 / 对应材料卡 */
+/** 对账 finding → 打开手调并带上字段定位 */
 function jumpThesisAuditFinding(f) {
   const goto = String(f?.goto || '').trim()
   const where = String(f?.where || '').trim().toLowerCase()
   const key = goto || where.split(/[\[.]/)[0] || ''
+  const hint = {
+    query: String(f?.focus_query || '').trim(),
+    index: f?.focus_index != null && f?.focus_index !== '' ? Number(f.focus_index) : null,
+    key: String(f?.focus_key || '').trim(),
+  }
+  // 无后端定位时，从 where / 文案再抽一次
+  if (!hint.query) {
+    const m = where.match(/^[a-z_]+(?:\[\d+\])?\.(.+)$/i)
+    if (m) {
+      const tail = m[1].split('.').pop()
+      if (tail && !['diagrams', 'cases', 'roles', 'root'].includes(tail)) hint.query = tail
+      else if (tail === 'root') hint.query = 'root'
+      hint.key = m[1]
+    }
+  }
+  if (hint.index == null || Number.isNaN(hint.index)) {
+    const im = where.match(/\[(\d+)\]/)
+    if (im) hint.index = Number(im[1])
+  }
+  if (!hint.query) {
+    const qm = String(f?.msg || '').match(/[「『]([^」』]{1,48})[」』]/)
+    if (qm) hint.query = qm[1]
+  }
   const openers = {
     usecase_desc: () => openUsecaseDescriptions(),
     usecase: () => openUsecases(),
@@ -691,7 +765,7 @@ function jumpThesisAuditFinding(f) {
     'architecture', 'modules', 'testcases',
   ])
   if (overrideKeys.has(key)) {
-    openThesisOverrides(key === 'usecases' ? 'usecase' : key)
+    openThesisOverrides(key === 'usecases' ? 'usecase' : key, hint)
     return
   }
   const open = openers[key]

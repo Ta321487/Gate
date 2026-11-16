@@ -202,6 +202,10 @@ class ErViewUpdate(BaseModel):
 
     mode: str = Field(default="total", description="total | part")
     entity: Optional[str] = Field(default=None, description="分图实体表名")
+    display: str = Field(
+        default="sample",
+        description="sample=论文概念精简 · full=全量（与 pack_er 一致）",
+    )
     svg: str = Field(default="", description="当前图，不含网格")
     reset: bool = Field(default=False, description="丢掉这张人工图，恢复自动排版")
 

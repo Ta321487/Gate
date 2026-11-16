@@ -803,6 +803,47 @@ class ModuleDiagramTests(unittest.TestCase):
             msg=model["label_gate"],
         )
 
+    def test_thesis_shell_menus_hidden_unless_opening_names_them(self) -> None:
+        """广告位/定时任务/在线用户：开题未点名则不进论文模块图；点名才留。"""
+        schema = {
+            "title": "测壳菜单",
+            "capabilities": ["archive", "org_users"],
+            "roles": {
+                "user": {"id": "user", "label": "买家"},
+                "admin": {"id": "admin", "label": "管理员"},
+            },
+            "menus": {
+                "user": [{"key": "archive", "label": "商品浏览"}],
+                "admin": [
+                    {"key": "archive", "label": "商品管理"},
+                    {"key": "banners", "label": "广告位"},
+                    {"key": "schedule_jobs", "label": "定时任务"},
+                    {"key": "online_sessions", "label": "在线用户"},
+                ],
+            },
+        }
+        quiet = module_model(schema, proposal_text="买家浏览商品下单", layout="identity")
+        quiet_labs: list[str] = []
+        for br in (quiet.get("root") or {}).get("children") or []:
+            for leaf in br.get("children") or []:
+                quiet_labs.append(str(leaf.get("label") or ""))
+        self.assertNotIn("广告位", quiet_labs, quiet_labs)
+        self.assertNotIn("定时任务", quiet_labs, quiet_labs)
+        self.assertNotIn("在线用户", quiet_labs, quiet_labs)
+
+        named = module_model(
+            schema,
+            proposal_text="管理员功能含广告位、定时任务与在线用户监管",
+            layout="identity",
+        )
+        named_labs: list[str] = []
+        for br in (named.get("root") or {}).get("children") or []:
+            for leaf in br.get("children") or []:
+                named_labs.append(str(leaf.get("label") or ""))
+        self.assertIn("广告位", named_labs, named_labs)
+        self.assertIn("定时任务", named_labs, named_labs)
+        self.assertIn("在线用户", named_labs, named_labs)
+
 
 if __name__ == "__main__":
     unittest.main()

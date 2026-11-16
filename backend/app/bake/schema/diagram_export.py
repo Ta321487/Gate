@@ -36,20 +36,19 @@ def mx_value_escape(text: str) -> str:
     return xml_escape(raw).replace("\n", "&#xa;")
 
 
-def build_mxfile(
+def _mx_diagram_block(
     cells: list[str],
     *,
-    diagram_name: str = "diagram",
-    page_w: int = 1200,
-    page_h: int = 900,
+    diagram_id: str,
+    diagram_name: str,
+    page_w: int,
+    page_h: int,
 ) -> str:
-    """拼合法 .drawio（mxfile）正文。cells 为已转义的 <mxCell .../> 片段。"""
     name = xml_escape(diagram_name or "diagram")
+    did = xml_escape(diagram_id or "gf")
     body = "\n".join(cells)
     return (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<mxfile host="app.diagrams.net" agent="graduate-factory" version="22.0.0">\n'
-        f'  <diagram id="gf" name="{name}">\n'
+        f'  <diagram id="{did}" name="{name}">\n'
         f'    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" '
         f'guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" '
         f'pageScale="1" pageWidth="{int(page_w)}" pageHeight="{int(page_h)}" '
@@ -60,8 +59,70 @@ def build_mxfile(
         f"{body}\n"
         "      </root>\n"
         "    </mxGraphModel>\n"
-        "  </diagram>\n"
+        "  </diagram>"
+    )
+
+
+def build_mxfile(
+    cells: list[str],
+    *,
+    diagram_name: str = "diagram",
+    page_w: int = 1200,
+    page_h: int = 900,
+    diagram_id: str = "gf",
+) -> str:
+    """拼合法 .drawio（mxfile）正文。cells 为已转义的 <mxCell .../> 片段。"""
+    block = _mx_diagram_block(
+        cells,
+        diagram_id=diagram_id,
+        diagram_name=diagram_name,
+        page_w=page_w,
+        page_h=page_h,
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<mxfile host="app.diagrams.net" agent="graduate-factory" version="22.0.0">\n'
+        f"{block}\n"
         "</mxfile>\n"
+    )
+
+
+def build_mxfile_pages(pages: list[dict[str, Any]]) -> str:
+    """多页 .drawio：每页独立 diagram（实体属性图批量导出）。
+
+    pages 项：name / cells / page_w / page_h / 可选 id。
+    """
+    blocks: list[str] = []
+    for i, page in enumerate(pages or []):
+        if not isinstance(page, dict):
+            continue
+        cells = page.get("cells") or []
+        if not isinstance(cells, list):
+            cells = []
+        blocks.append(
+            _mx_diagram_block(
+                cells,
+                diagram_id=str(page.get("id") or f"gf-{i}"),
+                diagram_name=str(page.get("name") or f"page-{i + 1}"),
+                page_w=int(page.get("page_w") or 1200),
+                page_h=int(page.get("page_h") or 900),
+            )
+        )
+    if not blocks:
+        blocks.append(
+            _mx_diagram_block(
+                [],
+                diagram_id="gf-0",
+                diagram_name="空",
+                page_w=600,
+                page_h=400,
+            )
+        )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<mxfile host="app.diagrams.net" agent="graduate-factory" version="22.0.0">\n'
+        + "\n".join(blocks)
+        + "\n</mxfile>\n"
     )
 
 

@@ -7,6 +7,15 @@
             <n-radio-button value="total">总图</n-radio-button>
             <n-radio-button value="part">实体属性图</n-radio-button>
           </n-radio-group>
+          <n-radio-group
+            v-model:value="displayLocal"
+            size="small"
+            :disabled="loading"
+            @update:value="onDisplayChange"
+          >
+            <n-radio-button value="sample">论文概念</n-radio-button>
+            <n-radio-button value="full">全量</n-radio-button>
+          </n-radio-group>
           <n-select
             v-if="modeLocal === 'part'"
             v-model:value="entityLocal"
@@ -24,7 +33,7 @@
             secondary
             :loading="loading"
             @click="$emit('export-all-parts')"
-          >导出全部属性图</n-button>
+          >导出全部 Draw.io</n-button>
           <n-button size="small" @click="zoomOut">缩小</n-button>
           <span class="er-zoom-label">{{ Math.round(scale * 100) }}%</span>
           <n-button size="small" @click="zoomIn">放大</n-button>
@@ -51,8 +60,10 @@
       <p class="small muted er-hint mb-8">
         {{
           modeLocal === 'total'
-            ? '概念 E-R：实体 + 动词联系 + 基数（不含属性；中间表已画成 N:M）· 几何翻车可下 Draw.io 手调（与包同源）'
-            : '实体属性图：仅自身属性（不含外键）；按概念实体各导出一张 · 可下 Draw.io 手调'
+            ? (displayLocal === 'sample'
+              ? '论文概念总图（默认可交）：藏登录/会话等壳表，角色收回「用户」；中间表已画成 N:M · 几何翻车可下 Draw.io'
+              : '全量总图：含角色拆分与壳表联系，供对账；贴论文请切回「论文概念」')
+            : '实体属性图：仅自身属性（不含外键）；「导出全部 Draw.io」一文件多页 · 可在 diagrams.net 切页手调'
         }}
       </p>
     </div>
@@ -112,6 +123,8 @@ const props = defineProps({
   downloadName: { type: String, default: 'er' },
   /** total | part */
   mode: { type: String, default: 'total' },
+  /** sample=论文概念精简 · full=全量 */
+  displayMode: { type: String, default: 'sample' },
   /** 分图实体表名 */
   entity: { type: String, default: '' },
   /** [{ value, label }] */
@@ -130,7 +143,15 @@ const exportBlockTitle = computed(() =>
   rubricBad.value ? String(props.rubricGate?.note || '论文图规则红，不可导出') : undefined,
 )
 
-const emit = defineEmits(['reload', 'update:mode', 'update:entity', 'export-all-parts', 'save-view', 'reset-layout'])
+const emit = defineEmits([
+  'reload',
+  'update:mode',
+  'update:entity',
+  'update:displayMode',
+  'export-all-parts',
+  'save-view',
+  'reset-layout',
+])
 
 const PNG_SCALE = 2.5
 
@@ -172,6 +193,7 @@ const busy = ref(false)
 const drawioBusy = ref(false)
 const mmdBusy = ref(false)
 const modeLocal = ref(props.mode === 'part' ? 'part' : 'total')
+const displayLocal = ref(props.displayMode === 'full' ? 'full' : 'sample')
 const entityLocal = ref(props.entity || '')
 
 /** nodeId -> { dx, dy } 相对初始坐标的位移 */
@@ -220,6 +242,12 @@ watch(
   },
 )
 watch(
+  () => props.displayMode,
+  (v) => {
+    displayLocal.value = v === 'full' ? 'full' : 'sample'
+  },
+)
+watch(
   () => props.entity,
   (v) => {
     entityLocal.value = v || ''
@@ -255,6 +283,9 @@ function snapGrid(v) {
 
 function onModeChange(v) {
   emit('update:mode', v)
+}
+function onDisplayChange(v) {
+  emit('update:displayMode', v === 'full' ? 'full' : 'sample')
 }
 function onEntityChange(v) {
   emit('update:entity', v || '')
@@ -1143,6 +1174,7 @@ function commitView() {
   emit('save-view', {
     mode: loadedMode,
     entity: loadedMode === 'part' ? loadedEntity : '',
+    display: displayLocal.value === 'full' ? 'full' : 'sample',
     svg: serializeSvg(),
   })
 }

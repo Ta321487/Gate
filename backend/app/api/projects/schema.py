@@ -72,6 +72,8 @@ async def get_schema(project_id: str, db: AsyncSession = Depends(get_db)):
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
+    from app.bake.schema.schema_thesis_export import schema_table_summary
+
     model = load_schema_model(ws)
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
@@ -79,7 +81,47 @@ async def get_schema(project_id: str, db: AsyncSession = Depends(get_db)):
         "db_name": p.db_name,
         "path": "sql/schema.sql",
         "er_gap_count": count_er_gaps(collect_english_gaps(model)),
+        "table_summary": schema_table_summary(model),
         **model,
+    }
+
+
+@router.get(
+    "/{project_id}/schema/thesis-db-export",
+    summary="论文库表逻辑/物理设计正文（同源）",
+)
+async def get_thesis_db_export(
+    project_id: str,
+    type_paren: bool = Query(True, description="True=类型合并 varchar(64)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """由 sql/schema.sql 生成可贴 Word 的逻辑设计 + 物理设计；禁止编造表/列。"""
+    from app.bake.schema.er import load_schema_model
+    from app.bake.schema.schema_thesis_export import (
+        assert_export_homology,
+        render_thesis_db_export,
+    )
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    model = load_schema_model(ws)
+    if not model:
+        raise HTTPException(404, "未找到 sql/schema.sql")
+    sql_path = ws / "sql" / "schema.sql"
+    sql = sql_path.read_text(encoding="utf-8", errors="ignore") if sql_path.is_file() else ""
+    payload = render_thesis_db_export(
+        model, db_name=str(p.db_name or ""), type_paren=bool(type_paren)
+    )
+    try:
+        assert_export_homology(payload, sql=sql)
+    except AssertionError as e:
+        raise HTTPException(500, f"库表论文导出同源失败：{e}") from e
+    return {
+        "db_name": p.db_name,
+        "path": "sql/schema.sql",
+        **payload,
     }
 
 
@@ -88,6 +130,10 @@ async def get_er(
     project_id: str,
     mode: str = Query("total", description="total=总图 part=分图"),
     entity: str | None = Query(None, description="分图实体表名"),
+    display: str = Query(
+        "sample",
+        description="sample=论文概念精简（默认可交）· full=全量含角色拆分/壳表",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """一次返回表结构 meta + ``svg``；优先读 ``islands/diagram_cache``。"""
@@ -97,7 +143,7 @@ async def get_er(
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
-    model = pack_er(ws, mode=mode, entity=entity)
+    model = pack_er(ws, mode=mode, entity=entity, display=display)
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
     return {
@@ -124,11 +170,12 @@ async def put_er_view(
     ws = _workspace_or_400(p)
     mode = "part" if (body.mode or "").strip().lower() == "part" else "total"
     entity = (body.entity or "").strip() or None
+    display = "full" if str(getattr(body, "display", None) or "").strip().lower() == "full" else "sample"
     if body.reset:
-        clear_user_svg(ws, mode, entity)
+        clear_user_svg(ws, mode, entity, display=display)
         return {"ok": True, "reset": True, "message": "已恢复自动排版"}
     try:
-        saved = save_user_svg(ws, mode, entity, body.svg)
+        saved = save_user_svg(ws, mode, entity, body.svg, display=display)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     return {"ok": True, "reset": False, **saved}
@@ -140,7 +187,7 @@ async def put_er_labels(
     body: ErLabelsUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    """只改展示中文名（islands/er_labels.json），不改 schema.sql / 学生工程标识符。"""
+    """保存中文名：er_labels + 回写 schema.sql 的 COMMENT；英文列名不动。"""
     from app.bake.schema.diagram_cache import invalidate as invalidate_diagram_cache
     from app.bake.schema.er import apply_manual_er_labels
 
@@ -170,7 +217,7 @@ async def put_er_labels(
         "path": "sql/schema.sql",
         "er_gap_count": result["er_gap_count"],
         "filled": result["filled"],
-        "message": "已保存中文名（仅论文/E-R 展示，未改库表英文名）",
+        "message": "已保存中文名（已写入库表 COMMENT，未改英文列名）",
         **model,
     }
 
@@ -242,6 +289,7 @@ async def download_er_svg(
     project_id: str,
     mode: str = Query("total", description="total=总图 part=分图"),
     entity: str | None = Query(None, description="分图实体表名"),
+    display: str = Query("sample", description="sample=论文概念精简 · full=全量"),
     db: AsyncSession = Depends(get_db),
 ):
     from fastapi.responses import Response
@@ -252,7 +300,7 @@ async def download_er_svg(
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
-    model = pack_er(ws, mode=mode, entity=entity)
+    model = pack_er(ws, mode=mode, entity=entity, display=display)
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
     _ensure_diagram_export_ok(model)
@@ -275,6 +323,7 @@ async def download_er_drawio(
     project_id: str,
     mode: str = Query("total", description="total=总图 part=分图"),
     entity: str | None = Query(None, description="分图实体表名"),
+    display: str = Query("sample", description="sample=论文概念精简 · full=全量"),
     db: AsyncSession = Depends(get_db),
 ):
     """同源 model → .drawio，供 diagrams.net 手调；不替代厂内几何刀。"""
@@ -287,7 +336,7 @@ async def download_er_drawio(
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
-    model = pack_er(ws, mode=mode, entity=entity)
+    model = pack_er(ws, mode=mode, entity=entity, display=display)
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
     _ensure_diagram_export_ok(model)
@@ -305,11 +354,74 @@ async def download_er_drawio(
     )
 
 
+@router.get(
+    "/{project_id}/schema/er-parts.drawio",
+    summary="下载全部实体属性图（多页 Draw.io）",
+)
+async def download_er_parts_drawio(
+    project_id: str,
+    display: str = Query("sample", description="sample=论文概念精简 · full=全量"),
+    db: AsyncSession = Depends(get_db),
+):
+    """每个概念实体一页，合成一个 .drawio；diagrams.net 左侧切页手调。"""
+    from fastapi.responses import Response
+
+    from app.bake.schema.diagram_drawio import er_parts_bundle_to_drawio
+    from app.bake.schema.diagram_pack import pack_er
+
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    ws = _workspace_or_400(p)
+    seed = pack_er(ws, mode="total", display=display)
+    if not seed:
+        raise HTTPException(404, "未找到 sql/schema.sql")
+    _ensure_diagram_export_ok(seed)
+    entities = [
+        str(x).strip()
+        for x in (seed.get("conceptual_entities") or [])
+        if str(x).strip()
+    ]
+    if not entities:
+        tables = [
+            t
+            for t in (seed.get("tables") or [])
+            if isinstance(t, dict)
+            and t.get("name")
+            and not t.get("assoc_link")
+            and not t.get("role_of")
+        ]
+        entities = [str(t.get("name")) for t in tables if t.get("name")]
+    if not entities:
+        raise HTTPException(404, "没有可导出的概念实体")
+    models: list[dict] = []
+    for ent in entities:
+        model = pack_er(ws, mode="part", entity=ent, display=display)
+        if not model:
+            continue
+        _ensure_diagram_export_ok(model)
+        models.append(model)
+    if not models:
+        raise HTTPException(404, "未能打包实体属性图")
+    body = er_parts_bundle_to_drawio(models)
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="application/xml; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": (
+                f'attachment; filename="{project_id}-er-parts.drawio"'
+            ),
+        },
+    )
+
+
 @router.get("/{project_id}/schema/er.mmd", summary="下载 E-R 图 Mermaid")
 async def download_er_mmd(
     project_id: str,
     mode: str = Query("total", description="total=总图 part=分图"),
     entity: str | None = Query(None, description="分图实体表名"),
+    display: str = Query("sample", description="sample=论文概念精简 · full=全量"),
     db: AsyncSession = Depends(get_db),
 ):
     """同源 model → Mermaid；与 SVG/Draw.io 同一 pack_er。"""
@@ -322,7 +434,7 @@ async def download_er_mmd(
     if not p:
         raise HTTPException(404, "项目不存在")
     ws = _workspace_or_400(p)
-    model = pack_er(ws, mode=mode, entity=entity)
+    model = pack_er(ws, mode=mode, entity=entity, display=display)
     if not model:
         raise HTTPException(404, "未找到 sql/schema.sql")
     _ensure_diagram_export_ok(model)
