@@ -1,0 +1,13 @@
+# 仅会话 Redis 演示用；与业务 MySQL 无关。开 addons.redis 后进学生包根目录。
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: thesis-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - thesis_redis_data:/data
+
+volumes:
+  thesis_redis_data:

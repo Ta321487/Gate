@@ -1,0 +1,14 @@
+# 由 bake 合并进 application.yml（仅 addons.redis=on）。
+# 本机先起 Redis，再 mvn spring-boot:run；可用仓库根 docker compose -f docker-compose.redis.yml up -d
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3s
+  session:
+    store-type: redis
+    timeout: 30m
+    redis:
+      namespace: thesis:session

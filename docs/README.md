@@ -21,6 +21,7 @@
 | [difficulty-tiers.md](./difficulty-tiers.md) | 开题可写到哪一层（L0–L3）、加价边界 | 活表 |
 | [invariants.md](./invariants.md) | 库表 6–15、总管/子管/员工槽位、学生端持久化 | 活表 |
 | [tech-stack-delivery.md](./tech-stack-delivery.md) | 技术栈轴出包契约（jdbc/mybatis/jpa、Security 等） | 细则档案 |
+| [redis-delivery.md](./redis-delivery.md) | 学生包 **Redis** 接入落点（Session 交齐；全域横切；扫词/叠层/门禁） | 规划册 · 未落地 |
 | [ai-assistant-delivery.md](./ai-assistant-delivery.md) | 学生包 AI 助手岛交付契约 | 细则档案 |
 
 ## 交付与接单
