@@ -54,6 +54,16 @@ class FileBusyHumanizeTests(unittest.TestCase):
         )
         self.assertEqual(humanize_job_exception(RuntimeError(msg)), msg)
 
+    def test_no_holders_does_not_blame_user_opened_file(self) -> None:
+        msg = format_file_busy_error(
+            Path(r"D:\graduate_factory_v3\data\workspace\gf-x\JdbcSupport.java"),
+            OSError(32, "sharing"),
+            action="删除",
+        )
+        self.assertIn("从失败步骤重试", msg)
+        self.assertIn("杀毒", msg)
+        self.assertNotIn("关闭 IDE 里该文件标签", msg)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -72,12 +72,19 @@ def apply_persistence_overlay(dest: Path, spec: dict, *, merge_tree) -> str:
     return persistence
 
 
+def _unlink_persistence_entry(path: Path) -> None:
+    """删 persistence 过渡入口；Windows 短锁（杀毒/索引）走重试，禁止裸 unlink 秒红。"""
+    if not path.is_file():
+        return
+    from app.services.project_disk import remove_tree_reliable
+
+    remove_tree_reliable(path)
+
+
 def purge_jdbc_persistence(dest: Path) -> None:
     """删掉 JdbcSupport/MbBridge；断言无 JdbcSupport / JdbcTemplate / MbBridge import。"""
     for rel in _JDBC_PURGE_REL:
-        path = dest / rel
-        if path.is_file():
-            path.unlink()
+        _unlink_persistence_entry(dest / rel)
     bad: list[str] = []
     java_root = dest / "backend" / "src" / "main" / "java"
     if java_root.is_dir():
@@ -109,12 +116,12 @@ def purge_jdbc_persistence(dest: Path) -> None:
 def purge_non_jpa_persistence(dest: Path) -> None:
     """jpa 包：去掉 JDBC / MyBatis 入口与 mapper 资源。"""
     for rel in _JDBC_PURGE_REL + _MYBATIS_PURGE_REL:
-        path = dest / rel
-        if path.is_file():
-            path.unlink()
+        _unlink_persistence_entry(dest / rel)
     mapper_dir = dest / "backend" / "src" / "main" / "resources" / "mapper"
     if mapper_dir.is_dir():
-        shutil.rmtree(mapper_dir)
+        from app.services.project_disk import remove_tree_reliable
+
+        remove_tree_reliable(mapper_dir)
     # 包名 remap 前 mapper 源码目录
     for path in (dest / "backend" / "src" / "main" / "java").rglob("*"):
         if path.is_file() and path.name.endswith("Mapper.java"):

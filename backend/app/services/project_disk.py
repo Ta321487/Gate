@@ -224,10 +224,10 @@ def format_file_busy_error(
         parts.append("可能占用进程：" + "；".join(holders))
     else:
         parts.append(
-            "未查到命令行含本工作区的 java/node/IDE（仍可能是编辑器打开该文件、杀毒扫描或已退出残留句柄）"
+            "未查到本工作区预览进程（常见是 Windows 杀毒/索引短锁，或 bake 刚写完立刻删撞锁；不一定是你打开了文件）"
         )
     parts.append(
-        "请先停本机预览（后端 Java / 前端 Vite），关闭 IDE 里该文件标签后，点「从失败步骤重试」"
+        "可直接点「从失败步骤重试」；若反复占用，再停该包预览后重试"
     )
     if err is not None:
         parts.append(f"系统原文：{err}")
