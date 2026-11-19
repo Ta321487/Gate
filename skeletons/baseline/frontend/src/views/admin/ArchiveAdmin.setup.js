@@ -21,6 +21,7 @@ const exportColumnsOn = computed(() => !!getSchema()?.listCrosscut?.exportColumn
 const recycleOn = computed(() => !!archive.softDelete)
 const batchDeleteOn = computed(() => !!getSchema()?.listCrosscut?.batchDelete)
 const softCopyBase = softDeleteCopy()
+const adminLabels = computed(() => getSchema()?.labels || {})
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const publishReview = computed(() => !!archive.publishReview)
 const canReviewPublish = computed(() => marketplace.value || publishReview.value)
@@ -30,18 +31,35 @@ const softCopy = computed(() => {
 })
 /** 列表已有「上架」列时不再并列 softDelete「状态」，避免两套真相 */
 const showShelfCol = computed(() => marketplace.value || publishReview.value)
+/** 多店商品审核 / 影院演出审核 / 投稿先审：文案跟 schema.labels，禁止写死「商品」 */
+const archiveReviewTitle = computed(() => {
+  const lab = String(adminLabels.value.archiveReviewTitle || '').trim()
+  if (lab) return lab
+  if (publishReview.value) return '投稿审核'
+  if (marketplace.value) return '商品审核'
+  return '审核'
+})
 const shelfFormLabel = computed(() => {
+  const lab = String(adminLabels.value.archiveShelfLabel || '').trim()
+  if (lab) return lab
   if (marketplace.value) return '是否在售'
   return String(softCopy.value.verb || '').includes('下架') ? '上架状态' : '启用状态'
 })
-const shelfSwitchOn = computed(() => (marketplace.value ? '在售' : softCopy.value.on))
-const shelfSwitchOff = computed(() => (marketplace.value ? '已下架' : softCopy.value.off))
+const shelfSwitchOn = computed(() => {
+  const lab = String(adminLabels.value.archiveShelfOnLabel || '').trim()
+  if (lab) return lab
+  return marketplace.value ? '在售' : softCopy.value.on
+})
+const shelfSwitchOff = computed(() => {
+  const lab = String(adminLabels.value.archiveShelfOffLabel || '').trim()
+  if (lab) return lab
+  return marketplace.value ? '已下架' : softCopy.value.off
+})
 const stockWarnBelow = computed(() => {
   const n = Number(getSchema()?.stockWarnBelow)
   return Number.isFinite(n) && n > 0 ? n : 10
 })
 const archiveAdminHintKeys = ARCHIVE_ADMIN_HINT_KEYS
-const adminLabels = computed(() => getSchema()?.labels || {})
 const thicken = computed(() => getSchema()?.tradeThicken || {})
 const contentThicken = computed(() => getSchema()?.contentThicken || {})
 const interactThicken = computed(() => getSchema()?.interactThicken || {})
@@ -227,6 +245,8 @@ const seatAttrSaving = ref(false)
 const seatAttrShowId = ref(0)
 const seatAttrCols = ref(8)
 const seatAttrSeats = ref([])
+/** 刷子：''=普通 / couple / accessible；先选类型再点座位 */
+const seatAttrBrush = ref('couple')
 const snackVisible = ref(false)
 const snackRows = ref([])
 const tagColorOn = computed(() => !!adminLabels.value.tagColorHint)
@@ -792,7 +812,7 @@ async function restore(row) {
 }
 
 async function approve(row) {
-  await ElMessageBox.confirm(`审核通过并上架「${row.title}」？`, publishReview.value ? '投稿审核' : '商品审核')
+  await ElMessageBox.confirm(`审核通过并上架「${row.title}」？`, archiveReviewTitle.value)
   await http.post(`/api/archive/${row.id}/approve`)
   ElMessage.success(
     publishReview.value
@@ -803,7 +823,7 @@ async function approve(row) {
 }
 
 async function reject(row) {
-  const title = publishReview.value ? '投稿审核' : '商品审核'
+  const title = archiveReviewTitle.value
   let reason = ''
   if (datingRejectReasonOn.value) {
     const { value } = await ElMessageBox.prompt(
@@ -953,6 +973,7 @@ async function openSeatAttrs(row) {
   if (!row?.id) return
   seatAttrShowId.value = row.id
   seatAttrSaving.value = false
+  seatAttrBrush.value = 'couple'
   try {
     const res = await http.get(`/api/seats/shows/${row.id}/map`)
     const data = res.data?.data || res.data || {}
@@ -967,11 +988,16 @@ async function openSeatAttrs(row) {
   }
 }
 
-function cycleSeatAttr(seat) {
+function paintSeatAttr(seat) {
+  if (!seat) return
+  const brush = String(seatAttrBrush.value || '')
   const cur = String(seat.seatAttr || '')
-  if (cur === 'couple') seat.seatAttr = 'accessible'
-  else if (cur === 'accessible') seat.seatAttr = ''
-  else seat.seatAttr = 'couple'
+  // 同类型再点一次 → 擦回普通（常见场馆后台交互）
+  if (brush && cur === brush) {
+    seat.seatAttr = ''
+    return
+  }
+  seat.seatAttr = brush
 }
 
 async function saveSeatAttrs() {
@@ -1037,6 +1063,35 @@ async function saveSnackRow(row) {
     ElMessage.error(e?.response?.data?.message || e.message || '保存失败')
   } finally {
     row._saving = false
+  }
+}
+
+async function deleteSnackRow(row) {
+  if (!row) return
+  const title = String(row.title || '').trim() || '该卖品'
+  // 未入库的新增行：只从列表拿掉
+  if (!row.id) {
+    snackRows.value = snackRows.value.filter((r) => r !== row)
+    return
+  }
+  try {
+    await ElMessageBox.confirm(`确定删除「${title}」？删除后选座页不再展示。`, '删除卖品', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  row._deleting = true
+  try {
+    await http.delete(`/api/seats/snacks/${row.id}`)
+    snackRows.value = snackRows.value.filter((r) => r.id !== row.id && r !== row)
+    ElMessage.success('已删除')
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e.message || '删除失败')
+  } finally {
+    row._deleting = false
   }
 }
 

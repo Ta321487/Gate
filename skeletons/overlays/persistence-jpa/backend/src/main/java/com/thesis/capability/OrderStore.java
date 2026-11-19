@@ -470,7 +470,7 @@ public final class OrderStore {
             if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
-                        "账户余额不足，请先在个人中心或购物车充值")));
+                        "账户余额不足，请先在个人中心充值")));
             }
             if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()
                     && priceSnap.get("couponCode") == null

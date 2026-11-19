@@ -134,7 +134,7 @@
 |---------|----------------|----------|
 | **DOM-SHOP** | 商城、二手、购物车、订单 | archive + order_lines + quota + content + org_users + **guestbook** + **favorites** + **order_review**（开题可再扫 coupon / loyalty / 联想·足迹·多图；多商家扫词开） |
 | **DOM-FOOD** | 食堂、点餐、外卖档口 | 同上（骑手岗开题扫词开） |
-| **DOM-CINEMA** | 影院选座购票、座位图占座 | archive + order_lines + quota + content + org_users + **seat_select**（场次 `cinema_show`、座位 `cinema_seat`；无购物车主路径） |
+| **DOM-CINEMA** | 影院/演艺选座购票、座位图占座 | archive + order_lines + quota + content + org_users + **seat_select** + guestbook（场次 `cinema_show`、座位 `cinema_seat`；无购物车主路径；**多主办方**扫词开 `shopMarketplace`，默认单场馆；**演艺皮**扫词开 `cinemaFace=performance`，默认影院皮）。**演艺皮定稿（对标大麦）**：头图=广告位轮播；分类=管理端文字条（多则横滑，不猜图标）；场次分栏按 `soldCount`；详情→选座；禁「热卖色块头图 / 货架」腔；壳色不在工厂写死浅蓝（擦包另说） |
 
 交易答辩口径：下单 → 管理确认/发货 → 用户看物流轨迹 → 完成；可选领券核销、售后、收藏再加购、评价。影院为选座确认后即时占座生成订单。
 

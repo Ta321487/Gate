@@ -486,9 +486,14 @@
       width="640px"
       destroy-on-close
     >
-      <p class="ops-hint">
-        点击座位循环设置：普通 → {{ seatAttrCoupleLabel }} → {{ seatAttrAccessibleLabel }} → 普通
-      </p>
+      <p class="ops-hint">先选座位类型，再点座位刷上；点已刷座位可擦回普通。</p>
+      <div class="seat-attr-tools">
+        <el-radio-group v-model="seatAttrBrush" size="small">
+          <el-radio-button value="">普通</el-radio-button>
+          <el-radio-button value="couple">{{ seatAttrCoupleLabel }}</el-radio-button>
+          <el-radio-button value="accessible">{{ seatAttrAccessibleLabel }}</el-radio-button>
+        </el-radio-group>
+      </div>
       <div class="seat-attr-grid" :style="{ gridTemplateColumns: `repeat(${seatAttrCols}, 2.2rem)` }">
         <button
           v-for="seat in seatAttrSeats"
@@ -496,7 +501,7 @@
           type="button"
           class="seat-attr-cell"
           :class="seat.seatAttr || 'plain'"
-          @click="cycleSeatAttr(seat)"
+          @click="paintSeatAttr(seat)"
         >
           {{ seat.seatCode }}
         </button>
@@ -531,9 +536,10 @@
             <el-switch v-model="row.onSale" />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="90">
+        <el-table-column label="操作" width="140">
           <template #default="{ row }">
             <el-button link type="primary" :loading="row._saving" @click="saveSnackRow(row)">{{ cinemaSnackSaveLabel }}</el-button>
+            <el-button link type="danger" :loading="row._deleting" @click="deleteSnackRow(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

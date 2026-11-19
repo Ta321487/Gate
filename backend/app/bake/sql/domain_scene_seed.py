@@ -2351,6 +2351,88 @@ FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='寄养预约' 
 """
 
 
+# 影院多主办方（影院皮）：平台超管 + 两影城 + 观影者
+_CINEMA_MP = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '平台管理员', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '潮汐影城', '13800000001',
+ '{"shopName":"潮汐影城","shopIntro":"校园排片与特效厅","shopPhone":"13800000001"}',
+ 0, 1, 1),
+('merchant_b', 'mer123', 'admin', '星海影城', '13800000012',
+ '{"shopName":"星海影城","shopIntro":"巨幕周末场","shopPhone":"13800000012"}',
+ 0, 1, 1),
+('user', 'user123', 'user', '观影者甲', '13800000002',
+ '{"realName":"周观影","email":"zhou@demo.com","gender":"男","memberNo":"M20230015","orgName":"艺术学院"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json),
+ enabled=VALUES(enabled);
+
+UPDATE sys_user SET staff_post='shop_merchant', staff_kind='clerk', role='admin', super_admin=0
+WHERE username IN ('subadmin', 'merchant_b');
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '普通厅'), (2, '巨幕厅'), (3, 'IMAX'), (4, '杜比');
+INSERT IGNORE INTO cinema_show (id, title, author, isbn, category_id, stock, status, seat_rows, seat_cols, start_at, owner_username) VALUES
+(1, '春日校园·晚场', '35', '1号厅', 1, 48, 'available', 6, 8, '2026-08-08 19:30:00', 'subadmin'),
+(2, '科幻巨幕·周末场', '45', '巨幕1厅', 2, 50, 'available', 5, 10, '2026-08-09 14:00:00', 'merchant_b'),
+(3, '学生特惠午场', '25', '2号厅', 3, 32, 'available', 4, 8, '2026-08-08 11:00:00', 'subadmin');
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audit_status, submitter_username)
+SELECT '选座购票须知', '多主办方入驻；选座确认后即时占座并生成订单；过开场时间自动下架不可售。', 'admin', '平台管理员', 'approved', 'admin'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='选座购票须知');
+"""
+
+# 演艺单场馆（演艺皮）
+_CINEMA_PERF = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '场馆主管', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '售票员', '13800000001', '{}', 0, 1, 1),
+('user', 'user123', 'user', '观众甲', '13800000002',
+ '{"realName":"周观众","email":"zhou@demo.com","gender":"男","memberNo":"M20230015","orgName":"艺术学院"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json);
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '话剧'), (2, '音乐会'), (3, '脱口秀'), (4, '喜剧');
+INSERT IGNORE INTO cinema_show (id, title, author, isbn, category_id, stock, status, seat_rows, seat_cols, start_at) VALUES
+(1, '春江话剧夜', '88', '黑匣子', 1, 28, 'available', 6, 8, '2026-12-01 19:30:00'),
+(2, '弦乐室内乐', '128', '室内乐厅', 2, 64, 'available', 8, 12, '2026-12-02 20:00:00'),
+(3, '午夜脱口秀', '68', '地下剧场', 3, 18, 'available', 5, 10, '2026-12-02 22:30:00');
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name)
+SELECT '选座购票须知', '选座确认后即时占座并生成订单；过开场时间自动下架不可售。', 'admin', '场馆主管'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='选座购票须知');
+"""
+
+# 演艺多主办方（演艺皮）
+_CINEMA_PERF_MP = """\
+INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled) VALUES
+('admin', 'admin123', 'admin', '平台管理员', '13800000000', '{}', 1, 0, 1),
+('subadmin', 'sub123', 'admin', '潮汐剧场', '13800000001',
+ '{"shopName":"潮汐剧场","shopIntro":"话剧与音乐会主办","shopPhone":"13800000001"}',
+ 0, 1, 1),
+('merchant_b', 'mer123', 'admin', '星海演艺', '13800000012',
+ '{"shopName":"星海演艺","shopIntro":"室内乐与脱口秀","shopPhone":"13800000012"}',
+ 0, 1, 1),
+('user', 'user123', 'user', '观众甲', '13800000002',
+ '{"realName":"周观众","email":"zhou@demo.com","gender":"男","memberNo":"M20230015","orgName":"艺术学院"}',
+ 0, 1, 1)
+ON DUPLICATE KEY UPDATE nickname=VALUES(nickname), phone=VALUES(phone), profile_json=VALUES(profile_json),
+ enabled=VALUES(enabled);
+
+UPDATE sys_user SET staff_post='shop_merchant', staff_kind='clerk', role='admin', super_admin=0
+WHERE username IN ('subadmin', 'merchant_b');
+
+INSERT IGNORE INTO category (id, name) VALUES (1, '话剧'), (2, '音乐会'), (3, '脱口秀'), (4, '喜剧');
+INSERT IGNORE INTO cinema_show (id, title, author, isbn, category_id, stock, status, seat_rows, seat_cols, start_at, owner_username) VALUES
+(1, '春江话剧夜', '88', '黑匣子', 1, 28, 'available', 6, 8, '2026-12-01 19:30:00', 'subadmin'),
+(2, '弦乐室内乐', '128', '室内乐厅', 2, 64, 'available', 8, 12, '2026-12-02 20:00:00', 'merchant_b'),
+(3, '午夜脱口秀', '68', '地下剧场', 3, 18, 'available', 5, 10, '2026-12-02 22:30:00', 'subadmin');
+
+INSERT INTO sys_notice (title, content, publisher_username, publisher_name, audit_status, submitter_username)
+SELECT '选座购票须知', '多主办方入驻；选座确认后即时占座并生成订单；过开场时间自动下架不可售。', 'admin', '平台管理员', 'approved', 'admin'
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_notice WHERE title='选座购票须知');
+"""
+
+
 def apply_domain_scene_seed(
     domain: str,
     sql: str,
@@ -2366,7 +2448,16 @@ def apply_domain_scene_seed(
 
     scene = scene_for(domain, title, proposal_text)
     seed: str | None = None
-    if domain == "DOM-SHOP":
+    if domain == "DOM-CINEMA":
+        from app.bake.scene_scan import cinema_product_kind, scan_shop_marketplace
+
+        face = cinema_product_kind(title, proposal_text)
+        if scan_shop_marketplace(title, proposal_text):
+            sql = _shop_sql_marketplace(sql, farm=False)
+            seed = _CINEMA_PERF_MP if face == "performance" else _CINEMA_MP
+        elif face == "performance":
+            seed = _CINEMA_PERF
+    elif domain == "DOM-SHOP":
         from app.bake.scene_scan import shop_catalog_kind, shop_product_kind
 
         pk = shop_product_kind(title, proposal_text)

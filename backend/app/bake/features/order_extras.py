@@ -150,16 +150,32 @@ def attach_flash_price_fields(schema: dict[str, Any]) -> None:
     labels.setdefault("flashCountdownEnded", "已结束")
 
 
-def attach_order_extras_schema(schema: dict[str, Any], caps: list[str], *, timeout_minutes: int = 0) -> None:
+def attach_order_extras_schema(
+    schema: dict[str, Any],
+    caps: list[str],
+    *,
+    timeout_minutes: int = 0,
+    domain: str = "",
+    title: str = "",
+) -> None:
     caps = list(caps or [])
     labels = schema.setdefault("labels", {})
     menus = schema.setdefault("menus", {})
     user = menus.setdefault("user", [])
     admin = menus.setdefault("admin", [])
+    dom = str(domain or schema.get("domain") or "")
 
     if timeout_minutes > 0:
         schema["orderTimeoutMinutes"] = int(timeout_minutes)
-        if schema.get("demoPay") or schema.get("shopMarketplace"):
+        if dom == "DOM-CINEMA" and (schema.get("demoPay") or schema.get("shopMarketplace")):
+            labels["orderTimeoutHint"] = (
+                f"待付款订单超过 {timeout_minutes} 分钟将自动取消，请尽快支付"
+            )
+        elif dom == "DOM-CINEMA":
+            labels["orderTimeoutHint"] = (
+                f"待取票订单超过 {timeout_minutes} 分钟将自动取消，请尽快完成取票确认"
+            )
+        elif schema.get("demoPay") or schema.get("shopMarketplace"):
             labels["orderTimeoutHint"] = (
                 f"待付款订单超过 {timeout_minutes} 分钟将自动取消，请尽快支付"
             )
@@ -181,17 +197,35 @@ def attach_order_extras_schema(schema: dict[str, Any], caps: list[str], *, timeo
     ensure_menu(admin, "order_reviews", {"key": "order_reviews", "label": "评价管理"}, before_key="orders")
     # 买家 vs 总管/商家：勿共用「我的评价」口吻（L4；merchant_ops 进评价菜单会红）
     labels.setdefault("orderReviewPageTitle", "我的评价")
-    labels.setdefault("orderReviewPageLead", "对已完成订单进行星级与文字评价。")
     labels.setdefault("orderReviewAdminPageTitle", "评价管理")
     labels.setdefault(
         "orderReviewAdminPageLead",
         "查看全盘评价，必要时删除不当内容。",
     )
     labels.setdefault("orderReviewStaffPageTitle", "评价管理")
-    labels.setdefault(
-        "orderReviewStaffPageLead",
-        "查看评价并回复买家。",
-    )
+    if dom == "DOM-CINEMA":
+        face = str(schema.get("cinemaFace") or "").strip()
+        if not face:
+            from app.bake.scene_scan import cinema_product_kind
+
+            face = cinema_product_kind(title or "", "")
+        audience = "观众" if face == "performance" else "观影者"
+        labels.setdefault(
+            "orderReviewPageLead",
+            "对已观演场次进行星级与文字评价。"
+            if face == "performance"
+            else "对已观影场次进行星级与文字评价。",
+        )
+        labels.setdefault(
+            "orderReviewStaffPageLead",
+            f"查看评价并回复{audience}。",
+        )
+    else:
+        labels.setdefault("orderReviewPageLead", "对已完成订单进行星级与文字评价。")
+        labels.setdefault(
+            "orderReviewStaffPageLead",
+            "查看评价并回复买家。",
+        )
     ents = schema.setdefault("entities", {})
     ents.setdefault(
         "orderReview",
@@ -216,7 +250,13 @@ def apply_order_extras_to_spec(spec: dict[str, Any], proposal_text: str = "") ->
     )
     spec = {**spec, "capabilities": caps}
     schema["capabilities"] = caps
-    attach_order_extras_schema(schema, caps, timeout_minutes=timeout)
+    attach_order_extras_schema(
+        schema,
+        caps,
+        timeout_minutes=timeout,
+        domain=str(spec.get("domain") or ""),
+        title=str(spec.get("title") or ""),
+    )
     # 券 / 评价 / 超时关单 / 限时购 gate
     if ORDER_REVIEW_CAP in caps or timeout > 0 or "coupon" in caps or FLASH_PRICE_CAP in caps:
         from app.bake.gate_contracts import merge_order_extras_gate

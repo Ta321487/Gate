@@ -114,6 +114,41 @@ public class SeatStore {
         return s.isBlank() ? null : s;
     }
 
+    private static void enrichShowOwner(Map<String, Object> show) {
+        if (show == null) return;
+        if (!ArchiveStore.shopMarketplaceEnabled() || !ArchiveStore.hasOwnerUsername()) return;
+        String owner = str(show.get("ownerUsername"));
+        if (owner.isBlank()) {
+            Object id = show.get("id");
+            if (!(id instanceof Number n) || n.longValue() <= 0) return;
+            try {
+                owner = clip(mapper().getShowOwner(n.longValue()), 64);
+            } catch (Exception e) {
+                return;
+            }
+            if (owner.isBlank()) return;
+            show.put("ownerUsername", owner);
+        }
+        show.put("shopName", ArchiveStore.shopDisplayName(owner));
+    }
+
+    /**
+     * 多主办方：非超管只能改本方场次座位属性。
+     * 单场馆（旗关）不校验归属。
+     */
+    public static void assertCanManageShow(long showId, String username, boolean superAdmin) {
+        require();
+        if (!ArchiveStore.shopMarketplaceEnabled() || superAdmin) return;
+        Map<String, Object> show = getShow(showId);
+        if (show == null) throw new IllegalArgumentException("场次不存在");
+        if (!ArchiveStore.hasOwnerUsername()) return;
+        String owner = str(show.get("ownerUsername"));
+        String uid = clip(username, 64);
+        if (owner.isBlank() || uid.isBlank() || !owner.equals(uid)) {
+            throw new IllegalStateException("只能维护本方场次的座位");
+        }
+    }
+
     private static void enrichShowCategory(Map<String, Object> show) {
         if (show == null) return;
         Object cid = show.get("categoryId");
@@ -332,14 +367,20 @@ public class SeatStore {
         releaseExpiredHolds();
         syncSoldOutShows();
         List<Map<String, Object>> list = mapper().listOpenShows();
-        for (Map<String, Object> show : list) enrichShowCategory(show);
+        for (Map<String, Object> show : list) {
+            enrichShowCategory(show);
+            enrichShowOwner(show);
+        }
         return list;
     }
 
     public static Map<String, Object> getShow(long id) {
         require();
         Map<String, Object> show = mapper().getShow(id);
-        if (show != null) enrichShowCategory(show);
+        if (show != null) {
+            enrichShowCategory(show);
+            enrichShowOwner(show);
+        }
         return show;
     }
 

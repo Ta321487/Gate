@@ -188,13 +188,24 @@ export function accountFaceFromDelivered(delivered = APP_DELIVERED) {
   return map[group] || 'plain'
 }
 
+/** DOM-CINEMA 双皮：演艺用观演，影院用观影 */
+function cinemaFaceFromDelivered(delivered = APP_DELIVERED) {
+  const s = delivered?.schema || {}
+  return String(s.cinemaFace || s.labels?.cinemaFace || '').trim() || 'cinema'
+}
+
 /** 脸对应的短文案（标题/导语）；须学生可见口语 */
-export function accountFaceCopy(face) {
+export function accountFaceCopy(face, delivered = APP_DELIVERED) {
   const f = String(face || 'plain')
+  const showTitle = cinemaFaceFromDelivered(delivered) === 'performance' ? '我的观演' : '我的观影'
+  const showLead =
+    cinemaFaceFromDelivered(delivered) === 'performance'
+      ? '资料与安全设置；订票相关入口也在下面。'
+      : '资料与安全设置；订票相关入口也在下面。'
   const table = {
     stall: { title: '我的账户', lead: '收藏、地址和优惠相关入口都在这里。' },
     member: { title: '会员中心', lead: '收藏、优惠和资料入口都在这里。' },
-    showcard: { title: '我的观影', lead: '资料与安全设置；订票相关入口也在下面。' },
+    showcard: { title: showTitle, lead: showLead },
     reader: { title: '借阅证', lead: '资料与借阅相关入口都在这里。' },
     desk: { title: '我的书桌', lead: '收藏和文稿入口在下面。' },
     service: { title: '服务台', lead: '联系方式、安全设置与工单相关入口都在这里。' },
@@ -212,8 +223,8 @@ export function accountFaceCopy(face) {
  * 顶栏/头像入口文案：与账户短页标题一致，禁止笼统「我的」冒充整站功能篓。
  * @returns {string}
  */
-export function accountChromeLabel(face) {
-  return accountFaceCopy(face).title
+export function accountChromeLabel(face, delivered = APP_DELIVERED) {
+  return accountFaceCopy(face, delivered).title
 }
 
 /** 进 /profile 的统一叫法（顶栏下拉、账户短页链、资料页标题同词） */

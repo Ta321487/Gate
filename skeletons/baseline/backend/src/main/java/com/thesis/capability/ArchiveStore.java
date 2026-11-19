@@ -823,8 +823,11 @@ public final class ArchiveStore {
         String status = availStatus(stock, startRaw, endRaw);
         if (shopMarketplaceEnabled || publishReviewEnabled || "draft".equals(str(m.get("status")).trim())) {
             String cur = str(m.get("status")).trim();
-            // 草稿/待审/驳回：默认保现状；显式 status 才改（发布草稿→available/pending_review）
-            if ("draft".equals(cur) || "pending_review".equals(cur) || "rejected".equals(cur)) {
+            // 待审/驳回只能走 approve/reject，禁止 update 改写为 available 进公开目录
+            if ("pending_review".equals(cur) || "rejected".equals(cur)) {
+                status = cur;
+            } else if ("draft".equals(cur)) {
+                // 草稿：显式 status 才改（发布草稿→available/pending_review）
                 if (patch.containsKey("status") && patch.get("status") != null) {
                     String st = String.valueOf(patch.get("status")).trim();
                     if (!st.isBlank()) status = st;
@@ -2269,6 +2272,11 @@ public final class ArchiveStore {
             m.put("tags", tags);
         }
         return m;
+    }
+
+    /** 多店展示名：优先店铺名称，否则昵称（供 SeatStore 等横切复用）。 */
+    public static String shopDisplayName(String ownerUsername) {
+        return resolveShopName(ownerUsername);
     }
 
     /** 多店：优先店铺名称，否则昵称。 */

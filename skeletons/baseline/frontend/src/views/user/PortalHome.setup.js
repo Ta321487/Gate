@@ -324,7 +324,17 @@ async function loadMall() {
   }
 }
 
+function seatSelectOn() {
+  const caps = getSchema()?.capabilities || []
+  return caps.includes('seat_select')
+}
+
 function goArchive() {
+  if (seatSelectOn()) {
+    const home = String(labels.userHomePath || '/seats/shows').trim() || '/seats/shows'
+    router.push(home)
+    return
+  }
   router.push('/archive')
 }
 
@@ -337,12 +347,29 @@ function goCategory(cat) {
     requireLogin(router)
     return
   }
+  if (seatSelectOn()) {
+    goArchive()
+    return
+  }
   router.push({ path: '/archive', query: { categoryId: String(cat.id) } })
+}
+
+function isPerformanceFace() {
+  const s = getSchema() || {}
+  return String(s.cinemaFace || s.labels?.cinemaFace || '').trim() === 'performance'
 }
 
 function goProduct(item) {
   if (!item?.id) {
     goArchive()
+    return
+  }
+  if (seatSelectOn()) {
+    if (isPerformanceFace()) {
+      router.push({ path: `/archive/item/${item.id}` })
+      return
+    }
+    router.push(`/seats/map/${item.id}`)
     return
   }
   router.push({ path: `/archive/item/${item.id}` })
@@ -400,8 +427,16 @@ function cardLead(key, menuLabelText) {
   if (key === 'favorites') {
     const custom = labels.favoritesPageLead || labels.favoritesLead
     if (custom) return String(custom).replace(/。$/, '')
-    if ((getSchema()?.capabilities || []).includes('order_lines')) {
-      return '收藏的商品，便于再次加购'
+    const arch =
+      getSchema()?.entities?.archive?.labelPlural ||
+      getSchema()?.entities?.archive?.label ||
+      '内容'
+    const caps = getSchema()?.capabilities || []
+    if (caps.includes('seat_select')) {
+      return `收藏的${arch}，便于再次选座`
+    }
+    if (caps.includes('order_lines')) {
+      return `收藏的${arch}，便于再次选购`
     }
   }
   if (key === 'dm') {

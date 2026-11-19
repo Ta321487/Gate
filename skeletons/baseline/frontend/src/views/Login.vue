@@ -193,11 +193,21 @@ const sub = computed(() => {
       : `使用总管或${subLabel.value}账号进入后台`
   }
   if (entrySide.value === 'staff') return '使用岗位账号进入作业台'
-  return marketplace.value ? '买家或商家账号登录' : '使用已有账号进入系统'
+  // 多店：跟域角色名（商城买家/商家，影院观影者/主办方），禁止写死买家商家
+  if (marketplace.value) {
+    return (
+      String(labels.marketplaceLoginSub || '').trim() ||
+      `${userLabel.value}或${subLabel.value}账号登录`
+    )
+  }
+  return '使用已有账号进入系统'
 })
 const note = computed(() => {
   if (marketplace.value && entrySide.value === 'admin') {
-    return '平台管理员由系统预制，不开放自助注册；商家入驻请走门户注册并等待审核。'
+    return (
+      String(labels.marketplaceAdminLoginNote || '').trim() ||
+      `平台管理员由系统预制，不开放自助注册；${subLabel.value}入驻请走门户注册并等待审核。`
+    )
   }
   if (entryMode === 'role_pick') return '请选择与账号匹配的登录身份。'
   if (entryMode === 'split_entry' && entrySide.value === 'admin') {
@@ -210,15 +220,22 @@ const note = computed(() => {
     return `门户仅接受${userLabel.value}；管理/员工请走对应入口。`
   }
   if (marketplace.value) {
-    return '买家与商家可注册；平台管理员仅登录、不开放注册。'
+    return (
+      String(labels.marketplacePortalLoginNote || '').trim() ||
+      `${userLabel.value}与${subLabel.value}可注册；平台管理员仅登录、不开放注册。`
+    )
   }
   return '新用户可先注册再登录。'
 })
 const authLead = computed(() => {
   if (entrySide.value === 'admin') {
-    return marketplace.value
-      ? '管理端仅登录：平台监管用户、商家、商品、订单与活动审核。'
-      : '管理端独立入口，按总管/子管理身份登录。'
+    if (marketplace.value) {
+      return (
+        String(labels.marketplaceAdminAuthLead || '').trim() ||
+        `管理端仅登录：平台监管${userLabel.value}、${subLabel.value}与业务审核。`
+      )
+    }
+    return '管理端独立入口，按总管/子管理身份登录。'
   }
   if (entrySide.value === 'staff') return '员工端独立入口，办理派送、维修等现场作业。'
   const raw = String(labels.authLead || '').trim()
@@ -233,7 +250,7 @@ const authLead = computed(() => {
 const authPoints = computed(() => {
   if (entrySide.value === 'admin') {
     return marketplace.value
-      ? ['仅登录无注册', '用户/商家管理', '活动与售后审核']
+      ? ['仅登录无注册', `${userLabel.value}/${subLabel.value}管理`, '审核与售后']
       : ['身份校验', '总管/子管理分权', '验证码登录']
   }
   if (entrySide.value === 'staff') return ['岗位校验', '作业台', '验证码登录']

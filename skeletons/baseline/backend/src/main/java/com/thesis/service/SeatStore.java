@@ -143,7 +143,40 @@ public class SeatStore {
         } catch (SQLException e) {
             m.put("startAt", null);
         }
+        try {
+            String owner = rs.getString("owner_username");
+            if (owner != null && !owner.isBlank()) {
+                m.put("ownerUsername", owner.trim());
+            }
+        } catch (SQLException ignored) {
+            /* 单场馆模板无此列 */
+        }
         return m;
+    }
+
+    private static void enrichShowOwner(Map<String, Object> show) {
+        if (show == null) return;
+        if (!ArchiveStore.shopMarketplaceEnabled() || !ArchiveStore.hasOwnerUsername()) return;
+        String owner = str(show.get("ownerUsername"));
+        if (owner.isBlank()) return;
+        show.put("shopName", ArchiveStore.shopDisplayName(owner));
+    }
+
+    /**
+     * 多主办方：非超管只能改本方场次座位属性。
+     * 单场馆（旗关）不校验归属。
+     */
+    public static void assertCanManageShow(long showId, String username, boolean superAdmin) {
+        require();
+        if (!ArchiveStore.shopMarketplaceEnabled() || superAdmin) return;
+        Map<String, Object> show = getShow(showId);
+        if (show == null) throw new IllegalArgumentException("场次不存在");
+        if (!ArchiveStore.hasOwnerUsername()) return;
+        String owner = str(show.get("ownerUsername"));
+        String uid = clip(username, 64);
+        if (owner.isBlank() || uid.isBlank() || !owner.equals(uid)) {
+            throw new IllegalStateException("只能维护本方场次的座位");
+        }
     }
 
     private static void enrichShowCategory(Map<String, Object> show) {
@@ -445,8 +478,43 @@ public class SeatStore {
                 "SELECT * FROM cinema_show WHERE status='available' AND stock>0 "
                         + "AND (start_at IS NULL OR start_at > NOW()) ORDER BY id DESC",
                 (rs, i) -> mapShow(rs));
-        for (Map<String, Object> show : list) enrichShowCategory(show);
+        enrichSoldCounts(list);
+        for (Map<String, Object> show : list) {
+            enrichShowCategory(show);
+            enrichShowOwner(show);
+        }
         return list;
+    }
+
+    /** 已售座位数，供「热卖」头图按真销量取，不是列表第一条。 */
+    private static void enrichSoldCounts(List<Map<String, Object>> shows) {
+        if (shows == null || shows.isEmpty()) return;
+        for (Map<String, Object> show : shows) {
+            show.put("soldCount", 0);
+        }
+        try {
+            List<Map<String, Object>> rows = db().query(
+                    "SELECT show_id AS showId, COUNT(*) AS soldCount FROM cinema_seat "
+                            + "WHERE status='sold' GROUP BY show_id",
+                    (rs, i) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("showId", rs.getLong("showId"));
+                        m.put("soldCount", rs.getInt("soldCount"));
+                        return m;
+                    });
+            Map<Long, Integer> byId = new HashMap<>();
+            for (Map<String, Object> row : rows) {
+                byId.put(((Number) row.get("showId")).longValue(), ((Number) row.get("soldCount")).intValue());
+            }
+            for (Map<String, Object> show : shows) {
+                Object id = show.get("id");
+                if (id instanceof Number n) {
+                    show.put("soldCount", byId.getOrDefault(n.longValue(), 0));
+                }
+            }
+        } catch (Exception ignored) {
+            /* 表未就绪时仍返回场次，前端无销量则改文案 */
+        }
     }
 
     public static Map<String, Object> getShow(long id) {
@@ -456,6 +524,7 @@ public class SeatStore {
         if (list.isEmpty()) return null;
         Map<String, Object> show = list.get(0);
         enrichShowCategory(show);
+        enrichShowOwner(show);
         return show;
     }
 
@@ -498,10 +567,27 @@ public class SeatStore {
         List<String> adjacent = new ArrayList<>();
         Set<String> open = new HashSet<>();
         String holdUntil = null;
+        LocalDateTime now = LocalDateTime.now();
         for (Map<String, Object> s : seats) {
             String code = str(s.get("seatCode"));
             String st = str(s.get("status"));
             boolean mine = "held".equals(st) && !uid.isBlank() && uid.equals(str(s.get("username")));
+            // 过期占座不当「我的」：避免前端倒计时结束后仍勾选
+            if (mine) {
+                String hu = str(s.get("holdUntil"));
+                if (!hu.isBlank()) {
+                    try {
+                        LocalDateTime until = LocalDateTime.parse(hu, FMT);
+                        if (!until.isAfter(now)) {
+                            mine = false;
+                            st = "free";
+                            s.put("status", "free");
+                        }
+                    } catch (Exception ignored) {
+                        /* 解析失败仍按 held/mine */
+                    }
+                }
+            }
             s.put("mine", mine);
             if ("free".equals(st) || mine) open.add(code);
             if (mine) {
@@ -703,6 +789,15 @@ public class SeatStore {
         return getSnack(newId);
     }
 
+    /** 管理端删除卖品；历史订单明细已快照名称/价，不联动改单。 */
+    public static void deleteSnack(long id) {
+        require();
+        if (!snackReady()) throw new IllegalStateException("卖品功能暂不可用");
+        if (id <= 0) throw new IllegalArgumentException("卖品不存在");
+        int n = db().update("DELETE FROM cinema_snack WHERE id=?", id);
+        if (n == 0) throw new IllegalArgumentException("卖品不存在");
+    }
+
     public static void adjustSnackStock(long snackId, int delta) {
         if (!snackReady() || snackId <= 0 || delta == 0) return;
         if (delta < 0) {
@@ -842,6 +937,52 @@ public class SeatStore {
             else first.addSuppressed(e);
         }
         if (first != null) throw first;
+    }
+
+    /**
+     * 购物车结算场次：按数量占用空闲座位（不重复扣库存，由 OrderStore 已调 stock）。
+     * 返回已占座位号；失败抛错并由调用方回滚订单。
+     */
+    public static List<String> occupyFreeSeatsForCartOrder(
+            String username, long orderId, long showId, int qty) {
+        require();
+        if (orderId <= 0 || showId <= 0 || qty < 1) {
+            throw new IllegalArgumentException("场次座位参数无效");
+        }
+        if (qty > 6) throw new IllegalArgumentException("单次最多购 6 张票，请分单或改用选座");
+        String u = clip(username, 64);
+        if (u.isBlank()) throw new IllegalArgumentException("未登录");
+        releaseExpiredHolds();
+        Map<String, Object> show = getShow(showId);
+        if (show == null || "sold_out".equals(str(show.get("status")))) {
+            throw new IllegalStateException("本场次已售罄");
+        }
+        if (!"available".equals(str(show.get("status"))) || isPastStart(show)) {
+            expirePastShows();
+            throw new IllegalStateException("场次已开场或已下架，不可购票");
+        }
+        ensureSeatMap(showId, show);
+        List<String> free = db().query(
+                "SELECT seat_code FROM cinema_seat WHERE show_id=? AND status='free' ORDER BY seat_code LIMIT ?",
+                (rs, i) -> rs.getString("seat_code"),
+                showId, qty);
+        if (free == null || free.size() < qty) {
+            throw new IllegalStateException("空闲座位不足，请减少数量或改用选座购票");
+        }
+        List<String> codes = new ArrayList<>(free.subList(0, qty));
+        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+        for (String code : codes) {
+            int n = db().update(
+                    "UPDATE cinema_seat SET status='sold', username=?, order_id=?, sold_at=? "
+                            + "WHERE show_id=? AND seat_code=? AND status='free'",
+                    u, orderId, now, showId, code);
+            if (n == 0) {
+                releaseByOrder(orderId);
+                throw new IllegalStateException("座位 " + code + " 已被占用，请重试");
+            }
+        }
+        syncShowSaleStatus(showId);
+        return codes;
     }
 
     /** 取消订单时释放座位（status→free），与 OrderStore.advance cancel 钩子对齐。 */

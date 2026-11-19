@@ -11,14 +11,15 @@ public interface SeatMapper {
     @Select("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='cinema_seat'")
     Integer countTable();
 
-    @Select("SELECT id, title, price_yuan AS author, hall_note AS isbn, category_id AS categoryId, stock, status, "
+    /** 列名对齐 DOM-CINEMA.sql（author=票价、isbn=影厅名）。 */
+    @Select("SELECT id, title, author, isbn, category_id AS categoryId, stock, status, "
             + "cover_url AS coverUrl, seat_rows AS seatRows, seat_cols AS seatCols, "
             + "DATE_FORMAT(start_at, '%Y-%m-%d %H:%i:%s') AS startAt "
             + "FROM cinema_show WHERE status='available' AND stock>0 "
             + "AND (start_at IS NULL OR start_at > NOW()) ORDER BY id DESC")
     List<Map<String, Object>> listOpenShows();
 
-    @Select("SELECT id, title, price_yuan AS author, hall_note AS isbn, category_id AS categoryId, stock, status, "
+    @Select("SELECT id, title, author, isbn, category_id AS categoryId, stock, status, "
             + "cover_url AS coverUrl, seat_rows AS seatRows, seat_cols AS seatCols, "
             + "DATE_FORMAT(start_at, '%Y-%m-%d %H:%i:%s') AS startAt "
             + "FROM cinema_show WHERE id=#{id}")
@@ -40,6 +41,9 @@ public interface SeatMapper {
 
     @Select("SELECT name FROM category WHERE id=#{id}")
     String getCategoryName(long id);
+
+    @Select("SELECT owner_username FROM cinema_show WHERE id=#{id}")
+    String getShowOwner(long id);
 
     @Insert("INSERT IGNORE INTO cinema_seat (show_id, seat_code, status) VALUES (#{showId}, #{seatCode}, 'free')")
     int insertSeat(@Param("showId") long showId, @Param("seatCode") String seatCode);

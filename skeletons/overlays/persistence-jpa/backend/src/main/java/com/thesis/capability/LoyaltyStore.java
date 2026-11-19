@@ -407,7 +407,7 @@ public final class LoyaltyStore {
         if (walletEnabled && !pointsPayEnabled && !enough) {
             out.put(
                     "message",
-                    "账户余额不足，请先在个人中心或购物车充值（当前 ¥"
+                    "账户余额不足，请先在个人中心充值（当前 ¥"
                             + round2(((Number) acc.get("balanceYuan")).doubleValue())
                             + "，需 ¥"
                             + payable
@@ -456,7 +456,7 @@ public final class LoyaltyStore {
         if (walletEnabled) {
             double bal = ((Number) getAccount(username).get("balanceYuan")).doubleValue();
             if (bal + 1e-9 < payable) {
-                throw new IllegalStateException("账户余额不足，请先在个人中心或购物车充值（当前 ¥" + round2(bal) + "，需 ¥" + payable + "）");
+                throw new IllegalStateException("账户余额不足，请先在个人中心充值（当前 ¥" + round2(bal) + "，需 ¥" + payable + "）");
             }
             if (payable > 0) {
                 adjustWallet(username, -payable, "order_pay", "order", orderId, username);
@@ -484,7 +484,7 @@ public final class LoyaltyStore {
             double bal = ((Number) getAccount(username).get("balanceYuan")).doubleValue();
             if (bal + 1e-9 < pay) {
                 throw new IllegalStateException(
-                        "账户余额不足，请先在个人中心或购物车充值（当前 ¥"
+                        "账户余额不足，请先在个人中心充值（当前 ¥"
                                 + round2(bal)
                                 + "，需 ¥"
                                 + pay

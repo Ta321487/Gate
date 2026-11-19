@@ -1348,33 +1348,42 @@ def profile_fields_for(
     for f in specific:
         if isinstance(f, dict):
             f.setdefault("forRoles", ["user"])
-    # 多店商家：店铺资料仅 staff（商家注册/资料）；买家仍只见收货字段
-    if domain == "DOM-SHOP":
+    # 多店商家/多主办方：店铺·主办方资料仅 staff；买家/观影者不见这些键
+    if domain in ("DOM-SHOP", "DOM-CINEMA"):
         from app.bake.scene_scan import scan_shop_marketplace
 
         if scan_shop_marketplace(title, proposal_text):
+            cinema = domain == "DOM-CINEMA"
             specific.extend(
                 [
                     _pf(
                         "shopName",
-                        "店铺名称",
+                        "主办方名称" if cinema else "店铺名称",
                         required=True,
                         on_register=True,
                         max_length=64,
                         for_roles=["staff"],
-                        placeholder="入驻店铺对外名称",
+                        placeholder=(
+                            "对外展示的主办方名称"
+                            if cinema
+                            else "入驻店铺对外名称"
+                        ),
                     ),
                     _pf(
                         "shopIntro",
-                        "店铺简介",
+                        "主办方简介" if cinema else "店铺简介",
                         on_register=True,
                         max_length=200,
                         for_roles=["staff"],
-                        placeholder="主营品类与服务说明",
+                        placeholder=(
+                            "演出类型与场馆说明"
+                            if cinema
+                            else "主营品类与服务说明"
+                        ),
                     ),
                     _pf(
                         "shopPhone",
-                        "店铺电话",
+                        "联系电话" if cinema else "店铺电话",
                         on_register=True,
                         max_length=20,
                         for_roles=["staff"],
@@ -1382,7 +1391,7 @@ def profile_fields_for(
                     ),
                 ]
             )
-        # 防旧包丢 forRoles：店铺键钉 staff，收货键钉 user
+        # 防旧包丢 forRoles：店铺键钉 staff，收货键钉 user（仅 SHOP）
         _SHOP_STAFF_KEYS = frozenset({"shopName", "shopIntro", "shopPhone"})
         _SHOP_USER_KEYS = frozenset(
             {
@@ -1399,7 +1408,7 @@ def profile_fields_for(
             key = str(f.get("key") or "")
             if key in _SHOP_STAFF_KEYS:
                 f["forRoles"] = ["staff"]
-            elif key in _SHOP_USER_KEYS:
+            elif domain == "DOM-SHOP" and key in _SHOP_USER_KEYS:
                 f["forRoles"] = ["user"]
     return copy.deepcopy(COMMON_PROFILE_FIELDS) + specific
 

@@ -847,6 +847,8 @@ def domain_sql(
         text,
         domain=domain or "",
         order_table=runtime.get("order_table") or "biz_order",
+        title=title or "",
+        proposal_text=proposal_text or "",
     )
     text = ensure_food_thicken_sql(
         text,
@@ -911,7 +913,7 @@ def domain_sql(
         user_publish = False
         shop_marketplace = False
         soft_delete = False
-    if not shop_marketplace and (domain or "") == "DOM-SHOP":
+    if not shop_marketplace and (domain or "") in ("DOM-SHOP", "DOM-CINEMA"):
         from app.bake.scene_scan import scan_shop_marketplace
 
         shop_marketplace = scan_shop_marketplace(title or "", proposal_text or "")

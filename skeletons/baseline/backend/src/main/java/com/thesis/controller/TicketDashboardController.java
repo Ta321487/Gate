@@ -124,7 +124,8 @@ public class TicketDashboardController {
             }
         }
         try {
-            charts.put("stockSeries", ArchiveStore.stockByCategory(8, merchantScoped ? uid : null));
+            String stockOwner = merchantScoped ? uid : null;
+            charts.put("stockSeries", ArchiveStore.stockByCategory(8, stockOwner));
         } catch (Exception ignored) {
             charts.put("stockSeries", List.of());
         }

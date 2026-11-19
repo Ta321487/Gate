@@ -36,6 +36,148 @@
 **本批提交主题**（2026-11-16 拆推）：文案口径 → 资产台册 → 词表+Stripe+主题色 → 论文图材料 → 等待态 I2 → 手调/对账 UX → 本交接。轨迹以 `git log` 为准。  
 **勿提交**：根目录学生 `.docx`、`er-*.drawio` 草稿、`backend/` 下短随机名临时文件。
 
+### 本会话（2026-11-18）· 选座取消回弹 + 倒计时未释放 ✅
+
+- **站队**：**修工厂**（`SeatMap.vue`）。
+- **真因**：①旧占座回包在取消后写回 `picked`；②`applyMap` 仅在有 `mine` 时同步，超时后本地勾选不消；③超时只 `load()` 未强制空占座。
+- **修**：`holdSeq` 丢弃过期回包；`picked` 始终跟服务端 `mine`；到点 `expireHoldLocal` 清空并 `hold seats:[]`。
+
+### 本会话（2026-11-19）· 座位属性刷子 + 卖品删除 ✅
+
+- **站队**：**修工厂**。
+- **A**：座位属性改为先选类型再刷座位（同类型再点擦回普通）。
+- **C**：`DELETE /api/seats/snacks/{id}` + 管理端删除钮（确认后删）。
+- **测**：`test_seat_attr_brush_and_snack_delete` 绿；包 `gf-20261117-000909` 已同步。
+
+### 本会话（2026-11-19）· 影院/演艺屏蔽商城物流钮 ✅
+
+- **站队**：**修工厂**。
+- **修**：管理端多主办方也不出「运输中/已签收」；改地址/物流节点/收货核销/骑手对影院关闭；后端 `transit`/`sign`/`addShipNode` 在 `SeatStore` 开启时拒绝。
+- **测**：`CinemaMarketplaceUiTests::test_orders_admin_cinema_skips_marketplace_logistics` 绿。
+- **包**：`gf-20261117-000909` 已同步（OrderStore 从 ZIP 恢复后打补丁，勿整文件覆盖包名）。
+
+### 本会话（2026-11-19）· 影院订单：付款文案 / 小票门槛 / 手续费仅管理端 ✅
+
+- **站队**：**修工厂**。
+- **修**：多主办方 `pending=待付款`、`confirmed=待取票`；用户端小票非 pending；退票手续费登记仅 admin；选座成功提示区分需付款。
+- **包**：`gf-20261117-000909` 已同步（含 `appDelivered` 态名）。
+
+### 本会话（2026-11-19）· 选座取消回弹 / 超时未释放 ✅
+
+- **站队**：**修工厂**。
+- **真因**：`holdNow` 在 `applyingMap` 时直接丢弃同步，取消后的空 hold 发不出，旧 `mine` 又写回；超时 `applyMap` 仍按 mine 勾选。
+- **修**：占座冲突改重试；过期/强制清用 `forceClear`；后端过期占座不当 `mine`。
+
+### 本会话（2026-11-18）· 登录返回首页进场次（游客）✅
+
+- **站队**：**修工厂**。
+- **真因**：`userHomePath=/seats/shows` 不在游客白名单，且 `/api/seats/shows` 强制登录 → 登录页「返回首页」踢回登录。
+- **修**：`isPortalPublicPath` 收场次列表/档案详情；`portalBrandHomePath` 跟 `userHomePath`；场次列表 API 免登录（选座仍登录）。
+
+### 定稿记住 · DOM-CINEMA 演艺皮（`cinemaFace=performance`）
+
+对标大麦结构，**不要**再发明「热卖色块头图 / 猜分类图标 / 货架腔」：
+
+| 面 | 定稿 |
+|---|---|
+| 头图 | 布局 `PortalCarousel` = 管理端广告位（+ 预置 `portalBanners`） |
+| 分类 | `/api/categories` 管理端定；纯文字条；含「全部」>8 单行横滑 |
+| 场次 | 按分类分栏；栏内按 `soldCount` 排；切换叫「场次 / 周视图」 |
+| 导航 | 场次列表→详情→选座（影院皮仍可列表直达座位图） |
+| 详情 | 事实行不重复；Tab：项目详情 / 购票须知 / 观演须知 |
+| 选座 | 舞台 + 排×列；选中/CTA 跟 `--portal-brand` |
+| 壳色 | 工厂不写死浅蓝；本题浅蓝只擦包 |
+
+探针包：`gf-20261117-000909`。测：`test_cinema_marketplace`。
+
+### 本会话（2026-11-18）· 演艺皮对标大麦收口 + 轻抛光 ✅
+
+- **站队**：**修工厂** + 擦 `gf-20261117-000909` 同构。
+- **结构**：见上「定稿记住」。
+- **测**：`test_cinema_marketplace` 绿。
+- **续**：演示前配广告位/封面、充余额、走选座出票。
+
+### 本会话（2026-11-17）· 演艺皮大麦货架+详情（工厂结构 / 包色浅蓝）✅
+
+- **站队**：**修工厂**（结构）+ **只擦包**色（`gf-20261117-000909` `shellColors` + 包内 `cinema.css`）；工厂主题色不动。
+- **已做**：`SeatShows` 演艺皮 = 分类 + 分栏；详情三 Tab；影院皮仍列表直达座位图。
+- **测**：`test_cinema_marketplace` + `test_cinema_c15` 绿。
+
+### 本会话（2026-11-17）· 选座勿套商城详情（擦包+工厂）✅
+
+- **站队**：**修工厂** + 擦 `gf-20261117-000909`。
+- **真因**：`order_lines` 让 `ArchiveItemDetail` / 门户进商城加购页（数量+加入购物车+库存）。
+- **修**：`seat_select` 优先 → 详情 CTA「选座」进座位图；余座文案；门户/列表点场次直达座位图；不进商城详情。
+- **测**：`test_cinema_c15`。
+
+### 本会话（2026-11-17）· 选座答辩单入口（擦包+工厂）✅
+
+- **站队**：**修工厂** + 擦 `gf-20261117-000909`。
+- **口径**：用户端只挂「场次选座」；摘掉并挂的 archive「浏览场次/场次目录」；管理端场次管理保留。点名购物车仍可留，导语改主路径优先。
+- **测**：`test_cinema_c15` / `test_cinema_marketplace`。
+
+### 本会话（2026-11-17）· SeatShows 海报叠字（擦包+工厂同构）✅
+
+- **站队**：**修工厂** + 擦 `gf-20261117-000909`。
+- **真因**：海报 `width`+`padding` 无 `border-box`，溢出压住场次文案（mock 有全局 border-box，基线没有）。
+- **修**：`show-poster` + `box-sizing:border-box` + `minmax(0,1fr)`；包内 `SeatShows`/`SeatMap` 已同构。
+
+### 本会话（2026-11-17）· CINEMA 卖品 QA 假阳性挡包 ✅
+
+- **站队**：**修工厂**（`agents_qa`；非擦包）。
+- **真因**：包内 `tradeThicken.cinemaSnack=true` + seed 含 `cinema_snack`，LLM 却只看 island `capabilities`/entity/menu → warn 挡包。
+- **修**：QA 载荷补 `tradeThicken`/`tradeThickenOn`/`seedHasCinemaSnack`；落点齐时滤「卖品假功能/无实体菜单」类 finding。
+- **测**：`test_qa_factory_drift` 卖品滤噪段。
+- **续**：重 bake 探针题即可。
+
+### 本会话（2026-11-17）· 演艺/影院双皮接线（按 mock）✅
+
+- **站队**：**修工厂**（`DOM-CINEMA` 同域双皮；扫词开演艺皮，默认影院皮）。
+- **已做**：`cinema_product_kind` → `cinemaFace`（schema + labels）；`_cinema_schema` 双皮文案/角色/档案字段；演艺种子（单场馆/多主办方）；基线 `SeatShows`/`SeatMap` 按 mock（海报卡 + 舞台/银幕 + 底部确认条）；mock 标已接线。
+- **测**：`pytest tests/test_cinema_marketplace.py` **19 passed**（含 CinemaFace）。
+- **口径**：演艺平台 ≠ 电影院；共用选座壳。
+- **未做**：真 bake 探针出包（等人起包）；parked **r** 全域产品脸仍立账未开工。
+
+### 本会话（2026-11-17）· 演艺/影院双皮 mock + park r
+
+- **站队**：**修工厂方向**（示意 mock；接线见上条）。
+- **已做**：mock 演艺皮默认 + 影院皮切换；parked **r**「全域学先进产品脸」。
+
+### 本会话（2026-11-17）· 影院禁物流叙事（多店订单态）
+
+- **站队**：**修工厂**（`MyOrders`/`Cart`/`OrdersAdmin` 共享壳；影院不套商城发货/收货/退货物流）。
+- **已做**：多店影院订单态跟 schema；关确认收货/改地址/退货物流/质保；空态去选座；评价占位观演体验；购物车禁配送窗/拼团。
+- **测**：`test_cinema_marketplace` 源码合同。
+
+### 本会话（2026-11-17）· 多店登录/注册去「买家商家」硬编码
+
+- **站队**：**修工厂**（基线跟 `roleLabel`；影院多店不再穿帮商城腔）。
+- **已做**：`Login.vue` / `Register.vue` 多店副文案与账号类型用 user/subadmin 角色名；门户收藏导语跟档案名/`seat_select`。
+- **测**：`test_cinema_marketplace`（含 login_register）+ shop marketplace **绿**。
+
+### 本会话（2026-11-17）· CINEMA 演出审核文案 + 电子票对齐
+
+- **站队**：**修工厂**（演出审核复用多店 `pending_review`，不另开 `publishReview`）。
+- **已做**：多店影院 labels（`archiveReviewTitle=演出审核` 等）；`ArchiveAdmin` 审核弹窗跟 labels；材料点「电子票」→`pickupCodeLabel=电子票码`；`opening_align` 补演出/商品审核与电子票；地图口径更新。
+- **纪律**：Redis 不做。
+- **测**：`pytest tests/test_cinema_marketplace.py` + shop marketplace 相关 **绿**。
+- **未做**：真 bake 出包（等人起包）。
+
+### 本会话（2026-11-17）· CINEMA 点名购物车（seatSelectKeepCart）
+
+- **站队**：**修工厂**（材料点名「购物车」不得被 seat_select 静默摘掉）。
+- **已做**：`scan_cart_named` → 保留 cart 菜单 + `seatSelectKeepCart`；路由不剥 `/cart`；结算自动占空座 + 取票码；Cart 柜台取票无物流地址；`opening_align` 购物车须有菜单；地图口径更新。
+- **纪律**：未点名仍摘车；仍不挂地址簿；Redis 不做。
+- **测**：`pytest tests/test_cinema_marketplace.py`（含 CartNamed）。
+
+### 本会话（2026-11-17）· CINEMA 多主办方（shopMarketplace）
+
+- **站队**：**修工厂**（复用 SHOP `shopMarketplace`，不平行第二旗）。
+- **已做**：扫词（主办方/演出审核等）+ `_cinema_schema` 三端；仅旗开 SQL/双主办方种子；SeatStore 主办方名 + `assertCanManageShow`；SeatShows 展示 `shopName`；资料字段「主办方名称」；地图/domains 改扫词开；多店场次 `softDelete`；MyBatis SeatMapper 场次列改回 `author/isbn`；超时文案待取票口径；`test_cinema_marketplace` **绿**。
+- **纪律**：默认单场馆；关旗无多店残留；壳仍 storefront（点名购物车除外）。
+- **测**：`pytest tests/test_cinema_marketplace.py`；SHOP 多店扫词/schema 回归未伤。
+- **未做**：真 bake 探针题出包（等人起包）。
+
 ### 本会话（2026-11-16）· 学生可见文案口径（本域角色 · 修复全域）
 
 - **站队**：**修工厂**（规则口径；非擦包）。

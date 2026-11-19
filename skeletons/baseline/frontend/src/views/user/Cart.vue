@@ -2,7 +2,7 @@
   <div>
     <section class="hero">
       <h1>{{ cartLabel }}</h1>
-      <p>确认数量后提交{{ orderNoun }}。</p>
+      <p>{{ cartPageLead || `确认数量后提交${orderNoun}。` }}</p>
       <p v-if="stockLockHint" class="muted">{{ stockLockHint }}</p>
       <div class="tools">
         <el-button @click="load">刷新</el-button>
@@ -16,7 +16,7 @@
     <el-table
       :data="list"
       stripe
-      empty-text="购物车为空，去浏览加购吧"
+      :empty-text="cartEmptyText"
       :data-trade-surface="tradeSurface || 'cards'"
       :class="{
         'trade-shelfgrid': tradeSurface === 'shelfgrid',

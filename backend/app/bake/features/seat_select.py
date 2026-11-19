@@ -12,10 +12,17 @@ SEAT_SELECT_CAP = "seat_select"
 _SEAT_SIGNALS = re.compile(
     r"选座购票|影院选座|电影票选座|在线选座|座位图购票|影院售票|电影院购票|场次选座|影院票务选座|观影选座"
 )
+# 材料点名购物车模块时与选座并存（默仍摘车，避免单场馆题多挂商城壳）
+_CART_NAMED = re.compile(r"购物车")
 
 
 def scan_seat_select(text: str) -> bool:
     return pattern_mentioned(text or "", _SEAT_SIGNALS, ignore_contrast=True)
+
+
+def scan_cart_named(text: str) -> bool:
+    """开题/任务书点名「购物车」——与选座主路径可并存。"""
+    return pattern_mentioned(text or "", _CART_NAMED, ignore_contrast=True)
 
 
 def seat_select_wanted(
@@ -52,30 +59,38 @@ def merge_seat_select_capabilities(
     return out
 
 
-def attach_seat_select_menus(schema: dict[str, Any]) -> None:
+def attach_seat_select_menus(
+    schema: dict[str, Any], *, keep_cart: bool = False
+) -> None:
     from app.bake.schema.menu_utils import ensure_menu
 
     menus = schema.setdefault("menus", {})
     user = menus.setdefault("user", [])
-    # 场次列表走选座入口；保留订单
+    # 答辩主路径：用户端只挂「场次选座」进座位图；勿并挂「浏览场次/场次目录」抢入口
     ensure_menu(
         user,
         "seat_shows",
         {"key": "seat_shows", "label": "场次选座"},
         before_key="my_orders",
     )
-    # 影院主路径：选座下单；不挂购物车/地址簿/留言；门户落地场次选座
-    drop = {"cart", "addresses", "guestbook"}
+    # 摘地址簿/留言；默认摘购物车。材料点名购物车则保留（仍不挂物流地址簿）
+    # 用户侧 archive 与 seat_shows 同看场次 → 摘掉，管理端场次管理保留
+    drop = {"addresses", "guestbook", "archive"}
+    if not keep_cart:
+        drop.add("cart")
     menus["user"] = [
         m for m in user if not (isinstance(m, dict) and m.get("key") in drop)
     ]
-    # 用户侧「场次目录」与选座列表重复：改成「浏览场次」仍可进档案页，主 CTA 已是选座
-    for m in menus["user"]:
-        if isinstance(m, dict) and m.get("key") == "archive":
-            m["label"] = m.get("label") or "浏览场次"
-            if m["label"] in ("场次目录", "档案", "商品"):
-                m["label"] = "浏览场次"
-            break
+    if keep_cart:
+        ensure_menu(
+            user,
+            "cart",
+            {"key": "cart", "label": "购物车"},
+            before_key="my_orders",
+        )
+        schema["seatSelectKeepCart"] = True
+    else:
+        schema.pop("seatSelectKeepCart", None)
     admin = menus.setdefault("admin", [])
     menus["admin"] = [
         m for m in admin if not (isinstance(m, dict) and m.get("key") == "guestbook")
@@ -89,6 +104,13 @@ def attach_seat_select_menus(schema: dict[str, Any]) -> None:
     )
     labels.setdefault("seatMapTitle", "选座购票")
     labels.setdefault("seatSelectCta", "选座")
+    if keep_cart:
+        labels.setdefault(
+            "cartPageLead",
+            "主路径请先在「场次选座」里自选座位购票；"
+            "购物车用于先加场次再结算，结算时自动分配空闲座位。柜台取票，无物流配送。",
+        )
+        labels.setdefault("cinemaCartFulfillLabel", "柜台取票")
     ents = schema.setdefault("entities", {})
     if "seat" not in ents:
         ents["seat"] = {
@@ -112,9 +134,11 @@ def apply_seat_select_to_spec(spec: dict[str, Any], proposal_text: str = "") -> 
     spec = {**spec, "capabilities": caps}
     schema = dict(spec.get("schema") or {})
     schema["capabilities"] = caps
+    blob = f"{spec.get('title') or ''} {proposal_text or ''}"
+    keep_cart = scan_cart_named(blob)
 
     if SEAT_SELECT_CAP in caps:
-        attach_seat_select_menus(schema)
+        attach_seat_select_menus(schema, keep_cart=keep_cart)
         from app.bake.gate_contracts import merge_seat_select_gate
 
         gate = dict(spec.get("gate") or {})
@@ -124,6 +148,8 @@ def apply_seat_select_to_spec(spec: dict[str, Any], proposal_text: str = "") -> 
         names = {f.get("name") for f in features if isinstance(f, dict)}
         if "选座购票" not in names:
             features.append({"name": "选座购票", "status": "flow"})
+        if keep_cart and "购物车" not in names:
+            features.append({"name": "购物车", "status": "module"})
         spec["features"] = features
 
         ents = list(spec.get("entities") or [])

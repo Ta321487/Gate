@@ -653,6 +653,62 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         self.assertFalse(_order_review_role_copy_findings(clean))
         self.assertTrue(_fallback_qa(clean).get("ok"))
 
+    def test_cinema_snack_llm_warn_filtered_when_thicken_and_seed(self) -> None:
+        """CINEMA 卖品已落点时，勿因 island capabilities/无实体菜单误报假功能（warn 挡包）。"""
+        from app.llm.agents_qa import _filter_findings, _is_noise_finding
+
+        msg = (
+            "选座/卖品标签集宣称「选座时可加购爆米花等卖品，随票一并结算」"
+            "「下单时扣减卖品库存，取消订单后回补」「保存卖品」，"
+            "但 capabilities 未含 tradeThicken.cinemaSnack，"
+            "entityKeys 无卖品实体、menuKeys 无卖品菜单，"
+            "开题报告与任务书功能模块也未列卖品加购；"
+            "一旦选座页渲染该区即为无后端落点的假功能。"
+        )
+        ok_ctx = {
+            "labels": {
+                "cinemaSnackHint": "选座时可加购爆米花等卖品，随票一并结算。",
+                "cinemaSnackStockHint": "下单时扣减卖品库存，取消订单后回补。",
+                "cinemaSnackSaveLabel": "保存卖品",
+            },
+            "tradeThicken": {"cinemaSnack": True, "cinemaSnackStock": True},
+            "seedHasCinemaSnack": True,
+            "seed_sql": "CREATE TABLE cinema_snack (id INT);",
+            "entityKeys": ["archive", "order"],
+            "menuKeys": {"user": ["seat_shows"], "admin": ["archive"]},
+            "capabilities": ["archive", "seat_select"],
+            "staffPackMenus": {},
+            "traits": {},
+            "files": {},
+        }
+        self.assertTrue(
+            _is_noise_finding(
+                msg,
+                ok_ctx,
+                where="labels.cinemaSnackLabel / labels.cinemaSnackHint",
+            )
+        )
+        kept = _filter_findings(
+            [
+                {
+                    "level": "warn",
+                    "msg": msg,
+                    "where": "labels.cinemaSnackLabel / labels.cinemaSnackHint",
+                }
+            ],
+            ok_ctx,
+        )
+        self.assertEqual(kept, [])
+
+        # 真缺落点时不得滤
+        missing_ctx = {
+            **ok_ctx,
+            "tradeThicken": {},
+            "seedHasCinemaSnack": False,
+            "seed_sql": "",
+        }
+        self.assertFalse(_is_noise_finding(msg, missing_ctx, where="labels.cinemaSnackHint"))
+
     def test_order_review_llm_warn_filtered_when_staff_leads_present(self) -> None:
         """已有商家/总管评价导语时，LLM 再报买家键不匹配 → 噪声滤掉（warn 挡包场景）。"""
         from app.llm.agents_qa import _filter_findings, _is_noise_finding

@@ -166,6 +166,14 @@ SHOP_MARKETPLACE_HINTS = (
     "入驻卖家",
     "B2B2C",
     "b2b2c",
+    # 演艺/影院多主办方（勿加裸「主办方」——单场馆开题易误伤）
+    "主办方商家",
+    "主办方后台",
+    "多主办方",
+    "演出审核",
+    "场馆入驻",
+    "主办方商家管理",
+    "主办方商家后台",
 )
 # 商城：campus 二手成色档 + 行业货皮 + retail 兜底
 SHOP_RETAIL_TITLE_HINTS = ("销售", "商城", "电商", "网店", "店铺", "零售", "售卖", "购物")
@@ -1048,6 +1056,34 @@ def scan_shop_marketplace(title: str, body: str = "") -> bool:
     return hints_mentioned(_shop_marketplace_focus(body), SHOP_MARKETPLACE_HINTS)
 
 
+# DOM-CINEMA 同域双皮：默认影院；开题点名演艺形态才切演艺皮（舞台/剧目/观演）
+CINEMA_PERFORMANCE_HINTS = (
+    "演艺",
+    "话剧",
+    "音乐会",
+    "脱口秀",
+    "剧目",
+    "剧场",
+    "演唱会",
+    "音乐厅",
+    "小剧场",
+    "歌剧",
+    "舞剧",
+    "戏曲",
+    "相声",
+    "马戏",
+)
+
+
+def cinema_product_kind(title: str, body: str = "") -> str:
+    """``performance`` | ``cinema``（默认影院；演艺扫词开）。"""
+    t = (title or "").strip()
+    b = (body or "").strip()
+    if scan_has(t, CINEMA_PERFORMANCE_HINTS) or scan_has(b, CINEMA_PERFORMANCE_HINTS):
+        return "performance"
+    return "cinema"
+
+
 def shop_catalog_kind(title: str, body: str = "") -> str:
     """SQL 种子 / AI FAQ 分类键。
 
@@ -1285,6 +1321,8 @@ def product_kind_for(domain: str, title: str = "", body: str = "") -> str | None
         return parking_product_kind(title, body)
     if domain == "DOM-HOTEL":
         return hotel_product_kind(title, body)
+    if domain == "DOM-CINEMA":
+        return cinema_product_kind(title, body)
     if domain == "DOM-BLOG":
         return blog_product_kind(title, body)
     if domain == "DOM-MEDIA":

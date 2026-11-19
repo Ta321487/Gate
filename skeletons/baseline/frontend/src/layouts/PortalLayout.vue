@@ -191,6 +191,7 @@ const nameInitial = computed(() => {
 })
 const hasStage = computed(() => {
   const style = String(APP_DELIVERED?.portalHomeStyle || '').trim()
+  // editorial/mall 首页自带轮播；其余（含场次选座主页）走布局 PortalCarousel = 管理端广告位
   return style !== 'editorial' && style !== 'mall'
 })
 

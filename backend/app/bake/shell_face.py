@@ -491,6 +491,11 @@ def top_search_placeholder(
         kind = _shop_kind_key(title, proposal_text)
         if kind in _SHOP_KIND_PLACEHOLDER:
             return _SHOP_KIND_PLACEHOLDER[kind]
+    if domain == "DOM-CINEMA":
+        from app.bake.scene_scan import cinema_product_kind
+
+        if cinema_product_kind(title, proposal_text) == "performance":
+            return "剧目 / 场次"
     return _DOMAIN_SEARCH_PLACEHOLDER.get(domain) or "关键词"
 
 

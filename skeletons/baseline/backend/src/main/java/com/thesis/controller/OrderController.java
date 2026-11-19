@@ -377,14 +377,12 @@ public class OrderController {
             @RequestBody Map<String, Object> body,
             HttpSession session) {
         requireOrder();
+        // 退票手续费登记仅票务/管理端；观众端只读展示
         String uid = AdminAuth.requireLogin(session);
+        AdminAuth.requireAdmin(session);
         Map<String, Object> m = OrderStore.getOrder(id);
         if (m == null) throw new BizException(ErrorCode.NOT_FOUND, "订单不存在");
-        boolean admin = "admin".equals(String.valueOf(session.getAttribute("role")));
-        if (!admin && !uid.equals(String.valueOf(m.get("username")))) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权操作");
-        }
-        if (admin) requireMerchantOrderAccess(session, uid, id);
+        requireMerchantOrderAccess(session, uid, id);
         Map<String, Object> b = body == null ? Map.of() : body;
         try {
             Object fee = b.get("refundFeeYuan");

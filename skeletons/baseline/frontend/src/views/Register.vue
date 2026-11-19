@@ -27,8 +27,8 @@
           <label v-if="shopMarketplace" class="field wide">
             <span class="lab">账号类型<i class="req" aria-hidden="true">*</i></span>
             <el-select v-model="form.accountType" placeholder="请选择">
-              <el-option label="买家" value="buyer" />
-              <el-option label="商家" value="merchant" />
+              <el-option :label="userLabel" value="buyer" />
+              <el-option :label="subLabel" value="merchant" />
             </el-select>
           </label>
           <label class="field">
@@ -175,6 +175,7 @@ const backHomeLabel = computed(
   () => String(labels.loginBackHome || labels.backHomeLabel || '返回首页').trim() || '返回首页',
 )
 const userLabel = computed(() => roleLabel('user', '用户'))
+const subLabel = computed(() => roleLabel('subadmin', '子管'))
 const title = ref(
   labels.appName || APP_DELIVERED.title || import.meta.env.VITE_APP_TITLE || '毕设系统',
 )
@@ -196,12 +197,12 @@ const stepLead = computed(() =>
 const stepSub = computed(() => {
   if (!hasProfileStep.value) {
     return shopMarketplace.value && form.accountType === 'merchant'
-      ? '创建商家账号（待平台审核）'
+      ? `创建${subLabel.value}账号（待平台审核）`
       : `创建${userLabel.value}账号`
   }
   if (step.value === 1) return '第 1 步 · 账号与安全'
   return shopMarketplace.value && form.accountType === 'merchant'
-    ? '第 2 步 · 店铺资料'
+    ? `第 2 步 · ${subLabel.value}资料`
     : `第 2 步 · ${userLabel.value}资料`
 })
 const primaryLabel = computed(() => {

@@ -16,6 +16,10 @@ _ALIGN_RULES: list[tuple[tuple[str, ...], str, str]] = [
     (("申请售后", "退货申请", "售后管理"), "售后/退货", "refund"),
     # 词表与 scene_scan.SHOP_MARKETPLACE_HINTS 对齐；命中检测走 scan_shop_marketplace
     (("商家入驻", "多商家", "商家端", "卖家中心"), "多商家入驻", "marketplace"),
+    # 多店商品审核 / 影院演出审核：同一 pending_review 管道（shopMarketplace）
+    (("演出审核", "商品审核"), "演出/商品审核", "marketplace_review"),
+    # 影院取票码即电子票出示；非活动域票夹
+    (("电子票", "支付与电子票"), "电子票/取票码", "eticket"),
 ]
 
 # 内容壳：条下评论 / 投稿 / 先审（与交易规则分开，避免商城「评论」误伤）
@@ -67,7 +71,8 @@ def _delivered(kind: str, *, spec: dict[str, Any], schema: dict[str, Any]) -> bo
     keys = _menu_keys(schema)
     caps = _caps(spec)
     if kind == "cart":
-        return "cart" in keys or "order_lines" in caps
+        # 须有购物车菜单；仅有 order_lines/选座下单不算已交「购物车模块」
+        return "cart" in keys
     if kind == "addresses":
         return "addresses" in keys or "order_lines" in caps
     if kind == "favorites":
@@ -83,6 +88,19 @@ def _delivered(kind: str, *, spec: dict[str, Any], schema: dict[str, Any]) -> bo
         return "order_lines" in caps or "orders" in keys or "my_orders" in keys
     if kind == "marketplace":
         return bool(schema.get("shopMarketplace"))
+    if kind == "marketplace_review":
+        # 多店商家新建 → pending_review；或内容壳 publishReview
+        return bool(schema.get("shopMarketplace")) or _archive_flag(
+            schema, "publishReview"
+        )
+    if kind == "eticket":
+        labels = schema.get("labels") if isinstance(schema.get("labels"), dict) else {}
+        pickup = str(labels.get("pickupCodeLabel") or "")
+        if "票" in pickup or "电子" in pickup:
+            return True
+        # 影院选座主路径默认有取票码
+        dom = str(spec.get("domain") or "").strip().upper()
+        return "seat_select" in caps or dom == "DOM-CINEMA"
     if kind == "item_comment":
         return "item_comment" in caps or "item_comments" in keys
     if kind == "user_publish":

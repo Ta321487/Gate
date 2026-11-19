@@ -147,7 +147,7 @@
           @click="openChangeAddress(row)"
         >{{ changeAddressLabel }}</el-button>
         <el-button
-          v-if="receiptPrintOn"
+          v-if="canPrintReceipt(row)"
           size="small"
           @click="printReceipt(row)"
         >{{ orderReceiptPrintLabel }}</el-button>
@@ -188,11 +188,6 @@
           @click="setWarranty(row)"
         >{{ warrantyLabel }}</el-button>
         <el-button
-          v-if="canSetRefundFee(row)"
-          size="small"
-          @click="setRefundFee(row)"
-        >{{ refundFeeLabel }}</el-button>
-        <el-button
           v-if="canReview(row)"
           size="small"
           type="primary"
@@ -209,10 +204,10 @@
     <EmptyHint
       v-if="!list.length"
       :title="`暂无${orderNoun}`"
-      desc="去逛逛，把心仪商品加进购物车吧。"
+      :desc="ordersEmptyDesc"
       mark="单"
-      cta-label="去浏览"
-      @cta="$router.push('/archive')"
+      :cta-label="ordersEmptyCta"
+      @cta="$router.push(ordersEmptyPath)"
     />
     <div class="pager">
       <el-pagination
@@ -285,19 +280,6 @@
       <template #footer>
         <el-button @click="invoiceVisible = false">取消</el-button>
         <el-button type="primary" :loading="invoiceSaving" @click="submitInvoice">提交申请</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="refundFeeVisible" :title="refundFeeLabel" width="400px" destroy-on-close>
-      <p v-if="refundFeeHint" class="pay-tip">{{ refundFeeHint }}</p>
-      <el-form label-position="top">
-        <el-form-item :label="refundFeeLabel" required>
-          <el-input-number v-model="refundFeeForm.fee" :min="0" :precision="2" :step="1" style="width:100%" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="refundFeeVisible = false">取消</el-button>
-        <el-button type="primary" :loading="refundFeeSaving" @click="submitRefundFee">保存</el-button>
       </template>
     </el-dialog>
 

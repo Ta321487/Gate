@@ -829,7 +829,7 @@ _USER_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
     "DOM-CARPOOL": ("拼车用户", "同行者", "用户"),
     "DOM-TOUR": ("游客", "用户"),
     "DOM-TIMEBANK": ("志愿者", "用户"),
-    "DOM-CINEMA": ("观影者", "用户"),
+    "DOM-CINEMA": ("观影者", "观众", "用户"),
     "DOM-LABSAFE": ("实验人员", "申请人"),
     "DOM-RECRUIT": ("求职者", "应聘者"),
     "DOM-DATING": ("会员", "征婚者", "同学"),
@@ -1057,13 +1057,14 @@ def staff_posts_for_domain(
     posts = [dict(p) for p in (STAFF_POSTS_BY_DOMAIN.get(domain) or []) if isinstance(p, dict)]
     have = {str(p.get("id")) for p in posts if p.get("id")}
     scan_blob = f"{title or ''}\n{proposal_text or ''}"
-    if domain == "DOM-SHOP":
+    if domain in ("DOM-SHOP", "DOM-CINEMA"):
         from app.bake.scene_scan import scan_shop_marketplace
 
         if scan_shop_marketplace(title, proposal_text):
-            # 多店：仅店长岗（平台超管管全局）；避免再叠 order_clerk 抢 subadmin
+            # 多店：仅店长/主办方岗（平台超管管全局）；避免再叠 order_clerk 抢 subadmin
+            lab = "主办方" if domain == "DOM-CINEMA" else "商家"
             posts = [
-                _clerk("shop_merchant", "商家", "merchant_ops"),
+                _clerk("shop_merchant", lab, "merchant_ops"),
             ]
             have = {str(p.get("id")) for p in posts if p.get("id")}
     for post, hints in _OPTIONAL_WORKERS.get(domain) or []:

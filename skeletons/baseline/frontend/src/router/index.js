@@ -706,15 +706,17 @@ function withBorrowThickenRoutes(baseRoutes) {
   return routes
 }
 
-/** 影院选座：有 seat_select 能力时挂场次与座位图；剥掉购物车/地址簿孤儿路由 */
+/** 影院选座：有 seat_select 时挂场次与座位图；默认剥购物车/地址簿。材料点名购物车（seatSelectKeepCart）则保留 /cart。 */
 function withSeatSelectRoutes(baseRoutes) {
   if (!hasCap('seat_select')) return baseRoutes
   const routes = cloneRoutes(baseRoutes)
   const portal = routes.find((r) => r.path === '/')
   const kids = portal?.children
   if (kids) {
+    const keepCart = !!getSchema()?.seatSelectKeepCart
     for (let i = kids.length - 1; i >= 0; i -= 1) {
-      if (kids[i].path === 'cart' || kids[i].path === 'addresses') kids.splice(i, 1)
+      const p = kids[i].path
+      if (p === 'addresses' || (p === 'cart' && !keepCart)) kids.splice(i, 1)
     }
     const add = (path, loader) => {
       if (!kids.some((c) => c.path === path)) kids.push({ path, component: loader })

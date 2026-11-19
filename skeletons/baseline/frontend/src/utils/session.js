@@ -171,6 +171,10 @@ export function isPortalPublicPath(path) {
   if (path === '/home' || path === '/' || path === '/archive' || path === '/notices' || path === '/guestbook' || path === '/slots' || path === '/account' || path === '/cert-verify') {
     return true
   }
+  // 影院/演艺主页：游客可回场次列表（选座图仍要登录）
+  if (path === '/seats/shows' || path.startsWith('/seats/shows?')) return true
+  // 演艺皮：场次详情可逛；点选座再登录
+  if (path.startsWith('/archive/item/')) return true
   if (path.startsWith('/notices/')) return true
   return false
 }

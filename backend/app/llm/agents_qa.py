@@ -69,7 +69,14 @@ _SYS = (
     "orderReviewAdminPageLead=总管；orderReviewStaffPageLead=商家/办理员回复。"
     "已有 Staff/Admin 评价导语时，勿因买家键仍是「我的评价」再报商家菜单文案不匹配。"
     "同类双口径（ordersAdminLead/ordersStaffLead、tickets*Lead 等）同理：勿把买家/用户键当成管理端缺文案。\n"
-    "8) summary 只概括是否发现会影响程序/演示的问题；无则写「未发现影响程序运行或答辩演示的问题」。"
+    "8) summary 只概括是否发现会影响程序/演示的问题；无则写「未发现影响程序运行或答辩演示的问题」。\n"
+    "9) DOM-CINEMA 卖品加购落点是 tradeThicken.cinemaSnack + SQL 表 cinema_snack + SeatStore/选座页，"
+    "不是 shop/product 商城能力，也不是独立 entityKey/menuKey；"
+    "勿要求 capabilities 数组出现 tradeThicken.cinemaSnack（它在 tradeThicken 字段，不在 island capabilities）；"
+    "tradeThicken.cinemaSnack 为 true 且 seedHasCinemaSnack 为 true 时，"
+    "勿因 labels.cinemaSnack* 或「开题未列卖品」报假功能/无实体/无菜单。"
+    "cinemaCombo 为选座页说明文案（连场说明），不是独立购票引擎，勿报缺能力。\n"
+    "10) 影院订单 pending 文案为「待取票」；超时提示也应是待取票口径，勿要求改成商城「待付款」。"
 )
 
 # LLM warn/error 须命中「影响程序」信号，否则当噪声（结构闸另走，不经此滤）
@@ -263,6 +270,11 @@ def _collect_qa_context(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]
         "entities": entities,
         "entityKeys": sorted(entities.keys()),
         "capabilities": list(schema.get("capabilities") or []),
+        "tradeThicken": (
+            schema.get("tradeThicken")
+            if isinstance(schema.get("tradeThicken"), dict)
+            else {}
+        ),
         "staffPackMenus": schema.get("staffPackMenus") or {},
         "staffPackPages": schema.get("staffPackPages") or {},
         "traits": traits,
@@ -271,6 +283,7 @@ def _collect_qa_context(workspace: Path, spec: dict[str, Any]) -> dict[str, Any]
         "missing_files": missing,
         "files": files,
         "seed_sql": seed_sql,
+        "seedHasCinemaSnack": "cinema_snack" in seed_sql,
     }
 
 
@@ -1429,6 +1442,17 @@ def _switch_hides_absent_states(msg: str, ctx: dict[str, Any], where: str = "") 
     return checked
 
 
+def _cinema_snack_landing_ok(ctx: dict[str, Any]) -> bool:
+    """卖品加购已落点：tradeThicken.cinemaSnack + seed 含 cinema_snack。"""
+    tt = ctx.get("tradeThicken") if isinstance(ctx.get("tradeThicken"), dict) else {}
+    if not tt.get("cinemaSnack"):
+        return False
+    if ctx.get("seedHasCinemaSnack") is True:
+        return True
+    seed = ctx.get("seed_sql") or ""
+    return "cinema_snack" in seed
+
+
 def _is_noise_finding(msg: str, ctx: dict[str, Any], *, where: str = "") -> bool:
     """滤掉与结构化真相矛盾的 LLM 臆造（全厂规则，不绑单一域）。"""
     text = msg or ""
@@ -1500,6 +1524,19 @@ def _is_noise_finding(msg: str, ctx: dict[str, Any], *, where: str = "") -> bool
                 r"买家口径|不匹配|建议按角色|只有买家|商家进入|补充商家",
                 text,
             )
+        ):
+            return True
+
+    # CINEMA 卖品：落点是 tradeThicken + cinema_snack 表，不是 entity/menu；
+    # LLM 常误读 island capabilities 未含 tradeThicken.cinemaSnack → 假阳性挡包
+    if _cinema_snack_landing_ok(ctx) and re.search(
+        r"卖品|cinemaSnack|爆米花|cinema_snack",
+        loc,
+    ):
+        if re.search(
+            r"假功能|未挂|未含|无卖品实体|无卖品菜单|entityKeys|menuKeys|"
+            r"capabilities|开题.*未列|任务书.*未列|无后端落点",
+            text,
         ):
             return True
 
@@ -1586,6 +1623,8 @@ async def run_qa_agent(
         )
         return report
 
+    thicken = ctx.get("tradeThicken") if isinstance(ctx.get("tradeThicken"), dict) else {}
+    thicken_on = sorted(str(k) for k, v in thicken.items() if v)
     payload = {
         "domain": ctx["domain"],
         "title": ctx["title"],
@@ -1593,6 +1632,9 @@ async def run_qa_agent(
         "domainLabel": ctx.get("domainLabel"),
         "traits": ctx.get("traits") or {},
         "capabilities": ctx.get("capabilities") or [],
+        "tradeThicken": thicken,
+        "tradeThickenOn": thicken_on,
+        "seedHasCinemaSnack": bool(ctx.get("seedHasCinemaSnack")),
         "accept": ctx["accept"],
         "proposal": ctx["proposal"],
         "labels": ctx["labels"],
@@ -1608,6 +1650,7 @@ async def run_qa_agent(
         "instruction": (
             "structural_findings 已是确定性主审结果；"
             "只穷尽补尚未列出的程序影响问题；禁止重复；禁止省略可判定项。"
+            "tradeThickenOn / seedHasCinemaSnack 优先于 island capabilities 判定卖品落点。"
         ),
     }
     messages = [

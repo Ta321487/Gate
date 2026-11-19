@@ -75,6 +75,10 @@ class CinemaC15Tests(unittest.TestCase):
         self.assertIn("my_orders", user_keys)
         self.assertNotIn("cart", user_keys)
         self.assertNotIn("addresses", user_keys)
+        # 答辩单入口：用户端不并挂 archive「浏览场次」
+        self.assertNotIn("archive", user_keys)
+        admin_keys = {m.get("key") for m in (sch.get("menus") or {}).get("admin") or []}
+        self.assertIn("archive", admin_keys)
         self.assertIn(SEAT_SELECT_CAP, spec.get("capabilities") or [])
         labels = sch.get("labels") or {}
         self.assertEqual(labels.get("userHomePath"), "/seats/shows")
@@ -92,8 +96,25 @@ class CinemaC15Tests(unittest.TestCase):
         self.assertIn("isSeatSelectMode", src)
         self.assertIn("/seats/map/", src)
         self.assertIn("seat_select", src)
+        setup = (
+            BASELINE / "frontend/src/views/user/ArchiveBrowse.setup.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("isSeatSelectMode.value", setup)
+        self.assertIn("`/seats/map/${row.id}`", setup)
+        detail = (
+            BASELINE / "frontend/src/views/user/ArchiveItemDetail.vue"
+        ).read_text(encoding="utf-8")
+        self.assertIn("seatOn", detail)
+        self.assertIn("goSeatMap", detail)
+        self.assertIn("mallOrderOn", detail)
+        self.assertIn("余座", detail)
+        self.assertIn('v-if="mallOrderOn" class="aid-qty"', detail)
+        self.assertIn("v-if=\"seatOn\"", detail)
         router = (BASELINE / "frontend/src/router/index.js").read_text(encoding="utf-8")
-        self.assertIn("path === 'cart' || kids[i].path === 'addresses'", router)
+        # 选座默认剥 cart/addresses；点名购物车（seatSelectKeepCart）保留 /cart
+        self.assertIn("seatSelectKeepCart", router)
+        self.assertIn("p === 'addresses'", router)
+        self.assertIn("p === 'cart' && !keepCart", router)
         # key→path 映射已迁到 utils/menuRoutes.js（router 只按能力挂路由子项）
         menu_routes = (BASELINE / "frontend/src/utils/menuRoutes.js").read_text(
             encoding="utf-8"

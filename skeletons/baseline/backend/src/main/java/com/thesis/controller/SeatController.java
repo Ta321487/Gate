@@ -62,9 +62,9 @@ public class SeatController {
     }
 
     @GetMapping("/shows")
-    public R<List<Map<String, Object>>> shows(HttpSession session) {
+    public R<List<Map<String, Object>>> shows() {
         requireSeat();
-        AdminAuth.requireLogin(session);
+        // 场次列表允许游客浏览（登录页「返回首页」/门户逛场次）；占座购票仍须登录
         return R.ok(SeatStore.listOpenShows());
     }
 
@@ -131,6 +131,18 @@ public class SeatController {
         }
     }
 
+    @DeleteMapping("/snacks/{id}")
+    public R<?> deleteSnack(@PathVariable long id, HttpSession session) {
+        requireSeat();
+        AdminAuth.requireAdmin(session);
+        try {
+            SeatStore.deleteSnack(id);
+            return R.ok();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @PutMapping("/shows/{id}/attrs")
     public R<Map<String, Object>> updateAttrs(
             @PathVariable long id,
@@ -139,6 +151,8 @@ public class SeatController {
         requireSeat();
         AdminAuth.requireAdmin(session);
         try {
+            String uid = AdminAuth.requireLogin(session);
+            SeatStore.assertCanManageShow(id, uid, AdminAuth.isSuperAdmin(session));
             Map<String, String> attrs = new java.util.LinkedHashMap<>();
             Object raw = body == null ? null : body.get("attrs");
             if (raw instanceof Map<?, ?> m) {
@@ -148,7 +162,7 @@ public class SeatController {
                 }
             }
             SeatStore.updateSeatAttrs(id, attrs);
-            return R.ok(SeatStore.getMap(id, AdminAuth.requireLogin(session)));
+            return R.ok(SeatStore.getMap(id, uid));
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new BizException(ErrorCode.BAD_REQUEST, e.getMessage());
         }

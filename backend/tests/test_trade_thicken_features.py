@@ -872,8 +872,11 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertIn("/api/seats/shows/", fe_admin)
         self.assertIn("refundFeeLabel", fe_orders)
         self.assertIn("refund-fee", fe_orders)
+        # 观众端只展示手续费金额，登记入口与 PUT 仅管理端
         self.assertIn("refundFeeLabel", fe_my)
-        self.assertIn("refund-fee", fe_my)
+        self.assertNotIn("refund-fee", fe_my)
+        self.assertNotIn("canSetRefundFee", fe_my)
+        self.assertIn("canPrintReceipt", fe_my)
 
     def test_t07_food_thicken_schema_and_sql(self) -> None:
         out = _spec("DOM-FOOD", "校园点餐配送系统", "骑手配送到宿舍楼")
@@ -1519,6 +1522,16 @@ CREATE TABLE IF NOT EXISTS goods (
         self.assertIn("cinema_snack", out_sql)
         self.assertIn("line_kind", out_sql)
         self.assertIn("爆米花", out_sql)
+        perf_sql = ensure_cinema_thicken_sql(
+            sql,
+            domain="DOM-CINEMA",
+            order_table="biz_order",
+            title="潮汐演艺票务销售网站",
+            proposal_text="剧目场次选座购票",
+        )
+        self.assertIn("瓶装水", perf_sql)
+        self.assertIn("节目单", perf_sql)
+        self.assertNotIn("爆米花", perf_sql)
         baked = domain_sql(
             "DOM-CINEMA",
             "db_test",

@@ -2106,9 +2106,16 @@ async function loadThread(itemId) {
   }
 }
 
+function isPerformanceFace() {
+  const s = getSchema() || {}
+  return String(s.cinemaFace || s.labels?.cinemaFace || '').trim() === 'performance'
+}
+
 /** 交易/商城/借用/预约/内容/报名主路径进独立详情页，避免抽屉交差 */
 function preferArchiveItemPage() {
   if (route.query?.openApply === '1') return false
+  // 影院皮：选座直进座位图；演艺皮：先详情再选座（大麦骨架）
+  if (isSeatSelectMode.value) return isPerformanceFace()
   if (hasCap('order_lines')) return true
   const home = String(APP_DELIVERED?.portalHomeStyle || '').trim()
   if (home === 'mall') return true
@@ -2163,6 +2170,14 @@ function reserveRoomTone(row) {
 }
 
 async function openDetail(row) {
+  if (isSeatSelectMode.value && row?.id) {
+    if (isPerformanceFace()) {
+      router.push({ path: `/archive/item/${row.id}` })
+      return
+    }
+    router.push(`/seats/map/${row.id}`)
+    return
+  }
   if (row?.id && preferArchiveItemPage()) {
     router.push({ path: `/archive/item/${row.id}` })
     return
@@ -2653,6 +2668,10 @@ async function onPrimary(row) {
   applyParentTicketId.value = null
   if (!requireLogin(router)) return
   if (isSeatSelectMode.value) {
+    if (isPerformanceFace()) {
+      router.push({ path: `/archive/item/${row.id}` })
+      return
+    }
     router.push(`/seats/map/${row.id}`)
     return
   }

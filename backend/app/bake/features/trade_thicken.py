@@ -163,6 +163,8 @@ def ensure_cinema_thicken_sql(
     *,
     domain: str | None,
     order_table: str | None,
+    title: str = "",
+    proposal_text: str = "",
 ) -> str:
     """CINEMA：占座/须知/座属性/退票手续费列；T-11 卖品表与 order_line.line_kind；非本组原样返回。"""
     import re
@@ -204,7 +206,14 @@ def ensure_cinema_thicken_sql(
     if not re.search(
         r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?cinema_snack`?\b", out
     ):
-        out = out.rstrip() + "\n" + _CINEMA_SNACK_DDL + _CINEMA_SNACK_SEED
+        from app.bake.scene_scan import cinema_product_kind
+
+        snack_seed = (
+            _CINEMA_SNACK_SEED_PERF
+            if cinema_product_kind(title, proposal_text) == "performance"
+            else _CINEMA_SNACK_SEED
+        )
+        out = out.rstrip() + "\n" + _CINEMA_SNACK_DDL + snack_seed
     return out
 
 
@@ -224,6 +233,14 @@ INSERT IGNORE INTO cinema_snack (id, title, price_yuan, stock, status) VALUES
 (1, '爆米花（中）', 18.00, 80, 'on'),
 (2, '可乐（中）', 12.00, 80, 'on'),
 (3, '热狗', 16.00, 40, 'on');
+"""
+
+# 演艺皮：勿用影院爆米花种子（答辩一眼穿帮）；REPLACE 覆盖旧库残留
+_CINEMA_SNACK_SEED_PERF = """
+REPLACE INTO cinema_snack (id, title, price_yuan, stock, status) VALUES
+(1, '瓶装水', 8.00, 80, 'on'),
+(2, '节目单', 15.00, 60, 'on'),
+(3, '文创徽章', 28.00, 40, 'on');
 """
 
 
@@ -421,7 +438,17 @@ def _nail_order_timeout(spec: dict[str, Any], schema: dict[str, Any], thicken: d
     minutes = current if current > 0 else _TRADE_TIMEOUT_DEFAULT
     schema["orderTimeoutMinutes"] = minutes
     labels = schema.setdefault("labels", {})
-    if schema.get("demoPay") or schema.get("shopMarketplace"):
+    domain = str(spec.get("domain") or "")
+    # 影院：多主办方/演示支付 → pending=待付款；单店无收银台 → pending=待取票
+    if domain == "DOM-CINEMA" and (schema.get("demoPay") or schema.get("shopMarketplace")):
+        labels["orderTimeoutHint"] = (
+            f"待付款订单超过 {minutes} 分钟将自动取消，请尽快支付"
+        )
+    elif domain == "DOM-CINEMA":
+        labels["orderTimeoutHint"] = (
+            f"待取票订单超过 {minutes} 分钟将自动取消，请尽快完成取票确认"
+        )
+    elif schema.get("demoPay") or schema.get("shopMarketplace"):
         labels["orderTimeoutHint"] = f"待付款订单超过 {minutes} 分钟将自动取消，请尽快支付"
     else:
         labels.setdefault(
@@ -737,7 +764,7 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         _add_feature(spec, "特效厅标记")
 
         labels.setdefault("refundFeeLabel", "退票手续费")
-        labels.setdefault("refundFeeHint", "登记本单退票手续费（元）。")
+        labels.setdefault("refundFeeHint", "由票务人员登记本单退票手续费（元）；观众端仅展示。")
         thicken["refundFee"] = True
         _add_feature(spec, "退票手续费登记")
 
@@ -1182,18 +1209,33 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         thicken["cinemaMemberPrice"] = True
         _add_feature(spec, "影院会员价说明")
 
-    # —— T-11：影院卖品 + SHOP 包装费 ——
+    # —— T-11：影院/演艺卖品 + SHOP 包装费 ——
     if domain == "DOM-CINEMA":
-        labels.setdefault("cinemaSnackLabel", "卖品加购")
-        labels.setdefault("cinemaSnackHint", "选座时可加购爆米花等卖品，随票一并结算。")
+        from app.bake.scene_scan import cinema_product_kind
+
+        face = str(schema.get("cinemaFace") or "").strip() or cinema_product_kind(
+            str(spec.get("title") or ""), body
+        )
+        if face == "performance":
+            labels.setdefault("cinemaSnackLabel", "观演加购")
+            labels.setdefault(
+                "cinemaSnackHint",
+                "选座时可加购饮品或文创周边，随票一并结算。",
+            )
+        else:
+            labels.setdefault("cinemaSnackLabel", "卖品加购")
+            labels.setdefault(
+                "cinemaSnackHint",
+                "选座时可加购爆米花等卖品，随票一并结算。",
+            )
         labels.setdefault("cinemaSnackEmpty", "暂无可加购卖品")
         labels.setdefault("cinemaSnackStockHint", "下单时扣减卖品库存，取消订单后回补。")
         labels.setdefault("cinemaSnackSoldOutLabel", "卖品暂时无货")
         labels.setdefault("cinemaSnackSaveLabel", "保存卖品")
         thicken["cinemaSnack"] = True
         thicken["cinemaSnackStock"] = True
-        _add_feature(spec, "影院卖品加购")
-        _add_feature(spec, "影院卖品库存扣减")
+        _add_feature(spec, "影院卖品加购" if face != "performance" else "演艺卖品加购")
+        _add_feature(spec, "影院卖品库存扣减" if face != "performance" else "演艺卖品库存扣减")
 
     if domain == "DOM-SHOP" and _SHOP_PACKAGING_FEE_RE.search(body):
         try:

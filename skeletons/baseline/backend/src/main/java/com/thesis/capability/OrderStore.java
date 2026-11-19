@@ -472,7 +472,7 @@ public final class OrderStore {
             if (LoyaltyStore.isWalletEnabled() && !Boolean.TRUE.equals(priceSnap.get("balanceEnough"))) {
                 throw new IllegalStateException(String.valueOf(priceSnap.getOrDefault(
                         "message",
-                        "账户余额不足，请先在个人中心或购物车充值")));
+                        "账户余额不足，请先在个人中心充值")));
             }
             if (!coupon.isBlank() && LoyaltyStore.isCouponEnabled()
                     && priceSnap.get("couponCode") == null
@@ -493,15 +493,19 @@ public final class OrderStore {
             if (rPhone.isBlank()) rPhone = String.valueOf(a.getOrDefault("phone", ""));
             if (addr.isBlank()) addr = String.valueOf(a.getOrDefault("addressLine", ""));
         }
-        // 仅当 schema 含收货列时校验地址；酒店等瘦订单表跳过
+        // 仅当 schema 含收货列时校验地址；酒店等瘦订单表跳过；影院选座/购物车取票无物流
         if (hasOrderColumn("receiver_name")) {
-            boolean needAddr = dtype.isBlank() || dtype.contains("配送") || dtype.contains("快递")
-                    || "配送到家".equals(dtype);
+            boolean cinemaTicket = SeatStore.enabled();
+            boolean needAddr = !cinemaTicket && (dtype.isBlank() || dtype.contains("配送")
+                    || dtype.contains("快递") || "配送到家".equals(dtype));
             if (needAddr && (rName.isBlank() || rPhone.isBlank() || addr.isBlank())) {
                 throw new IllegalArgumentException("请选择或填写收货人、手机与地址");
             }
             if (!needAddr && rName.isBlank()) {
                 rName = username;
+            }
+            if (cinemaTicket && dtype.isBlank()) {
+                dtype = "柜台取票";
             }
         }
         // 多店在线支付成功后进入待发货；单店仍待确认；成团单为 grouping（须一次算完，供下方 lambda 捕获）
@@ -716,7 +720,44 @@ public final class OrderStore {
                     }
                 }
             }
+            // 影院：购物车结算场次时自动占空座（选座页走 SeatStore.purchase，不经此路径）
+            if (SeatStore.enabled()) {
+                List<String> allSeats = new ArrayList<>();
+                for (Map<String, Object> line : cart) {
+                    long itemId = ((Number) line.get("itemId")).longValue();
+                    int qty = ((Number) line.get("qty")).intValue();
+                    if (qty < 1) continue;
+                    if (ArchiveStore.getItemRaw(itemId) == null) continue;
+                    List<String> codes = SeatStore.occupyFreeSeatsForCartOrder(
+                            username, orderId, itemId, qty);
+                    allSeats.addAll(codes);
+                }
+                if (!allSeats.isEmpty()) {
+                    String seatRemark = "座位 " + String.join(",", allSeats);
+                    try {
+                        String old = "";
+                        Map<String, Object> cur = getOrder(orderId);
+                        if (cur != null && cur.get("remark") != null) {
+                            old = String.valueOf(cur.get("remark")).trim();
+                        }
+                        String merged = old.isBlank() ? seatRemark
+                                : (old.contains("座位") ? old : old + "；" + seatRemark);
+                        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+                        db().update(
+                                "UPDATE " + ORDER + " SET remark=?, updated_at=? WHERE id=?",
+                                merged, now, orderId);
+                    } catch (Exception ignored) {
+                    }
+                    ensurePickupCode(orderId);
+                }
+            }
         } catch (RuntimeException ex) {
+            try {
+                if (SeatStore.enabled()) {
+                    SeatStore.releaseByOrder(orderId);
+                }
+            } catch (Exception ignored) {
+            }
             for (int i = deducted.size() - 1; i >= 0; i--) {
                 long[] d = deducted.get(i);
                 try {
@@ -1457,12 +1498,14 @@ public final class OrderStore {
         if ("confirm".equals(act) && "pending".equals(st)) next = "confirmed";
         // 发货/出餐须先确认，禁止 pending 跳步
         else if ("ship".equals(act) && "confirmed".equals(st)) next = "shipped";
-        else if ("transit".equals(act) && "shipped".equals(st) && ArchiveStore.shopMarketplaceEnabled()) {
+        // 影院/演艺选座：无物流「运输中/已签收」，多主办方也不套商城配送态
+        else if ("transit".equals(act) && "shipped".equals(st)
+                && ArchiveStore.shopMarketplaceEnabled() && !SeatStore.enabled()) {
             next = "in_transit";
         }
         else if ("sign".equals(act)
                 && ("shipped".equals(st) || "in_transit".equals(st))
-                && ArchiveStore.shopMarketplaceEnabled()) {
+                && ArchiveStore.shopMarketplaceEnabled() && !SeatStore.enabled()) {
             next = "signed";
         }
         // 完成：单店 shipped→completed；多店 signed→completed（亦可商家从运输中办结）
@@ -2568,6 +2611,7 @@ public final class OrderStore {
     public static Map<String, Object> addShipNode(
             long orderId, String title, String detail, String happenedAt) {
         requireEnabled();
+        if (SeatStore.enabled()) throw new IllegalStateException("影院/演艺订单无物流进度");
         if (!hasShipNodeTable()) throw new IllegalStateException("系统未配置物流进度");
         if (getOrder(orderId) == null) throw new IllegalArgumentException("订单不存在");
         String t = title == null ? "" : title.trim();

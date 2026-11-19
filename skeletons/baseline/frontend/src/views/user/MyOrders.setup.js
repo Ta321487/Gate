@@ -39,6 +39,23 @@ const isCinema = computed(
   () => hasTrait('seatSelect') || getSchema()?.entities?.order?.fulfillMode === 'cinema',
 )
 const showTraceBase = computed(() => !isStay.value && !isFood.value && !isCinema.value)
+const ordersEmptyDesc = computed(() => {
+  if (isCinema.value) {
+    return (
+      getSchema()?.labels?.ordersEmptyHint
+      || '还没有影票订单，去场次选座看看。'
+    )
+  }
+  return getSchema()?.labels?.ordersEmptyHint || '去逛逛，把心仪的加进购物车吧。'
+})
+const ordersEmptyCta = computed(() =>
+  isCinema.value ? (getSchema()?.labels?.seatSelectCta || '去选座') : '去浏览',
+)
+const ordersEmptyPath = computed(() =>
+  isCinema.value
+    ? String(getSchema()?.labels?.userHomePath || '/seats/shows')
+    : '/archive',
+)
 const reviewOn = computed(() => hasCap('order_review'))
 const marketplace = computed(() => !!getSchema()?.shopMarketplace)
 const demoPay = computed(() => !!getSchema()?.demoPay || marketplace.value)
@@ -100,6 +117,13 @@ const changeAddressLabel = computed(() => getSchema()?.labels?.changeAddressLabe
 const changeAddressHint = computed(() => getSchema()?.labels?.changeAddressHint || '')
 const receiptPrintOn = computed(() => !!thicken.value.orderReceiptPrint)
 const orderReceiptPrintLabel = computed(() => getSchema()?.labels?.orderReceiptPrintLabel || '打印小票')
+/** 用户端：未付款/已取消不打小票（窗口登记在管理端） */
+function canPrintReceipt(row) {
+  if (!receiptPrintOn.value || !row) return false
+  const st = String(row.status || '')
+  if (!st || st === 'pending' || st === 'cancelled' || st === 'grouping') return false
+  return ['confirmed', 'shipped', 'in_transit', 'signed', 'completed'].includes(st)
+}
 const inviteReviewHint = computed(() => {
   if (!thicken.value.inviteReview) return ''
   const title = getSchema()?.labels?.inviteReviewTitle || '邀请评价'
@@ -163,7 +187,6 @@ const refundOriginLabel = computed(() => getSchema()?.labels?.refundOriginLabel 
 const refundOriginHint = computed(() => getSchema()?.labels?.refundOriginHint || '')
 const refundFeeOn = computed(() => !!thicken.value.refundFee)
 const refundFeeLabel = computed(() => getSchema()?.labels?.refundFeeLabel || '退票手续费')
-const refundFeeHint = computed(() => getSchema()?.labels?.refundFeeHint || '')
 const partialShipLabel = computed(() => getSchema()?.labels?.partialShipLabel || '部分发货')
 const refundTrackingLabel = computed(() => getSchema()?.labels?.refundTrackingLabel || '退货物流单号')
 const refundTrackingHint = computed(() => getSchema()?.labels?.refundTrackingHint || '')
@@ -196,10 +219,6 @@ const invoiceVisible = ref(false)
 const invoiceSaving = ref(false)
 const invoiceOrder = ref(null)
 const invoiceForm = reactive({ title: '' })
-const refundFeeVisible = ref(false)
-const refundFeeSaving = ref(false)
-const refundFeeOrder = ref(null)
-const refundFeeForm = reactive({ fee: 0 })
 const addrVisible = ref(false)
 const addrSaving = ref(false)
 const addrOrder = ref(null)
@@ -213,9 +232,9 @@ const refundForm = reactive({
   reasonDetail: '',
 })
 
-/** 多店买家筛选项：四态；pending 兜底仍可选「待付款」 */
+/** 多店商城筛选项：四态；影院多店仍跟 schema 态名（待取票/已出票），禁止套「待发货」 */
 const statusOptions = computed(() => {
-  if (!marketplace.value) {
+  if (!marketplace.value || isCinema.value) {
     return Object.entries(rawStates.value).map(([value, lab]) => ({ value, label: lab }))
   }
   const opts = [
@@ -230,7 +249,7 @@ const statusOptions = computed(() => {
 
 function displayStatus(row) {
   if (!row) return ''
-  if (!marketplace.value) return rawStates.value[row.status] || row.status
+  if (!marketplace.value || isCinema.value) return rawStates.value[row.status] || row.status
   const st = row.status
   if (st === 'pending') return '待付款'
   if (st === 'confirmed') return '待发货'
@@ -309,7 +328,8 @@ function canRefund(row) {
 }
 
 function canFillRefundTracking(row) {
-  if (!refundTrackingOn.value || !row) return false
+  // 影院退票无退货物流
+  if (isCinema.value || !refundTrackingOn.value || !row) return false
   if (row.refundStatus !== 'pending') return false
   if (row.refundType && row.refundType !== 'return_refund' && row.refundType !== 'exchange') {
     return false
@@ -322,12 +342,13 @@ function canShowRefundTrace(row) {
 }
 
 function canReceive(row) {
-  if (!marketplace.value || !row) return false
+  // 影院出票/取票，无商城「确认收货」
+  if (isCinema.value || !marketplace.value || !row) return false
   return ['shipped', 'in_transit', 'signed'].includes(row.status) && row.refundStatus !== 'pending'
 }
 
 function canChangeAddress(row) {
-  if (!changeAddressOn.value || !row) return false
+  if (isCinema.value || !changeAddressOn.value || !row) return false
   return row.status === 'pending' || row.status === 'confirmed'
 }
 
@@ -528,7 +549,7 @@ function openRefundTrace(row) {
 }
 
 function canSetWarranty(row) {
-  if (!warrantyOn.value || !row) return false
+  if (isCinema.value || !warrantyOn.value || !row) return false
   return ['shipped', 'in_transit', 'signed', 'completed'].includes(row.status)
 }
 
@@ -585,12 +606,6 @@ function downloadInvoice(row) {
   void invoiceStatusLabel.value
 }
 
-function canSetRefundFee(row) {
-  if (!refundFeeOn.value || !isCinema.value || !row) return false
-  return ['pending', 'confirmed', 'shipped', 'cancelled', 'refunded'].includes(row.status)
-    || !!row.refundStatus
-}
-
 async function copyShareToken(row) {
   const token = String(row?.shareToken || '').trim()
   if (!token) return
@@ -606,12 +621,6 @@ function setWarranty(row) {
   warrantyOrder.value = row
   warrantyForm.until = String(row.warrantyUntil || '').slice(0, 10)
   warrantyVisible.value = true
-}
-
-function setRefundFee(row) {
-  refundFeeOrder.value = row
-  refundFeeForm.fee = Number(row.refundFeeYuan || 0)
-  refundFeeVisible.value = true
 }
 
 async function submitWarranty() {
@@ -631,23 +640,6 @@ async function submitWarranty() {
   }
 }
 
-async function submitRefundFee() {
-  const fee = Number(refundFeeForm.fee)
-  if (!Number.isFinite(fee) || fee < 0) {
-    ElMessage.warning('请填写有效手续费')
-    return
-  }
-  refundFeeSaving.value = true
-  try {
-    await http.put(`/api/orders/${refundFeeOrder.value.id}/refund-fee`, { refundFeeYuan: fee })
-    ElMessage.success('手续费已登记')
-    refundFeeVisible.value = false
-    load()
-  } finally {
-    refundFeeSaving.value = false
-  }
-}
-
 async function submitReview(row) {
   const { value: rating } = await ElMessageBox.prompt('请输入评分 1～5', '订单评价', {
     inputValue: '5',
@@ -656,7 +648,7 @@ async function submitReview(row) {
   }).catch(() => ({ value: null }))
   if (rating == null) return
   const { value: body } = await ElMessageBox.prompt('评价内容（选填）', '订单评价', {
-    inputPlaceholder: '口味、包装、配送体验…',
+    inputPlaceholder: isCinema.value ? '座位、场次、观演体验…' : '口味、包装、配送体验…',
     inputValue: '',
   }).catch(() => ({ value: null }))
   if (body == null) return

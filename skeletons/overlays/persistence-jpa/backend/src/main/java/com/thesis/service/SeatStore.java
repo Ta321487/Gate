@@ -143,7 +143,40 @@ public class SeatStore {
         } catch (SQLException e) {
             m.put("startAt", null);
         }
+        try {
+            String owner = rs.getString("owner_username");
+            if (owner != null && !owner.isBlank()) {
+                m.put("ownerUsername", owner.trim());
+            }
+        } catch (SQLException ignored) {
+            /* 单场馆模板无此列 */
+        }
         return m;
+    }
+
+    private static void enrichShowOwner(Map<String, Object> show) {
+        if (show == null) return;
+        if (!ArchiveStore.shopMarketplaceEnabled() || !ArchiveStore.hasOwnerUsername()) return;
+        String owner = str(show.get("ownerUsername"));
+        if (owner.isBlank()) return;
+        show.put("shopName", ArchiveStore.shopDisplayName(owner));
+    }
+
+    /**
+     * 多主办方：非超管只能改本方场次座位属性。
+     * 单场馆（旗关）不校验归属。
+     */
+    public static void assertCanManageShow(long showId, String username, boolean superAdmin) {
+        require();
+        if (!ArchiveStore.shopMarketplaceEnabled() || superAdmin) return;
+        Map<String, Object> show = getShow(showId);
+        if (show == null) throw new IllegalArgumentException("场次不存在");
+        if (!ArchiveStore.hasOwnerUsername()) return;
+        String owner = str(show.get("ownerUsername"));
+        String uid = clip(username, 64);
+        if (owner.isBlank() || uid.isBlank() || !owner.equals(uid)) {
+            throw new IllegalStateException("只能维护本方场次的座位");
+        }
     }
 
     private static void enrichShowCategory(Map<String, Object> show) {
@@ -445,7 +478,10 @@ public class SeatStore {
                 "SELECT * FROM cinema_show WHERE status='available' AND stock>0 "
                         + "AND (start_at IS NULL OR start_at > NOW()) ORDER BY id DESC",
                 (rs, i) -> mapShow(rs));
-        for (Map<String, Object> show : list) enrichShowCategory(show);
+        for (Map<String, Object> show : list) {
+            enrichShowCategory(show);
+            enrichShowOwner(show);
+        }
         return list;
     }
 
@@ -456,6 +492,7 @@ public class SeatStore {
         if (list.isEmpty()) return null;
         Map<String, Object> show = list.get(0);
         enrichShowCategory(show);
+        enrichShowOwner(show);
         return show;
     }
 

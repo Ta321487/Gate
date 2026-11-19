@@ -384,25 +384,130 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
 
 
 def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
-    """影院选座购票：场次档案 + 订单壳；座位图由 seat_select 能力叠菜单。"""
+    """影院/演艺选座购票：场次档案 + 订单壳；座位图由 seat_select 能力叠菜单。
+
+    同属 DOM-CINEMA 双皮：默认影院脸；开题扫到演艺形态开演艺皮。
+    多主办方/入驻叠 shopMarketplace（与 SHOP 同旗）。
+    """
+    from app.bake.scene_scan import cinema_product_kind, scan_shop_marketplace
     from app.bake.schema.shells import _with_portal_banners
+
+    marketplace = scan_shop_marketplace(title, proposal_text)
+    face = cinema_product_kind(title, proposal_text)
+    performance = face == "performance"
+
+    if performance:
+        user_lab = "观众"
+        admin_lab = "平台管理员（总管）" if marketplace else "场馆主管（总管）"
+        sub_lab = "主办方" if marketplace else "售票员"
+        title_field = "剧目/场次名"
+        hall_field = "场馆名称"
+        hall_type_field = "场馆类型"
+        orders_user = "我的票务订单"
+        notice_page = "演艺公告"
+        done_state = "已观演"
+        done_verb = "确认观演"
+        ship_field = "票务凭证"
+        fulfill_hint = "选座确认后生成订单并占座；柜台出票/确认观演，无物流发货。"
+        if marketplace:
+            brow = "多主办方票务"
+            lead = (
+                "观众选座购票，主办方维护本方场次与出票核销，平台统一监管；"
+                "平台管理员为系统预制账号，不开放自助注册。"
+            )
+            notice_body = (
+                "多主办方入驻；选场次进入座位图确认后占座出票；"
+                "过开场时间自动下架不可售。无物流发货。"
+            )
+            banners = [
+                {"title": "热门演出", "lead": "浏览今日场次与余座。"},
+                {"title": "座位图选座", "lead": "点选空闲座位后确认下单。"},
+                {"title": "我的订单", "lead": "查看票务订单与座位备注。"},
+                {"title": "演艺公告", "lead": "排期与维护通知见公告栏。"},
+                {"title": "使用说明", "lead": "选座确认后生成订单；柜台取票观演。"},
+            ]
+            auth_points = ["验证码登录", "场次选座", "票务订单"]
+        else:
+            brow = "演艺选座"
+            lead = "验证码登录；选择演出场次进入座位图，确认后生成订单并占座。"
+            notice_body = (
+                "场次含场馆类型、开场时间与座位排×列；选座确认后即时占座并生成订单；"
+                "过开场时间自动下架不可售。"
+            )
+            banners = [
+                {"title": "热门演出", "lead": "浏览今日场次与余座。"},
+                {"title": "座位图选座", "lead": "点选空闲座位后确认下单。"},
+                {"title": "我的订单", "lead": "查看票务订单与座位备注。"},
+                {"title": "演艺公告", "lead": "排期与维护通知见公告栏。"},
+                {"title": "使用说明", "lead": "选座确认后生成订单；柜台取票观演。"},
+            ]
+            auth_points = ["验证码登录", "场次选座", "票务订单"]
+    else:
+        user_lab = "观影者"
+        admin_lab = "平台管理员（总管）" if marketplace else "影院主管（总管）"
+        sub_lab = "主办方" if marketplace else "售票员"
+        title_field = "影片/场次名"
+        hall_field = "影厅名称"
+        hall_type_field = "影厅类型"
+        orders_user = "我的影票订单"
+        notice_page = "影院公告"
+        done_state = "已观影"
+        done_verb = "确认观影"
+        ship_field = "影票凭证"
+        fulfill_hint = "选座确认后生成订单并占座；柜台出票/确认观影，无物流发货。"
+        if marketplace:
+            brow = "多主办方票务"
+            lead = (
+                "观众选座购票，主办方维护本方场次与出票核销，平台统一监管；"
+                "平台管理员为系统预制账号，不开放自助注册。"
+            )
+            notice_body = (
+                "多主办方入驻；选场次进入座位图确认后占座出票；"
+                "过开场时间自动下架不可售。无物流发货。"
+            )
+            banners = [
+                {"title": "热映场次", "lead": "浏览今日场次与余座。"},
+                {"title": "座位图选座", "lead": "点选空闲座位后确认下单。"},
+                {"title": "我的订单", "lead": "查看影票订单与座位备注。"},
+                {"title": "影院公告", "lead": "排片与维护通知见公告栏。"},
+                {"title": "使用说明", "lead": "选座确认后生成订单；柜台取票观影。"},
+            ]
+            auth_points = ["验证码登录", "场次选座", "影票订单"]
+        else:
+            brow = "影院选座"
+            lead = "验证码登录；选择场次进入座位图，确认后生成订单并占座。"
+            notice_body = (
+                "场次含影厅类型、开场时间与座位排×列；选座确认后即时占座并生成订单；"
+                "过开场时间自动下架不可售。"
+            )
+            banners = [
+                {"title": "热映场次", "lead": "浏览今日场次与余座。"},
+                {"title": "座位图选座", "lead": "点选空闲座位后确认下单。"},
+                {"title": "我的订单", "lead": "查看影票订单与座位备注。"},
+                {"title": "影院公告", "lead": "排片与维护通知见公告栏。"},
+                {"title": "使用说明", "lead": "选座确认后生成订单；柜台取票观影。"},
+            ]
+            auth_points = ["验证码登录", "场次选座", "影票订单"]
+
+    notice_title = "选座购票须知"
+    reg_hint = "注册后可选座购票"
 
     schema = _with_portal_banners(
         order_shell_schema(
             title,
             domain="DOM-CINEMA",
             user_role_id="user",
-            user_label="观影者",
-            admin_label="影院主管（总管）",
-            subadmin_label="售票员",
+            user_label=user_lab,
+            admin_label=admin_lab,
+            subadmin_label=sub_lab,
             archive_key="cinema_show",
             archive_label="场次",
             archive_plural="场次",
             archive_fields=[
-                {"key": "title", "label": "影片/场次名", "type": "string"},
+                {"key": "title", "label": title_field, "type": "string"},
                 {"key": "author", "label": "价格", "type": "number", "format": "money"},
-                {"key": "isbn", "label": "影厅名称", "type": "string"},
-                {"key": "category", "label": "影厅类型", "type": "select"},
+                {"key": "isbn", "label": hall_field, "type": "string"},
+                {"key": "category", "label": hall_type_field, "type": "select"},
                 {"key": "startAt", "label": "开场时间", "type": "datetime"},
                 {"key": "seatRows", "label": "座位排数", "type": "number"},
                 {"key": "seatCols", "label": "每排座位数", "type": "number"},
@@ -412,59 +517,145 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             archive_menu_user="场次目录",
             users_menu="用户管理",
             cart_label="购物车",
-            my_orders_label="我的影票订单",
+            my_orders_label=orders_user,
             orders_admin_label="订单管理",
-            auth_eyebrow="影院选座",
-            auth_lead="验证码登录；选择场次进入座位图，确认后生成订单并占座。",
-            auth_points=["验证码登录", "场次选座", "影票订单"],
-            register_hint="注册后可选座购票",
-            notice_title="选座购票须知",
-            notice_body="场次含影厅类型、开场时间与座位排×列；选座确认后即时占座并生成订单；过开场时间自动下架不可售。",
-            notice_page_title="影院公告",
+            auth_eyebrow=brow,
+            auth_lead=lead,
+            auth_points=auth_points,
+            register_hint=reg_hint,
+            notice_title=notice_title,
+            notice_body=notice_body,
+            notice_page_title=notice_page,
+            soft_delete=marketplace,
             order_states={
-                "pending": "待取票",
-                "confirmed": "已确认",
+                # 多主办方开演示支付：pending=待付款；单店无收银台仍用待取票
+                "pending": "待付款" if marketplace else "待取票",
+                "confirmed": "待取票" if marketplace else "已确认",
                 "shipped": "已出票",
-                "completed": "已观影",
+                "completed": done_state,
                 "cancelled": "已取消",
             },
         ),
-        [
-            {"title": "热映场次", "lead": "浏览今日场次与余座。"},
-            {"title": "座位图选座", "lead": "点选空闲座位后确认下单。"},
-            {"title": "我的订单", "lead": "查看影票订单与座位备注。"},
-            {"title": "影院公告", "lead": "排片与维护通知见公告栏。"},
-            {"title": "使用说明", "lead": "选座确认后生成订单；柜台取票观影。"},
-        ],
+        banners,
     )
     # 选座订单禁止商城「物流/发货」叙事（对齐 HOTEL stay）
     order = dict((schema.get("entities") or {}).get("order") or {})
+    pending_lab = "待付款" if marketplace else "待取票"
+    confirmed_lab = "待取票" if marketplace else "已确认"
     order.update(
         {
             "key": "order",
             "label": "订单",
-            "labelPlural": "我的影票订单",
+            "labelPlural": orders_user,
             "fulfillMode": "cinema",
             "states": {
-                "pending": "待取票",
-                "confirmed": "已确认",
+                "pending": pending_lab,
+                "confirmed": confirmed_lab,
                 "shipped": "已出票",
-                "completed": "已观影",
+                "completed": done_state,
                 "cancelled": "已取消",
             },
             "verbs": {
                 "ship": "出票",
-                "complete": "确认观影",
+                "complete": done_verb,
             },
         }
     )
     ents = dict(schema.get("entities") or {})
     ents["order"] = order
     schema["entities"] = ents
+    schema["cinemaFace"] = face
+    if marketplace:
+        schema["demoPay"] = True
     labels = dict(schema.get("labels") or {})
-    labels["orderFulfillHint"] = "选座确认后生成订单并占座；柜台出票/确认观影，无物流发货。"
-    labels["orderShipFieldLabel"] = "影票凭证"
+    labels["cinemaFace"] = face
+    labels["orderFulfillHint"] = fulfill_hint
+    labels["orderShipFieldLabel"] = ship_field
     labels["orderFulfillColumnLabel"] = "选座备注"
+    if marketplace:
+        labels.setdefault(
+            "demoPayHint",
+            "请选择支付方式并输入支付密码，费用从账户余额扣除。",
+        )
+    labels["seatStageLabel"] = "舞台" if performance else "银幕"
+    labels["seatHallNoun"] = "场馆" if performance else "影厅"
+    labels["seatOrgNoun"] = "主办方" if (marketplace or performance) else "影城"
+    if performance:
+        labels["seatShowsTitle"] = "演出选座"
+        labels["seatShowsLead"] = (
+            "先选演出场次，再进座位图确认购票。开场后不再售票。可一次选相邻座位。"
+        )
+        labels["seatMapTitle"] = "选座购票"
+        labels["cinemaNoticeLabel"] = "观演须知"
+        labels["cinemaNoticeBody"] = (
+            "请提前入场；观演中请将手机调至静音；未经许可请勿录音录像。"
+        )
+        labels["cinemaNoticeRequiredHint"] = "请先确认已阅读观演须知"
+        labels["cinemaSnackLabel"] = "观演加购"
+        labels["cinemaSnackHint"] = "选座时可加购饮品或文创周边，随票一并结算。"
+        labels["seatAttrCoupleLabel"] = "双人座"
+        labels["cinemaComboBody"] = (
+            "同日相邻场次可一并选座购票；具体优惠以主办方当日说明为准。"
+        )
+    # 支付与电子票：系统内余额 + 取票码出示（任务书「电子票」口径，非活动票夹）
+    blob = f"{title}\n{proposal_text or ''}"
+    if "电子票" in blob:
+        labels["pickupCodeLabel"] = "电子票码"
+        labels["pickupCodeHint"] = "下单后生成电子票码，到场出示即可取票入场。"
+    else:
+        labels.setdefault("pickupCodeLabel", "取票码")
+        labels.setdefault(
+            "pickupCodeHint",
+            "下单后生成，到场出示即可取票。",
+        )
+
+    if marketplace:
+        schema["shopMarketplace"] = True
+        audience = "观众" if performance else "观影者"
+        hint = (
+            f"仅开放{audience}与主办方注册；平台管理员不开放自助注册。"
+            "主办方须平台审核通过后方可登录后台维护场次。"
+        )
+        schema["registerHint"] = hint
+        labels["registerHint"] = hint
+        labels["registerRoleHint"] = hint
+        labels["authLead"] = lead
+        labels["authPoints"] = [
+            f"{audience} / 主办方 / 平台三端",
+            "选座购票 · 主办方入驻",
+            "管理端仅登录（无注册）",
+        ]
+        labels["usersAdminLead"] = f"管理{audience}账号，审核主办方入驻申请。"
+        ticket_word = "票务" if performance else "影票"
+        labels["ordersAdminLead"] = f"查看全平台{ticket_word}订单与退票，必要时介入处理。"
+        labels["ordersStaffLead"] = "处理本方场次出票、核销与售后退票。"
+        # 演出审核：复用多店 pending_review（主办方新建场次待审，平台通过后才进选座目录）
+        labels["archiveReviewTitle"] = "演出审核"
+        labels["archiveAdminLead"] = "维护本方场次与座位；新场次须平台演出审核通过后方可售票。"
+        labels["archiveShelfLabel"] = "是否售票"
+        labels["archiveShelfOnLabel"] = "售票中"
+        labels["archiveShelfOffLabel"] = "已停售"
+        labels["publishApproveNotifyTitle"] = "场次已通过审核"
+        labels["guestbookGuestCta"] = "登录后发表留言"
+        labels["noticeGuestCta"] = "登录后查看更多公告"
+        labels["messagesPageLead"] = "新订单、退票与系统通知。"
+        for m in (schema.get("menus") or {}).get("admin") or []:
+            if not isinstance(m, dict):
+                continue
+            k = m.get("key")
+            if k == "dashboard":
+                m["label"] = "数据分析"
+            elif k == "content":
+                m["label"] = "公告管理"
+            elif k == "archive":
+                m["label"] = "场次管理"
+            elif k == "users":
+                m["label"] = "用户管理"
+            elif k == "orders":
+                m["label"] = "订单管理"
+            # 主办方可管本方场次、订单、公告送审；用户/分类仍超管
+            if k in ("archive", "orders", "content", "guestbook", "order_reviews"):
+                m["superOnly"] = False
     schema["labels"] = labels
     return schema
 

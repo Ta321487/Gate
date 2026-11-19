@@ -163,13 +163,13 @@
             @click="act(row, 'ship')"
           >{{ shipVerb }}</el-button>
           <el-button
-            v-if="marketplace && row.status === 'shipped'"
+            v-if="marketplace && !isCinema && row.status === 'shipped'"
             link
             type="primary"
             @click="act(row, 'transit')"
           >运输中</el-button>
           <el-button
-            v-if="marketplace && (row.status === 'shipped' || row.status === 'in_transit')"
+            v-if="marketplace && !isCinema && (row.status === 'shipped' || row.status === 'in_transit')"
             link
             type="primary"
             @click="act(row, 'sign')"
@@ -258,7 +258,7 @@
             type="primary"
             @click="openRefundFee(row)"
           >{{ refundFeeLabel }}</el-button>
-          <span v-if="marketplace && row.status === 'pending'" class="ops-hint">待买家付款</span>
+          <span v-if="marketplace && row.status === 'pending'" class="ops-hint">待{{ userLabel }}付款</span>
           <span v-else-if="!hasOrderOps(row)" class="ops-empty">—</span>
           </div>
         </template>
@@ -500,7 +500,8 @@ function canComplete(row) {
   return row.status === 'shipped'
 }
 function canClaimRider(row) {
-  if (!riderPoolOn.value || !row) return false
+  // 影院/演艺无骑手配送
+  if (isCinema.value || !riderPoolOn.value || !row) return false
   if (row.riderUsername) return false
   return row.status === 'pending' || row.status === 'confirmed'
 }
@@ -510,7 +511,8 @@ async function claimRider(row) {
   load()
 }
 function canChangeAddress(row) {
-  if (!changeAddressOn.value || !row) return false
+  // 影院/演艺柜台取票，无收货地址可改
+  if (isCinema.value || !changeAddressOn.value || !row) return false
   return row.status === 'pending' || row.status === 'confirmed'
 }
 function hasOrderOps(row) {
@@ -689,7 +691,8 @@ function openRefundTrace(row) {
 }
 
 function canAddShipNode(row) {
-  if (!shipNodesOn.value || !row) return false
+  // 影院/演艺无物流轨迹节点
+  if (isCinema.value || !shipNodesOn.value || !row) return false
   return ['shipped', 'in_transit', 'signed'].includes(row.status)
 }
 
@@ -723,7 +726,8 @@ async function submitShipNode() {
 }
 
 function canVerifyReceive(row) {
-  if (!receiveCodeOn.value || !row) return false
+  // 影院核销走取票码/出票，不用商城收货核销
+  if (isCinema.value || !receiveCodeOn.value || !row) return false
   return ['shipped', 'in_transit', 'signed'].includes(row.status) && !row.receiveVerifiedAt
 }
 

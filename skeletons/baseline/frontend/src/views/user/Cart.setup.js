@@ -33,7 +33,23 @@ const tagOptions = computed(() => addressTagOptions())
 const cartLabel = menuLabel('user', 'cart', '购物车')
 const orderNoun = computed(() => getSchema()?.entities?.order?.label || '订单')
 const isFood = computed(() => hasTrait('food'))
-const deliveryTypeLabel = computed(() => (isFood.value ? '用餐方式' : '收货方式'))
+const isCinemaCart = computed(
+  () => !!getSchema()?.seatSelectKeepCart || hasCap('seat_select'),
+)
+const cartPageLead = computed(() => getSchema()?.labels?.cartPageLead || '')
+const cinemaCartFulfillLabel = computed(
+  () => getSchema()?.labels?.cinemaCartFulfillLabel || '柜台取票',
+)
+const cartEmptyText = computed(() => {
+  if (isCinemaCart.value) {
+    return getSchema()?.labels?.cartEmptyHint || '购物车为空，去场次选座看看。'
+  }
+  return getSchema()?.labels?.cartEmptyHint || '购物车为空，去浏览加购吧'
+})
+const deliveryTypeLabel = computed(() => {
+  if (isCinemaCart.value) return '取票方式'
+  return isFood.value ? '用餐方式' : '收货方式'
+})
 const anyLoyalty = computed(() => anyLoyaltyEnabled())
 const walletOn = computed(() => isWalletEnabled())
 const demoPay = computed(() => !!getSchema()?.demoPay || !!getSchema()?.shopMarketplace)
@@ -55,8 +71,8 @@ const mineCoupons = ref([])
 const lineCustom = computed(() => hasCap('line_custom'))
 const weighSale = computed(() => hasCap('weigh_sale'))
 const weightRows = computed(() => selectedValid.value.filter((row) => Number(row.sellByWeight) === 1))
-const deliveryWindow = computed(() => hasCap('delivery_window'))
-const groupBuy = computed(() => hasCap('group_buy'))
+const deliveryWindow = computed(() => !isCinemaCart.value && hasCap('delivery_window'))
+const groupBuy = computed(() => !isCinemaCart.value && hasCap('group_buy'))
 const groupOpens = ref([])
 const specOptions = ref([])
 const windowSlots = ref([])
@@ -69,9 +85,10 @@ const customHint = computed(
   () => getSchema()?.labels?.lineCustomHint || '填写后会记在本订单上。',
 )
 const lineExtraMap = reactive({})
-const deliveryOptions = computed(() =>
-  isFood.value ? ['外卖配送', '到店自取', '堂食'] : ['配送到家', '到店自提'],
-)
+const deliveryOptions = computed(() => {
+  if (isCinemaCart.value) return [cinemaCartFulfillLabel.value]
+  return isFood.value ? ['外卖配送', '到店自取', '堂食'] : ['配送到家', '到店自提']
+})
 const tasteLabel = computed(() => getSchema()?.labels?.tasteNoteLabel || '口味 / 忌口')
 const tastePlaceholder = computed(
   () => getSchema()?.labels?.tasteNotePlaceholder || '如：少辣、不要香菜、多糖少冰',
@@ -184,6 +201,7 @@ function toggleTasteChip(chip) {
   form.tasteNote = parts.join('、')
 }
 const needAddress = computed(() => {
+  if (isCinemaCart.value) return false
   const t = form.deliveryType || ''
   return t.includes('配送') || t === '配送到家'
 })
