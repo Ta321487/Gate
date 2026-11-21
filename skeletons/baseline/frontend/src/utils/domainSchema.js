@@ -3,6 +3,26 @@
  * 业务页应优先用这里的标签，避免写死领域词。
  */
 import { APP_DELIVERED } from '../appDelivered.js'
+import { FIELD_WIDGET_RULES } from './fieldWidgetRules.js'
+
+function moneyHintHit(key, label) {
+  const list = Array.isArray(FIELD_WIDGET_RULES) ? FIELD_WIDGET_RULES : []
+  for (const rule of list) {
+    if (String(rule.widget || '') !== 'money') continue
+    const ft = String(rule.fieldType || '').trim()
+    if (ft && ft !== 'number') continue
+    const keys = Array.isArray(rule.keys) ? rule.keys : []
+    if (keys.length) {
+      if (keys.includes(key)) return true
+      continue
+    }
+    const exact = Array.isArray(rule.labelIsAny) ? rule.labelIsAny : []
+    if (exact.length && exact.includes(label)) return true
+    const words = Array.isArray(rule.labelHasAny) ? rule.labelHasAny : []
+    if (words.some((w) => w && label.includes(String(w)))) return true
+  }
+  return false
+}
 
 export function getDelivered() {
   return APP_DELIVERED || {}
@@ -375,7 +395,7 @@ export function ticketShowsPriorityCols() {
 
 /**
  * 档案字段是否按金额展示（0 / 0.00 为有效值，空串才是空）。
- * 由 schema 驱动：type=number 且（format=money / author 存单价 / 文案含元费价格）。
+ * 由 schema 驱动：type=number 且（format=money / author 存单价 / 标签含金额词）。
  */
 export function isArchiveMoneyField(field) {
   const f = field || {}
@@ -384,7 +404,7 @@ export function isArchiveMoneyField(field) {
   const key = String(f.key || '')
   const label = String(f.label || '')
   if (key === 'author') return true
-  return /元|费|价|金额|房价|单价|挂号/.test(label)
+  return moneyHintHit(key, label)
 }
 
 /**

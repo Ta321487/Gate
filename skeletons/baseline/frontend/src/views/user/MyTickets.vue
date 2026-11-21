@@ -1396,9 +1396,12 @@
           <template v-if="showPriorityCols">
             <el-form-item label="优先级">
               <el-select v-model="form.priority" style="width:100%">
-                <el-option label="普通" value="普通" />
-                <el-option label="紧急" value="紧急" />
-                <el-option label="高" value="高" />
+                <el-option
+                  v-for="opt in priorityOptions"
+                  :key="opt.value"
+                  :label="opt.label"
+                  :value="opt.value"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="联系电话">

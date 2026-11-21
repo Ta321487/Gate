@@ -1,11 +1,34 @@
 /**
- * 档案字段 → 表单控件。禁止一律文本框：看 type，再看语义兜底。
+ * 档案字段 → 表单控件。禁止一律文本框：看 type，再看标签语义。
  *
  * 返回值：switch | select | datetime | date | time | number | money | url | textarea | richtext | text | hidden
+ *
+ * 标签规则见 fieldWidgetRules.js。
  */
 import { isArchiveMoneyField } from './domainSchema.js'
+import { FIELD_WIDGET_RULES } from './fieldWidgetRules.js'
 
-const BOOL_LABEL_RE = /[（(]?\s*1\s*是\s*0\s*否\s*[）)]?|是否/
+function ruleHits(rule, typ, key, label) {
+  const ft = String(rule.fieldType || '').trim()
+  if (ft && ft !== typ) return false
+  const keys = Array.isArray(rule.keys) ? rule.keys : []
+  if (keys.length) return keys.includes(key)
+  const exact = Array.isArray(rule.labelIsAny) ? rule.labelIsAny : []
+  if (exact.length) return exact.includes(label)
+  const words = Array.isArray(rule.labelHasAny) ? rule.labelHasAny : []
+  if (words.length) return words.some((w) => w && label.includes(String(w)))
+  return false
+}
+
+function matchHint(typ, key, label, onlyWidgets) {
+  const list = Array.isArray(FIELD_WIDGET_RULES) ? FIELD_WIDGET_RULES : []
+  for (const rule of list) {
+    const widget = String(rule.widget || '')
+    if (onlyWidgets && !onlyWidgets.has(widget)) continue
+    if (ruleHits(rule, typ, key, label)) return widget
+  }
+  return null
+}
 
 /**
  * @param {object} field schema field
@@ -20,7 +43,9 @@ export function archiveFieldWidget(field, ctx = {}) {
   if (type === 'hidden') return 'hidden'
   if (key === 'stock' && ctx.stockAsToggle) return 'switch'
   if (type === 'boolean' || type === 'switch') return 'switch'
-  if (type === 'number' && BOOL_LABEL_RE.test(label)) return 'switch'
+  if (type === 'number' && matchHint(type, key, label, new Set(['switch'])) === 'switch') {
+    return 'switch'
+  }
   if (type === 'select') return 'select'
   if (type === 'datetime') return 'datetime'
   if (type === 'date') return 'date'
@@ -29,11 +54,10 @@ export function archiveFieldWidget(field, ctx = {}) {
   if (type === 'textarea') return 'textarea'
   if (type === 'richtext' || (ctx.bodyField && key === ctx.bodyField)) return 'richtext'
   if (type === 'number') return isArchiveMoneyField(field) ? 'money' : 'number'
-  
-  if (type === 'string' && /^(承重|阻力|重量|时长|份量|容量|净含量|面积|租金)$/.test(label)) {
-    return 'number'
+  if (type === 'string') {
+    const hit = matchHint(type, key, label)
+    if (hit) return hit
   }
-  if (type === 'string' && /摘要|备注|说明|特征|简介|描述/.test(label)) return 'textarea'
   return 'text'
 }
 

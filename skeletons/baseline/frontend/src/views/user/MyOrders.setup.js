@@ -155,10 +155,26 @@ const refundReasonPlaceholder = computed(() =>
 )
 const refundTypeLabel = computed(() => getSchema()?.labels?.refundTypeLabel || '售后类型')
 const refundTypeHint = computed(() => getSchema()?.labels?.refundTypeHint || '')
-const refundTypeRefundOnly = computed(() => getSchema()?.labels?.refundTypeRefundOnly || '仅退款')
-const refundTypeReturnRefund = computed(
-  () => getSchema()?.labels?.refundTypeReturnRefund || '退货退款',
-)
+const refundTypeRefundOnly = computed(() => {
+  const hit = (getSchema()?.dicts?.refund_type || []).find((o) => o.value === 'refund_only')
+  return hit?.label || getSchema()?.labels?.refundTypeRefundOnly || '仅退款'
+})
+const refundTypeReturnRefund = computed(() => {
+  const hit = (getSchema()?.dicts?.refund_type || []).find((o) => o.value === 'return_refund')
+  return hit?.label || getSchema()?.labels?.refundTypeReturnRefund || '退货退款'
+})
+const refundTypeCoreOptions = computed(() => {
+  const fromDict = getSchema()?.dicts?.refund_type
+  if (Array.isArray(fromDict) && fromDict.length) {
+    return fromDict
+      .filter((o) => o && (o.value === 'refund_only' || o.value === 'return_refund'))
+      .map((o) => ({ value: o.value, label: o.label || o.value }))
+  }
+  return [
+    { value: 'refund_only', label: refundTypeRefundOnly.value },
+    { value: 'return_refund', label: refundTypeReturnRefund.value },
+  ]
+})
 const refundExchangeOn = computed(() => !!thicken.value.refundExchange)
 const refundTypeExchange = computed(() => getSchema()?.labels?.refundTypeExchange || '换货')
 const refundTypeExchangeOnly = computed(

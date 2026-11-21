@@ -1064,6 +1064,20 @@ const codeQrOn = computed(() => hasCap('code_qr'))
 const showPickup = computed(() => hasTrait('pickupFlow'))
 const approveEndsFlow = computed(() => !!ticket.approveEndsFlow)
 const showPriorityCols = computed(() => ticketShowsPriorityCols())
+const priorityOptions = computed(() => {
+  const fromDict = getSchema()?.dicts?.ticket_priority
+  if (Array.isArray(fromDict) && fromDict.length) {
+    return fromDict.map((o) => ({
+      label: o.label || o.value,
+      value: o.value,
+    }))
+  }
+  return [
+    { label: '普通', value: '普通' },
+    { label: '紧急', value: '紧急' },
+    { label: '高', value: '高' },
+  ]
+})
 
 /** 驿站/失物核销流：approved/overdue 即终态，不展示「取消取件」 */
 function canFinish(row) {

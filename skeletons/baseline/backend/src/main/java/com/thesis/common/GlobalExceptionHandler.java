@@ -10,7 +10,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BizException.class)
     public R<?> handleBiz(BizException e) {
-        return R.fail(e.getErrorCode(), e.getMessage());
+        return R.fail(e.getErrorCode(), ErrorMessages.of(e.getErrorCode(), e.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -18,7 +18,7 @@ public class GlobalExceptionHandler {
         String msg = e.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(err -> err.getField() + " " + err.getDefaultMessage())
-                .orElse("参数错误");
+                .orElse(ErrorMessages.of(ErrorCode.BAD_REQUEST, null));
         return R.fail(ErrorCode.BAD_REQUEST, msg);
     }
 
@@ -29,6 +29,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public R<?> handleOther(Exception e) {
-        return R.fail(ErrorCode.INTERNAL, e.getMessage() == null ? "服务器错误" : e.getMessage());
+        return R.fail(ErrorCode.INTERNAL, ErrorMessages.of(ErrorCode.INTERNAL, e.getMessage()));
     }
 }

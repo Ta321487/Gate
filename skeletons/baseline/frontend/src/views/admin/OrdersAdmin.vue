@@ -460,10 +460,14 @@ const refundTrackingLabel = computed(() => getSchema()?.labels?.refundTrackingLa
 const refundTrackingHint = computed(() => getSchema()?.labels?.refundTrackingHint || '')
 const refundTraceLabel = computed(() => getSchema()?.labels?.refundTraceLabel || '售后进度')
 const refundTraceEmpty = computed(() => getSchema()?.labels?.refundTraceEmpty || '暂无售后进度')
-const refundTypeRefundOnly = computed(() => getSchema()?.labels?.refundTypeRefundOnly || '仅退款')
-const refundTypeReturnRefund = computed(
-  () => getSchema()?.labels?.refundTypeReturnRefund || '退货退款',
-)
+const refundTypeRefundOnly = computed(() => {
+  const hit = (getSchema()?.dicts?.refund_type || []).find((o) => o.value === 'refund_only')
+  return hit?.label || getSchema()?.labels?.refundTypeRefundOnly || '仅退款'
+})
+const refundTypeReturnRefund = computed(() => {
+  const hit = (getSchema()?.dicts?.refund_type || []).find((o) => o.value === 'return_refund')
+  return hit?.label || getSchema()?.labels?.refundTypeReturnRefund || '退货退款'
+})
 const refundTypeExchange = computed(() => getSchema()?.labels?.refundTypeExchange || '换货')
 const refundTypeExchangeOnly = computed(
   () => getSchema()?.labels?.refundTypeExchangeOnly || '仅换货',

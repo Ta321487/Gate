@@ -291,8 +291,11 @@
       <el-form label-position="top">
         <el-form-item v-if="refundTypeOn" :label="refundTypeLabel" required>
           <el-radio-group v-model="refundForm.refundType">
-            <el-radio value="refund_only">{{ refundTypeRefundOnly }}</el-radio>
-            <el-radio value="return_refund">{{ refundTypeReturnRefund }}</el-radio>
+            <el-radio
+              v-for="opt in refundTypeCoreOptions"
+              :key="opt.value"
+              :value="opt.value"
+            >{{ opt.label }}</el-radio>
             <el-radio v-if="refundExchangeOn" value="exchange">{{ refundTypeExchange }}</el-radio>
             <el-radio v-if="refundExchangeOn" value="exchange_only">{{ refundTypeExchangeOnly }}</el-radio>
           </el-radio-group>
