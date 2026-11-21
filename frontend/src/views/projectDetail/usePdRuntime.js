@@ -3,7 +3,7 @@
  */
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { api, message } from '../../api'
-import { runtimeCanStop, runtimeTransient } from './pdRuntimeFmt'
+import { resolveRuntimeWaitCopy, runtimeCanStop, runtimeTransient } from './pdRuntimeFmt'
 
 /**
  * @param {object} deps
@@ -25,6 +25,8 @@ export function usePdRuntime({ p, tab, route, ctx }) {
   const rtBusyBe = ref(false)
   const rtBusyFe = ref(false)
   const rtPendingAll = ref('')
+  /** 最近一次启停操作；过渡态文案优先用它，刷新中途无记录时再按 status 推断 */
+  const rtLastOp = ref({ side: '', action: '' })
   const rtAnyBusy = computed(() => rtBusyBe.value || rtBusyFe.value)
   const rtAllBusy = computed(() => rtBusyBe.value && rtBusyFe.value)
   /** IDE 式：已在跑就不能再启动；全停就不能关/重启；生成中禁止启动/重启 */
@@ -36,6 +38,14 @@ export function usePdRuntime({ p, tab, route, ctx }) {
   /** 启停过渡态（starting/stopping）：busy 已消时仍禁重复主操作，靠状态机而非拖住 loading */
   const rtSettling = computed(
     () => runtimeTransient(rt.backend_status) || runtimeTransient(rt.frontend_status),
+  )
+  const rtWaitCopy = computed(() =>
+    resolveRuntimeWaitCopy({
+      side: rtLastOp.value.side,
+      action: rtLastOp.value.action,
+      beStatus: rt.backend_status,
+      feStatus: rt.frontend_status,
+    }),
   )
   const rtCanStartAll = computed(
     () =>
@@ -69,7 +79,10 @@ export function usePdRuntime({ p, tab, route, ctx }) {
     if (base) return base
     if (!rtCanStartAll.value) {
       if (rtBothLive.value) return '前后端已在运行'
-      if (rtAnyBusy.value || rtSettling.value) return '启停进行中 · 请稍候'
+      if (rtAnyBusy.value || rtSettling.value) {
+        const t = String(rtWaitCopy.value?.title || '').replace(/…$/, '')
+        return t ? `${t} · 请稍候` : '运行态切换中 · 请稍候'
+      }
     }
     return ''
   })
@@ -200,6 +213,7 @@ export function usePdRuntime({ p, tab, route, ctx }) {
     if (touchBe) rtBusyBe.value = true
     if (touchFe) rtBusyFe.value = true
     if (side === 'all') rtPendingAll.value = action
+    rtLastOp.value = { side, action }
 
     if (action === 'start' || action === 'restart') {
       if (touchBe) rt.backend_status = 'starting'
@@ -254,6 +268,13 @@ export function usePdRuntime({ p, tab, route, ctx }) {
     message.warning('前端未就绪，请先启动并等待可访问')
   }
 
+  watch(
+    () => [rtSettling.value, rtAnyBusy.value],
+    ([settling, busy]) => {
+      if (!settling && !busy) rtLastOp.value = { side: '', action: '' }
+    },
+  )
+
   return {
     rt,
     rtBusyBe,
@@ -263,6 +284,7 @@ export function usePdRuntime({ p, tab, route, ctx }) {
     rtAllBusy,
     rtGenerating,
     rtSettling,
+    rtWaitCopy,
     rtBeLive,
     rtFeLive,
     rtAnyLive,
