@@ -1202,14 +1202,42 @@ def match_text(text: str, filename: str = "") -> MatchResult:
         dom_kw = "DOM-CARRENT"
         dom_conf = max(dom_conf, 0.74)
         dom_hits = list(dict.fromkeys(list(dom_hits) + [tip]))
-    # 社团管理：正文「活动报名」易抬 ACTIVITY；题名主写社团时保社团皮
-    if dom_kw == "DOM-ACTIVITY" and any(k in title for k in ("社团", "学生会社团")):
+    # 社团年审：正文「活动报名」易抬 ACTIVITY；仅题名主写注册/年审/备案时保社团皮。
+    # 「社团志愿活动报名」等仍走 ACTIVITY（裸「社团」不得改域）。
+    _club_title_anchors = (
+        "社团管理",
+        "社团注册",
+        "社团年审",
+        "社团备案",
+        "学生社团成立",
+        "学生组织备案",
+        "成立备案",
+        "年度复核",
+        "社团审批",
+    )
+    _activity_title_keep = (
+        "活动报名",
+        "志愿",
+        "讲座报名",
+        "三下乡",
+        "研学",
+        "夏令营",
+        "军训",
+        "大赛报名",
+        "赛事报名",
+        "在线报名",
+    )
+    if (
+        dom_kw == "DOM-ACTIVITY"
+        and any(k in title for k in _club_title_anchors)
+        and not any(k in title for k in _activity_title_keep)
+    ):
         club = next(
             (t for t in _catalog_scores(scored, DOMAINS) if t[0] == "DOM-CLUB"),
             None,
         )
         if club is not None:
-            tip = "提示：题名主写社团，主路径取社团管理（活动报名作附属）。"
+            tip = "提示：题名主写社团注册/年审，主路径取社团管理（活动报名作附属）。"
             dom_kw = "DOM-CLUB"
             dom_conf = min(0.95, 0.45 + club[1] * 0.12)
             dom_hits = list(dict.fromkeys(list(club[2]) + list(dom_hits) + [tip]))
