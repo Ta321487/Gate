@@ -9,6 +9,12 @@
       </div>
       <div class="row" style="gap:8px;flex-wrap:wrap">
         <n-button size="small" :loading="gapLoading" @click="scanGaps">检查待补</n-button>
+        <n-button
+          size="small"
+          :disabled="!suggestableGapCount"
+          :loading="draftLoading"
+          @click="applySuggestDrafts"
+        >生成建议草稿</n-button>
         <n-button size="small" :loading="migrating" @click="migrate">导入初始词表</n-button>
         <n-button size="small" type="primary" @click="openCreate">登记词条</n-button>
       </div>
@@ -81,11 +87,7 @@
         <div class="panel-bd">
           <div v-if="!items.length" class="empty-hint">
             <div class="empty-title">还没有词条</div>
-            <div class="empty-desc">先导入初始词表，或直接登记一条。</div>
-            <div class="row" style="gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
-              <n-button size="small" type="primary" :loading="migrating" @click="migrate">导入初始词表</n-button>
-              <n-button size="small" @click="openCreate">登记词条</n-button>
-            </div>
+            <div class="empty-desc">用顶栏导入或登记一条。</div>
           </div>
           <template v-else>
             <div class="zl-table-wrap">
@@ -180,20 +182,37 @@
                 <thead>
                   <tr>
                     <th>列名</th>
+                    <th>建议</th>
                     <th>域</th>
                     <th>表</th>
                     <th>皮</th>
-                    <th style="width:88px"></th>
+                    <th style="width:140px"></th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(g, i) in pagedGaps" :key="`${g.domain}-${g.table_name}-${g.key_name}-${i}`">
                     <td class="mono">{{ g.key_name }}</td>
+                    <td>
+                      <template v-if="g.suggested_zh">
+                        <span>{{ g.suggested_zh }}</span>
+                        <span v-if="g.suggest_reason" class="small muted"> · {{ g.suggest_reason }}</span>
+                      </template>
+                      <span v-else class="muted">—</span>
+                    </td>
                     <td>{{ domainLabel(g.domain) }}</td>
                     <td class="mono">{{ g.table_name || '—' }}</td>
                     <td class="mono muted">{{ g.skin || '—' }}</td>
                     <td>
-                      <n-button size="small" quaternary @click="fillFromGap(g)">补中文</n-button>
+                      <div class="row" style="gap:4px;flex-wrap:wrap">
+                        <n-button
+                          v-if="g.suggested_zh"
+                          size="small"
+                          quaternary
+                          type="primary"
+                          @click="fillFromGap(g, true)"
+                        >用建议</n-button>
+                        <n-button size="small" quaternary @click="fillFromGap(g, false)">补中文</n-button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -337,6 +356,7 @@ const booted = ref(false)
 const loading = ref(false)
 const migrating = ref(false)
 const gapLoading = ref(false)
+const draftLoading = ref(false)
 const saving = ref(false)
 const deletingId = ref(0)
 const editingId = ref(0)
@@ -369,6 +389,10 @@ const filteredGaps = computed(() => {
   if (!gapDomain.value) return gaps.value
   return gaps.value.filter((g) => (g.domain || '') === gapDomain.value)
 })
+
+const suggestableGapCount = computed(
+  () => gaps.value.filter((g) => g.suggested_zh).length,
+)
 
 const pagedGaps = computed(() => {
   const start = (gapPage.value - 1) * gapPageSize.value
@@ -583,12 +607,14 @@ function editRow(row) {
   drawerOpen.value = true
 }
 
-function fillFromGap(g) {
+function fillFromGap(g, useSuggest = false) {
   editingId.value = 0
   fromGap.value = true
   form.kind = g.kind || 'column'
   form.key_name = g.key_name || ''
-  form.zh = ''
+  // 有建议则预填（可改）；无建议留空手填
+  form.zh = g.suggested_zh || ''
+  if (useSuggest && !g.suggested_zh) form.zh = ''
   form.domain = g.domain || ''
   form.skin = g.skin || ''
   form.table_name = g.table_name || ''
@@ -641,7 +667,8 @@ async function migrate() {
   migrating.value = true
   try {
     const res = await api.zhLexiconMigrate()
-    message.success(`已导入 ${res.inserted ?? 0} 条，合计 ${res.total ?? 0}`)
+    const n = res.inserted ?? 0
+    message.success(n > 0 ? `已追加 ${n} 条` : '没有缺项可追加')
     await loadMeta()
     await load()
     await loadColumnCorpus()
@@ -664,7 +691,12 @@ async function scanGaps() {
     await loadMeta()
     if (gapCount.value) {
       mainTab.value = 'gaps'
-      message.info(`待补 ${gapCount.value} 条`)
+      const nSug = suggestableGapCount.value
+      message.info(
+        nSug
+          ? `待补 ${gapCount.value} 条，其中 ${nSug} 条有建议`
+          : `待补 ${gapCount.value} 条`,
+      )
     } else {
       message.success('没有待补项')
     }
@@ -672,6 +704,30 @@ async function scanGaps() {
     message.error(e?.message || '检查失败')
   } finally {
     gapLoading.value = false
+  }
+}
+
+async function applySuggestDrafts() {
+  if (!suggestableGapCount.value) {
+    message.warning('没有可写成草稿的建议')
+    return
+  }
+  draftLoading.value = true
+  try {
+    if (!gapsScanned.value) await scanGaps()
+    const res = await api.zhLexiconSuggestDrafts()
+    message.success(
+      `草稿写入 ${res.written ?? 0}，跳过正式词 ${res.skipped ?? 0}，无建议 ${res.no_suggest ?? 0}`,
+    )
+    await load()
+    await loadColumnCorpus()
+    const gapRes = await api.zhLexiconGaps()
+    gaps.value = gapRes.gaps || []
+    gapCount.value = gapRes.gap_count ?? gaps.value.length
+  } catch (e) {
+    message.error(e?.message || '生成草稿失败')
+  } finally {
+    draftLoading.value = false
   }
 }
 

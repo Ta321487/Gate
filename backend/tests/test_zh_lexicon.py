@@ -105,6 +105,124 @@ CREATE TABLE IF NOT EXISTS biz_order (
         self.assertIn("gap_count", report)
         self.assertIn("gaps", report)
         self.assertIsInstance(report["gaps"], list)
+        if report["gaps"]:
+            g0 = report["gaps"][0]
+            self.assertIn("suggested_zh", g0)
+            self.assertIn("suggest_reason", g0)
+
+    def test_suggest_gap_stem_compose(self) -> None:
+        hit = zl.ScanHit(
+            domain="", skin="", table_name="", key_name="created_at", kind="column"
+        )
+        # created_at 若已在词表则不是缺口建议路径；用无整键、有词根的人造键
+        hit2 = zl.ScanHit(
+            domain="", skin="", table_name="", key_name="reminded_at", kind="column"
+        )
+        # reminded 在 stem；若整键已有则跳过
+        if not zl.resolve_zh("column", "reminded_at"):
+            sug = zl.suggest_gap_zh(hit2)
+            self.assertIsNotNone(sug)
+            assert sug is not None
+            self.assertEqual(sug["zh"], "催办时间")
+            self.assertEqual(sug["reason"], "词根组合")
+        # 无词根的瞎猜后缀 → None
+        hit3 = zl.ScanHit(
+            domain="", skin="", table_name="", key_name="zzzxxyy_at", kind="column"
+        )
+        self.assertIsNone(zl.suggest_gap_zh(hit3))
+        # 裸 _id 无词根 → None
+        hit4 = zl.ScanHit(
+            domain="", skin="", table_name="", key_name="zzzxxyy_id", kind="column"
+        )
+        self.assertIsNone(zl.suggest_gap_zh(hit4))
+
+    def test_suggest_gap_same_table(self) -> None:
+        self.assertTrue(zl._fragment_zh("name", None))
+        self.assertTrue(zl._fragment_zh("phone", None))
+        rows = [
+            {
+                "kind": "column",
+                "key_name": "zzqx_name",
+                "zh": "奇项名称",
+                "domain": "DOM-SHOP",
+                "skin": "",
+                "table_name": "gadget",
+                "source": "manual",
+            },
+        ]
+        hit = zl.ScanHit(
+            domain="DOM-SHOP",
+            skin="",
+            table_name="gadget",
+            key_name="zzqx_phone",
+            kind="column",
+        )
+        sug = zl.suggest_gap_zh(hit, rows)
+        self.assertIsNotNone(sug)
+        assert sug is not None
+        self.assertEqual(sug["zh"], "奇项手机")
+        self.assertEqual(sug["reason"], "同表类推")
+
+        # 两个可替换兄弟给出不同结果 → None
+        self.assertEqual(zl._fragment_zh("note", None), "记录")
+        rows_conflict = [
+            {
+                "kind": "column",
+                "key_name": "zzqy_name",
+                "zh": "甲名称",
+                "domain": "DOM-X",
+                "skin": "",
+                "table_name": "t1",
+                "source": "manual",
+            },
+            {
+                "kind": "column",
+                "key_name": "zzqy_note",
+                "zh": "乙记录",
+                "domain": "DOM-X",
+                "skin": "",
+                "table_name": "t1",
+                "source": "manual",
+            },
+        ]
+        hit_c = zl.ScanHit(
+            domain="DOM-X",
+            skin="",
+            table_name="t1",
+            key_name="zzqy_phone",
+            kind="column",
+        )
+        self.assertIsNone(zl.suggest_gap_zh(hit_c, rows_conflict))
+
+    def test_draft_skipped_for_bake_and_no_overwrite(self) -> None:
+        rows = [
+            {
+                "kind": "column",
+                "key_name": "mystery_col",
+                "zh": "草稿名",
+                "domain": "",
+                "skin": "",
+                "table_name": "",
+                "source": "draft",
+            }
+        ]
+        zl._rows_cache = rows
+        zl._apply_global_maps(rows)
+        self.assertIsNone(
+            zl.resolve_zh("column", "mystery_col", rows=rows, for_bake=True)
+        )
+        self.assertEqual(
+            zl.resolve_zh("column", "mystery_col", rows=rows, for_bake=False),
+            "草稿名",
+        )
+        sql = """
+CREATE TABLE IF NOT EXISTS t (
+  mystery_col VARCHAR(32) DEFAULT ''
+);
+"""
+        out = zl.annotate_sql_comments(sql)
+        self.assertNotIn("COMMENT '草稿名'", out)
+        zl.bootstrap_from_seed()
 
     def test_extract_comment(self) -> None:
         self.assertEqual(

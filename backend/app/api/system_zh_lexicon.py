@@ -109,6 +109,13 @@ async def zh_lexicon_gaps(db: AsyncSession = Depends(get_db)):
     return {"ok": True, **report}
 
 
+@router.post("/system/zh-lexicon/suggest-drafts", summary="待补有建议的写成草稿词条")
+async def zh_lexicon_suggest_drafts(db: AsyncSession = Depends(get_db)):
+    """确定性建议 → source=draft；不覆盖 manual/migrated/scan；draft 不进 bake COMMENT。"""
+    stats = await zl.apply_suggest_drafts(db)
+    return {"ok": True, **stats}
+
+
 @router.put("/system/zh-lexicon", summary="新增或更新词条")
 async def upsert_zh_lexicon(body: ZhLexUpsert, db: AsyncSession = Depends(get_db)):
     try:
