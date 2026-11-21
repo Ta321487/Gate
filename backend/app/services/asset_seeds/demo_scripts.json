@@ -1,0 +1,3313 @@
+[
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "admin",
+    "title_zh": "发布内容",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "user",
+    "title_zh": "浏览阅读",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "维护公告",
+    "need_rows": {
+      "sys_notice": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "到场办结",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "浏览并下单",
+    "need_rows": {
+      "biz_order": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认并履约",
+    "need_rows": {
+      "biz_order": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "shipped",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "查看订单进度",
+    "need_rows": {
+      "biz_order": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "admin",
+    "title_zh": "发布内容",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "user",
+    "title_zh": "浏览阅读",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "维护公告",
+    "need_rows": {
+      "sys_notice": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "浏览并下单",
+    "need_rows": {
+      "biz_order": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认并履约",
+    "need_rows": {
+      "biz_order": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "shipped",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "查看订单进度",
+    "need_rows": {
+      "biz_order": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "admin",
+    "title_zh": "发布内容",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "user",
+    "title_zh": "浏览阅读",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "维护公告",
+    "need_rows": {
+      "sys_notice": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GENERIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "admin",
+    "title_zh": "准备演示数据",
+    "need_rows": {
+      "sys_user": {
+        "min": 2
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GENERIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "user",
+    "title_zh": "走主路径",
+    "need_rows": {
+      "sys_user": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GENERIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "核对结果",
+    "need_rows": {
+      "sys_user": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "到场办结",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "到场办结",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "到场办结",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "admin",
+    "title_zh": "发布内容",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "user",
+    "title_zh": "浏览阅读",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "维护公告",
+    "need_rows": {
+      "sys_notice": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "到场办结",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "admin",
+    "title_zh": "发布内容",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "user",
+    "title_zh": "浏览阅读",
+    "need_rows": {
+      "archive": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "维护公告",
+    "need_rows": {
+      "sys_notice": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "到场办结",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认预约",
+    "need_rows": {
+      "reservation": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "到场办结",
+    "need_rows": {
+      "reservation": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "浏览并下单",
+    "need_rows": {
+      "biz_order": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "admin",
+    "title_zh": "确认并履约",
+    "need_rows": {
+      "biz_order": {
+        "min": 1,
+        "status_in": [
+          "confirmed",
+          "shipped",
+          "completed"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "user",
+    "title_zh": "查看订单进度",
+    "need_rows": {
+      "biz_order": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 1,
+    "role": "user",
+    "title_zh": "提交单据",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 2,
+    "role": "staff",
+    "title_zh": "受理办理",
+    "need_rows": {
+      "ticket": {
+        "min": 1,
+        "status_in": [
+          "pending",
+          "approved"
+        ]
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "skin_id": "",
+    "script_id": "default",
+    "step_no": 3,
+    "role": "admin",
+    "title_zh": "办结归档",
+    "need_rows": {
+      "ticket": {
+        "min": 1
+      }
+    },
+    "seed_fragment_id": "",
+    "source": "migrated"
+  }
+]

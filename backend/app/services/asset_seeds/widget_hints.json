@@ -1,0 +1,46 @@
+[
+  {
+    "rule_key": "bool_label_switch",
+    "match_scope": "label_regex",
+    "match_pattern": "[（(]?\\s*1\\s*是\\s*0\\s*否\\s*[）)]?|是否",
+    "when_type": "number",
+    "widget": "switch",
+    "note_zh": "数字字段标签含是否/1是0否 → 开关",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "rule_key": "money_label",
+    "match_scope": "label_regex",
+    "match_pattern": "元|费|价|金额|房价|单价|挂号",
+    "when_type": "number",
+    "widget": "money",
+    "note_zh": "金额类数字字段",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "rule_key": "numeric_string_exact",
+    "match_scope": "label_exact",
+    "match_pattern": "承重|阻力|重量|时长|份量|容量|净含量|面积|租金",
+    "when_type": "string",
+    "widget": "number",
+    "note_zh": "字面量标签的计量字段用手写数字语义",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "rule_key": "textarea_label",
+    "match_scope": "label_regex",
+    "match_pattern": "摘要|备注|说明|特征|简介|描述",
+    "when_type": "string",
+    "widget": "textarea",
+    "note_zh": "长文案标签 → 多行",
+    "sort": 40,
+    "enabled": true,
+    "source": "migrated"
+  }
+]

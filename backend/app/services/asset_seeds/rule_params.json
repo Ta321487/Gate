@@ -1,0 +1,42 @@
+[
+  {
+    "domain_id": "*",
+    "rule_id": "order_pay_timeout_min",
+    "label_zh": "待付款超时关单",
+    "value_num": 30,
+    "unit_zh": "分钟",
+    "schema_key": "orderTimeoutMinutes",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "rule_id": "order_pay_timeout_min",
+    "label_zh": "待付款超时关单",
+    "value_num": 30,
+    "unit_zh": "分钟",
+    "schema_key": "orderTimeoutMinutes",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "rule_id": "reservation_advance_hours",
+    "label_zh": "预约最少提前",
+    "value_num": 1,
+    "unit_zh": "小时",
+    "schema_key": "reservationAdvanceHours",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "rule_id": "points_earn_rate",
+    "label_zh": "积分倍率",
+    "value_num": 1,
+    "unit_zh": "倍",
+    "schema_key": "pointsEarnRate",
+    "sort": 30,
+    "source": "migrated"
+  }
+]

@@ -27,14 +27,109 @@
 
 | 优先 | 项 | 口令 / 入口 | 现状 |
 |------|----|-------------|------|
-| 1 | **词表待补消缺** | `做词表建议稿`：列名片段+同表已有词 → 确定性「建议中文」一键填；可选批草稿。**禁止** LLM 悬停猜名 | 侧栏/抽屉已齐；待补量仍靠人逐条 |
-| 2 | **资产台落地** | `做资产台` / `做资产台 #n`（真源 [`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md)；parked **q**） | **只立册**，工厂未改 |
+| 1 | **词表待补消缺** | `做词表建议稿` | **已齐**（建议字段+一键填+草稿；`test_zh_lexicon` 14） |
+| 2 | **资产台落地** | `做资产台 #11`（论文图题）；真源 [`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md)；parked **q** | **A+B+C+#4+#5+#7+#8+#9 已齐**；波次 D 余 `#11` |
 | 3 | **D1 论文图几何** | parked **m**；模块/序列/活动厂内排版仍债 | 导出/rubric 已齐 ≠ 初开可读 |
-| 4 | **旧题 canary** | `test_audit_group_canaries`：`DOM-ACTIVITY`→`DOM-CLUB` | 厂级红，非单题 |
-| 5 | **AOCI 收尾** | 本批新路径（`zh_lexicon` / `system_zh_lexicon` / `schema_thesis_export` / `ZhLexicon.vue` / `LongOpWait` / `longOpSession` / `mdRender` 等）→ scope acknowledge → `aoci_maintain` | 推送后做；MCP 挂则停手重启 |
+| 4 | **旧题 canary** | `test_audit_group_canaries` ACTIVITY/CLUB | **已修**（2026-11-19）：题名裸「社团」不再改 CLUB |
+| 5 | **AOCI 收尾** | 本批新路径（含 `status_copy` / `dict_values` / 侧栏页 / 词表建议等）→ scope acknowledge → `aoci_maintain` | 推送后做；MCP 挂则停手重启 |
 
 **本批提交主题**（2026-11-16 拆推）：文案口径 → 资产台册 → 词表+Stripe+主题色 → 论文图材料 → 等待态 I2 → 手调/对账 UX → 本交接。轨迹以 `git log` 为准。  
 **勿提交**：根目录学生 `.docx`、`er-*.drawio` 草稿、`backend/` 下短随机名临时文件。
+
+### 本会话（2026-11-21）· 资产台 #9 测试账号 ✅
+
+- **站队**：**修工厂**（演示账号卡收口）。
+- **已有**：`factory_demo_account` + 种子 + `apply_demo_accounts_to_schema`。
+- **补齐**：API/侧栏「测试账号」、lifespan、bake、`test_demo_accounts`、surface、帮助。
+- **口径**：跨域三端默认；具名域可盖；与 #3 剧本角色对齐；演示密码非运营密钥。
+- **台账**：parked **q** → A+B+C+#4+#5+#7+#8+#9；下一口令 `做资产台 #11`。
+
+### 本会话（2026-11-21）· 资产台 #8 表关系叙事 ✅
+
+- **站队**：**修工厂**（表边人话收口）。
+- **已有**：`factory_er_edge_copy` + 种子 + `apply_er_edge_copy_to_schema`。
+- **补齐**：API/侧栏「表关系叙事」、lifespan、bake、`test_er_edge_copy`、surface、帮助。
+- **口径**：服务论文库设旁注；≠ 结构对账 / 几何排版（parked **m**）。
+- **台账**：parked **q** → A+B+C+#4+#5+#7+#8；下一口令曾为 `做资产台 #9`（已收）。
+
+### 本会话（2026-11-21）· 资产台 #7 规则参数 ✅
+
+- **站队**：**修工厂**（业务规则参数收口）。
+- **已有**：`factory_rule_param` + 种子 + `apply_rule_params_to_schema`。
+- **补齐**：API/侧栏「规则参数」、lifespan、bake（建 schema + 收束）、`test_rule_params`、surface、帮助。
+- **口径**：具名域盖 `*`；落点键仅补缺不覆盖扫词/加厚。
+- **台账**：parked **q** → A+B+C+#4+#5+#7；下一口令曾为 `做资产台 #8`（已收）。
+
+### 本会话（2026-11-21）· 资产台 #5 菜单矩阵 ✅
+
+- **站队**：**修工厂**（岗位×菜单矩阵收口）。
+- **已有**：`factory_menu_matrix` + 种子 + `apply_menu_matrix_to_schema`。
+- **补齐**：API/侧栏「菜单矩阵」、lifespan 迁入、bake 收束 `apply_menu_matrix_to_spec`、`test_menu_matrix`、surface、帮助。
+- **口径**：常驻或绑能力；只补缺不删已有；不另起 RBAC（≠ X-ORG）。
+- **台账**：parked **q** → A+B+C+#4+#5；下一口令曾为 `做资产台 #7`（已收）。
+
+### 本会话（2026-11-21）· 控件语义 ZIP 投影 ✅
+
+- **站队**：**修工厂**（工厂台不变 → bake 投影学生腔）。
+- **落点**：`fieldWidgetRules.js`（`labelHasAny` / `labelIsAny`）；删 `widgetHints.json`；`schema.fieldWidgetRules`。
+- **闸**：`test_widget_hints` 钉台匹配 ↔ 投影等价；出包仍写投影。
+- **错误码**：`error-messages.json` 已是学生腔，仅擦 Java「bake」注释。
+
+### 本会话（2026-11-21）· 资产台 #4 控件语义 ✅
+
+- **站队**：**修工厂**（控件语义台收口）。
+- **已有**：`factory_widget_hint` + bake 投影 `fieldWidgetRules.js` + JS/Python 同轴。
+- **补齐**：侧栏路由/API 接线、`test_widget_hints`、surface、帮助「控件语义」。
+- **台账**：parked **q** → A+B+C+#4；下一口令曾为 `做资产台 #5`（已收）。
+
+### 本会话（2026-11-21）· 资产台 #6 错误码中文 ✅（波次 C 收口）
+
+- **站队**：**修工厂**（错误码中文台收口）。
+- **已有**：`factory_error_copy` + 侧栏 + bake `error-messages.json` / `schema.errorCopy` + Java `ErrorMessages`。
+- **补齐**：`test_error_copy`（含骨架 FALLBACK↔种子对账）+ surface 合同 + 帮助「错误码中文」。
+- **台账**：波次 **A+B+C 已齐**。
+
+### 本会话（2026-11-21）· 资产台 #12 能力说明 ✅
+
+- **站队**：**修工厂**（能力说明卡）。
+- **五段**：`factory_cap_card` → 种子 JSON 只追加 → `addons` README bits 改读台 → 侧栏「能力说明」→ `test_cap_cards`。
+- **口径**：开则注入 FAQ；关则宣称针不得残留；菜单入口字段对账。
+
+### 本会话（2026-11-21）· 资产台 #10 开关建议 ✅
+
+- **站队**：**修工厂**（开关建议台收口）。
+- **已有**：`factory_addon_suggest` + `stack_scan`/`匹配确认`建议卡 + API/种子。
+- **补齐**：侧栏页 `AddonSuggest.vue`（此前路由悬空）+ `test_addon_suggest` + surface 合同 + 帮助「开关建议」。
+- **口径**：扫词命中可预填推荐，须人工确认；不改开题、不默认瞎开。
+
+### 本会话（2026-11-20）· 资产台 #3 演示剧本 ✅
+
+- **站队**：**修工厂**（演示剧本台）。
+- **五段**：`factory_demo_script` → 种子 JSON 只追加迁入 → bake `schema.demoScript` → 侧栏「演示剧本」Stripe 页 → `test_demo_scripts` + surface 合同。
+- **种子**：68 域 default 剧本外置 `asset_seeds/demo_scripts.json`；服务无硬编码 `put("DOM-…")`。
+- **迁入**：#1/#2/#3 migrate 统一 `source=migrated`、按 DB 已有键只追加。
+- **台账**：parked **q** → 波次 A+B 已齐。
+
+### 本会话（2026-11-19）· 资产台 #1/#2 全族种子补全 ✅
+
+- **站队**：**修工厂**（状态话术 / 字典台）。
+- **#1**：68 域扫缺口后种子扩全——`*` ticket/reservation 众数 + 各 DOM 分歧覆盖；order 具名（SHOP 履约口径 + FOOD/CINEMA/HOTEL/CARRENT）；`test_all_domains_zero_status_gaps` 绿。软皮不另开状态机。
+- **#2**：`refund_type` 扩到交易三域；`ticket_priority` 仍 `*`。分类软皮仍在 `shop_retail_niches`。
+
+### 本会话（2026-11-19）· 词表建议稿 + 资产台波次 A（#1+#2）✅
+
+- **站队**：**修工厂**。
+- **片1**：待补确定性建议（stem 组合 + 同表类推）→ gaps 带 `suggested_zh`；一键填；`suggest-drafts`（`source=draft` 不进 bake COMMENT）。测 `test_zh_lexicon` 14 绿。
+- **片2a**：`factory_status_copy` + 侧栏「状态话术」+ bake `schema.statusCopy` 盖 `entities.*.states`。测 `test_status_copy` 绿。
+- **片2b**：`factory_dict_values` + 侧栏「字典台」+ bake `schema.dicts`。测 `test_dict_values` 绿。
+- **台账**：parked **q** → 波次 A 已齐；下一口令 `做资产台 #3`。
+
+### 本会话（2026-11-19）· 三单审计口径 + park s/t 结单后再做
+
+- **站队**：只报告；假支付不记红；Redis/分区 **结单后再做**（parked **s/t**）。
+- **三包**：方木/超新/潮汐主路径齐；超新活动=content 脸已有；表数三包同档警告。
+- **修工厂（顺手）**：`catalog.py` ACTIVITY←社团题误改 CLUB 已收窄；canary 绿。
+- **park**：**s** Redis、**t** 演艺分区 → **结单后再做**（本期材料勿假宣称；刀不开）。
 
 ### 本会话（2026-11-18）· 选座取消回弹 + 倒计时未释放 ✅
 

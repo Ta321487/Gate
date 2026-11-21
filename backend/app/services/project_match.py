@@ -180,6 +180,7 @@ async def create_from_uploads(
         "hits": list(stack.get("hits") or []),
         "warnings": list(stack.get("warnings") or []),
         "addons": dict(stack.get("addons") or {}),
+        "addon_suggestions": list(stack.get("addon_suggestions") or []),
     }
     for tip in stack.get("warnings") or []:
         if tip not in hits:

@@ -458,6 +458,18 @@ def _patch_student_readme(
     while "\n\n\n" in text:
         text = text.replace("\n\n\n", "\n\n")
     path.write_text(text, encoding="utf-8")
+    try:
+        from app.services.error_copy import write_error_messages_json
+
+        write_error_messages_json(dest)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from app.services.widget_hints import write_widget_hints_json
+
+        write_widget_hints_json(dest)
+    except Exception:  # noqa: BLE001
+        pass
 
 def _merge_tree(src: Path, dest: Path) -> None:
     """将 src 覆盖合并到 dest（文件覆盖，目录递归）。"""

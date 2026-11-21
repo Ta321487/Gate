@@ -22,6 +22,15 @@ _JS = (
     / "utils"
     / "archiveFieldWidget.js"
 )
+_RULES_JS = (
+    _REPO
+    / "skeletons"
+    / "baseline"
+    / "frontend"
+    / "src"
+    / "utils"
+    / "fieldWidgetRules.js"
+)
 _CONTROL = (
     _REPO
     / "skeletons"
@@ -78,11 +87,25 @@ class FormControlsWidgetC3Tests(unittest.TestCase):
             "type === 'richtext'",
             "type === 'number'",
             "isArchiveMoneyField",
-            "承重|阻力|重量|时长|份量|容量|净含量|面积|租金",
-            "摘要|备注|说明|特征|简介|描述",
+            "FIELD_WIDGET_RULES",
+            "fieldWidgetRules",
         ]
         for n in needles:
             self.assertIn(n, text, f"archiveFieldWidget.js 缺 {n}")
+        rules = _RULES_JS.read_text(encoding="utf-8")
+        for n in (
+            "承重",
+            "阻力",
+            "摘要",
+            "备注",
+            "说明",
+            "特征",
+            "简介",
+            "描述",
+            "labelIsAny",
+            "labelHasAny",
+        ):
+            self.assertIn(n, rules, f"fieldWidgetRules.js 缺 {n}")
 
     def test_archive_field_control_covers_widgets(self) -> None:
         """控制组件须渲染映射返回的主控件（text 为兜底；hidden 由父级跳过）。"""

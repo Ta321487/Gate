@@ -1,40 +1,24 @@
 """档案字段 → 控件映射（与 skeletons/.../archiveFieldWidget.js 对齐）。
 
-真源纪律：docs/form-controls.md §1；改 JS 映射须同步本表与测。
+真源纪律：docs/form-controls.md §1；标签启发式真源 services.widget_hints。
+改 JS 映射须同步本表与测。
 """
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
+from app.services import widget_hints as wh
+
 # 与 JS archiveFieldWidget 返回值全集一致
-WIDGET_KINDS: frozenset[str] = frozenset(
-    {
-        "switch",
-        "select",
-        "datetime",
-        "date",
-        "time",
-        "number",
-        "money",
-        "url",
-        "textarea",
-        "richtext",
-        "text",
-        "hidden",
-    }
-)
-
-_BOOL_LABEL_RE = re.compile(r"[（(]?\s*1\s*是\s*0\s*否\s*[）)]?|是否")
-_TEXTAREA_LABEL_RE = re.compile(r"摘要|备注|说明|特征|简介|描述")
-_MONEY_LABEL_RE = re.compile(r"元|费|价|金额|房价|单价|挂号")
-_NUMERIC_STRING_LABEL_RE = re.compile(
-    r"^(承重|阻力|重量|时长|份量|容量|净含量|面积|租金)$"
-)
+WIDGET_KINDS: frozenset[str] = wh.WIDGET_KINDS
 
 
-def is_archive_money_field(field: dict[str, Any] | None) -> bool:
+def is_archive_money_field(
+    field: dict[str, Any] | None,
+    *,
+    rows: list[dict[str, Any]] | None = None,
+) -> bool:
     """对齐 domainSchema.isArchiveMoneyField（最小子集）。"""
     f = field or {}
     if f.get("format") == "money" or f.get("money") is True:
@@ -45,7 +29,14 @@ def is_archive_money_field(field: dict[str, Any] | None) -> bool:
     label = str(f.get("label") or "")
     if key == "author":
         return True
-    return bool(_MONEY_LABEL_RE.search(label))
+    hit = wh.match_widget_hint(
+        field_type="number",
+        key=key,
+        label=label,
+        rows=rows,
+        only_widgets=frozenset({"money"}),
+    )
+    return hit == "money"
 
 
 def archive_field_widget(
@@ -53,6 +44,7 @@ def archive_field_widget(
     *,
     stock_as_toggle: bool = False,
     body_field: str = "",
+    rows: list[dict[str, Any]] | None = None,
 ) -> str:
     """对齐 archiveFieldWidget.js 决策序。"""
     if not field or not field.get("key"):
@@ -67,7 +59,11 @@ def archive_field_widget(
         return "switch"
     if typ in ("boolean", "switch"):
         return "switch"
-    if typ == "number" and _BOOL_LABEL_RE.search(label):
+    # 标签启发式：number+是否 → switch
+    hint = wh.match_widget_hint(
+        field_type=typ, key=key, label=label, rows=rows, only_widgets=frozenset({"switch"})
+    )
+    if hint == "switch" and typ == "number":
         return "switch"
     if typ == "select":
         return "select"
@@ -84,11 +80,12 @@ def archive_field_widget(
     if typ == "richtext" or (body_field and key == body_field):
         return "richtext"
     if typ == "number":
-        return "money" if is_archive_money_field(field) else "number"
-    if typ == "string" and _NUMERIC_STRING_LABEL_RE.match(label):
-        return "number"
-    if typ == "string" and _TEXTAREA_LABEL_RE.search(label):
-        return "textarea"
+        return "money" if is_archive_money_field(field, rows=rows) else "number"
+    # string 标签覆盖：number / textarea 等
+    if typ == "string":
+        hit = wh.match_widget_hint(field_type="string", key=key, label=label, rows=rows)
+        if hit:
+            return hit
     return "text"
 
 

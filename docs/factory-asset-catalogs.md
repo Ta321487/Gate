@@ -3,7 +3,7 @@
 > **本文只负责**：描述一类**新功能方向**——工厂内维护结构化资产，bake / 门禁 / 控制台消费，少改学生 ZIP。  
 > **不负责**：论文图几何（parked **m**）、题名库接线（**j**）、运营台产品化 UI（**p**）、Surface Lexicon 运维尾债（**e**）。那些是别的单。  
 > **范本**：`factory_zh_lexicon` → bake `COMMENT` + 侧栏「词表维护」（2026-11-16）。  
-> **状态**：方向册 · **未开工** · 见 [`parked-work.md`](./parked-work.md) 碎另案 **q**。  
+> **状态**：方向册 · **波次 A+B+C 已齐**；**波次 D · #4+#5+#7+#8+#9 已齐**（2026-11-21）· 下一项 `#11` · 见 [`parked-work.md`](./parked-work.md) 碎另案 **q**。  
 > **口令**：`做资产台` / `做资产台 #n`（n 为本文选项编号）。  
 > **索引**：[README.md](./README.md)
 
@@ -40,7 +40,8 @@
 2. **所有修复针对全域全皮**：机制一套、各域填自己的键值；首刀可以先挂 1～2 域**验证合同**，收工前合同与闸必须能罩全族，禁止「只给 SHOP 开一张旁路表」或单域永久特例。  
 3. **学生可见文案**走**本域业务角色**口吻（谁在用哪个端，就说谁会说的话）；工厂腔（开题、bake、DOM-*）不进包。口径真源：`.cursor/rules/student-copy.mdc`（「店员/买家」仅为交易域举例；**规则范围仍是全域**）。  
 4. **LLM 可建议稿，不可当唯一真源**；可复现规则收进台 + 测。  
-5. **未立项注入路径，不许开对外开关**（与 tech-stack / capability 纪律一致）。
+5. **未立项注入路径，不许开对外开关**（与 tech-stack / capability 纪律一致）。  
+6. **真源是工厂库表**（`factory_zh_lexicon` / `factory_status_copy` / `factory_dict_values`），起服 `create_all` + lifespan **只追加**缺主键种子；已有行（含 `manual` / `scan` / `migrated`）**禁止**被种子 UPDATE。控制台「导入初始」同口径。进程缓存只作库快照，不得用种子缓存冒充库。
 
 > **口吻按域 ≠ 修复按域切开。** 租用域说「租用者」，交易域说「买家」——那是键值内容；表结构、bake、侧栏、闸是全厂一份。
 
@@ -245,18 +246,25 @@ factory_demo_script
 ## 7. 建议落地顺序
 
 ```text
-波次 A（先证明同构可复制）
-  #1 状态机话术表  →  一个单据域跑通五段合同
-  #2 字典台        →  同一域 1 个 dict_key + 控件闸钉子
+波次 A（先证明同构可复制）✅ 2026-11-19
+  #1 状态机话术表  →  ticket(*) + order(DOM-SHOP) 五段合同
+  #2 字典台        →  refund_type(SHOP) + ticket_priority(*)；基线读 schema.dicts
 
-波次 B（直接降跟单）
-  #3 演示剧本种子  →  交易 + 报修各一条 default 剧本 + 自检
+波次 B（直接降跟单）✅ 2026-11-20
+  #3 演示剧本种子  →  68 域 default 剧本 + 侧栏「演示剧本」+ bake `schema.demoScript`
 
-波次 C（匹配 / 诚实交付）
-  #10 开关建议卡  ·  #12 能力说明卡  ·  #6 错误码中文
+波次 C（匹配 / 诚实交付）✅ 2026-11-21
+  #10 开关建议卡  →  factory_addon_suggest + 侧栏「开关建议」+ 匹配页建议卡
+  #12 能力说明卡  →  factory_cap_card + 侧栏「能力说明」+ README 注入 / 宣称针
+  #6 错误码中文   →  factory_error_copy + 侧栏「错误码中文」+ error-messages.json
 
-波次 D（材料与控件加固）
-  #4 控件语义  ·  #5 菜单矩阵  ·  #7 规则参数  ·  #8 #9 #11
+波次 D（材料与控件加固）· #4+#5+#7+#8+#9 ✅ 2026-11-21
+  #4 控件语义  →  factory_widget_hint + 侧栏「控件语义」+ 投影 fieldWidgetRules.js / archiveFieldWidget
+  #5 菜单矩阵  →  factory_menu_matrix + 侧栏「菜单矩阵」+ bake 补齐 schema.menus
+  #7 规则参数  →  factory_rule_param + 侧栏「规则参数」+ schema.ruleParams（落点键仅补缺）
+  #8 表关系叙事 →  factory_er_edge_copy + 侧栏「表关系叙事」+ schema.erEdgeCopy
+  #9 测试账号  →  factory_demo_account + 侧栏「测试账号」+ schema.demoAccounts
+  #11  （未开）
 ```
 
 每波次收工标准：五段合同齐 + 对口 pytest 绿 + HANDOFF 记一笔；**禁止**只写文档勾已齐。
@@ -285,6 +293,8 @@ factory_demo_script
 | #4 控件 | `docs/form-controls.md`、`archiveFieldWidget.js` |
 | #10 建议卡 | Match 确认页、`proposal_lexicon`、validation-loop 核域 |
 | #12 说明卡 | `docs/capabilities.md`、README bake、假宣称闸 |
+| #6 错误码 | `ErrorCode` / `ErrorMessages`、bake `error-messages.json` |
+| #4 控件语义 | `fieldWidgetRules.js`、`archiveFieldWidget.js`、`form_controls_widget`、`docs/form-controls.md` |
 
 **能修原路径就修原路径**；真没有家再新建 `factory_*` 表 + `services/` + 侧栏页（对齐词表家谱）。
 
@@ -294,6 +304,17 @@ factory_demo_script
 
 | 日期 | 说明 |
 |------|------|
+| 2026-11-21 | **#9 测试账号**：`factory_demo_account` + 侧栏「测试账号」；bake `schema.demoAccounts`；测 `test_demo_accounts`；与 #3 角色对齐 |
+| 2026-11-21 | **#8 表关系叙事**：`factory_er_edge_copy` + 侧栏「表关系叙事」；bake `schema.erEdgeCopy`；测 `test_er_edge_copy`；≠ 结构对账 / 几何 |
+| 2026-11-21 | **#7 规则参数**：`factory_rule_param` + 侧栏「规则参数」；bake `schema.ruleParams` / 落点键仅补缺；测 `test_rule_params` |
+| 2026-11-21 | **#5 菜单矩阵**：`factory_menu_matrix` + 侧栏「菜单矩阵」；bake 收束补齐 `schema.menus`；测 `test_menu_matrix`；不另起 RBAC |
+| 2026-11-21 | **#4 控件语义**：`factory_widget_hint` + 侧栏「控件语义」；bake 投影 `fieldWidgetRules.js`（工厂台规则形不进 ZIP）；测 `test_widget_hints`（含台↔投影等价） |
+| 2026-11-21 | **#4 投影收口**：ZIP 只留学生腔关键词表；`schema.fieldWidgetRules`；删 `widgetHints.json` |
+| 2026-11-21 | **#6 错误码中文**：`factory_error_copy` + 侧栏「错误码中文」+ bake `error-messages.json` / `schema.errorCopy`；测 `test_error_copy`；骨架 FALLBACK 与种子对账 |
+| 2026-11-21 | **#12 能力说明**：`factory_cap_card` + 侧栏「能力说明」；`addons` README bits 改读台；宣称针诚实校验；测 `test_cap_cards` |
+| 2026-11-21 | **#10 开关建议**：`factory_addon_suggest` + 侧栏「开关建议」+ `stack_scan`/`匹配确认`建议卡；种子外置；测 `test_addon_suggest`；建议不自动落确认 |
+| 2026-11-20 | **#3 演示剧本**：`factory_demo_script` + 侧栏「演示剧本」+ bake `schema.demoScript`；种子 68 域外置 JSON；测 `test_demo_scripts`；迁入 `source=migrated` 只追加 |
+| 2026-11-19 | **#1 状态话术**：`factory_status_copy` + 侧栏「状态话术」+ bake `schema.statusCopy` / 盖 `entities.*.states`；种子 `*` ticket + `DOM-SHOP` order；测 `test_status_copy` |
 | 2026-11-16 | 立册：十二选项 + #1～#3 细案；落入 parked **q**；口令 `做资产台` |
 | 2026-11-16 | §1.2：澄清「店员/买家」仅为交易域举例；全文改为本域业务角色口吻 |
 | 2026-11-16 | 与 `student-copy` 规则对齐（规则已改本域本端口吻并 sync Trae） |

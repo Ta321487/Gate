@@ -121,6 +121,28 @@
             <div class="rec-sub" v-if="matchAltsText">备选：{{ matchAltsText }}</div>
             <div class="rec-sub" v-if="keywordHits.length">命中：{{ keywordHits.join(' / ') }}</div>
             <div class="rec-sub" v-if="p.spec?.out_of_mvp?.length">本期不做：{{ p.spec.out_of_mvp.join('、') }}</div>
+            <div v-if="addonSuggestions.length" class="addon-suggest-card">
+              <div class="addon-suggest-hd">开关建议</div>
+              <div
+                v-for="sug in addonSuggestions"
+                :key="sug.addon_id"
+                class="addon-suggest-row"
+              >
+                <div class="addon-suggest-title">
+                  <strong>{{ sug.addon_label || sug.addon_id }}</strong>
+                  <span class="pill" :class="sug.recommended ? 'pill-teal' : 'pill-muted'">
+                    {{ sug.recommended ? '建议开启' : '仅记录命中' }}
+                  </span>
+                </div>
+                <p v-if="sug.summary_zh" class="small muted" style="margin:4px 0 0">{{ sug.summary_zh }}</p>
+                <ul v-if="sug.evidences?.length" class="addon-suggest-ev">
+                  <li v-for="(ev, i) in sug.evidences" :key="i">{{ ev }}</li>
+                </ul>
+              </div>
+              <p class="small muted" style="margin:8px 0 0">
+                建议不自动落库；请在下方解锁后确认鉴权 / AI 助手等开关。
+              </p>
+            </div>
           </div>
           <div class="lock-row">
             <span class="small muted">{{ unlocked ? '骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手可调整' : '骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手已锁定' }}</span>
@@ -410,6 +432,12 @@ const {
 const materialWeakHint = computed(() => {
   const path = matchPath.value || {}
   return Boolean(path.entry_weak || path.needs_path_ack)
+})
+
+const addonSuggestions = computed(() => {
+  const stack = matchMeta.value?.stack || {}
+  const list = stack.addon_suggestions
+  return Array.isArray(list) ? list : []
 })
 
 /** 生成前摘要风险：与下方细则不重复罗列全文 */

@@ -125,44 +125,14 @@ def assert_security_files(dest: Path) -> None:
 
 
 def security_readme_bits(enabled: bool, persistence_backend: str) -> tuple[str, str, str]:
-    """返回 (backend_stack_cell, auth_line, faq)。"""
-    if enabled:
-        backend = persistence_backend.rstrip("。") + " + Spring Security"
-        auth = (
-            "登录鉴权由 **Spring Security 过滤器链** 与 **HttpSession** 共同完成；"
-            "`SessionAuthFilter` 把会话用户桥进 Security 上下文，角色细粒度仍由业务层 `AdminAuth` 校验。"
-        )
-        faq = (
-            "**Q：Spring Security 做了什么？**  \n"
-            "启用了 `spring-boot-starter-security` 与 `SecurityFilterChain`："
-            "未登录访问受保护接口返回 401；公开接口（登录/验证码、游客可读列表等）在配置中放行。"
-            "答辩请讲过滤器链 + Session，不要只说「用了 crypto」。"
-        )
-        return backend, auth, faq
-    auth = (
-        "前后端分离：Vue 负责界面，Spring Boot 提供 REST API，"
-        "**HttpSession** 维持登录态（本包未启用 Spring Security 过滤器链）。"
-    )
-    return persistence_backend, auth, ""
+    """返回 (backend_stack_cell, auth_line, faq)。正文真源：能力说明卡 spring_security。"""
+    from app.services import cap_cards as cards
+
+    return cards.security_auth_bits(enabled, persistence_backend)
 
 
 def ai_assistant_readme_bits(enabled: bool) -> str:
-    """返回 README FAQ 段（空=未启用）。"""
-    if not enabled:
-        return ""
-    return (
-        "**Q：AI 智能助手怎么用？**  \n"
-        "门户右下角悬浮按钮打开对话弹窗（亦可从 AI 助手说明页一键打开）。"
-        "本包用 **Spring AI**（`spring-ai-deepseek`）对接 **DeepSeek** 大模型"
-        "（`DEEPSEEK_API_KEY` 环境变量自配）。"
-        "**仅当命中知识库条目或可只读查询到业务数据时**才会调用大模型，并按摘录/数据回答；"
-        "可查询本系统已开通能力下的分类与在架条目、本人购物车/订单、本人借阅或报修等办理进度（只读，不下单不改状态）。"
-        "未命中或无关闲聊（写诗/写代码等）固定提示换问法，不自由发挥。"
-        "无 Key 时直接返回知识条目原文或业务数据摘要。"
-        "调用入口唯一：`DeepSeekClient` → `DeepSeekChatModel`；业务摘录唯一：`AiBizContext`（复用 Archive/Order/Ticket/Doclib Store）。"
-        "支持知识条目维护、热门问答、满意度反馈、浏览器语音播报，"
-        "以及图片按品类匹配知识的入口。"
-        "管理端「AI知识库」维护 FAQ 与查看咨询统计，不是用户同款聊天窗。"
-        "答辩请讲「Spring AI + DeepSeek + 知识表约束」，"
-        "不要写成自研大模型或 CNN 视觉引擎。\n"
-    )
+    """返回 README FAQ 段（空=未启用）。正文真源：能力说明卡 ai_assistant。"""
+    from app.services import cap_cards as cards
+
+    return cards.readme_faq_body("ai_assistant", enabled=enabled)

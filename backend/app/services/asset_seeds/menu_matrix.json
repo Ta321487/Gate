@@ -1,0 +1,72 @@
+[
+  {
+    "domain_id": "*",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "role": "admin",
+    "menu_id": "ai_knowledge",
+    "label_zh": "AI知识库",
+    "cap_id": "ai_assistant",
+    "always_on": false,
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "role": "admin",
+    "menu_id": "ai_assistant",
+    "label_zh": "AI助手",
+    "cap_id": "ai_assistant",
+    "always_on": false,
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "role": "staff",
+    "menu_id": "ai_assistant",
+    "label_zh": "AI助手",
+    "cap_id": "ai_assistant",
+    "always_on": false,
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "role": "user",
+    "menu_id": "ai_assistant",
+    "label_zh": "AI助手",
+    "cap_id": "ai_assistant",
+    "always_on": false,
+    "sort": 40,
+    "source": "migrated"
+  }
+]

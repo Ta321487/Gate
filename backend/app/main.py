@@ -32,17 +32,61 @@ async def lifespan(_app: FastAPI):
             _hydrate_ds_settings(get_settings(), cfg)
     except Exception:  # noqa: BLE001
         pass
-    # 工厂词表：空库迁入 er_zh 种子并热更新内存映射
+    # 工厂资产台：表已 create_all；种子只追加缺键，永不改已有行（含 manual/scan/migrated）
     try:
         from app.core.database import SessionLocal
-        from app.services.zh_lexicon import migrate_seed_if_empty
+        from app.services.addon_suggest import migrate_seed_if_empty as migrate_addon
+        from app.services.cap_cards import migrate_seed_if_empty as migrate_caps
+        from app.services.demo_scripts import migrate_seed_if_empty as migrate_demo
+        from app.services.dict_values import migrate_seed_if_empty as migrate_dicts
+        from app.services.error_copy import migrate_seed_if_empty as migrate_errors
+        from app.services.status_copy import migrate_seed_if_empty as migrate_status
+        from app.services.widget_hints import migrate_seed_if_empty as migrate_widgets
+        from app.services.menu_matrix import migrate_seed_if_empty as migrate_menus
+        from app.services.rule_params import migrate_seed_if_empty as migrate_rules
+        from app.services.er_edge_copy import migrate_seed_if_empty as migrate_edges
+        from app.services.demo_accounts import migrate_seed_if_empty as migrate_accts
+        from app.services.zh_lexicon import migrate_seed_if_empty as migrate_zh
 
         async with SessionLocal() as db:
-            await migrate_seed_if_empty(db)
+            await migrate_zh(db)
+            await migrate_status(db)
+            await migrate_dicts(db)
+            await migrate_demo(db)
+            await migrate_addon(db)
+            await migrate_caps(db)
+            await migrate_widgets(db)
+            await migrate_errors(db)
+            await migrate_menus(db)
+            await migrate_rules(db)
+            await migrate_edges(db)
+            await migrate_accts(db)
     except Exception:  # noqa: BLE001
-        from app.services.zh_lexicon import bootstrap_from_seed
+        from app.services.addon_suggest import bootstrap_from_seed as boot_addon
+        from app.services.cap_cards import bootstrap_from_seed as boot_caps
+        from app.services.demo_scripts import bootstrap_from_seed as boot_demo
+        from app.services.dict_values import bootstrap_from_seed as boot_dv
+        from app.services.error_copy import bootstrap_from_seed as boot_ec
+        from app.services.status_copy import bootstrap_from_seed as boot_sc
+        from app.services.widget_hints import bootstrap_from_seed as boot_wh
+        from app.services.menu_matrix import bootstrap_from_seed as boot_mm
+        from app.services.rule_params import bootstrap_from_seed as boot_rp
+        from app.services.er_edge_copy import bootstrap_from_seed as boot_eec
+        from app.services.demo_accounts import bootstrap_from_seed as boot_da
+        from app.services.zh_lexicon import bootstrap_from_seed as boot_zh
 
-        bootstrap_from_seed()
+        boot_zh()
+        boot_sc()
+        boot_dv()
+        boot_demo()
+        boot_addon()
+        boot_caps()
+        boot_wh()
+        boot_ec()
+        boot_mm()
+        boot_rp()
+        boot_eec()
+        boot_da()
     # 重启后无内存 Task 的 running 任务会永远卡在进度条（如 pack=91%）
     try:
         from app.services.jobs import fail_orphaned_jobs

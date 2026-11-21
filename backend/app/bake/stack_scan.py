@@ -1,6 +1,7 @@
 """开题技术栈扫描（单一真源；与 scene_scan 独立）。
 
 复用 scene_scan.copy_scan_text / scan_has；不驱动场景或 ARCH-*。
+按需开关（Security / AI 助手等）扫词真源见 services.addon_suggest。
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ Persistence = Literal["jdbc", "mybatis", "jpa"]
 MYBATIS_HINTS = (
     "MyBatis",
     "mybatis",
-    "Mybatis-Plus",
+    "MyBatis-Plus",
     "mybatis-plus",
     "PageHelper",
     "pagehelper",
@@ -51,40 +52,6 @@ UNDELIVERED_STACK_HINTS = (
     ("AdminLTE", "AdminLTE（SSR 未落地，实包仍为 Vue 分离）"),
     ("服务端渲染", "服务端渲染（SSR 未落地，实包仍为 Vue 分离）"),
     ("SSR", "SSR（未落地，实包仍为 Vue 分离）"),
-)
-SECURITY_HINTS = ("Spring Security", "spring-security", "SpringSecurity")
-ECHARTS_HINTS = ("ECharts", "echarts", "Echarts")
-# 与 features/ai_assistant 扫词对齐；点名且已可 bake → 推荐开
-AI_ASSISTANT_HINTS = (
-    "智能客服",
-    "智能导购",
-    "智能助手",
-    "智能问答",
-    "智能答疑",
-    "AI智能导购",
-    "AI智能客服",
-    "AI助手",
-    "大模型",
-    "ChatGPT",
-    "chatgpt",
-    "DeepSeek",
-    "deepseek",
-    "Spring AI",
-    "LangChain4j",
-    "LangChain",
-    "对话式商品推荐",
-    "知识库匹配",
-    "知识库问答",
-    "智能匹配知识库",
-    "检索增强",
-    "RAG",
-    "阅读助手",
-    "馆员问答",
-    "智能体",
-    "语音播报",
-    "多轮对话",
-    "农产品文字问答",
-    "图片上传匹配",
 )
 
 PERSISTENCE_MODES = frozenset({"jdbc", "mybatis", "jpa"})
@@ -141,6 +108,7 @@ def normalize_ai_assistant(flag: Any = None) -> bool:
 
 def scan_stack(title: str, proposal_text: str = "") -> dict[str, Any]:
     """扫题名+正文 → persistence / 按需开关推荐与偏差提示（不改开题）。"""
+    from app.services.addon_suggest import suggest_addons
     from app.services.proposal import strip_non_dev_sections
 
     # 与匹配同裁：参考文献里的「微信小程序」等勿当技术主线点名
@@ -178,35 +146,36 @@ def scan_stack(title: str, proposal_text: str = "") -> dict[str, Any]:
             if needle not in hits:
                 hits.append(needle)
 
+    suggestions = suggest_addons(title, proposal_text)
     addons: dict[str, Any] = {}
-    want_security = scan_has(text, SECURITY_HINTS)
-    spring_security = want_security  # 点名且已可 bake → 推荐开
-    if want_security:
-        hits.append("Spring Security")
-        addons["spring_security"] = {
-            "named": True,
-            "deliverable": True,
-            "recommended": True,
-            "hint": "开题点名 Spring Security，将启用过滤器链 + HttpSession 鉴权",
-        }
-    if scan_has(text, ECHARTS_HINTS):
-        hits.append("ECharts")
-        addons["echarts"] = {
-            "named": True,
-            "deliverable": True,
-            "hint": "ECharts 已在基线常驻，论文/README 可写",
-        }
+    spring_security = DEFAULT_SPRING_SECURITY
+    ai_assistant = DEFAULT_AI_ASSISTANT
 
-    want_ai = scan_has(text, AI_ASSISTANT_HINTS)
-    ai_assistant = want_ai
-    if want_ai:
-        hits.append("AI助手")
-        addons["ai_assistant"] = {
+    for sug in suggestions:
+        aid = sug.get("addon_id") or ""
+        label = sug.get("addon_label") or aid
+        recommended = bool(sug.get("recommended")) and bool(sug.get("deliverable", True))
+        entry = {
             "named": True,
-            "deliverable": True,
-            "recommended": True,
-            "hint": "开题点名智能客服/导购/大模型问答，将启用 Spring AI + DeepSeek 助手岛（无 Key 回落 FAQ）",
+            "deliverable": bool(sug.get("deliverable", True)),
+            "recommended": recommended,
+            "hint": sug.get("summary_zh") or "",
+            "evidences": list(sug.get("evidences") or []),
         }
+        addons[aid] = entry
+        if aid == "spring_security":
+            spring_security = recommended
+            if "Spring Security" not in hits:
+                hits.append("Spring Security")
+        elif aid == "ai_assistant":
+            ai_assistant = recommended
+            if "AI助手" not in hits:
+                hits.append("AI助手")
+        elif aid == "echarts":
+            if "ECharts" not in hits:
+                hits.append("ECharts")
+        elif label and label not in hits:
+            hits.append(label)
 
     return {
         "spine": DEFAULT_SPINE,
@@ -219,4 +188,5 @@ def scan_stack(title: str, proposal_text: str = "") -> dict[str, Any]:
         "hits": hits,
         "warnings": warnings,
         "addons": addons,
+        "addon_suggestions": suggestions,
     }

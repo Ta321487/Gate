@@ -174,6 +174,28 @@ def build_domain_schema(
     ensure_apply_role_leads(schema, domain=domain)
     ensure_content_role_leads(schema, domain=domain)
     ensure_interact_role_leads(schema, domain=domain)
+    from app.services.status_copy import apply_status_copy_to_schema
+    from app.services.dict_values import apply_dict_values_to_schema
+    from app.services.demo_scripts import apply_demo_script_to_schema
+    from app.services.error_copy import apply_error_copy_to_schema
+    from app.services.widget_hints import apply_widget_hints_to_schema
+    from app.services.rule_params import apply_rule_params_to_schema
+    from app.services.er_edge_copy import apply_er_edge_copy_to_schema
+    from app.services.demo_accounts import apply_demo_accounts_to_schema
+
+    schema = apply_status_copy_to_schema(schema, domain)
+    skin = ""
+    if domain == "DOM-SHOP":
+        from app.bake.scene_scan import shop_retail_niche
+
+        skin = shop_retail_niche(title, proposal_text) or ""
+    schema = apply_dict_values_to_schema(schema, domain, skin_id=skin)
+    schema = apply_demo_script_to_schema(schema, domain, skin_id=skin)
+    schema = apply_error_copy_to_schema(schema)
+    schema = apply_widget_hints_to_schema(schema)
+    schema = apply_rule_params_to_schema(schema, domain)
+    schema = apply_er_edge_copy_to_schema(schema)
+    schema = apply_demo_accounts_to_schema(schema, domain)
     return schema
 
 
@@ -661,6 +683,19 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
             limit=5,
         )
         out["proposal"] = prop
+    from app.services.status_copy import apply_status_copy_to_spec
+    from app.services.dict_values import apply_dict_values_to_spec
+    from app.services.menu_matrix import apply_menu_matrix_to_spec
+    from app.services.rule_params import apply_rule_params_to_spec
+    from app.services.er_edge_copy import apply_er_edge_copy_to_spec
+    from app.services.demo_accounts import apply_demo_accounts_to_spec
+
+    out = apply_status_copy_to_spec(out)
+    out = apply_dict_values_to_spec(out)
+    out = apply_menu_matrix_to_spec(out)
+    out = apply_rule_params_to_spec(out)
+    out = apply_er_edge_copy_to_spec(out)
+    out = apply_demo_accounts_to_spec(out)
     return out
 
 

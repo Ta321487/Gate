@@ -103,6 +103,163 @@ class ConsoleSurfaceContractTest(unittest.TestCase):
         self.assertNotIn("<h3>词条列表</h3>", src)
         self.assertNotIn("<h3>待补中文</h3>", src)
 
+    def test_status_copy_stripe_structure(self):
+        """状态话术页对齐词表 Stripe：工具条 + stats + tabs + panel + 抽屉。"""
+        src = (FE / "views" / "StatusCopy.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("domainSelectLabel", src)
+        self.assertIn("statusCopy", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_dict_values_stripe_structure(self):
+        """字典台页对齐词表 Stripe：工具条 + stats + tabs + panel + 抽屉。"""
+        src = (FE / "views" / "DictValues.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("domainSelectLabel", src)
+        self.assertIn("dictValues", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_demo_scripts_stripe_structure(self):
+        """演示剧本页对齐词表 Stripe。"""
+        src = (FE / "views" / "DemoScripts.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("domainSelectLabel", src)
+        self.assertIn("demoScripts", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_addon_suggest_stripe_structure(self):
+        """开关建议页对齐词表 Stripe。"""
+        src = (FE / "views" / "AddonSuggest.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("addonSuggest", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_cap_cards_stripe_structure(self):
+        """能力说明页对齐词表 Stripe。"""
+        src = (FE / "views" / "CapCards.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("capCards", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_error_copy_stripe_structure(self):
+        """错误码中文页对齐词表 Stripe。"""
+        src = (FE / "views" / "ErrorCopy.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("errorCopy", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_widget_hints_stripe_structure(self):
+        """控件语义页对齐词表 Stripe。"""
+        src = (FE / "views" / "WidgetHints.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("widgetHints", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_menu_matrix_stripe_structure(self):
+        """菜单矩阵页对齐词表 Stripe。"""
+        src = (FE / "views" / "MenuMatrix.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("menuMatrix", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_rule_params_stripe_structure(self):
+        """规则参数页对齐词表 Stripe。"""
+        src = (FE / "views" / "RuleParams.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("ruleParams", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_er_edge_copy_stripe_structure(self):
+        """表关系叙事页对齐词表 Stripe。"""
+        src = (FE / "views" / "ErEdgeCopy.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("erEdgeCopy", src)
+        self.assertNotIn('role="button"', src)
+
+    def test_demo_accounts_stripe_structure(self):
+        """测试账号页对齐词表 Stripe。"""
+        src = (FE / "views" / "DemoAccounts.vue").read_text(encoding="utf-8")
+        self.assertIn("surface-toolbar", src)
+        self.assertIn('class="stats', src)
+        self.assertIn('type="line"', src)
+        self.assertIn("panel-quiet", src)
+        self.assertIn("n-drawer", src)
+        self.assertIn("pager-row", src)
+        self.assertIn("empty-title", src)
+        self.assertIn("退出编辑", src)
+        self.assertIn("demoAccounts", src)
+        self.assertNotIn('role="button"', src)
+
     def test_ops_accent_presets(self):
         theme = (FE / "theme.js").read_text(encoding="utf-8")
         app = (FE / "App.vue").read_text(encoding="utf-8")

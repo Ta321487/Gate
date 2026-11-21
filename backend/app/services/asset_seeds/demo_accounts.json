@@ -1,0 +1,32 @@
+[
+  {
+    "domain_id": "*",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "管理员",
+    "login_hint_zh": "管理端登录后可维护主数据与单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理端登录后处理待办单据。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "普通用户",
+    "login_hint_zh": "用户端登录后办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  }
+]

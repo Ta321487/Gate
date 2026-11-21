@@ -1,0 +1,812 @@
+[
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "refund_only",
+    "label_zh": "仅退款",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "return_refund",
+    "label_zh": "退货退款",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "refund_only",
+    "label_zh": "仅退款",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "return_refund",
+    "label_zh": "退货退款",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "refund_only",
+    "label_zh": "仅退款",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "return_refund",
+    "label_zh": "退货退款",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "*",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "pharmacy",
+    "dict_key": "product_category",
+    "value_code": "药品",
+    "label_zh": "药品",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "pharmacy",
+    "dict_key": "product_category",
+    "value_code": "保健",
+    "label_zh": "保健",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "pharmacy",
+    "dict_key": "product_category",
+    "value_code": "护理",
+    "label_zh": "护理",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "pet",
+    "dict_key": "product_category",
+    "value_code": "主粮",
+    "label_zh": "主粮",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "pet",
+    "dict_key": "product_category",
+    "value_code": "零食",
+    "label_zh": "零食",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "pet",
+    "dict_key": "product_category",
+    "value_code": "洗护",
+    "label_zh": "洗护",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "auto",
+    "dict_key": "product_category",
+    "value_code": "保养件",
+    "label_zh": "保养件",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "auto",
+    "dict_key": "product_category",
+    "value_code": "车饰",
+    "label_zh": "车饰",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "auto",
+    "dict_key": "product_category",
+    "value_code": "工具",
+    "label_zh": "工具",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "beauty",
+    "dict_key": "product_category",
+    "value_code": "护肤",
+    "label_zh": "护肤",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "beauty",
+    "dict_key": "product_category",
+    "value_code": "彩妆",
+    "label_zh": "彩妆",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "beauty",
+    "dict_key": "product_category",
+    "value_code": "个护",
+    "label_zh": "个护",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "market",
+    "dict_key": "product_category",
+    "value_code": "食品",
+    "label_zh": "食品",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "market",
+    "dict_key": "product_category",
+    "value_code": "百货",
+    "label_zh": "百货",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "market",
+    "dict_key": "product_category",
+    "value_code": "零食",
+    "label_zh": "零食",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "anime",
+    "dict_key": "product_category",
+    "value_code": "手办模型",
+    "label_zh": "手办模型",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "anime",
+    "dict_key": "product_category",
+    "value_code": "文具谷子",
+    "label_zh": "文具谷子",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "anime",
+    "dict_key": "product_category",
+    "value_code": "服饰配件",
+    "label_zh": "服饰配件",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "office",
+    "dict_key": "product_category",
+    "value_code": "文具",
+    "label_zh": "文具",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "office",
+    "dict_key": "product_category",
+    "value_code": "耗材",
+    "label_zh": "耗材",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "office",
+    "dict_key": "product_category",
+    "value_code": "桌面",
+    "label_zh": "桌面",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "agri",
+    "dict_key": "product_category",
+    "value_code": "肥料",
+    "label_zh": "肥料",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "agri",
+    "dict_key": "product_category",
+    "value_code": "农药",
+    "label_zh": "农药",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "agri",
+    "dict_key": "product_category",
+    "value_code": "农机件",
+    "label_zh": "农机件",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "gift",
+    "dict_key": "product_category",
+    "value_code": "杯壶刻字",
+    "label_zh": "杯壶刻字",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "gift",
+    "dict_key": "product_category",
+    "value_code": "服饰印制",
+    "label_zh": "服饰印制",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "gift",
+    "dict_key": "product_category",
+    "value_code": "相册抱枕",
+    "label_zh": "相册抱枕",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "fitness",
+    "dict_key": "product_category",
+    "value_code": "增肌训练",
+    "label_zh": "增肌训练",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "fitness",
+    "dict_key": "product_category",
+    "value_code": "减脂塑形",
+    "label_zh": "减脂塑形",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "fitness",
+    "dict_key": "product_category",
+    "value_code": "护具康复",
+    "label_zh": "护具康复",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "sports",
+    "dict_key": "product_category",
+    "value_code": "球类器材",
+    "label_zh": "球类器材",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "sports",
+    "dict_key": "product_category",
+    "value_code": "鞋服",
+    "label_zh": "鞋服",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "sports",
+    "dict_key": "product_category",
+    "value_code": "护具配件",
+    "label_zh": "护具配件",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_pharmacy",
+    "dict_key": "product_category",
+    "value_code": "药品",
+    "label_zh": "药品",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_pharmacy",
+    "dict_key": "product_category",
+    "value_code": "保健",
+    "label_zh": "保健",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_pharmacy",
+    "dict_key": "product_category",
+    "value_code": "护理",
+    "label_zh": "护理",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_pet",
+    "dict_key": "product_category",
+    "value_code": "主粮",
+    "label_zh": "主粮",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_pet",
+    "dict_key": "product_category",
+    "value_code": "零食",
+    "label_zh": "零食",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_pet",
+    "dict_key": "product_category",
+    "value_code": "洗护",
+    "label_zh": "洗护",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_auto",
+    "dict_key": "product_category",
+    "value_code": "保养件",
+    "label_zh": "保养件",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_auto",
+    "dict_key": "product_category",
+    "value_code": "车饰",
+    "label_zh": "车饰",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_auto",
+    "dict_key": "product_category",
+    "value_code": "工具",
+    "label_zh": "工具",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_beauty",
+    "dict_key": "product_category",
+    "value_code": "护肤",
+    "label_zh": "护肤",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_beauty",
+    "dict_key": "product_category",
+    "value_code": "彩妆",
+    "label_zh": "彩妆",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_beauty",
+    "dict_key": "product_category",
+    "value_code": "个护",
+    "label_zh": "个护",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_market",
+    "dict_key": "product_category",
+    "value_code": "食品",
+    "label_zh": "食品",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_market",
+    "dict_key": "product_category",
+    "value_code": "百货",
+    "label_zh": "百货",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_market",
+    "dict_key": "product_category",
+    "value_code": "零食",
+    "label_zh": "零食",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_anime",
+    "dict_key": "product_category",
+    "value_code": "手办模型",
+    "label_zh": "手办模型",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_anime",
+    "dict_key": "product_category",
+    "value_code": "文具谷子",
+    "label_zh": "文具谷子",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_anime",
+    "dict_key": "product_category",
+    "value_code": "服饰配件",
+    "label_zh": "服饰配件",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_office",
+    "dict_key": "product_category",
+    "value_code": "文具",
+    "label_zh": "文具",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_office",
+    "dict_key": "product_category",
+    "value_code": "耗材",
+    "label_zh": "耗材",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_office",
+    "dict_key": "product_category",
+    "value_code": "桌面",
+    "label_zh": "桌面",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_agri",
+    "dict_key": "product_category",
+    "value_code": "肥料",
+    "label_zh": "肥料",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_agri",
+    "dict_key": "product_category",
+    "value_code": "农药",
+    "label_zh": "农药",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_agri",
+    "dict_key": "product_category",
+    "value_code": "农机件",
+    "label_zh": "农机件",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_gift",
+    "dict_key": "product_category",
+    "value_code": "杯壶刻字",
+    "label_zh": "杯壶刻字",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_gift",
+    "dict_key": "product_category",
+    "value_code": "服饰印制",
+    "label_zh": "服饰印制",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_gift",
+    "dict_key": "product_category",
+    "value_code": "相册抱枕",
+    "label_zh": "相册抱枕",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_fitness",
+    "dict_key": "product_category",
+    "value_code": "增肌训练",
+    "label_zh": "增肌训练",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_fitness",
+    "dict_key": "product_category",
+    "value_code": "减脂塑形",
+    "label_zh": "减脂塑形",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_fitness",
+    "dict_key": "product_category",
+    "value_code": "护具康复",
+    "label_zh": "护具康复",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_sports",
+    "dict_key": "product_category",
+    "value_code": "球类器材",
+    "label_zh": "球类器材",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_sports",
+    "dict_key": "product_category",
+    "value_code": "鞋服",
+    "label_zh": "鞋服",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail_sports",
+    "dict_key": "product_category",
+    "value_code": "护具配件",
+    "label_zh": "护具配件",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail",
+    "dict_key": "product_category",
+    "value_code": "日用",
+    "label_zh": "日用",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail",
+    "dict_key": "product_category",
+    "value_code": "数码",
+    "label_zh": "数码",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "retail",
+    "dict_key": "product_category",
+    "value_code": "其他",
+    "label_zh": "其他",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "farm",
+    "dict_key": "product_category",
+    "value_code": "水果",
+    "label_zh": "水果",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "farm",
+    "dict_key": "product_category",
+    "value_code": "蔬菜",
+    "label_zh": "蔬菜",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "farm",
+    "dict_key": "product_category",
+    "value_code": "粮油",
+    "label_zh": "粮油",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  }
+]

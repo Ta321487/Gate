@@ -1,0 +1,44 @@
+[
+  {
+    "table_a": "sys_user",
+    "table_b": "biz_order",
+    "sentence_zh": "一名用户可下多笔订单。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "table_a": "biz_order",
+    "table_b": "biz_order_item",
+    "sentence_zh": "一笔订单包含多条明细。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "table_a": "archive",
+    "table_b": "biz_order_item",
+    "sentence_zh": "档案条目可出现在多条订单明细中。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "table_a": "sys_user",
+    "table_b": "biz_ticket",
+    "sentence_zh": "一名用户可提交多张单据。",
+    "sort": 40,
+    "source": "migrated"
+  },
+  {
+    "table_a": "sys_user",
+    "table_b": "biz_reservation",
+    "sentence_zh": "一名用户可发起多次预约。",
+    "sort": 50,
+    "source": "migrated"
+  },
+  {
+    "table_a": "archive",
+    "table_b": "biz_reservation",
+    "sentence_zh": "一条可预约资源对应多次预约记录。",
+    "sort": 60,
+    "source": "migrated"
+  }
+]

@@ -1781,6 +1781,21 @@ button.filter-pill.on {
 .rec-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .rec-main { font-weight: 600; margin-bottom: 4px; }
 .rec-sub { font-size: 12px; color: var(--muted); }
+.addon-suggest-card {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+}
+.addon-suggest-hd { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.addon-suggest-row + .addon-suggest-row { margin-top: 10px; }
+.addon-suggest-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.addon-suggest-ev {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.pill-muted { background: var(--surface-3, var(--line-soft)); color: var(--muted); }
 .lock-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .confidence { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .confidence .bar { flex: 1; height: 8px; background: var(--line-soft); border-radius: 99px; overflow: hidden; }

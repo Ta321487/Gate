@@ -175,3 +175,288 @@ class FactoryZhLexicon(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
+
+
+class FactoryStatusCopy(Base):
+    """工厂级状态机话术（domain × machine × status → 中文）。
+
+    domain_id='*' 表示跨域壳默认；具名 DOM-* 可覆盖。
+    """
+
+    __tablename__ = "factory_status_copy"
+    __table_args__ = (
+        UniqueConstraint(
+            "domain_id",
+            "machine_id",
+            "status_code",
+            name="uk_status_copy",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    domain_id: Mapped[str] = mapped_column(String(64), nullable=False, default="*", index=True)
+    machine_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    status_code: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    label_zh: Mapped[str] = mapped_column(String(64), nullable=False)
+    action_zh: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    empty_zh: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    for_roles: Mapped[str] = mapped_column(String(64), nullable=False, default="admin,staff,user")
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryDictValue(Base):
+    """工厂级字典/枚举值（domain × skin × dict_key × value_code → 中文）。"""
+
+    __tablename__ = "factory_dict_values"
+    __table_args__ = (
+        UniqueConstraint(
+            "domain_id",
+            "skin_id",
+            "dict_key",
+            "value_code",
+            name="uk_dict_value",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    domain_id: Mapped[str] = mapped_column(String(64), nullable=False, default="*", index=True)
+    skin_id: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
+    dict_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    value_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    label_zh: Mapped[str] = mapped_column(String(64), nullable=False)
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryDemoScript(Base):
+    """工厂级演示剧本（domain × skin × script × step → 角色/标题/数据前提）。"""
+
+    __tablename__ = "factory_demo_script"
+    __table_args__ = (
+        UniqueConstraint(
+            "domain_id",
+            "skin_id",
+            "script_id",
+            "step_no",
+            name="uk_demo_script_step",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    domain_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    skin_id: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
+    script_id: Mapped[str] = mapped_column(String(64), nullable=False, default="default", index=True)
+    step_no: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")
+    title_zh: Mapped[str] = mapped_column(String(128), nullable=False)
+    need_rows: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    seed_fragment_id: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryAddonSuggest(Base):
+    """工厂级开关建议扫词（addon × hint → 证据 / 是否推荐开）。"""
+
+    __tablename__ = "factory_addon_suggest"
+    __table_args__ = (
+        UniqueConstraint("addon_id", "hint", name="uk_addon_suggest_hint"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    addon_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    addon_label: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    hint: Mapped[str] = mapped_column(String(128), nullable=False)
+    evidence_zh: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    summary_zh: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    recommend: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    deliverable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryCapCard(Base):
+    """工厂级能力说明卡（cap → README 段 / 菜单入口 / 关则禁宣称）。"""
+
+    __tablename__ = "factory_cap_card"
+    __table_args__ = (
+        UniqueConstraint("cap_id", name="uk_cap_card"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    cap_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    title_zh: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    body_zh: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    auth_line_on: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    auth_line_off: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    backend_suffix: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    menu_ids: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    claim_needles: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    readme_slot: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryErrorCopy(Base):
+    """工厂级业务错误码中文（ErrorCode → 学生可见默认句）。"""
+
+    __tablename__ = "factory_error_copy"
+    __table_args__ = (
+        UniqueConstraint("error_code", name="uk_error_copy"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    error_code: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    code_num: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    message_zh: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryWidgetHint(Base):
+    """工厂级字段控件语义提示（标签/键启发式 → widget）。
+
+    类型直映（date→date）仍在代码；本台管可维护的标签/键覆盖。
+    """
+
+    __tablename__ = "factory_widget_hint"
+    __table_args__ = (
+        UniqueConstraint("rule_key", name="uk_widget_hint_rule"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rule_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    match_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="label_contains")
+    match_pattern: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    when_type: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    widget: Mapped[str] = mapped_column(String(32), nullable=False, default="text")
+    note_zh: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryMenuMatrix(Base):
+    """工厂级岗位×菜单矩阵（domain × role × menu_id）。"""
+
+    __tablename__ = "factory_menu_matrix"
+    __table_args__ = (
+        UniqueConstraint("domain_id", "role", "menu_id", name="uk_menu_matrix"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    domain_id: Mapped[str] = mapped_column(String(64), nullable=False, default="*", index=True)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    menu_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    label_zh: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    cap_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    always_on: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryRuleParam(Base):
+    """工厂级业务规则参数（domain × rule_id → 数值）。"""
+
+    __tablename__ = "factory_rule_param"
+    __table_args__ = (
+        UniqueConstraint("domain_id", "rule_id", name="uk_rule_param"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    domain_id: Mapped[str] = mapped_column(String(64), nullable=False, default="*", index=True)
+    rule_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    label_zh: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    value_num: Mapped[float] = mapped_column(nullable=False, default=0)
+    unit_zh: Mapped[str] = mapped_column(String(16), nullable=False, default="")
+    schema_key: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryErEdgeCopy(Base):
+    """工厂级表关系叙事句（table_a–table_b → 一句中文）。"""
+
+    __tablename__ = "factory_er_edge_copy"
+    __table_args__ = (
+        UniqueConstraint("table_a", "table_b", name="uk_er_edge_copy"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    table_a: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    table_b: Mapped[str] = mapped_column(String(64), nullable=False)
+    sentence_zh: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryDemoAccount(Base):
+    """工厂级测试账号卡（domain × role → 账号三步）。"""
+
+    __tablename__ = "factory_demo_account"
+    __table_args__ = (
+        UniqueConstraint("domain_id", "role", name="uk_demo_account"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    domain_id: Mapped[str] = mapped_column(String(64), nullable=False, default="*", index=True)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    username: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    password: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    nickname_zh: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    login_hint_zh: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryDiagramTitle(Base):
+    """工厂级论文图题模板（diagram_kind × domain → title_tpl）。"""
+
+    __tablename__ = "factory_diagram_title"
+    __table_args__ = (
+        UniqueConstraint("diagram_kind", "domain_id", name="uk_diagram_title"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    diagram_kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    domain_id: Mapped[str] = mapped_column(String(64), nullable=False, default="*", index=True)
+    title_tpl: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
