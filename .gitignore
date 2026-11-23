@@ -63,5 +63,6 @@ backend/tmp*
 # 终稿吸收本机探针 PDF（不进仓；夹具用 tests 内嵌片段）
 data/thesis_absorb/
 
-# drawio 本地备份
+# drawio 本地备份 / 本机论文图草稿（不属于工厂产品）
 *.bak.drawio
+/er-*.drawio
