@@ -245,27 +245,49 @@ def read_proposal(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
 
 
+_TOC_DOTTY = re.compile(r"[\.·．…‥]{3,}")
+
+
+def _noise_hit_is_toc(raw: str, m: re.Match[str]) -> bool:
+    """目录「参考文献........39」：正则只吃到词本身，点线在后面。"""
+    window = raw[m.start() : m.end() + 48]
+    if _TOC_DOTTY.search(window):
+        return True
+    # 点线被换行拆开时：下一行几乎全是点/页码
+    rest = raw[m.end() : m.end() + 24]
+    if re.match(r"[\s\.·．…‥\d]{4,}$", rest.split("\n", 1)[0]):
+        return True
+    return False
+
+
 def strip_non_dev_sections(text: str) -> str:
     """去掉参考文献/进度/致谢等对匹配无帮助的后半段。
 
     若整篇从文首就是「参考文献」，返回空串（纯文献材料不计业务）。
+    目录行「参考文献........39」不是裁切点——终稿 PDF 目录在正文前，
+    误裁会砍掉需求/设计/实现整章（开题/终稿共用本函数）。
+    正文后的真「参考文献」取最后一次非目录命中。
     """
     raw = text or ""
-    m = _NOISE_SECTION.search(raw)
-    if not m:
-        return raw
-    hit = m.group(0)
-    # 文首即参考文献/进度 → 无业务正文
-    if m.start() <= 40:
-        return raw[: m.start()].rstrip()
-    # 参考文献/致谢/附录是硬噪声：短开题也裁，避免文献里的「微信小程序」误报技术点名
-    hard = any(k in hit for k in ("参考文献", "参考资料", "致谢", "附录"))
-    if hard:
-        return raw[: m.start()].rstrip()
-    # 进度等弱噪声：命中点偏后半才裁切，避免正文误伤
-    if m.start() < max(200, len(raw) // 5):
-        return raw
-    return raw[: m.start()].rstrip()
+    cut: int | None = None
+    for m in _NOISE_SECTION.finditer(raw):
+        if _noise_hit_is_toc(raw, m):
+            continue
+        hit = m.group(0)
+        # 文首即参考文献/进度 → 无业务正文
+        if m.start() <= 40:
+            return raw[: m.start()].rstrip()
+        hard = any(k in hit for k in ("参考文献", "参考资料", "致谢", "附录"))
+        if hard:
+            # 多段终稿：目录已跳过，正文末参考文献可能出现多次——取最后一次
+            cut = m.start()
+            continue
+        # 进度等弱噪声：命中点偏后半才裁切，避免正文误伤
+        if cut is None and m.start() >= max(200, len(raw) // 5):
+            cut = m.start()
+    if cut is not None:
+        return raw[:cut].rstrip()
+    return raw
 
 
 def extract_module_lines(text: str, limit: int = 20) -> list[str]:
@@ -287,6 +309,185 @@ def extract_module_lines(text: str, limit: int = 20) -> list[str]:
         if len(out) >= limit:
             break
     return out[:limit]
+
+
+# 开题 / 终稿共用：从材料正文结构抠端角色（禁止行业私榜穷举）
+_ROLE_ENUM_CHUNK = re.compile(
+    # 优先：…角色：A、B、C（含「划分为四类核心角色：…」）
+    r"(?:系统)?(?:主要)?(?:核心|端|用户)?角色(?:类型)?(?:包括|有|为|如下|：|:)\s*"
+    r"([^\n。；;]{4,100})"
+    r"|(?:分为|划分[为成])[^\n。；]{0,24}?角色[：:]\s*([^\n。；;]{4,100})"
+    # 「分为三种角色」无冒号列表时才吃中间词，避免「四类核心」
+    r"|(?:分为|划分[为成])\s*([^\n。；;]{2,40}?)\s*(?:[两三四2-4]种)(?:不同)?角色(?!\s*[：:])"
+    r"|系统面向\s*([^\n。；;]{4,48})"
+)
+_ROLE_SPLIT = re.compile(r"[、，,/]|以及|与|及|和")
+# 只认「××端功能/模块」；裸「…登录」易从「用户在材料商城登录」抽成碎句，另行收紧
+_ACTOR_CUE = re.compile(
+    r"([\u4e00-\u9fff]{2,8})端(?:功能|模块|用户|界面)"
+)
+_ACTOR_LOGIN = re.compile(
+    r"(?:^|[\n\r、，,。．：:；;])([\u4e00-\u9fff]{2,6})(?:登录|注册与登录)"
+)
+# 叙述虚词/介词 → 句子碎片，不是岗名
+# 句首/句尾虚词，或明显叙述碎片（勿用「用/就」单字，免误杀「就餐用户」）
+_ROLE_FRAG = re.compile(
+    r"^[在并从向对把将被的了着过且而则先]"
+    r"|[在并从向对把将被的了着过且而则先]$"
+    r"|提交|展示|着重|前后|分明|便于|下次|验证|密码|修改|"
+    r"页面|向后|向前|渲染|交互|分离|架构|浏览器|入口|"
+    r"协议|传递|充当|返回|数据|控制器|反馈|标准化"
+)
+_SKIP_ROLE_STEM = frozenset(
+    {
+        "功能",
+        "系统",
+        "业务",
+        "各个",
+        "相关",
+        "主要",
+        "以下",
+        "上述",
+        "本",
+        "子",
+        "各",
+        "等",
+        "核心",
+        "管理",
+        "个人中心",
+        "系统功能",
+        "操作",
+        "测试",
+        "首页",
+        "登录",
+        "注册",
+        "普通",
+        "四种",
+        "三类",
+        "本系统",
+        "本课题",
+        "实现了前",
+        "实现了前后",
+        "前后",
+        "前端",
+        "后端",
+        "成功",
+        "下次",
+        "失败",
+        "首先",
+        "然后",
+        "页面",
+        "页面向后",
+        "向后",
+        "向前",
+        "即可",
+        "涵盖",
+        "无需",
+        "轻松",
+        "常用",
+    }
+)
+_SHELL_ROLES = frozenset({"用户", "管理员", "超级管理员"})
+
+
+def _normalize_role_stem(raw: str) -> str | None:
+    s = re.sub(r"\s+", "", (raw or "").strip())
+    s = re.sub(r"^(?:以及|与|及|和)", "", s)
+    if s in _SHELL_ROLES:
+        return s
+    if s.startswith("普通") and s.endswith("用户") and len(s) >= 4:
+        return "用户"
+    # 「涵盖管理员登录」→ 归一管理员；勿把「涵盖管理员」当岗名
+    if re.match(r"^涵盖?管理员", s) or s in ("系统管理员", "后台管理员"):
+        return "管理员"
+    # 勿把光杆「用户」剥空；只剥复合尾缀
+    s = re.sub(r"(?:角色|端|模块|管理)$", "", s).strip()
+    if not s or len(s) < 2 or len(s) > 12:
+        return None
+    if s in _SKIP_ROLE_STEM or s in ("角色",):
+        return None
+    # 「划分为四类核心角色」「管理员端分为十二大定制」不是角色名
+    if re.fullmatch(r"[两三四2-4]类核心", s) or "类核心" in s:
+        return None
+    if re.search(r"(?:分为|包含|其中|定制|实现|设计|完成|开发|进行|根据|基于|涵盖)", s):
+        return None
+    # 「在材料商城」「用户在」「并提交」「着重展示前后」——叙述碎片
+    if _ROLE_FRAG.search(s):
+        return None
+    # 序列图/架构叙述粘连（协议传递至前、数据返回至经销商、材销售系统的用户）
+    if re.search(r"(?:传递|返回|充当|协议|系统的)", s):
+        return None
+    # 「经销商成功」「注册成功」「即可」——结果/语气，不是岗名
+    if re.search(r"(?:成功|失败|完成|之后|然后|即可)$", s):
+        return None
+    if len(s) >= 6 and not re.search(
+        r"(?:管理员|用户|厂商|经销商|商家|买家|卖家|馆员|读者|租客|房东)$",
+        s,
+    ):
+        return None
+    return s
+
+
+def extract_role_labels(
+    text: str,
+    *,
+    module_names: list[str] | None = None,
+    limit: int = 8,
+) -> list[str]:
+    """从开题/终稿正文抠端角色名（结构线索，不靠 DOM/行业词表）。
+
+    证据优先级：
+    1. 角色列举句（角色包括… / 核心角色：… / 系统面向…）
+    2. 「××模块」词干（与 extract_module_lines / 行内模块同源）
+    3. 「××端功能」；行首/顿号后的「××登录」（禁句中「在…登录」）
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def _add(stem: str | None) -> None:
+        if not stem or stem in seen:
+            return
+        seen.add(stem)
+        out.append(stem)
+
+    body = strip_non_dev_sections(text or "")
+    # 1) 列举句优先（真源）
+    for m in _ROLE_ENUM_CHUNK.finditer(body):
+        chunk = next((g for g in m.groups() if g), "") or ""
+        chunk = re.sub(
+            r"(?:等)?(?:[两三四2-4]种)?(?:不同)?角色$",
+            "",
+            chunk.strip(),
+        )
+        for part in _ROLE_SPLIT.split(chunk):
+            part = re.sub(r"(?:[两三四2-4]种)$", "", (part or "").strip())
+            _add(_normalize_role_stem(part))
+
+    # 2) 模块词干
+    for raw_mod in module_names or []:
+        name = re.sub(r"\s+", "", str(raw_mod or "").strip())
+        if name.endswith("模块"):
+            _add(_normalize_role_stem(name[: -len("模块")]))
+    for mod in extract_module_lines(body, limit=limit * 2):
+        if mod.endswith("模块"):
+            _add(_normalize_role_stem(mod[: -len("模块")]))
+
+    # 3) 端功能 / 收紧后的登录壳
+    for m in _ACTOR_CUE.finditer(body):
+        _add(_normalize_role_stem(m.group(1)))
+    for m in _ACTOR_LOGIN.finditer(body):
+        _add(_normalize_role_stem(m.group(1)))
+
+    # 短前缀被长岗名覆盖时丢掉（仓管 ⊂ 仓库管理员）
+    trimmed = [
+        r
+        for r in out
+        if not any(
+            r != other and (other.startswith(r) or r.startswith(other)) and len(other) > len(r)
+            for other in out
+        )
+    ]
+    return trimmed[:limit]
 
 
 def extract_table_features(text: str, limit: int = 20) -> list[str]:
@@ -554,4 +755,6 @@ def summarize_proposal(text: str, hits: list[str] | None = None) -> dict:
         "hits": list(hits or []),
         "excerpt": raw[:2000],
         "char_count": len(raw),
+        # 与终稿吸收共用：结构扫角色（模块词干 / 列举句 / 端·登录壳）
+        "role_hints": extract_role_labels(body, module_names=modules),
     }
