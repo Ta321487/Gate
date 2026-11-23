@@ -468,6 +468,8 @@ class FactoryThesisAbsorb(Base):
     __tablename__ = "factory_thesis_absorb"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # B 层对账键：gf-ta-YYYYMMDD-HHMMSS（编号合同）；列表主脸用 #id
+    public_id: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="thesis")
     focus: Mapped[str] = mapped_column(String(32), nullable=False, default="thesis_impl")
     source_files: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)

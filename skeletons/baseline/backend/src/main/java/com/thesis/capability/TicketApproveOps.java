@@ -3,6 +3,7 @@ package com.thesis.capability;
 import java.util.*;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import com.thesis.common.BizCodeIssuer;
 import com.thesis.service.BalanceLedgerStore;
 import com.thesis.service.ClaimProofStore;
 import com.thesis.service.MessageStore;
@@ -340,7 +341,7 @@ static String issuePassCodeIfNeeded(long ticketId) {
             String prev = TicketSql.str(cur.get("passCode"));
             if (!prev.isBlank()) return prev;
         }
-        String code = "VIS" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
+        String code = BizCodeIssuer.passCode();
         try {
             int n;
             if (TicketStore.allowPassExpire && TicketStore.passExpireDays > 0
@@ -376,7 +377,7 @@ static String issueCertIssueNoIfNeeded(long ticketId) {
             String prev = TicketSql.str(cur.get("certIssueNo"));
             if (!prev.isBlank()) return prev;
         }
-        String code = "CERT" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
+        String code = BizCodeIssuer.certIssueNo();
         try {
             int n = TicketSql.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET cert_issue_no=? WHERE id=?", code, ticketId);
@@ -402,7 +403,7 @@ static String issueVerifyCodeIfNeeded(long ticketId) {
             String prev = TicketSql.str(cur.get("verifyCode"));
             if (!prev.isBlank()) return prev;
         }
-        String code = "VF" + String.format("%010d", Math.floorMod(System.nanoTime(), 10_000_000_000L));
+        String code = BizCodeIssuer.verifyCode();
         try {
             int n = TicketSql.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET verify_code=? WHERE id=?", code, ticketId);
@@ -428,7 +429,7 @@ static String issuePickupRedeemIfNeeded(long ticketId) {
             String prev = TicketSql.str(cur.get("pickupRedeemCode"));
             if (!prev.isBlank()) return prev;
         }
-        String code = "PK" + String.format("%010d", Math.floorMod(System.nanoTime() + 17, 10_000_000_000L));
+        String code = BizCodeIssuer.pickupRedeemCode();
         try {
             int n = TicketSql.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET pickup_redeem_code=? WHERE id=?", code, ticketId);

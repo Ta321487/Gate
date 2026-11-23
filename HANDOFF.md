@@ -45,13 +45,18 @@
 - **用法**：潮汐重 bake 或验收 heal → 验收重打包；控制台第 6 步看新诊断卡。
 - **余**：`做诊断编排 D2`（生成页轻条 + A 档）。
 
-### 本会话（2026-11-23）· 编号合同方向册（待定）✅
+### 本会话（2026-11-24）· 编号合同 D1～D3 开工收口 ✅
 
-- **站队**：**修工厂**（只立文档，无签发/行为变更）。
-- **已齐**：[`docs/id-scheme-contract.md`](./docs/id-scheme-contract.md) 三层合同（A 行键 / B 工厂业务键 / C 学生可见号）；parked **v**；`docs/README` 索引。
-- **裁定**：要整理、禁一种格式打天下；开工优先 C 层共享签发；B 只文档化不大迁 `gf-*`/`DOM-*`。
-- **未动**：基线/overlays 签发代码、门禁、迁移旧单号。
-- **口令**：`做编号合同`（明示开工才改代码）。
+- **站队**：**修工厂**（全做，非只文档）。
+- **D2 吸收**：`factory_thesis_absorb.public_id`=`gf-ta-…`；列表/详情 `#N`；API 路由兼吃 int/`gf-ta-…`；旧行列表补发。
+- **D1 签发家**：`BizCodeIssuer.java`；TicketApprove / Order / Slot / DigitalGoods 三栈接线；禁 nanoTime/Random 散落。
+- **D3**：`test_biz_code_issuer_contract` + `test_id_scheme_ta_public_id`（9 绿）；`test_thesis_absorb*` 回归绿。
+- **用法**：重启后端走 ALTER；刷新终稿吸收页。
+- **口令**：`做编号合同`（维护）。
+
+### 本会话（2026-11-24）· 编号合同重排 + 产品差口 ✅
+
+- 文档差口表与 `#N`/`gf-ta` 裁定；已并入上条开工。
 
 ### 本会话（2026-11-21）· 架构文档刷新 ✅
 

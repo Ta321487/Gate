@@ -61,7 +61,7 @@
 | [thesis-absorb.md](./thesis-absorb.md) | **论文吸收 / 终稿吸收**：终稿→厂库→覆盖三态→喂助手；同材同果；控制台 `/thesis-absorb`；不出包、不硬匹配；`draft_schema_sql` 落库 | **产品已落地**（抽取 ≥42）；架构图已同步；图 OCR 仍可选 |
 | [llm-determinism.md](./llm-determinism.md) | **工厂 LLM 硬原则**：不确定→确定性；审类闸先行、生成类校验回退 | 现行 |
 | [validation-loop-hardening.md](./validation-loop-hardening.md) | **校验闭环加固**：假宣称/错域词 error、FAQ 默认关润色、低置信/GENERIC 强制核域 | **批 1～4 已齐** · 待提交 |
-| [id-scheme-contract.md](./id-scheme-contract.md) | **编号合同**：落库·运营/答辩可见 id 三层（行键 / 工厂业务键 / 学生可见号） | 方向册 · **待定未开工** · parked **v** |
+| [id-scheme-contract.md](./id-scheme-contract.md) | **编号合同**：三层；吸收 `#N`+`gf-ta`；学生包 `BizCodeIssuer` | **D1～D3 已齐** · parked **v** |
 
 ## 答辩 PPT
 

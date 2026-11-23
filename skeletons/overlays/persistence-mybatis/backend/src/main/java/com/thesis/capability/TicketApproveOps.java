@@ -1,6 +1,7 @@
 package com.thesis.capability;
 
 
+import com.thesis.common.BizCodeIssuer;
 import com.thesis.config.MbSql;
 import com.thesis.config.MybatisSupport;
 import com.thesis.mapper.TicketMapper;
@@ -281,7 +282,7 @@ static String issuePassCodeIfNeeded(long ticketId) {
             String prev = TicketSql.str(cur.get("passCode"));
             if (!prev.isBlank()) return prev;
         }
-        String code = "VIS" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
+        String code = BizCodeIssuer.passCode();
         try {
             int n = mapper().updatePassCode(TicketStore.TICKET, ticketId, code);
             if (n <= 0) {
@@ -314,7 +315,7 @@ static String issueCertIssueNoIfNeeded(long ticketId) {
             String prev = TicketSql.str(cur.get("certIssueNo"));
             if (!prev.isBlank()) return prev;
         }
-        String code = "CERT" + String.format("%08d", Math.floorMod(System.nanoTime(), 100_000_000));
+        String code = BizCodeIssuer.certIssueNo();
         try {
             int n = MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET cert_issue_no=? WHERE id=?", code, ticketId);
@@ -340,7 +341,7 @@ static String issueVerifyCodeIfNeeded(long ticketId) {
             String prev = TicketSql.str(cur.get("verifyCode"));
             if (!prev.isBlank()) return prev;
         }
-        String code = "VF" + String.format("%010d", Math.floorMod(System.nanoTime(), 10_000_000_000L));
+        String code = BizCodeIssuer.verifyCode();
         try {
             int n = MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET verify_code=? WHERE id=?", code, ticketId);
@@ -366,7 +367,7 @@ static String issuePickupRedeemIfNeeded(long ticketId) {
             String prev = TicketSql.str(cur.get("pickupRedeemCode"));
             if (!prev.isBlank()) return prev;
         }
-        String code = "PK" + String.format("%010d", Math.floorMod(System.nanoTime() + 17, 10_000_000_000L));
+        String code = BizCodeIssuer.pickupRedeemCode();
         try {
             int n = MybatisSupport.db().update(
                     "UPDATE " + TicketStore.TICKET + " SET pickup_redeem_code=? WHERE id=?", code, ticketId);

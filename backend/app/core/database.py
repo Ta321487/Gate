@@ -322,3 +322,13 @@ def _migrate_project_columns(sync_conn) -> None:
                 )
         except Exception:  # noqa: BLE001
             pass
+    if absorb_cols and "public_id" not in absorb_cols:
+        try:
+            sync_conn.execute(
+                text(
+                    "ALTER TABLE factory_thesis_absorb "
+                    "ADD COLUMN public_id VARCHAR(64) NOT NULL DEFAULT ''"
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass

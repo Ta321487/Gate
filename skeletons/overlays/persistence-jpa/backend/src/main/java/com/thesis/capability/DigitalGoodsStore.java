@@ -1,4 +1,6 @@
-package com.thesis.capability;
+﻿package com.thesis.capability;
+
+import com.thesis.common.BizCodeIssuer;
 
 import com.thesis.config.JpaSupport;
 import com.thesis.config.JpaDb;
@@ -150,10 +152,10 @@ public final class DigitalGoodsStore {
             made.put("codeValue", "");
             made.put("linkUrl", "/files/digital-" + itemId + ".pdf");
         } else if ("permit".equals(kind)) {
-            made.put("codeValue", "PERMIT-" + itemId + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+            made.put("codeValue", BizCodeIssuer.permitCode(itemId));
             made.put("linkUrl", "");
         } else {
-            made.put("codeValue", "ACT-" + UUID.randomUUID().toString().substring(0, 10).toUpperCase());
+            made.put("codeValue", BizCodeIssuer.activationCode());
             made.put("linkUrl", "");
         }
         return made;

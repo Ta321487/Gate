@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -49,6 +50,61 @@ def _absorb_dir() -> Path:
     return p
 
 
+def _ta_public_id_stamp() -> str:
+    return f"gf-ta-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+
+async def alloc_ta_public_id(
+    db: AsyncSession, *, reserved: set[str] | None = None
+) -> str:
+    """签发终稿吸收对账键 gf-ta-…（撞秒加后缀）。"""
+    from app.models import FactoryThesisAbsorb
+
+    taken = {x for x in (reserved or set()) if x}
+    base = _ta_public_id_stamp()
+    cand = base
+    for i in range(0, 50):
+        if i:
+            cand = f"{base}-{i}"
+        if cand in taken:
+            continue
+        exists = await db.scalar(
+            select(FactoryThesisAbsorb.id).where(FactoryThesisAbsorb.public_id == cand)
+        )
+        if not exists:
+            return cand
+    return f"{base}-{datetime.now().strftime('%f')}"
+
+
+async def ensure_row_public_id(db: AsyncSession, row: Any) -> str:
+    """旧行补发 public_id；已有则原样返回。"""
+    cur = str(getattr(row, "public_id", None) or "").strip()
+    if cur:
+        return cur
+    row.public_id = await alloc_ta_public_id(db)
+    await db.commit()
+    await db.refresh(row)
+    return str(row.public_id)
+
+
+async def resolve_record_key(db: AsyncSession, key: str | int) -> int | None:
+    """路由键：纯数字 → id；gf-ta-… → public_id。"""
+    from app.models import FactoryThesisAbsorb
+
+    raw = str(key or "").strip()
+    if not raw:
+        return None
+    if raw.isdigit():
+        row = await db.get(FactoryThesisAbsorb, int(raw))
+        return int(row.id) if row else None
+    if raw.startswith("gf-ta-"):
+        row = await db.scalar(
+            select(FactoryThesisAbsorb).where(FactoryThesisAbsorb.public_id == raw)
+        )
+        return int(row.id) if row else None
+    return None
+
+
 def _normalize_proposal(proposal: Any) -> dict[str, Any]:
     """保证前端拿到的 feature_lines / sections 一定是数组，避免 .length 炸。
 
@@ -86,6 +142,7 @@ def _normalize_proposal(proposal: Any) -> dict[str, Any]:
         "figure_labels",
         "table_labels",
         "structure_ends",
+        "tech_stack_lines",
     ):
         raw = p.get(key)
         if isinstance(raw, list):
@@ -105,7 +162,7 @@ def _proposal_missing_structure_hints(proposal: Any) -> bool:
     """旧库存或「只洗 JSON 假升版」会缺键；缺则必须重读源文件整抽。"""
     if not isinstance(proposal, dict):
         return True
-    return "role_hints" not in proposal
+    return "role_hints" not in proposal or "tech_stack_lines" not in proposal
 
 
 def _try_reextract_from_source(row: Any) -> bool:
@@ -188,8 +245,11 @@ def _row_to_dict(
     drafts = _resolved_drafts(row, proposal)
     if fig_ready is None or fig_hint is None:
         fig_ready, fig_hint = figure_libs_ready()
+    pid = str(getattr(row, "public_id", None) or "").strip()
     return {
         "id": row.id,
+        "public_id": pid,
+        "display_no": f"#{row.id}",
         "role": row.role,
         "focus": row.focus,
         "source_files": row.source_files if isinstance(row.source_files, list) else [],
@@ -245,7 +305,23 @@ async def list_records(
     from app.models import FactoryThesisAbsorb
 
     stmt = select(FactoryThesisAbsorb).order_by(FactoryThesisAbsorb.id.desc())
-    rows = (await db.execute(stmt)).scalars().all()
+    rows = list((await db.execute(stmt)).scalars().all())
+    reserved = {
+        str(getattr(r, "public_id", None) or "").strip()
+        for r in rows
+        if str(getattr(r, "public_id", None) or "").strip()
+    }
+    dirty = False
+    for r in rows:
+        if not str(getattr(r, "public_id", None) or "").strip():
+            pid = await alloc_ta_public_id(db, reserved=reserved)
+            r.public_id = pid
+            reserved.add(pid)
+            dirty = True
+    if dirty:
+        await db.commit()
+        for r in rows:
+            await db.refresh(r)
     fig_ready, fig_hint = figure_libs_ready()
     items = [_row_to_dict(r, fig_ready=fig_ready, fig_hint=fig_hint) for r in rows]
     if coverage:
@@ -258,6 +334,9 @@ async def list_records(
             if qq in json.dumps(i.get("source_files") or [], ensure_ascii=False).lower()
             or qq in (i.get("proposal") or {}).get("title", "").lower()
             or qq in (i.get("coverage_note") or "").lower()
+            or qq in str(i.get("public_id") or "").lower()
+            or qq in str(i.get("display_no") or "").lower()
+            or qq == str(i.get("id") or "")
         ]
     return items
 
@@ -276,6 +355,7 @@ async def get_record(db: AsyncSession, record_id: int) -> dict[str, Any] | None:
     row = await db.get(FactoryThesisAbsorb, record_id)
     if not row:
         return None
+    await ensure_row_public_id(db, row)
     empty_drafts = (
         not _clean_draft_list(row.draft_roles)
         and not _clean_draft_list(row.draft_entities)
@@ -297,6 +377,7 @@ async def get_record(db: AsyncSession, record_id: int) -> dict[str, Any] | None:
     item["overlaps"] = await find_overlaps(db, record_id, prop)
     item["feed_markdown"] = build_feed_markdown(
         record_id=row.id,
+        public_id=str(getattr(row, "public_id", None) or ""),
         coverage=row.coverage,
         proposal=prop,
         draft_roles=item.get("draft_roles"),
@@ -315,7 +396,10 @@ async def get_record(db: AsyncSession, record_id: int) -> dict[str, Any] | None:
     if empty_drafts:
         reasons.append("补齐建议三栏仍空")
     if missing_hints:
-        reasons.append("结构线索不完整")
+        if isinstance(prop0, dict) and "tech_stack_lines" not in prop0:
+            reasons.append("尚未抽取文中技术栈")
+        else:
+            reasons.append("结构线索不完整")
     if stem_entity_drafts:
         reasons.append("实体栏仍像功能词干")
     item["reextract_reasons"] = reasons
@@ -705,6 +789,7 @@ async def create_from_upload(
 
     text, data = await asyncio.to_thread(_job)
     row = FactoryThesisAbsorb(
+        public_id=await alloc_ta_public_id(db),
         role="thesis",
         focus="thesis_impl",
         source_files=[safe_name],

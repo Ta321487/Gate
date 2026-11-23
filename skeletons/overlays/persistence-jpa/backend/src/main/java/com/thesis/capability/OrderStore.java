@@ -1,4 +1,6 @@
-package com.thesis.capability;
+﻿package com.thesis.capability;
+
+import com.thesis.common.BizCodeIssuer;
 
 import com.thesis.config.JpaSupport;
 import com.thesis.service.CommissionStore;
@@ -842,7 +844,7 @@ public final class OrderStore {
         } catch (Exception ignored) {
             return;
         }
-        String code = String.format("%04d", (int) (orderId % 10000));
+        String code = BizCodeIssuer.pickupFromOrderId(orderId);
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         db().update(
                 "UPDATE " + ORDER + " SET pickup_code=?, updated_at=? WHERE id=?",
@@ -1483,7 +1485,7 @@ public final class OrderStore {
             if (pickup.isBlank() && hasOrderColumn("pickup_code")) {
                 String dtype = String.valueOf(m.getOrDefault("deliveryType", ""));
                 if (dtype.contains("自取") || dtype.contains("堂食") || dtype.contains("自提")) {
-                    pickup = String.format("%04d", (int) (orderId % 10000));
+                    pickup = BizCodeIssuer.pickupFromOrderId(orderId);
                 }
             }
             StringBuilder sql = new StringBuilder("UPDATE " + ORDER + " SET status=?");
@@ -2498,7 +2500,7 @@ public final class OrderStore {
         } catch (Exception ignored) {
             return;
         }
-        String token = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase(Locale.ROOT);
+        String token = BizCodeIssuer.orderShareToken();
         db().update(
                 "UPDATE " + ORDER + " SET share_token=? WHERE id=? AND (share_token IS NULL OR share_token='')",
                 token, orderId);

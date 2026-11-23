@@ -1,4 +1,6 @@
-package com.thesis.capability;
+﻿package com.thesis.capability;
+
+import com.thesis.common.BizCodeIssuer;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -1355,7 +1357,7 @@ public final class SlotStore {
     }
 
     private static String newCheckinToken() {
-        return "M" + String.format("%05d", (int) (Math.random() * 100000));
+        return BizCodeIssuer.memberCheckinToken();
     }
 
 

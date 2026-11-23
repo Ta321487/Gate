@@ -1,4 +1,6 @@
-package com.thesis.capability;
+﻿package com.thesis.capability;
+
+import com.thesis.common.BizCodeIssuer;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -798,7 +800,7 @@ public final class OrderStore {
         if (m == null) return;
         String cur = String.valueOf(m.getOrDefault("pickupCode", "")).trim();
         if (!cur.isBlank() && !"null".equalsIgnoreCase(cur)) return;
-        String code = String.format("%04d", (int) (orderId % 10000));
+        String code = BizCodeIssuer.pickupFromOrderId(orderId);
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         mapper().ensurePickupCode(ORDER, orderId, code, now);
     }
@@ -1380,7 +1382,7 @@ public final class OrderStore {
             if (pickup.isBlank() && hasOrderColumn("pickup_code")) {
                 String dtype = String.valueOf(m.getOrDefault("deliveryType", ""));
                 if (dtype.contains("自取") || dtype.contains("堂食") || dtype.contains("自提")) {
-                    pickup = String.format("%04d", (int) (orderId % 10000));
+                    pickup = BizCodeIssuer.pickupFromOrderId(orderId);
                 }
             }
             Map<String, Object> row = new LinkedHashMap<>();
@@ -2165,7 +2167,7 @@ public final class OrderStore {
         } catch (Exception ignored) {
             return;
         }
-        String token = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase(Locale.ROOT);
+        String token = BizCodeIssuer.orderShareToken();
         mapper().updateShareTokenIfEmpty(ORDER, orderId, token);
     }
 

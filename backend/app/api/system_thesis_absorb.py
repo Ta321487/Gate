@@ -27,6 +27,13 @@ class ThesisAbsorbPatch(BaseModel):
     mark_fed: bool = False
 
 
+async def _resolve_id(db: AsyncSession, record_key: str) -> int:
+    rid = await ta.resolve_record_key(db, record_key)
+    if rid is None:
+        raise HTTPException(status_code=404, detail="未找到")
+    return rid
+
+
 @router.get("/system/thesis-absorb/meta", summary="终稿吸收·元信息")
 async def thesis_absorb_meta():
     return {
@@ -59,9 +66,10 @@ async def list_thesis_absorb(
     return {"ok": True, "total": len(items), "items": items}
 
 
-@router.get("/system/thesis-absorb/{record_id}", summary="终稿吸收详情")
-async def get_thesis_absorb(record_id: int, db: AsyncSession = Depends(get_db)):
-    item = await ta.get_record(db, record_id)
+@router.get("/system/thesis-absorb/{record_key}", summary="终稿吸收详情")
+async def get_thesis_absorb(record_key: str, db: AsyncSession = Depends(get_db)):
+    rid = await _resolve_id(db, record_key)
+    item = await ta.get_record(db, rid)
     if not item:
         raise HTTPException(status_code=404, detail="未找到")
     return {"ok": True, "item": item}
@@ -90,25 +98,27 @@ async def upload_thesis_absorb(
     }
 
 
-@router.post("/system/thesis-absorb/{record_id}/reextract", summary="重新抽取")
-async def reextract_thesis_absorb(record_id: int, db: AsyncSession = Depends(get_db)):
+@router.post("/system/thesis-absorb/{record_key}/reextract", summary="重新抽取")
+async def reextract_thesis_absorb(record_key: str, db: AsyncSession = Depends(get_db)):
+    rid = await _resolve_id(db, record_key)
     try:
-        item = await ta.reextract(db, record_id)
+        item = await ta.reextract(db, rid)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "item": item}
 
 
-@router.patch("/system/thesis-absorb/{record_id}", summary="更新覆盖/结构/状态")
+@router.patch("/system/thesis-absorb/{record_key}", summary="更新覆盖/结构/状态")
 async def patch_thesis_absorb(
-    record_id: int,
+    record_key: str,
     body: ThesisAbsorbPatch,
     db: AsyncSession = Depends(get_db),
 ):
+    rid = await _resolve_id(db, record_key)
     try:
         item = await ta.update_record(
             db,
-            record_id,
+            rid,
             coverage=body.coverage,
             coverage_note=body.coverage_note,
             status=body.status,
@@ -125,12 +135,13 @@ async def patch_thesis_absorb(
 
 
 @router.post(
-    "/system/thesis-absorb/{record_id}/feed",
+    "/system/thesis-absorb/{record_key}/feed",
     summary="标记已导出喂助手稿并返回正文",
 )
-async def feed_thesis_absorb(record_id: int, db: AsyncSession = Depends(get_db)):
+async def feed_thesis_absorb(record_key: str, db: AsyncSession = Depends(get_db)):
+    rid = await _resolve_id(db, record_key)
     try:
-        item = await ta.update_record(db, record_id, mark_fed=True)
+        item = await ta.update_record(db, rid, mark_fed=True)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {
@@ -140,9 +151,10 @@ async def feed_thesis_absorb(record_id: int, db: AsyncSession = Depends(get_db))
     }
 
 
-@router.delete("/system/thesis-absorb/{record_id}", summary="删除吸收记录")
-async def delete_thesis_absorb(record_id: int, db: AsyncSession = Depends(get_db)):
-    ok = await ta.delete_record(db, record_id)
+@router.delete("/system/thesis-absorb/{record_key}", summary="删除吸收记录")
+async def delete_thesis_absorb(record_key: str, db: AsyncSession = Depends(get_db)):
+    rid = await _resolve_id(db, record_key)
+    ok = await ta.delete_record(db, rid)
     if not ok:
         raise HTTPException(status_code=404, detail="未找到")
     return {"ok": True}
