@@ -92,7 +92,7 @@
 | # | 规则 | 合格 | 禁止 |
 |---|------|------|------|
 | R1 | 页壳 | `surface-toolbar`：左标题+一句说明，右次要按钮 + **至多一个** `type="primary"` | 首屏表单墙；多枚同权 primary |
-| R2 | 数字 | 扁 `.stats`（≤4格）；**只展示**，不点切视图（切视图交给 R3） | 开工台 `surface-chip` 条搬到配置页；stats 与 tabs **双切** |
+| R2 | 数字 | 扁 `.stats`（≤4格）；**只展示**，不点切视图（切视图交给 R3）；**未知/未扫**显示 `—`，禁止用假 `0` 冒充已齐 | 开工台 `surface-chip` 条搬到配置页；stats 与 tabs **双切**；待补未扫先红/先 0 |
 | R3 | 切视图 | `n-tabs`（line）唯一切换 | 第三套私有 Tab 皮；stats 再挂一套点击切换 |
 | R4 | 主区 | **一块** `.panel` / `panel-quiet` 承载表；筛选在 panel 内顶行 | 表单区与列表同权双 panel 抢视线 |
 | R5 | 改单条 | **右侧 `n-drawer`**（登记/改/补）；取消关闭 = 退出编辑 | 首屏常驻大表单；无退出编辑 |
@@ -130,7 +130,9 @@
 2. **能改全局表面就改全局**（`.panel` / page-title / stats），避免每页私设一套。  
 3. **Naive UI 可留**：换构图 ≠ 换组件库；少用 Card 感、多用留白与排版层级。  
 4. **契约**：现有 `test_console_product_form_contract` / stages / workbench **不得因去框而删断言**；构图新增断言可进同文件或 `test_console_surface_contract`。  
-5. **学生包基线 UI 不在范围**。
+5. **学生包基线 UI 不在范围**。  
+6. **只读代码预览**（SQL / JSON）：用共享 `CodePreview` + `codeHighlight.js`；可编辑 textarea、运行日志、开题正文不要上色。  
+7. **可点 stats / filter-pill**：默认「全部」进门不高亮（`filterChipOn`）；只有收窄筛点亮，避免强调色整格像误选。
 
 ---
 
@@ -160,3 +162,5 @@
 | 2026-11-07 | **全页结构收齐**：V4 工作台去嵌套框；V5 材料/匹配/生成/预览 `panel-quiet`；V7 路径高级折 + Help；台面 V1～V8 勾齐，待 `收卡片墙验收` |
 | 2026-11-07 | **`收卡片墙验收` 通过**：S1～S7；证据三图 + `acceptance/console-surface-2026-11-07.md` |
 | 2026-11-16 | **`统一 Stripe 结构`**：§3.5 强制口径；词表维护 V7b 按 R1～R7 收口 + 契约测 |
+| 2026-11-24 | **只读代码高亮**：`CodePreview`（终稿 schema.sql + 生成配置 JSON）；禁日志/可编辑区；token/`--code-bg` 跟浅深主题 |
+| 2026-11-24 | **默认「全部」不高亮**：`filterChipOn`；项目 / 终稿吸收 stats+pill 同修 |

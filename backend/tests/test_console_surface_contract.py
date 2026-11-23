@@ -260,6 +260,31 @@ class ConsoleSurfaceContractTest(unittest.TestCase):
         self.assertIn("demoAccounts", src)
         self.assertNotIn('role="button"', src)
 
+    def test_asset_catalog_gap_stat_unknown_dash(self):
+        """资产台「待补」未扫/加载中用 —，禁止假 0 冒充已齐（§3.5 R2）。"""
+        views = (
+            "ZhLexicon.vue",
+            "StatusCopy.vue",
+            "DictValues.vue",
+            "DemoScripts.vue",
+            "AddonSuggest.vue",
+            "CapCards.vue",
+            "ErrorCopy.vue",
+            "WidgetHints.vue",
+            "MenuMatrix.vue",
+            "RuleParams.vue",
+            "ErEdgeCopy.vue",
+            "DemoAccounts.vue",
+            "DiagramTitles.vue",
+        )
+        needle = "{{ gapsScanned ? gapCount : '—' }}"
+        bad_raw = ':class="{ bad: gapCount > 0 }">{{ gapCount }}'
+        for name in views:
+            src = (FE / "views" / name).read_text(encoding="utf-8")
+            with self.subTest(view=name):
+                self.assertIn(needle, src)
+                self.assertNotIn(bad_raw, src)
+
     def test_ops_accent_presets(self):
         theme = (FE / "theme.js").read_text(encoding="utf-8")
         app = (FE / "App.vue").read_text(encoding="utf-8")

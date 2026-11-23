@@ -30,7 +30,7 @@
         </div>
         <div class="stat">
           <div class="label">待补</div>
-          <div class="value" :class="{ bad: gapCount > 0 }">{{ gapCount }}</div>
+          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapsScanned ? gapCount : '—' }}</div>
         </div>
       </div>
 
