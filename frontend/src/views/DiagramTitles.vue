@@ -23,7 +23,7 @@
     <template v-else>
       <div class="stats mb-12" style="grid-template-columns:repeat(2,1fr);max-width:360px">
         <div class="stat">
-          <div class="label">模板</div>
+          <div class="label">图题</div>
           <div class="value">{{ total }}</div>
         </div>
         <div class="stat">
@@ -32,14 +32,14 @@
         </div>
       </div>
 
-      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12">
-        <n-tab-pane name="entries" tab="模板" />
+      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12" @update:value="onTab">
+        <n-tab-pane name="entries" tab="图题" />
         <n-tab-pane name="gaps" tab="待补" />
       </n-tabs>
 
       <div v-show="mainTab === 'entries'" class="panel panel-quiet">
         <div class="panel-hd">
-          <div class="row" style="gap:8px;flex-wrap:wrap">
+          <div class="row dt-filter-row">
             <n-select
               v-model:value="kind"
               size="small"
@@ -47,16 +47,19 @@
               placeholder="全部图种"
               :options="kindOptions"
               style="width:160px"
-              @update:value="reload"
+              @update:value="reloadFromTop"
             />
             <n-select
               v-model:value="domain"
               size="small"
               clearable
+              filterable
               placeholder="全部域"
               :options="domainOptions"
-              style="width:200px"
-              @update:value="reload"
+              style="width:220px"
+              :consistent-menu-width="false"
+              :menu-props="{ style: { minWidth: '320px' } }"
+              @update:value="reloadFromTop"
             />
             <n-input
               v-model:value="q"
@@ -64,45 +67,65 @@
               clearable
               placeholder="模板 / 图种"
               style="width:180px"
-              @keyup.enter="reload"
+              @keyup.enter="reloadFromTop"
             />
-            <n-button size="small" @click="reload">查询</n-button>
+            <n-button size="small" @click="reloadFromTop">查询</n-button>
           </div>
         </div>
         <div class="panel-bd">
           <div v-if="!items.length" class="empty-hint">
-            <div class="empty-title">还没有模板</div>
+            <div class="empty-title">还没有图题</div>
             <div class="empty-desc">用顶栏导入或登记一条。</div>
           </div>
-          <table v-else class="data-table">
-            <thead>
-              <tr>
-                <th>图种</th>
-                <th>域</th>
-                <th>标题模板</th>
-                <th style="width:100px"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in items" :key="row.id">
-                <td>{{ kindLabel(row.diagram_kind) }}</td>
-                <td class="muted">{{ domainLabel(row.domain_id) }}</td>
-                <td class="mono">{{ row.title_tpl }}</td>
-                <td>
-                  <div class="row" style="gap:4px">
-                    <n-button size="small" quaternary @click="editRow(row)">改</n-button>
-                    <n-button
-                      size="small"
-                      quaternary
-                      type="error"
-                      :loading="deletingId === row.id"
-                      @click="remove(row)"
-                    >删</n-button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <template v-else>
+            <div class="dt-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>图种</th>
+                    <th>域</th>
+                    <th>标题模板</th>
+                    <th style="width:100px"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in pagedItems"
+                    :key="row.id"
+                    :class="{ 'is-editing': editingId === row.id && drawerOpen }"
+                  >
+                    <td>{{ kindLabel(row.diagram_kind) }}</td>
+                    <td class="muted">{{ domainLabel(row.domain_id) }}</td>
+                    <td>{{ row.title_tpl }}</td>
+                    <td>
+                      <div class="row" style="gap:4px">
+                        <n-button size="small" quaternary @click="editRow(row)">改</n-button>
+                        <n-button
+                          size="small"
+                          quaternary
+                          type="error"
+                          :loading="deletingId === row.id"
+                          @click="remove(row)"
+                        >删</n-button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-if="total > 0" class="pager-row">
+              <span class="small muted">共 {{ total }} 条</span>
+              <n-pagination
+                v-model:page="page"
+                v-model:page-size="pageSize"
+                :item-count="total"
+                :page-sizes="[10, 20, 50]"
+                show-size-picker
+                size="small"
+                @update:page-size="onPageSize"
+              />
+            </div>
+          </template>
         </div>
       </div>
 
@@ -110,66 +133,93 @@
         <div class="panel-bd">
           <div v-if="!gaps.length" class="empty-hint">
             <div class="empty-title">{{ gapsScanned ? '没有待补项' : '还没检查过' }}</div>
+            <div class="empty-desc">
+              {{
+                gapsScanned
+                  ? '各图种跨域壳默认已齐。'
+                  : '点顶栏「检查待补」扫描缺口。'
+              }}
+            </div>
           </div>
-          <table v-else class="data-table">
-            <thead>
-              <tr>
-                <th>图种</th>
-                <th>域</th>
-                <th>说明</th>
-                <th style="width:80px"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(g, idx) in gaps" :key="`${g.diagram_kind}-${g.domain_id}-${idx}`">
-                <td>{{ kindLabel(g.diagram_kind) }}</td>
-                <td class="muted">{{ domainLabel(g.domain_id) }}</td>
-                <td>{{ g.reason }}</td>
-                <td>
-                  <n-button size="small" quaternary @click="fillFromGap(g)">补</n-button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <template v-else>
+            <div class="dt-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>图种</th>
+                    <th>域</th>
+                    <th>说明</th>
+                    <th style="width:80px"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(g, idx) in pagedGaps" :key="`${g.diagram_kind}-${g.domain_id}-${idx}`">
+                    <td>{{ kindLabel(g.diagram_kind) }}</td>
+                    <td class="muted">{{ domainLabel(g.domain_id) }}</td>
+                    <td>{{ g.reason }}</td>
+                    <td>
+                      <n-button size="small" quaternary @click="fillFromGap(g)">补</n-button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-if="gaps.length > 0" class="pager-row">
+              <span class="small muted">共 {{ gaps.length }} 条</span>
+              <n-pagination
+                v-model:page="gapPage"
+                v-model:page-size="gapPageSize"
+                :item-count="gaps.length"
+                :page-sizes="[10, 20, 50]"
+                show-size-picker
+                size="small"
+                @update:page-size="gapPage = 1"
+              />
+            </div>
+          </template>
         </div>
       </div>
     </template>
 
-    <n-drawer v-model:show="drawerOpen" :width="420" placement="right">
+    <n-drawer v-model:show="drawerOpen" :width="420" placement="right" @after-leave="onDrawerLeave">
       <n-drawer-content :title="editingId ? '改图题' : '登记图题'" closable>
-        <n-form-item label="图种" :show-feedback="false">
-          <n-select
-            v-model:value="form.diagram_kind"
-            size="small"
-            :disabled="!!editingId"
-            :options="kindOptions"
-          />
-        </n-form-item>
-        <n-form-item label="域" :show-feedback="false">
-          <n-select
-            v-model:value="form.domain_id"
-            size="small"
-            filterable
-            :disabled="!!editingId"
-            :options="domainOptions"
-          />
-        </n-form-item>
-        <n-form-item label="标题模板" :show-feedback="false">
-          <n-input
-            v-model:value="form.title_tpl"
-            size="small"
-            :maxlength="128"
-            show-count
-            placeholder="如 {name}类图"
-          />
-        </n-form-item>
-        <n-form-item label="排序" :show-feedback="false">
-          <n-input-number v-model:value="form.sort" size="small" :min="0" style="width:100%" />
-        </n-form-item>
-        <p class="small muted">占位符 name（花括号包裹）= 系统名或功能名；具名域覆盖 *。</p>
-        <div class="row" style="gap:8px;justify-content:flex-end;margin-top:12px">
-          <n-button size="small" @click="drawerOpen = false">取消</n-button>
-          <n-button size="small" type="primary" :loading="saving" @click="save">保存</n-button>
+        <div class="dt-drawer-form">
+          <n-form-item label="图种" :show-feedback="false">
+            <n-select
+              v-model:value="form.diagram_kind"
+              size="small"
+              :disabled="identityLocked"
+              :options="kindOptions"
+            />
+          </n-form-item>
+          <n-form-item label="域" :show-feedback="false">
+            <n-select
+              v-model:value="form.domain_id"
+              size="small"
+              filterable
+              :disabled="identityLocked"
+              :options="domainOptions"
+              :consistent-menu-width="false"
+              :menu-props="{ style: { minWidth: '320px' } }"
+            />
+          </n-form-item>
+          <n-form-item label="标题模板" :show-feedback="false">
+            <n-input
+              v-model:value="form.title_tpl"
+              size="small"
+              :maxlength="128"
+              show-count
+              placeholder="如 {name}类图"
+            />
+          </n-form-item>
+          <n-form-item label="排序" :show-feedback="false">
+            <n-input-number v-model:value="form.sort" size="small" :min="0" style="width:100%" />
+          </n-form-item>
+          <p class="small muted">{{ formHint }}</p>
+          <div class="row" style="gap:8px;justify-content:flex-end;margin-top:12px">
+            <n-button size="small" @click="closeDrawer">退出编辑</n-button>
+            <n-button size="small" type="primary" :loading="saving" @click="save">保存</n-button>
+          </div>
         </div>
       </n-drawer-content>
     </n-drawer>
@@ -188,16 +238,21 @@ const gapLoading = ref(false)
 const saving = ref(false)
 const deletingId = ref(0)
 const editingId = ref(0)
+const fromGap = ref(false)
 const drawerOpen = ref(false)
 const mainTab = ref('entries')
 const items = ref([])
 const total = ref(0)
+const page = ref(1)
+const pageSize = ref(20)
 const kind = ref(null)
 const domain = ref(null)
 const q = ref('')
 const gaps = ref([])
 const gapCount = ref(0)
 const gapsScanned = ref(false)
+const gapPage = ref(1)
+const gapPageSize = ref(20)
 
 const meta = reactive({ domains: [], kind_options: [] })
 const form = reactive({
@@ -205,6 +260,17 @@ const form = reactive({
   domain_id: '*',
   title_tpl: '',
   sort: 0,
+})
+
+const identityLocked = computed(() => !!editingId.value || fromGap.value)
+
+const formHint = computed(() => {
+  if (identityLocked.value) {
+    return editingId.value
+      ? '图种与域已锁定，可改标题模板与排序。更换请删除后重新登记。'
+      : '待补项标识已锁定，请补全标题模板后保存。'
+  }
+  return '占位符 name（花括号包裹）= 系统名或功能名；具名域覆盖跨域壳默认。'
 })
 
 const kindOptions = computed(() =>
@@ -227,6 +293,16 @@ const domainOptions = computed(() =>
   })),
 )
 
+const pagedItems = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return items.value.slice(start, start + pageSize.value)
+})
+
+const pagedGaps = computed(() => {
+  const start = (gapPage.value - 1) * gapPageSize.value
+  return gaps.value.slice(start, start + gapPageSize.value)
+})
+
 function kindLabel(k) {
   const hit = kindOptions.value.find((o) => o.value === k)
   return hit ? hit.label : k
@@ -238,6 +314,36 @@ function domainLabel(id) {
   return hit ? hit.name || id : id
 }
 
+function onTab(tab) {
+  if (tab === 'gaps' && !gapsScanned.value) scanGaps()
+}
+
+function onPageSize() {
+  page.value = 1
+}
+
+function reloadFromTop() {
+  page.value = 1
+  reload()
+}
+
+function resetForm() {
+  form.diagram_kind = 'class'
+  form.domain_id = '*'
+  form.title_tpl = ''
+  form.sort = 0
+  editingId.value = 0
+  fromGap.value = false
+}
+
+function closeDrawer() {
+  drawerOpen.value = false
+}
+
+function onDrawerLeave() {
+  resetForm()
+}
+
 async function loadMeta() {
   const res = await api.diagramTitlesMeta()
   meta.domains = res.domains || []
@@ -245,13 +351,19 @@ async function loadMeta() {
 }
 
 async function reload() {
-  const params = {}
-  if (kind.value) params.diagram_kind = kind.value
-  if (domain.value != null) params.domain_id = domain.value
-  if (q.value) params.q = q.value
-  const res = await api.diagramTitles(params)
-  items.value = res.items || []
-  total.value = res.total || 0
+  try {
+    const params = {}
+    if (kind.value) params.diagram_kind = kind.value
+    if (domain.value != null) params.domain_id = domain.value
+    if (q.value) params.q = q.value
+    const res = await api.diagramTitles(params)
+    items.value = res.items || []
+    total.value = res.total ?? items.value.length
+    const maxPage = Math.max(1, Math.ceil((total.value || 0) / pageSize.value) || 1)
+    if (page.value > maxPage) page.value = maxPage
+  } catch (e) {
+    message.error(e?.message || '加载失败')
+  }
 }
 
 async function scanGaps() {
@@ -259,9 +371,12 @@ async function scanGaps() {
   try {
     const res = await api.diagramTitlesGaps()
     gaps.value = res.gaps || []
-    gapCount.value = res.gap_count || 0
+    gapCount.value = res.gap_count ?? gaps.value.length
     gapsScanned.value = true
+    gapPage.value = 1
     mainTab.value = 'gaps'
+    if (gapCount.value) message.info(`待补 ${gapCount.value} 条`)
+    else message.success('没有待补项')
   } catch (e) {
     message.error(e?.message || '检查失败')
   } finally {
@@ -273,8 +388,11 @@ async function migrate() {
   migrating.value = true
   try {
     const res = await api.diagramTitlesMigrate()
-    message.success(`已补 ${res.inserted || 0} 条，合计 ${res.total || 0}`)
+    const n = res.inserted ?? 0
+    message.success(n > 0 ? `已补 ${n} 条，合计 ${res.total || 0}` : '没有缺项可追加')
+    page.value = 1
     await reload()
+    mainTab.value = 'entries'
   } catch (e) {
     message.error(e?.message || '导入失败')
   } finally {
@@ -283,15 +401,13 @@ async function migrate() {
 }
 
 function openCreate() {
-  editingId.value = 0
-  form.diagram_kind = 'class'
-  form.domain_id = '*'
+  resetForm()
   form.title_tpl = '{name}类图'
-  form.sort = 0
   drawerOpen.value = true
 }
 
 function editRow(row) {
+  fromGap.value = false
   editingId.value = row.id
   form.diagram_kind = row.diagram_kind
   form.domain_id = row.domain_id
@@ -302,6 +418,7 @@ function editRow(row) {
 
 function fillFromGap(g) {
   editingId.value = 0
+  fromGap.value = true
   form.diagram_kind = g.diagram_kind
   form.domain_id = g.domain_id || '*'
   form.title_tpl = `{name}${kindLabel(g.diagram_kind)}`
@@ -324,9 +441,15 @@ async function save() {
       sort: form.sort || 0,
       source: 'manual',
     })
-    message.success('已保存')
+    message.success(editingId.value ? '已保存修改' : '已保存')
     drawerOpen.value = false
+    resetForm()
     await reload()
+    if (gapsScanned.value) {
+      const gapRes = await api.diagramTitlesGaps()
+      gaps.value = gapRes.gaps || []
+      gapCount.value = gapRes.gap_count ?? gaps.value.length
+    }
   } catch (e) {
     message.error(e?.response?.data?.detail || e?.message || '保存失败')
   } finally {
@@ -335,12 +458,16 @@ async function save() {
 }
 
 async function remove(row) {
-  const ok = await confirm({ title: '删除模板', content: `删除「${row.title_tpl}」？` })
+  const ok = await confirm(`删除「${row.title_tpl}」？`, {
+    title: '删除图题',
+    positiveText: '删除',
+  })
   if (!ok) return
   deletingId.value = row.id
   try {
     await api.diagramTitlesDelete(row.id)
     message.success('已删除')
+    if (editingId.value === row.id) closeDrawer()
     await reload()
   } catch (e) {
     message.error(e?.message || '删除失败')
@@ -360,3 +487,52 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.dt-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 380px);
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line, var(--line-soft));
+  vertical-align: middle;
+  color: var(--ink-2, var(--ink));
+}
+.data-table th {
+  color: var(--muted);
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+.data-table tr.is-editing {
+  background: color-mix(in srgb, var(--teal-soft, #2a9d8f) 22%, transparent);
+}
+.bad {
+  color: var(--error, #c00);
+}
+.pager-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.dt-filter-row {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dt-drawer-form :deep(.n-form-item) {
+  margin-bottom: 10px;
+}
+</style>
