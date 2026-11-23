@@ -28,7 +28,7 @@
 | 优先 | 项 | 口令 / 入口 | 现状 |
 |------|----|-------------|------|
 | 1 | **词表待补消缺** | `做词表建议稿` | **已齐**（建议字段+一键填+草稿；`test_zh_lexicon` 14） |
-| 2 | **资产台落地** | `做资产台 #11`（论文图题）；真源 [`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md)；parked **q** | **A+B+C+#4+#5+#7+#8+#9 已齐**；波次 D 余 `#11` |
+| 2 | **资产台落地** | parked **q**；真源 [`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md) | **波次 A+B+C+D 已齐**（含 #11 论文图题 · 2026-11-23）；无余口令 |
 | 3 | **D1 论文图几何** | parked **m**；模块/序列/活动厂内排版仍债 | 导出/rubric 已齐 ≠ 初开可读 |
 | 4 | **旧题 canary** | `test_audit_group_canaries` ACTIVITY/CLUB | **已修**（2026-11-19）：题名裸「社团」不再改 CLUB |
 | 5 | **AOCI 收尾** | 本批新路径（含 `status_copy` / `dict_values` / 侧栏页 / 词表建议等）→ scope acknowledge → `aoci_maintain` | 推送后做；MCP 挂则停手重启 |
@@ -36,12 +36,71 @@
 **本批提交主题**（2026-11-16 拆推）：文案口径 → 资产台册 → 词表+Stripe+主题色 → 论文图材料 → 等待态 I2 → 手调/对账 UX → 本交接。轨迹以 `git log` 为准。  
 **勿提交**：根目录学生 `.docx`、`er-*.drawio` 草稿、`backend/` 下短随机名临时文件。
 
+### 本会话（2026-11-23）· 潮汐质检红 + 诊断编排 D0 ✅
+
+- **站队**：**修工厂**（潮汐仅探针）+ 诊断编排**只立文档**。
+- **红因**：`p3q` 管理员场次导语串主办方；`p3lean` 详情 `contentOn`/`aid-content` + `theme_missing:cinema-teal`；外加工程已变更。
+- **已齐**：演艺皮角色导语分键 + 详情裁剪 + cinema-teal 测；诊断编排 **D0+D1**（第 6 步短卡 `deliveryDiagnosis.js` / `DeliveryReviewPane`；深浅色吃 `--banner-*`/`--surface`/`--teal`；样稿可切深色）。
+- **测**：`test_delivery_diagnosis_contract` + workbench/cinema/pack_prune/qa 相关绿。
+- **用法**：潮汐重 bake 或验收 heal → 验收重打包；控制台第 6 步看新诊断卡。
+- **余**：`做诊断编排 D2`（生成页轻条 + A 档）。
+
+### 本会话（2026-11-23）· 编号合同方向册（待定）✅
+
+- **站队**：**修工厂**（只立文档，无签发/行为变更）。
+- **已齐**：[`docs/id-scheme-contract.md`](./docs/id-scheme-contract.md) 三层合同（A 行键 / B 工厂业务键 / C 学生可见号）；parked **v**；`docs/README` 索引。
+- **裁定**：要整理、禁一种格式打天下；开工优先 C 层共享签发；B 只文档化不大迁 `gf-*`/`DOM-*`。
+- **未动**：基线/overlays 签发代码、门禁、迁移旧单号。
+- **口令**：`做编号合同`（明示开工才改代码）。
+
 ### 本会话（2026-11-21）· 架构文档刷新 ✅
 
 - **站队**：**修工厂**（文档对齐现状，无代码行为变更）。
 - **已齐**：[`ARCHITECTURE.md`](./ARCHITECTURE.md) + [`architecture.html`](./architecture.html) 同步开工台/资产台侧栏、`system_*` 聚合、`factory_*`、类图 model/layout/svg、layout/form_controls 工作区闸、`Job.gate_report`。
 - **§6 再修**：补 `project_overrides` / `error_code`；ZIP 改为 `<id>-<slug>.zip`；overlays 真目录名；`samples/` + cache 分桶；ER 图补齐全部 `factory_*` 资产台表（键列）。
 - **未动**：六步 Job / 门禁键列表本身仍准，未改 bake。
+
+### 本会话（2026-11-23）· 词表皮维贯通 COMMENT/出图 ✅
+
+- **站队**：**修工厂**（一列多名进 `factory_zh_lexicon` domain×skin；学生只见汉字）。
+- **已齐**：种子 `DOM-CINEMA`×`performance`（`hall_note`/`owner_username`）；`lexicon_skin_for_bake` + `column_zh_map`；bake COMMENT 带 skin；E-R 出图跟词表；侧栏下拉露出 performance；labels 名词仅皮行未迁入时兜底。
+- **测**：`test_zh_lexicon` + er/sequence/modules 相关绿。
+- **用法**：重启后端走 `migrate_seed_if_empty` 追加皮行；重 bake / 强刷论文图。
+
+### 本会话（2026-11-23）· 论文图内容校准（共享机制，潮汐仅探针）✅
+
+- **站队**：**修工厂**（多图内容漂移；禁止只擦包/绑题名）。
+- **已齐**：身份枚举勿吞「××后台」；概念图按菜单无 addresses 藏地址；序列按 `userHomePath` primary；E-R 列中文已并入上条词表皮维。
+- **用法**：强刷 diagram_cache；架构仍诚实无 Redis（parked s）。
+
+### 本会话（2026-11-23）· 资产台 #11 论文图题 ✅
+
+- **站队**：**修工厂**（`diagram_kind × domain` → 图题；几何仍 **m**）。
+- **已齐**：`factory_diagram_title` + 种子（含 modules）+ API/侧栏「论文图题」+ bake `diagramTitleTemplates`；类图/序列/活动/架构/模块出图读模板；`test_diagram_titles`。
+- **台账**：parked **q** 波次 D 收口。
+- **用法**：侧栏导入种子 → 可改具名域模板 → 重 bake 看图题。
+
+### 本会话（2026-11-23）· 终稿吸收切块按行号 + 裸题注 v45 ✅
+
+- **站队**：**修工厂**（力固：下一题注按表号序指回更早行 → 评论表空切；`所\s*示` 折行丢表号；裸 `4.n` 缺「表」）。
+- **口径**：引导词不对不挡；**下文仍像字段表**才收裸题注。
+- **已齐**：`EXTRACTOR_VERSION=45`；`_next_caption_line_index`；裸题注 + `_field_table_ahead`；力固 PDF **18/18**、`discussnongchanpin` 进 SQL。
+- **测**：`test_thesis_absorb*` **77 绿**。
+- **用法**：重启升版重抽力固/小羽。
+
+### 本会话（2026-11-23）· 终稿吸收 goods/good 假漏挖 v44 ✅
+
+- **站队**：**修工厂**（同 PDF 同写法：枚举 `goods`、正式题注截成 `good` → 双题注空块假黄；不是图）。
+- **已齐**：`EXTRACTOR_VERSION=44`；同表号/同中文 + 英文近形并一张，留更长名；小羽 PDF 回归无「座位表未切列」。
+- **测**：`test_thesis_absorb*` **75 绿**。
+- **用法**：重启升版重抽小羽。
+
+### 本会话（2026-11-23）· 终稿吸收库表↔模块对账 v43 ✅
+
+- **站队**：**修工厂**（挖 SQL 不孤岛：表/实体/模块确定性挂名；禁止 LLM 猜对应、禁止对不上就删）。
+- **已齐**：`EXTRACTOR_VERSION=43`；`table_module_cross_warnings` / `apply_table_module_cross_check`；同步抽取 + schema `table_labels` + LLM 定稿后重算；告警「表有模块无 / 模块有表无」。
+- **测**：`test_thesis_absorb` + `test_thesis_absorb_schema` **74 绿**。
+- **用法**：重启升版重抽；黄条只提示对不上，不改三栏/不改 DDL。
 
 ### 本会话（2026-11-23）· 终稿吸收库表形态加固 v42 ✅
 
