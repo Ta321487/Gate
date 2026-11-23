@@ -23,17 +23,17 @@ flowchart TB
     end
 
     subgraph L2["② 运营前端 frontend/ · :5300 · Vue 3 + Naive UI + Vite"]
-        FE_VIEW["views/ 项目 · 详情 · 任务 · 大模型 · Unsplash · 运行环境 · 帮助"]
+        FE_VIEW["views/ 开工台 · 项目 · 任务 · 失败分析 · 资产台侧栏 · 大模型 · Unsplash · 运行环境 · 帮助"]
         FE_DETAIL["views/projectDetail/ · 匹配 / 生成 / 产物 / 运行 / 日志"]
         FE_API["api.js（axios baseURL=/api）+ SSE 进度订阅"]
     end
 
     subgraph L3["③ 运营后端 backend/ · :8000 · FastAPI"]
         API_PROJ["api/projects/ · 上传分堆 · 匹配 · 生成 · 下载 · 运行"]
-        API_JOBS["api/jobs · 任务队列 · 取消 / 重试"]
-        API_SYS["api/system* · 大模型 / 用量 / 环境 / 端口"]
+        API_JOBS["api/jobs · 任务队列 · 取消 / 重试 · 失败分析"]
+        API_SYS["api/system* · 大模型 / 用量 / 环境 · 资产台 CRUD"]
         API_PPT["api/defense_ppt · 答辩 PPT"]
-        SVC["services/ · 编排层<br/>projects · jobs · runtime · delivery_review · proposal"]
+        SVC["services/ · 编排层<br/>projects · jobs · runtime · delivery_review · proposal · 资产台 · bake_fail_*"]
     end
 
     subgraph L4["④ 生成核心 backend/app/bake · 确定性 bake"]
@@ -41,10 +41,10 @@ flowchart TB
         BAKE_SQL["sql/ · DOM-*.sql 模板 + compose 拼 GENERIC"]
         BAKE_FEAT["features/ · 能力扫词 / 菜单 / ensure_*"]
         BAKE_PRUNE["pack_prune.py · 出包前剪未挂岛"]
-        BAKE_SCH["schema/ · 壳 / ER / 模块 / 用例 / 测试用例"]
+        BAKE_SCH["schema/ · 壳 / ER / 模块 / 用例 / 类图 model·layout·svg"]
         BAKE_EXPORT["schema/diagram_* · 论文图三档导出<br/>SVG / Mermaid / Draw.io + rubric 闸"]
         BAKE_SWATCH["shell_color_swatches.py · 壳色色点池（静态资产）"]
-        BAKE_GATE["gates/ · 门禁 p0a…p3controls + overall"]
+        BAKE_GATE["gates/ · p0a…p3controls + layout/form_controls 工作区闸"]
         SCENE["scene_scan.py · 场景身份唯一真源"]
     end
 
@@ -198,15 +198,17 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TB
-    MAIN["main.js<br/>createApp + naive 全量安装 + initTheme + 全局 errorHandler → /error/500"] --> APP["App.vue · 唯一布局壳<br/>侧栏（工作区 / 系统两组）+ 面包屑 + 暗色切换 + router-view"]
+    MAIN["main.js<br/>createApp + naive 全量安装 + initTheme + 全局 errorHandler → /error/500"] --> APP["App.vue · 唯一布局壳<br/>侧栏（工作台 / 运行与连接 / 资产台）+ 面包屑 + 主题色点 + 暗色切换 + router-view"]
     APP --> RT["router.js（createWebHistory）"]
 
-    RT --> V1["/ 项目 Projects.vue"]
+    RT --> V0["/ 开工台 OpsHome.vue"]
+    RT --> V1["/projects 项目 Projects.vue"]
     RT --> V2["/projects/:id 详情 ProjectDetail.vue"]
-    RT --> V3["/jobs 任务队列 Jobs.vue"]
-    RT --> V4["/llm 大模型 Llm.vue（/deepseek /gemini 重定向到此）"]
-    RT --> V5["/unsplash · /system · /help"]
-    RT --> V6["/error/500 · 404 兜底 ErrorPage.vue"]
+    RT --> V3["/jobs 任务队列 · /fail-analysis 失败分析"]
+    RT --> V4["/llm 大模型（/deepseek /gemini 重定向）"]
+    RT --> V5["资产台：词表 / 状态话术 / 字典 / 剧本 / 开关建议 / 能力说明 / 错误码 / 控件语义 / 菜单矩阵 / 规则参数 / 表关系叙事 / 测试账号"]
+    RT --> V6["/unsplash · /system · /help"]
+    RT --> V7["/error/500 · 404 兜底 ErrorPage.vue"]
 
     V2 --> PD["views/projectDetail/<br/>useProjectDetail() 统一下发上下文（provide PD_KEY）"]
     PD --> T1["MatchTab 骨架 × 领域 × 身份场景"]
@@ -218,10 +220,12 @@ flowchart TB
     T5 --> DX["论文图导出：SVG / Mermaid(.mmd) / Draw.io(.drawio)<br/>导出前过 rubric 闸"]
     T2 --> PPM["components/defensePpt/ + ppt/<br/>答辩 PPT 面板与页预览"]
 
-    V1 --> API["api.js · axios baseURL='/api'<br/>timeout 60s（重操作 600s / 轮询 8s 静默）"]
+    V0 --> API["api.js · axios baseURL='/api'<br/>timeout 60s（重操作 600s / 轮询 8s 静默）"]
+    V1 --> API
     V2 --> API
     V3 --> API
     V4 --> API
+    V5 --> API
 ```
 
 **前端约定（读代码可确认）**
@@ -231,7 +235,8 @@ flowchart TB
 | 技术栈 | Vue `^3.5.39` + vue-router `^4.6.4` + Naive UI `^2.44.1` + axios `^1.18.1` + jszip；Vite `^5.4.11` |
 | **没有**的东西 | 无 Pinia / Vuex、无 TypeScript、无 ESLint 配置、无 `playwright.config.*`（装了没接线） |
 | 状态管理 | 不用 store：`ProjectDetail.vue` 是薄壳，全部逻辑在 `views/projectDetail/useProjectDetail.js`，用 `provide(PD_KEY, …)` + `bindPd()` 下发给各标签页；各 Tab 不直接调 `api.*` |
-| 壳的职责 | `App.vue` 同时是布局与导航（无单独 layout 组件）：侧栏「项目 / 任务队列 / 帮助文档」+「大模型 / Unsplash / 运行环境」，面包屑由 `route.meta.crumb` 推导 |
+| 壳的职责 | `App.vue` 同时是布局与导航（无单独 layout 组件）：侧栏**工作台** · **运行与连接**（大模型 / Unsplash / 运行环境）· **资产台**（词表等 `factory_*` 维护页）；顶栏主题色点 + 日夜间；面包屑由 `route.meta.crumb` 推导 |
+| 资产台 | 工厂可维护结构化资产（词表 COMMENT、状态话术、字典选项等），bake 注入学生包；真源见 [`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md) |
 | 错误处理 | axios 响应拦截器统一 `message.error`；`silent: true` 用于轮询不刷屏；未捕获异常经 `app.config.errorHandler` 跳 `/error/500` |
 
 **实时性机制（两条通道，都不是 WebSocket）**
@@ -257,19 +262,20 @@ flowchart TB
 ```mermaid
 flowchart TB
     subgraph API["app/api · HTTP 边界（只做校验 / 编排调用）"]
-        A1["projects/：common · crud · schema · runtime · delivery_review"]
-        A2["jobs · system_router → deepseek / gemini / usage / info / tools / unsplash"]
+        A1["projects/：common · crud · schema · runtime · delivery_review · overrides"]
+        A2["jobs · system.py 聚合 system_*（大模型 / 用量 / 环境 / 资产台）"]
         A3["defense_ppt"]
     end
 
     subgraph SERVICES["app/services · 业务编排（无 HTTP 依赖）"]
         SV1["projects 门面 → project_match / project_delivery / project_disk / project_projection"]
-        SV2["jobs 任务执行器"]
+        SV2["jobs 任务执行器 · gate_report · bake_fail_*"]
         SV3["runtime + runtime_reconcile（进程与投影）"]
         SV4["delivery_review（复审 / 验圈 / 合卷）"]
         SV5["proposal · proposal_match · proposal_diff · upload_cluster"]
         SV6["student_db · student_copy · student_api_smoke"]
         SV7["defense_ppt/（planner · job_runner · export_pptx · figures · screenshots）"]
+        SV8["资产台：zh_lexicon · status_copy · dict_values · … · demo_accounts"]
     end
 
     subgraph CORE["app/core"]
@@ -281,14 +287,14 @@ flowchart TB
     subgraph BAKE["app/bake · 纯函数为主，便于单测"]
         B1["engine*.py 入口（sql / bake / resources / islands 分册）"]
         B2["domains_catalog/ + domain_registry + domain_entities"]
-        B3["schema/ · shells · builders_* · er_* · modules · usecases · testcases"]
+        B3["schema/ · shells · er_* · class_model/layout/svg · modules · usecases · diagram_*"]
         B4["sql/templates + compose + ddl_edit"]
-        B5["gates/ · evaluate · semantic · schema_nf · feature_keywords"]
+        B5["gates/ · evaluate · semantic · schema_nf · layout/form_controls_workspace"]
         B6["features/ · 能力正文：扫词 / 菜单 / ensure_*"]
         B7["pack_prune.py · 出包前按挂载剪未用岛"]
     end
 
-    MODELS["app/models · Project / Job / LlmCall / SettingRow"]
+    MODELS["app/models · Project / Job / LlmCall / SettingRow + factory_* 资产表"]
     SCHEMAS["app/schemas · Pydantic 出入参"]
 
     API --> SERVICES
@@ -303,20 +309,38 @@ flowchart TB
 **分层纪律（从代码注释可读出的约定）**
 
 - `api/` 只做 HTTP；业务写进 `services/`；`services/projects.py` 是**门面**，正文按职责拆到 `project_match` / `project_delivery` / `project_disk` / `project_projection`，新逻辑不再往门面堆。
+- `api/system.py` 只聚合：大模型 / 用量 / 环境走 `system_deepseek` 等；资产台各页走同级 `system_zh_lexicon` / `system_dict_values` / …（导入副作用挂到共享 `system_router`）。
 - `bake/` 尽量保持确定性、可单测；LLM 相关一律在 `llm/`。能力岛正文落在 `bake/features/<cap>.py`（扫词、菜单、`ensure_*` SQL），`sql/fragments.py` 只按开关调用。
+- 论文类图：`class_model.py` 从 SQL + Java 组装模型；布局/折线 `class_layout`；出图 `class_svg`（零交叉拆分，禁止臆造类）。
 - 域目录：**A～F 具名 → G 真交叉 → H 兜底**（见 [`docs/domains.md`](./docs/domains.md)）；匹配落到 `DOM-*`，兜底才是 `DOM-GENERIC`。
 - 挂载/对齐：**A 壳底 / B 扫词开 / C 能力加深** 三档全族已齐；双向门禁见 [`docs/opening-align-gate.md`](./docs/opening-align-gate.md) 与各组 `*_ALIGN_RULES`。
-- 表结构演进用 `create_all` + `_migrate_project_columns`（幂等 ALTER），没有 Alembic。
-- 启动生命周期（`main.py lifespan`）：`init_db()` → 回灌 DeepSeek 预算/模型设置 → `fail_orphaned_jobs()` → 启动后台对账 `start_runtime_reconcile()`，关闭时 `stop_runtime_reconcile()`。
+- 表结构演进用 `create_all` + `_migrate_project_columns`（幂等 ALTER），没有 Alembic；资产台表同走 `create_all`，lifespan 只**追加**缺主键种子，禁止覆盖已有行。
+- 启动生命周期（`main.py lifespan`）：`init_db()` → 回灌 DeepSeek 预算/模型设置 → 资产台种子补缺 → `fail_orphaned_jobs()` → 启动后台对账 `start_runtime_reconcile()`，关闭时 `stop_runtime_reconcile()`。
 
 ---
 
 ## 6. 数据模型与磁盘布局
 
+工厂元库两类表：（1）运营主表 `projects` / `jobs` / `llm_calls` / `settings` + `project_overrides`（1:1 绑项目）；（2）资产台 **`factory_*`**——**库内无 FK**，逻辑上按 `domain` / 业务键与选题对齐，bake 时注入学生包（图上用虚意关联标「无FK·bake」）。图内资产台列只列主键与业务键；全列见 `app/models/__init__.py`。
+
 ```mermaid
 erDiagram
     PROJECT ||--o{ JOB : "project_id"
     PROJECT ||--o{ LLM_CALL : "project_id"
+    PROJECT ||--o| PROJECT_OVERRIDES : "project_id"
+    PROJECT }o--o{ FACTORY_ZH_LEXICON : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_STATUS_COPY : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_DICT_VALUES : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_DEMO_SCRIPT : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_ADDON_SUGGEST : "无FK·开题扫词·bake"
+    PROJECT }o--o{ FACTORY_CAP_CARD : "无FK·能力键·bake"
+    PROJECT }o--o{ FACTORY_ERROR_COPY : "无FK·错误码·bake"
+    PROJECT }o--o{ FACTORY_WIDGET_HINT : "无FK·控件语义·bake"
+    PROJECT }o--o{ FACTORY_MENU_MATRIX : "无FK·domain×角色·bake"
+    PROJECT }o--o{ FACTORY_RULE_PARAM : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_ER_EDGE_COPY : "无FK·表边·bake"
+    PROJECT }o--o{ FACTORY_DEMO_ACCOUNT : "无FK·domain×角色·bake"
+    PROJECT }o--o{ FACTORY_DIAGRAM_TITLE : "无FK·图种×domain·bake"
 
     PROJECT {
         string id PK
@@ -327,7 +351,10 @@ erDiagram
         string persistence "jdbc/mybatis/jpa"
         bool spring_security
         bool ai_assistant
+        string theme
+        string password_hash
         bool match_locked
+        string db_name
         json spec
         json gates
         json checklist
@@ -341,6 +368,11 @@ erDiagram
         bool backend_running
         bool frontend_running
     }
+    PROJECT_OVERRIDES {
+        string project_id PK
+        int version
+        json payload
+    }
     JOB {
         int id PK
         string project_id FK
@@ -350,34 +382,142 @@ erDiagram
         int progress
         json steps
         json units
+        json gate_report
+        string error_code
         text error
     }
     LLM_CALL {
         int id PK
-        string project_id FK
+        string project_id FK "可空"
         string stage
         int tokens
         bool ok
+        text detail
     }
     SETTING_ROW {
         string key PK
         json value
     }
+
+    FACTORY_ZH_LEXICON {
+        int id PK
+        string kind
+        string key_name
+        string zh
+        string domain
+        string skin
+        string table_name
+        string source
+    }
+    FACTORY_STATUS_COPY {
+        int id PK
+        string domain_id
+        string machine_id
+        string status_code
+        string label_zh
+        string source
+    }
+    FACTORY_DICT_VALUES {
+        int id PK
+        string domain_id
+        string skin_id
+        string dict_key
+        string value_code
+        string label_zh
+        string source
+    }
+    FACTORY_DEMO_SCRIPT {
+        int id PK
+        string domain_id
+        string skin_id
+        string script_id
+        int step_no
+        string role
+        string title_zh
+        string source
+    }
+    FACTORY_ADDON_SUGGEST {
+        int id PK
+        string addon_id
+        string hint
+        bool recommend
+        string source
+    }
+    FACTORY_CAP_CARD {
+        int id PK
+        string cap_id
+        string title_zh
+        string source
+    }
+    FACTORY_ERROR_COPY {
+        int id PK
+        string error_code
+        string message_zh
+        string source
+    }
+    FACTORY_WIDGET_HINT {
+        int id PK
+        string rule_key
+        string widget
+        string source
+    }
+    FACTORY_MENU_MATRIX {
+        int id PK
+        string domain_id
+        string role
+        string menu_id
+        string source
+    }
+    FACTORY_RULE_PARAM {
+        int id PK
+        string domain_id
+        string rule_id
+        float value_num
+        string source
+    }
+    FACTORY_ER_EDGE_COPY {
+        int id PK
+        string table_a
+        string table_b
+        string sentence_zh
+        string source
+    }
+    FACTORY_DEMO_ACCOUNT {
+        int id PK
+        string domain_id
+        string role
+        string username
+        string source
+    }
+    FACTORY_DIAGRAM_TITLE {
+        int id PK
+        string diagram_kind
+        string domain_id
+        string title_tpl
+        string source
+    }
 ```
 
 ```
 data/
-  factory.db           工厂元库（默认 SQLite；也可指本机 MySQL）
-  uploads/             上传材料落盘
-  workspace/<id>/      每题学生工程工作区（backend / frontend / sql / spec.json）
-  workspace/<id>.zip   门禁通过后的交付包
-  logs/<id>/           job.log · backend.log · frontend.log · deepseek.log
-  cache/baseline-frontend/  共享 node_modules（目录联结复用到每题，避免每题重装）
+  factory.db                 工厂元库（默认 SQLite；也可指本机 MySQL）
+  uploads/                   上传材料落盘
+  samples/                   样例开题 / 试传素材（运营试用，非每题工作区）
+  workspace/<id>/            每题学生工程（backend / frontend / sql / spec.json）
+  workspace/<id>-<slug>.zip  门禁通过后的交付包（zip_storage_name，非裸 <id>.zip）
+  logs/<id>/                 job.log · backend.log · frontend.log 等
+  cache/
+    baseline-frontend/       共享 node_modules（目录联结到每题前端）
+    npm-cache/ · portal-banners/ · local-atmosphere/ · auth-heroes/  …
 
 data/workspace/<id>/.factory/   工厂内部产物：bake_in_progress 锁、defense-ppt 旁路树（不进 ZIP）
 skeletons/
-  baseline/            学生工程骨架（jdbc 默认）
-  overlays/            mybatis / jpa / spring-security 叠加层
+  baseline/                  学生工程骨架（jdbc 默认）
+  overlays/
+    persistence-mybatis/       MyBatis 叠加
+    persistence-jpa/         JPA 叠加
+    addon-spring-security/   Security 叠加（开题点名才叠）
+    addon-redis/             Redis 会话等叠加（按需）
 ```
 
 ---
@@ -461,7 +601,7 @@ flowchart TB
 - 骨架**不含** `node_modules` / `target` / `dist`：`bake_project` 的 `copytree(ignore=…)` 明确跳过，前端依赖由预览子系统按共享缓存挂载，Maven `target` 由编译再生。
 - 持久层由 `bake/persistence.py` 决定：默认 `jdbc`（JdbcTemplate），开题点名时切 `mybatis` / `jpa`，并按需叠 `addon-spring-security`。
 - 场景身份（校园 / 企业 / 社区）由 `bake/scene_scan.py` 的 `scene_for(domain, title, proposal)` 统一决定，壳文案与注册资料页必须读同一 scene——**禁止改开题迁就模板**。
-- 论文图与壳色：`bake/schema/diagram_export.py` 三档同源导出（SVG / Mermaid / Draw.io，同一 model），导出前过 `diagram_rubric` 闸（红禁导出，见 [`docs/thesis-diagram-export.md`](./docs/thesis-diagram-export.md)）；壳色来自 `bake/shell_color_swatches.py` 色点池，人可有限自配 brand + accent，禁止运行时 LLM 现吐 hex（见 [`docs/shell-color-swatch-pool.md`](./docs/shell-color-swatch-pool.md)）。
+- 论文图与壳色：`bake/schema/diagram_export.py` 三档同源导出（SVG / Mermaid / Draw.io，同一 model），导出前过 `diagram_rubric` 闸（红禁导出，见 [`docs/thesis-diagram-export.md`](./docs/thesis-diagram-export.md)）。类图真源拆为 `class_model`（SQL+Java 组装）→ `class_layout`（零交叉排版）→ `class_svg`；模块图等仍走各自 builder。壳色来自 `bake/shell_color_swatches.py` 色点池，人可有限自配 brand + accent，禁止运行时 LLM 现吐 hex（见 [`docs/shell-color-swatch-pool.md`](./docs/shell-color-swatch-pool.md)）。
 
 ---
 

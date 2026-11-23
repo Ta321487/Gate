@@ -158,26 +158,26 @@ flowchart TB
         STU["学生（拿到 ZIP 后自己跑）"]
     end
     subgraph L2["② 运营前端 frontend/ :5300 Vue 3 + Naive UI + Vite"]
-        FE_VIEW["views/ 项目 详情 任务 大模型 Unsplash 运行环境 帮助"]
+        FE_VIEW["views/ 开工台 · 项目 · 任务 · 失败分析 · 资产台侧栏 · 大模型 · Unsplash · 运行环境 · 帮助"]
         FE_DETAIL["views/projectDetail/ 匹配 生成 产物 运行 日志"]
         FE_API["api.js axios baseURL=/api + SSE 进度订阅"]
     end
     subgraph L3["③ 运营后端 backend/ :8000 FastAPI"]
         API_PROJ["api/projects/ 上传分堆 匹配 生成 下载 运行"]
-        API_JOBS["api/jobs 任务队列 取消 / 重试"]
-        API_SYS["api/system* 大模型 / 用量 / 环境 / 端口"]
+        API_JOBS["api/jobs 任务队列 取消 / 重试 · 失败分析"]
+        API_SYS["api/system* 大模型 / 用量 / 环境 · 资产台 CRUD"]
         API_PPT["api/defense_ppt 答辩 PPT"]
-        SVC["services/ 编排层 projects jobs runtime delivery_review proposal"]
+        SVC["services/ 编排层 projects jobs runtime delivery_review proposal 资产台 bake_fail_*"]
     end
     subgraph L4["④ 生成核心 backend/app/bake 确定性 bake"]
         BAKE_ENG["engine_bake.py 复制 baseline 叠加域 / 持久层 / 能力"]
         BAKE_SQL["sql/ DOM-*.sql 模板 + compose 拼 GENERIC"]
         BAKE_FEAT["features/ 能力扫词 / 菜单 / ensure_*"]
         BAKE_PRUNE["pack_prune.py 出包前剪未挂岛"]
-        BAKE_SCH["schema/ 壳 / ER / 模块 / 用例 / 测试用例"]
+        BAKE_SCH["schema/ 壳 / ER / 模块 / 用例 / 类图 model·layout·svg"]
         BAKE_EXPORT["schema/diagram_* 论文图三档导出 SVG / Mermaid / Draw.io + rubric 闸"]
         BAKE_SWATCH["shell_color_swatches.py 壳色色点池（静态资产）"]
-        BAKE_GATE["gates/ 门禁 p0a…p3controls + overall"]
+        BAKE_GATE["gates/ p0a…p3controls + layout/form_controls 工作区闸"]
         SCENE["scene_scan.py 场景身份唯一真源"]
     end
     subgraph L5["⑤ LLM 层 backend/app/llm 只填白名单岛"]
@@ -310,17 +310,19 @@ stateDiagram-v2
 
 <section id="s4">
   <h2><span class="num">4</span>运营前端结构（frontend/src/）</h2>
-  <p class="sub">没有 store 库、没有 TypeScript：一个 god-composable + provide/inject 撑起整个项目详情页。</p>
+  <p class="sub">没有 store 库、没有 TypeScript：一个 god-composable + provide/inject 撑起整个项目详情页；侧栏另挂资产台维护面。</p>
   <div class="mermaid">
 flowchart TB
-    MAIN["main.js createApp + naive 全量安装 + initTheme + 全局 errorHandler → /error/500"] --> APP["App.vue · 唯一布局壳 侧栏（工作区 / 系统两组）+ 面包屑 + 暗色切换 + router-view"]
+    MAIN["main.js createApp + naive 全量安装 + initTheme + 全局 errorHandler → /error/500"] --> APP["App.vue · 唯一布局壳 侧栏（工作台 / 运行与连接 / 资产台）+ 面包屑 + 主题色点 + 暗色切换 + router-view"]
     APP --> RT["router.js（createWebHistory）"]
-    RT --> V1["/ 项目 Projects.vue"]
+    RT --> V0["/ 开工台 OpsHome.vue"]
+    RT --> V1["/projects 项目 Projects.vue"]
     RT --> V2["/projects/:id 详情 ProjectDetail.vue"]
-    RT --> V3["/jobs 任务队列 Jobs.vue"]
-    RT --> V4["/llm 大模型 Llm.vue（/deepseek /gemini 重定向到此）"]
-    RT --> V5["/unsplash · /system · /help"]
-    RT --> V6["/error/500 · 404 兜底 ErrorPage.vue"]
+    RT --> V3["/jobs 任务队列 · /fail-analysis 失败分析"]
+    RT --> V4["/llm 大模型（/deepseek /gemini 重定向）"]
+    RT --> V5["资产台：词表 / 状态话术 / 字典 / 剧本 / 开关建议 / 能力说明 / 错误码 / 控件语义 / 菜单矩阵 / 规则参数 / 表关系叙事 / 测试账号"]
+    RT --> V6["/unsplash · /system · /help"]
+    RT --> V7["/error/500 · 404 兜底 ErrorPage.vue"]
     V2 --> PD["views/projectDetail/ useProjectDetail() 统一下发上下文（provide PD_KEY）"]
     PD --> T1["MatchTab 骨架 × 领域 × 身份场景"]
     PD --> T2["GenerateTab 生成 / soft-bake 选项 / 步骤轨"]
@@ -330,17 +332,20 @@ flowchart TB
     T5 --> AV["图查看器组件 ER · 模块 · 架构 · 序列 · 活动 · 类 · 用例 · 测试用例"]
     T5 --> DX["论文图导出 SVG / Mermaid .mmd / Draw.io .drawio（导出前过 rubric 闸）"]
     T2 --> PPM["components/defensePpt/ + ppt/ 答辩 PPT 面板与页预览"]
-    V1 --> API["api.js · axios baseURL='/api' timeout 60s（重操作 600s / 轮询 8s 静默）"]
+    V0 --> API["api.js · axios baseURL='/api' timeout 60s（重操作 600s / 轮询 8s 静默）"]
+    V1 --> API
     V2 --> API
     V3 --> API
     V4 --> API
+    V5 --> API
   </div>
   <table>
     <tr><th>维度</th><th>事实</th></tr>
     <tr><td>技术栈</td><td>Vue <code>^3.5.39</code> + vue-router <code>^4.6.4</code> + Naive UI <code>^2.44.1</code> + axios + jszip；Vite <code>^5.4.11</code></td></tr>
     <tr><td><b>没有</b>的东西</td><td>无 Pinia / Vuex、无 TypeScript、无 ESLint 配置、无 playwright.config（装了没接线）</td></tr>
     <tr><td>状态管理</td><td><code>ProjectDetail.vue</code> 是薄壳，逻辑全在 <code>useProjectDetail.js</code>，用 <code>provide(PD_KEY, …)</code> + <code>bindPd()</code> 下发；各 Tab 不直接调 <code>api.*</code></td></tr>
-    <tr><td>壳的职责</td><td><code>App.vue</code> 同时是布局与导航（无独立 layout 组件），面包屑由 <code>route.meta.crumb</code> 推导</td></tr>
+    <tr><td>壳的职责</td><td><code>App.vue</code> 同时是布局与导航：侧栏<strong>工作台</strong> · <strong>运行与连接</strong>（大模型 / Unsplash / 运行环境）· <strong>资产台</strong>（词表等 <code>factory_*</code> 维护页）；顶栏主题色点 + 日夜间；面包屑由 <code>route.meta.crumb</code> 推导</td></tr>
+    <tr><td>资产台</td><td>工厂可维护结构化资产（词表 COMMENT、状态话术、字典选项等），bake 注入学生包；真源 <code>docs/factory-asset-catalogs.md</code></td></tr>
     <tr><td>实时性</td><td>无 WebSocket、无 fetch()：进度靠轮询 + SSE，文件类走浏览器直达 URL</td></tr>
   </table>
   <table>
@@ -356,22 +361,23 @@ flowchart TB
 
 <section id="s5">
   <h2><span class="num">5</span>后端分层与模块职责</h2>
-  <p class="sub">api 只做 HTTP；业务写 services；bake 保持确定性可单测；LLM 一律在 llm。</p>
+  <p class="sub">api 只做 HTTP；业务写 services；bake 保持确定性可单测；LLM 一律在 llm；资产台同构落 services + system_*。</p>
   <div class="mermaid">
 flowchart TB
     subgraph API["app/api · HTTP 边界（只做校验 / 编排调用）"]
-        A1["projects/ common · crud · schema · runtime · delivery_review"]
-        A2["jobs · system_router → deepseek / gemini / usage / info / tools / unsplash"]
+        A1["projects/ common · crud · schema · runtime · delivery_review · overrides"]
+        A2["jobs · system.py 聚合 system_* 大模型 / 用量 / 环境 / 资产台"]
         A3["defense_ppt"]
     end
     subgraph SERVICES["app/services · 业务编排（无 HTTP 依赖）"]
         SV1["projects 门面 → project_match / project_delivery / project_disk / project_projection"]
-        SV2["jobs 任务执行器"]
+        SV2["jobs 任务执行器 · gate_report · bake_fail_*"]
         SV3["runtime + runtime_reconcile 进程与投影"]
         SV4["delivery_review 复审 / 验圈 / 合卷"]
         SV5["proposal · proposal_match · proposal_diff · upload_cluster"]
         SV6["student_db · student_copy · student_api_smoke"]
         SV7["defense_ppt/ planner · job_runner · export_pptx · figures · screenshots"]
+        SV8["资产台 zh_lexicon · status_copy · dict_values · … · demo_accounts"]
     end
     subgraph CORE["app/core"]
         C1["config.py Settings GF_* / LLM_* / 端口池 / 预算"]
@@ -381,13 +387,13 @@ flowchart TB
     subgraph BAKE["app/bake · 纯函数为主，便于单测"]
         B1["engine*.py 入口 sql / bake / resources / islands 分册"]
         B2["domains_catalog/ + domain_registry + domain_entities"]
-        B3["schema/ shells · builders_* · er_* · modules · usecases · testcases"]
+        B3["schema/ shells · er_* · class_model/layout/svg · modules · usecases · diagram_*"]
         B4["sql/templates + compose + ddl_edit"]
-        B5["gates/ evaluate · semantic · schema_nf · feature_keywords"]
+        B5["gates/ evaluate · semantic · schema_nf · layout/form_controls_workspace"]
         B6["features/ 能力正文：扫词 / 菜单 / ensure_*"]
         B7["pack_prune.py 出包前按挂载剪未用岛"]
     end
-    MODELS["app/models Project / Job / LlmCall / SettingRow"]
+    MODELS["app/models Project / Job / LlmCall / SettingRow + factory_* 资产表"]
     SCHEMAS["app/schemas Pydantic 出入参"]
     API --> SERVICES
     SERVICES --> BAKE
@@ -399,21 +405,37 @@ flowchart TB
   </div>
   <ul class="pts">
     <li><code>services/projects.py</code> 是<b>门面</b>：正文按职责拆到 project_match / project_delivery / project_disk / project_projection，新逻辑不再往门面堆。</li>
+    <li><code>api/system.py</code> 只聚合：大模型 / 用量 / 环境走 <code>system_deepseek</code> 等；资产台各页走同级 <code>system_zh_lexicon</code> / <code>system_dict_values</code> / …（导入副作用挂到共享 <code>system_router</code>）。</li>
     <li>能力岛正文落在 <code>bake/features/&lt;cap&gt;.py</code>（扫词、菜单、<code>ensure_*</code> SQL），<code>sql/fragments.py</code> 只按开关调用。</li>
+    <li>论文类图：<code>class_model.py</code> 从 SQL + Java 组装模型；布局/折线 <code>class_layout</code>；出图 <code>class_svg</code>（零交叉拆分，禁止臆造类）。</li>
     <li>域目录：<b>A～F 具名 → G 真交叉 → H 兜底</b>（见 <code>docs/domains.md</code>）；匹配落到 <code>DOM-*</code>，兜底才是 <code>DOM-GENERIC</code>。</li>
     <li>挂载/对齐：<b>A 壳底 / B 扫词开 / C 能力加深</b> 三档全族已齐；双向门禁见 <code>docs/opening-align-gate.md</code> 与各组 <code>*_ALIGN_RULES</code>。</li>
-    <li>启动生命周期（<code>main.py lifespan</code>）：<code>init_db()</code> → 回灌大模型预算与模型设置 → <code>fail_orphaned_jobs()</code> → 启动后台对账 <code>start_runtime_reconcile()</code>，关闭时 <code>stop_runtime_reconcile()</code>。</li>
-    <li>表结构演进用 <code>create_all</code> + <code>_migrate_project_columns</code>（幂等 ALTER），没有 Alembic。</li>
+    <li>启动生命周期（<code>main.py lifespan</code>）：<code>init_db()</code> → 回灌大模型预算与模型设置 → 资产台种子补缺 → <code>fail_orphaned_jobs()</code> → 启动后台对账 <code>start_runtime_reconcile()</code>，关闭时 <code>stop_runtime_reconcile()</code>。</li>
+    <li>表结构演进用 <code>create_all</code> + <code>_migrate_project_columns</code>（幂等 ALTER），没有 Alembic；资产台表同走 <code>create_all</code>，lifespan 只<strong>追加</strong>缺主键种子，禁止覆盖已有行。</li>
   </ul>
 </section>
 
 <section id="s6">
   <h2><span class="num">6</span>数据模型与磁盘布局</h2>
-  <p class="sub">四张表：projects / jobs / llm_calls / settings。</p>
+  <p class="sub">工厂元库两类表：（1）运营主表 <code>projects</code> / <code>jobs</code> / <code>llm_calls</code> / <code>settings</code> + <code>project_overrides</code>；（2）资产台 <code>factory_*</code>——<b>库内无 FK</b>，逻辑上按 <code>domain</code> / 业务键与选题对齐，bake 注入（图上标「无FK·bake」）。资产台图内只列主键与业务键，全列见 <code>app/models/__init__.py</code>。</p>
   <div class="mermaid">
 erDiagram
     PROJECT ||--o{ JOB : "project_id"
     PROJECT ||--o{ LLM_CALL : "project_id"
+    PROJECT ||--o| PROJECT_OVERRIDES : "project_id"
+    PROJECT }o--o{ FACTORY_ZH_LEXICON : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_STATUS_COPY : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_DICT_VALUES : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_DEMO_SCRIPT : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_ADDON_SUGGEST : "无FK·开题扫词·bake"
+    PROJECT }o--o{ FACTORY_CAP_CARD : "无FK·能力键·bake"
+    PROJECT }o--o{ FACTORY_ERROR_COPY : "无FK·错误码·bake"
+    PROJECT }o--o{ FACTORY_WIDGET_HINT : "无FK·控件语义·bake"
+    PROJECT }o--o{ FACTORY_MENU_MATRIX : "无FK·domain×角色·bake"
+    PROJECT }o--o{ FACTORY_RULE_PARAM : "无FK·domain键·bake"
+    PROJECT }o--o{ FACTORY_ER_EDGE_COPY : "无FK·表边·bake"
+    PROJECT }o--o{ FACTORY_DEMO_ACCOUNT : "无FK·domain×角色·bake"
+    PROJECT }o--o{ FACTORY_DIAGRAM_TITLE : "无FK·图种×domain·bake"
     PROJECT {
         string id PK
         string title
@@ -423,7 +445,10 @@ erDiagram
         string persistence "jdbc/mybatis/jpa"
         bool spring_security
         bool ai_assistant
+        string theme
+        string password_hash
         bool match_locked
+        string db_name
         json spec
         json gates
         json checklist
@@ -437,6 +462,11 @@ erDiagram
         bool backend_running
         bool frontend_running
     }
+    PROJECT_OVERRIDES {
+        string project_id PK
+        int version
+        json payload
+    }
     JOB {
         int id PK
         string project_id FK
@@ -446,30 +476,131 @@ erDiagram
         int progress
         json steps
         json units
+        json gate_report
+        string error_code
         text error
     }
     LLM_CALL {
         int id PK
-        string project_id FK
+        string project_id FK "可空"
         string stage
         int tokens
         bool ok
+        text detail
     }
     SETTING_ROW {
         string key PK
         json value
+    }
+    FACTORY_ZH_LEXICON {
+        int id PK
+        string kind
+        string key_name
+        string zh
+        string domain
+        string skin
+        string table_name
+        string source
+    }
+    FACTORY_STATUS_COPY {
+        int id PK
+        string domain_id
+        string machine_id
+        string status_code
+        string label_zh
+        string source
+    }
+    FACTORY_DICT_VALUES {
+        int id PK
+        string domain_id
+        string skin_id
+        string dict_key
+        string value_code
+        string label_zh
+        string source
+    }
+    FACTORY_DEMO_SCRIPT {
+        int id PK
+        string domain_id
+        string skin_id
+        string script_id
+        int step_no
+        string role
+        string title_zh
+        string source
+    }
+    FACTORY_ADDON_SUGGEST {
+        int id PK
+        string addon_id
+        string hint
+        bool recommend
+        string source
+    }
+    FACTORY_CAP_CARD {
+        int id PK
+        string cap_id
+        string title_zh
+        string source
+    }
+    FACTORY_ERROR_COPY {
+        int id PK
+        string error_code
+        string message_zh
+        string source
+    }
+    FACTORY_WIDGET_HINT {
+        int id PK
+        string rule_key
+        string widget
+        string source
+    }
+    FACTORY_MENU_MATRIX {
+        int id PK
+        string domain_id
+        string role
+        string menu_id
+        string source
+    }
+    FACTORY_RULE_PARAM {
+        int id PK
+        string domain_id
+        string rule_id
+        float value_num
+        string source
+    }
+    FACTORY_ER_EDGE_COPY {
+        int id PK
+        string table_a
+        string table_b
+        string sentence_zh
+        string source
+    }
+    FACTORY_DEMO_ACCOUNT {
+        int id PK
+        string domain_id
+        string role
+        string username
+        string source
+    }
+    FACTORY_DIAGRAM_TITLE {
+        int id PK
+        string diagram_kind
+        string domain_id
+        string title_tpl
+        string source
     }
   </div>
   <div class="mermaid">
 flowchart LR
     DATA["data/"] --> DB["factory.db 工厂元库（默认 SQLite / 或 MySQL）"]
     DATA --> UP["uploads/ 上传材料落盘"]
+    DATA --> SMP["samples/ 样例开题与试传素材"]
     DATA --> WS["workspace/id/ 每题学生工程工作区"]
-    DATA --> ZIP["workspace/id.zip 门禁通过后的交付包"]
-    DATA --> LOG["logs/id/ job.log · backend.log · frontend.log · deepseek.log"]
-    DATA --> CACHE["cache/ 共享缓存 baseline 前端 node_modules 复用"]
+    DATA --> ZIP["workspace/id-slug.zip 交付包 zip_storage_name"]
+    DATA --> LOG["logs/id/ job.log · backend.log · frontend.log"]
+    DATA --> CACHE["cache/ baseline-frontend · npm-cache · 氛围图等"]
     SK["skeletons/"] --> BASE["baseline/ 学生工程骨架 jdbc 默认"]
-    SK --> OV["overlays/ mybatis / jpa / spring-security 叠加层"]
+    SK --> OV["overlays/ persistence-mybatis · persistence-jpa · addon-spring-security · addon-redis"]
   </div>
 </section>
 
@@ -549,7 +680,7 @@ flowchart TB
     <li>骨架不含 <code>node_modules</code> / <code>target</code> / <code>dist</code>：<code>bake_project</code> 的 <code>copytree(ignore=…)</code> 明确跳过；前端依赖由预览子系统挂共享缓存，Maven target 由编译再生。</li>
     <li>持久层由 <code>bake/persistence.py</code> 决定：默认 <code>jdbc</code>（JdbcTemplate），开题点名时切 <code>mybatis</code> / <code>jpa</code>，并按需叠 <code>addon-spring-security</code>。</li>
     <li>场景身份（校园 / 企业 / 社区）由 <code>bake/scene_scan.py</code> 的 <code>scene_for(domain, title, proposal)</code> 统一决定；壳文案与注册资料页必须读同一 scene，<b>禁止改开题迁就模板</b>。</li>
-    <li>论文图与壳色：<code>bake/schema/diagram_export.py</code> 三档同源导出（SVG / Mermaid / Draw.io，同一 model），导出前过 <code>diagram_rubric</code> 闸（红禁导出）；壳色来自 <code>bake/shell_color_swatches.py</code> 色点池，人可有限自配 brand + accent，禁止运行时 LLM 现吐 hex。</li>
+    <li>论文图与壳色：<code>bake/schema/diagram_export.py</code> 三档同源导出（SVG / Mermaid / Draw.io，同一 model），导出前过 <code>diagram_rubric</code> 闸（红禁导出）。类图真源拆为 <code>class_model</code>（SQL+Java 组装）→ <code>class_layout</code>（零交叉排版）→ <code>class_svg</code>；模块图等仍走各自 builder。壳色来自 <code>bake/shell_color_swatches.py</code> 色点池，人可有限自配 brand + accent，禁止运行时 LLM 现吐 hex。</li>
   </ul>
 </section>
 
@@ -597,7 +728,7 @@ flowchart LR
 </section>
 
 <footer>
-  毕设港 · 系统架构图 · 与仓库根目录 <code>ARCHITECTURE.md</code> 同源 · 阅读入口 <code>README.md</code>
+  毕设港 · 系统架构图 · 与仓库根目录 <code>ARCHITECTURE.md</code> 同源（2026-11-21 同步）· 阅读入口 <code>README.md</code>
 </footer>
 
 </div>
