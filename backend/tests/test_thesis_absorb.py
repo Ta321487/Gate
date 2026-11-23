@@ -11,6 +11,7 @@ from app.services.thesis_absorb_extract import (
     build_feed_markdown,
     build_opening_draft,
     content_sha256,
+    extract_tech_stack_lines,
     extract_thesis_proposal,
     table_module_cross_warnings,
 )
@@ -149,6 +150,57 @@ class ThesisAbsorbExtractTests(unittest.TestCase):
         self.assertEqual(r["extract_warning"], "thin_features")
         # thin 只走旗标，不进 warnings（UI 单条提示，避免双黄条）
         self.assertFalse(any("偏少" in w for w in r["warnings"]))
+
+    def test_tech_stack_from_related_section(self) -> None:
+        """相关技术章点名 → tech_stack_lines；未点名不得脑补默认栈。"""
+        thin = extract_thesis_proposal(THIN)
+        stack = thin["proposal"]["tech_stack_lines"]
+        self.assertIn("Spring", stack)
+        self.assertIn("Vue", stack)
+
+        bare = extract_thesis_proposal(SAMPLE)
+        self.assertEqual(bare["proposal"]["tech_stack_lines"], [])
+
+    def test_tech_stack_prefers_specific_labels(self) -> None:
+        doc = """
+摘要
+本系统采用 Spring Boot、MyBatis 与 Vue 3、Element Plus，数据库 MySQL。
+
+第一章 绪论
+研究意义略。
+
+第二章 相关技术
+后端 Spring Boot + MyBatis，前端 Vue 3 与 Element Plus，持久化不用 JdbcTemplate。
+
+第三章 需求分析
+系统角色包括管理员与用户。
+
+第四章 系统设计
+管理端包含用户管理、订单管理。
+"""
+        r = extract_thesis_proposal(doc)
+        stack = r["proposal"]["tech_stack_lines"]
+        self.assertIn("Spring Boot", stack)
+        self.assertNotIn("Spring", stack)
+        self.assertIn("Vue 3", stack)
+        self.assertNotIn("Vue", stack)
+        self.assertIn("MyBatis", stack)
+        self.assertIn("Element Plus", stack)
+        self.assertIn("MySQL", stack)
+        self.assertNotIn("JdbcTemplate", stack)  # 「不用」否定点名
+
+    def test_extract_tech_stack_lines_unit(self) -> None:
+        self.assertEqual(extract_tech_stack_lines(""), [])
+        self.assertEqual(extract_tech_stack_lines("无技术描述"), [])
+        self.assertEqual(
+            extract_tech_stack_lines("采用 JavaScript 与 TypeScript"),
+            ["TypeScript"],
+        )
+        # PDF 软折行：Vue\n3 → Vue 3
+        self.assertIn(
+            "Vue 3",
+            extract_tech_stack_lines("前端采用 Vue\n3 与 Element Plus"),
+        )
 
     def test_glued_pdf_text_recovers_modules(self) -> None:
         """PDF 粘连无换行时，仍应从设计章扫出「××管理/模块」。"""
