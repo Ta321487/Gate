@@ -30,16 +30,19 @@ class DeliveryWorkbenchContractTest(unittest.TestCase):
         pane = (ROOT / "frontend" / "src" / "components" / "DeliveryReviewPane.vue").read_text(
             encoding="utf-8"
         )
-        # 失败场景合并阻断卡；门禁全文进弹层，不堆多条 n-alert、不把页撑长
-        self.assertIn("hasBlockSurface", pane)
+        # D1：诊断短卡替换旧阻断墙；门禁全文仍进弹层
+        self.assertIn("buildDeliveryDiagnosis", pane)
+        self.assertIn("diag-card", pane)
+        self.assertIn("delivery-diagnosis", pane)
         self.assertIn("查看门禁全文", pane)
         self.assertIn("showGateDetails", pane)
         self.assertIn("n-modal", pane)
         self.assertIn("gate-full-desc", pane)
         self.assertIn("overflow-wrap: anywhere", pane)
+        self.assertNotIn("hasBlockSurface", pane)
+        self.assertNotIn("block-panel", pane)
         self.assertNotIn("pill-btn", pane)
-        self.assertNotIn('title="清单已收敛，但质量门禁未过"', pane)
-        self.assertNotIn('title="须重跑生成时：先结束复审"', pane)
+        self.assertNotIn("质量门禁未过 · 暂不可下载", pane)
 
     def test_artifacts_hosts_workbench_not_split_tabs(self):
         src = ARTIFACTS.read_text(encoding="utf-8")

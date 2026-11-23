@@ -191,16 +191,17 @@ export function buildDeliveryReadiness(p) {
     const gateFail = /质量检查|质检|门禁/.test(reason) || blockingGates.length > 0
     const layoutOrControls = /布局|控件|p3layout|p3controls|空壳/i.test(reason)
       || blockingGates.some((g) => /布局|控件|layout|controls|空壳/i.test(String(g?.label || g?.key || '')))
+    // 壳顶标题与第 6 步诊断卡对齐：门禁红用「门禁未过」，禁「暂不可下载」当总判
     return pack({
       phase: 'gates',
-      title: gateFail ? '门禁未过' : '暂不可下载',
+      title: gateFail ? '门禁未过' : (zipStale ? '待重打包' : '交付未就绪'),
       blockers: blockers.length ? blockers : [{ text: reason || '质量检查未通过' }],
-      primary: { key: 'gates', label: '查看质量检查', tone: 'fail' },
+      primary: { key: 'gates', label: '去质检交付', tone: 'fail' },
       downloadImpact,
       recoveryKind: layoutOrControls ? 'code' : 'self',
       recoveryHint: layoutOrControls
         ? '需要改程序：记下失败类型，再改生成逻辑；不要假装再下载就能过。'
-        : '先打开质量检查看未通过项；能清洗或重打包就先做，反复同错再改生成逻辑。',
+        : '打开质检交付看诊断分层；能清洗或重打包就先做，反复同错再改生成逻辑。',
     })
   }
 

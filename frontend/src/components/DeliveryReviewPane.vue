@@ -15,7 +15,12 @@
         </p>
       </div>
       <div class="row" style="margin:0;flex-wrap:wrap;justify-content:flex-end;gap:6px">
-        <span v-if="review.status !== 'active'" :title="tipStart" class="btn-tip-wrap">
+        <!-- 诊断卡已把「进入复审」当主 CTA 时顶栏不再重复，避免双主按钮 -->
+        <span
+          v-if="review.status !== 'active' && diagnosis?.nextAction !== 'start'"
+          :title="tipStart"
+          class="btn-tip-wrap"
+        >
           <n-button size="small" :disabled="disabled || !!busy" :loading="busy === 'start'" @click="onStart">
             进入复审
           </n-button>
@@ -56,7 +61,12 @@
             质量摘要
           </n-button>
         </span>
-        <span v-if="review.status === 'active'" :title="tipClose" class="btn-tip-wrap">
+        <!-- 卡上已是「结束复审并去重新生成」时顶栏只留弱「仅结束」；勿再抬成第二条主路 -->
+        <span
+          v-if="review.status === 'active' && diagnosis?.nextAction !== 'close-rebake'"
+          :title="tipClose"
+          class="btn-tip-wrap"
+        >
           <n-button
             size="small"
             quaternary
@@ -65,6 +75,21 @@
             @click="onClose"
           >
             结束复审
+          </n-button>
+        </span>
+        <span
+          v-else-if="review.status === 'active' && diagnosis?.nextAction === 'close-rebake'"
+          :title="'与卡上主按钮同路；仅结束不重生请用这里'"
+          class="btn-tip-wrap"
+        >
+          <n-button
+            size="small"
+            quaternary
+            :disabled="disabled || !!busy"
+            :loading="busy === 'close'"
+            @click="onClose"
+          >
+            仅结束复审
           </n-button>
         </span>
         <span :title="tipHandoff" class="btn-tip-wrap">
@@ -116,62 +141,71 @@
       <span class="pill pill-neutral">已通过 {{ safeZone.length }}</span>
     </div>
 
-    <!-- 失败场景：一条阻断卡合并同义告警；门禁全文进弹层，不把页面撑成墙 -->
-    <div v-if="hasBlockSurface" class="block-panel" :class="'tone-' + blockTone">
-      <div class="block-hd row-between" style="align-items:flex-start;gap:8px">
-        <div>
-          <div class="block-title">{{ blockTitle }}</div>
-          <p class="small muted" style="margin:4px 0 0">{{ blockHint }}</p>
-        </div>
+    <!-- 第 6 步诊断短卡：替换旧阻断三点墙；全文在层展开 / 弹层 / 下方折叠 -->
+    <article
+      v-if="diagnosis"
+      class="diag-card"
+      :class="'tone-' + diagnosis.tone"
+      data-testid="delivery-diagnosis"
+    >
+      <p class="diag-verdict">{{ diagnosis.verdict }}</p>
+      <p class="diag-phase muted">相位 · {{ diagnosis.phaseLabel }}</p>
+      <div v-if="diagnosis.layers.length" class="diag-layers">
+        <template v-for="layer in diagnosis.layers" :key="layer.id">
+          <button
+            type="button"
+            class="diag-layer-row"
+            :aria-expanded="expandedLayer === layer.id ? 'true' : 'false'"
+            @click="toggleLayer(layer.id)"
+          >
+            <span class="pill" :class="layerPill(layer.bucket)">{{ layer.bucketLabel }}</span>
+            <span class="diag-layer-name">{{ layer.name }}</span>
+            <!-- 收起才显示一行摘要（CSS 截断）；展开或弹层打开时藏掉，避免「全文底下还露 …」 -->
+            <span v-show="expandedLayer !== layer.id && !showGateDetails" class="diag-layer-one">{{ layer.one }}</span>
+            <span class="diag-chev">{{ expandedLayer === layer.id ? '▴' : '▾' }}</span>
+          </button>
+          <div v-if="expandedLayer === layer.id" class="diag-layer-detail">
+            <p class="diag-detail-text">{{ layer.detail }}</p>
+            <p v-if="layer.code" class="diag-meta muted">
+              <span class="mono">{{ layer.code }}</span>
+              <template v-if="layer.locus"> · {{ layer.locus }}</template>
+              <router-link
+                v-if="layer.code"
+                class="diag-link"
+                :to="failAnalysisHref(layer.code)"
+              >失败分析</router-link>
+            </p>
+            <div class="diag-detail-actions">
+              <n-button
+                v-if="layer.jumpQa"
+                text
+                size="tiny"
+                @click.stop="jumpToQa"
+              >在下方看 QA 全文</n-button>
+              <n-button
+                v-if="layer.openModal"
+                text
+                size="tiny"
+                @click.stop="showGateDetails = true"
+              >查看门禁全文</n-button>
+            </div>
+          </div>
+        </template>
+      </div>
+      <div v-if="diagnosis.nextAction !== 'none'" class="diag-next">
+        <strong>下一步</strong>
+        <span class="diag-next-hint">{{ diagnosisNextHint }}</span>
         <n-button
-          v-if="rebakeEscapeNeeded"
           size="small"
-          secondary
+          type="primary"
           :disabled="disabled || !!busy"
-          :loading="busy === 'close-rebake'"
-          @click="onCloseAndRebake"
+          :loading="busy === 'verify' || busy === 'repack' || busy === 'close-rebake' || busy === 'start'"
+          @click="onDiagnosisNext"
         >
-          结束复审并去重新生成
+          {{ diagnosis.nextLabel }}
         </n-button>
       </div>
-      <ul class="block-points">
-        <li v-if="rebakeEscapeNeeded">复审锁生成 · 须改工程先结束复审</li>
-        <li v-if="zipStale">ZIP 与工程未同步</li>
-        <li v-if="openNotes.length && !regressions.length">未结案偏差 {{ openNotes.length }} 条</li>
-        <li v-if="regressions.length">已通过清单回退 {{ regressions.length }} 条</li>
-        <li v-if="blockingGates.length && !regressions.length">
-          挡包门禁 {{ blockingGates.length }} 项
-          <template v-if="showScrubCopy"> · 可先清洗文案</template>
-        </li>
-      </ul>
-      <div v-if="regressions.length" class="block-preview">
-        <div
-          v-for="(r, i) in regressions.slice(0, 3)"
-          :key="'reg-' + i"
-          class="block-preview-line"
-        >{{ r.message }}</div>
-        <button
-          v-if="regressions.length > 3"
-          type="button"
-          class="block-toggle"
-          @click="showGateDetails = true"
-        >其余 {{ regressions.length - 3 }} 条见全文</button>
-      </div>
-      <div v-if="blockingGates.length" class="block-gates">
-        <div class="block-preview">
-          <div
-            v-for="g in blockingGates.slice(0, 3)"
-            :key="'prev-' + (g.key || g.label)"
-            class="block-preview-line"
-          >
-            <strong>{{ g.label }}</strong>
-          </div>
-        </div>
-        <button type="button" class="block-toggle" @click="showGateDetails = true">
-          查看门禁全文（{{ blockingGates.length }}）· 含说明
-        </button>
-      </div>
-    </div>
+    </article>
 
     <n-modal
       v-model:show="showGateDetails"
@@ -204,7 +238,7 @@
       </template>
     </n-modal>
 
-    <n-collapse class="review-more" :default-expanded-names="reviewDefaultOpen">
+    <n-collapse v-model:expanded-names="reviewExpanded" class="review-more">
       <n-collapse-item :title="`复审明细 · 待收敛 ${poisonZone.length} · 门禁 ${blockingGates.length}`" name="diag">
         <div class="diag-grid">
           <div class="review-panel diag-side-panel">
@@ -244,7 +278,11 @@
               <p v-if="lastVerifySummary" class="small" style="margin:0">{{ lastVerifySummary }}</p>
               <p v-else class="small muted" style="margin:0">尚未验收</p>
             </div>
-            <div class="diag-side-block">
+            <div
+              id="delivery-qa-block"
+              class="diag-side-block"
+              :class="{ 'diag-jump-hl': qaJumpFlash }"
+            >
               <div class="small row-between" style="font-weight:600;margin-bottom:4px;align-items:center">
                 <span>质量摘要（QA）</span>
                 <n-button text size="tiny" :disabled="disabled || !!busy" :loading="busy === 'qa'" @click="onQa">
@@ -295,7 +333,11 @@
         </n-alert>
       </n-collapse-item>
 
-      <n-collapse-item :title="`偏差登记与轮次${openNotes.length ? ` · ${openNotes.length} 条待结案` : ''}`" name="notes">
+      <n-collapse-item
+        id="delivery-notes-block"
+        :title="`偏差登记与轮次${openNotes.length ? ` · ${openNotes.length} 条待结案` : ''}`"
+        name="notes"
+      >
         <div v-if="fixNotes.length" class="fix-notes-panel" style="margin:0 0 10px;border:none;padding:0">
           <div class="parse-sec-hd row-between" style="align-items:center">
             <span>偏差登记 · {{ openNotes.length }} 条待结案</span>
@@ -365,11 +407,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { NAlert, NButton, NCheckbox, NCollapse, NCollapseItem, NDataTable, NEmpty, NInput, NModal } from 'naive-ui'
 import { api, message, confirm } from '../api'
 import LongOpWait from './LongOpWait.vue'
 import { clearLongOp, markLongOp, peekLongOp } from '../utils/longOpSession'
+import { buildDeliveryDiagnosis, failAnalysisHref } from '../deliveryDiagnosis'
 
 const props = defineProps({
   projectId: { type: String, required: true },
@@ -395,6 +438,11 @@ const localRegressions = ref([])
 const showDoneNotes = ref(false)
 /** 门禁全文默认收起；点 pill /「展开」再看，避免失败页无限变长 */
 const showGateDetails = ref(false)
+/** 诊断卡：同时只开一层 */
+const expandedLayer = ref('')
+const qaJumpFlash = ref(false)
+/** 复审折叠：可被「跳到 QA」打开 */
+const reviewExpanded = ref([])
 
 /** I2：验收/摘要/重打包/清洗 中间态 + 刷新可恢复 */
 const recoverAlign = ref(false)
@@ -513,18 +561,18 @@ onMounted(() => {
   void alignAfterRecover({ silent: true })
 })
 
-/** 有待收敛清单时展开复审明细；门禁全文已在上方阻断卡，不重复撑开 */
-const reviewDefaultOpen = computed(() => {
+function seedReviewExpanded() {
   const dr = props.deliveryReview || {}
   const zones = dr.zones || {}
   const poison = Array.isArray(zones.poison_zone) ? zones.poison_zone : []
   const notes = Array.isArray(dr.review?.fix_notes)
     ? dr.review.fix_notes.filter((n) => n && n.status !== 'done')
     : []
-  if (poison.length) return ['diag']
-  if (notes.length) return ['notes']
-  return []
-})
+  if (poison.length) reviewExpanded.value = ['diag']
+  else if (notes.length) reviewExpanded.value = ['notes']
+  else reviewExpanded.value = []
+}
+seedReviewExpanded()
 
 const BOSS_ITEMS = [
   { key: 'shell', label: '1. 有没有空壳（缺表/API/状态机/写库）？已齐是否「管理能管+用户可产生数据」？' },
@@ -748,45 +796,73 @@ const rebakeEscapeNeeded = computed(() => {
   return blockingGates.value.length > 0 || regressions.value.length > 0
 })
 
-const hasBlockSurface = computed(
-  () =>
-    rebakeEscapeNeeded.value ||
-    zipStale.value ||
-    (openNotes.value.length > 0 && !regressions.value.length) ||
-    regressions.value.length > 0 ||
-    (blockingGates.value.length > 0 && !regressions.value.length),
+const diagnosis = computed(() =>
+  buildDeliveryDiagnosis({
+    blockingGates: blockingGates.value,
+    zipStale: zipStale.value,
+    regressions: regressions.value,
+    openNotesCount: openNotes.value.length,
+    rebakeEscape: rebakeEscapeNeeded.value,
+    reviewActive: review.value.status === 'active',
+    canRepack: canRepack.value,
+  }),
 )
 
-const blockTone = computed(() => {
-  if (regressions.value.length) return 'error'
-  if (blockingGates.value.length || zipStale.value || openNotes.value.length) return 'warn'
-  return 'info'
-})
-
-const blockTitle = computed(() => {
-  if (regressions.value.length) return '已通过清单回退 · 暂不可重打包'
-  if (blockingGates.value.length) return '质量门禁未过 · 暂不可下载'
-  if (openNotes.value.length) return '仍有未结案偏差'
-  if (zipStale.value) return '交付包未同步'
-  if (rebakeEscapeNeeded.value) return '须重跑生成时：先结束复审'
-  return '当前阻断'
-})
-
-const blockHint = computed(() => {
-  if (regressions.value.length) {
-    return '回退后勿只反复重打包；结束复审 → 改工厂 → 重新生成。'
-  }
-  if (blockingGates.value.length) {
-    return '当场能修就先做再验收；须改生成/基线则结束复审后重跑。标题保留，说明点「查看门禁全文」。'
-  }
-  if (zipStale.value && !blockingGates.value.length) {
-    return '验收通过后执行重打包，使 ZIP 与工程一致。'
-  }
-  if (rebakeEscapeNeeded.value) {
-    return '仅同步 ZIP 请验收后重打包；须改工程请用右侧按钮。'
-  }
+const diagnosisNextHint = computed(() => {
+  const a = diagnosis.value?.nextAction
+  if (a === 'close-rebake') return '须改工程时走这条；仅同步 ZIP 请验收后重打包'
+  if (a === 'start') return '先进入复审收口；改工程后再结束复审并重新生成'
+  if (a === 'repack') return '与上方「重打包」同一动作'
+  if (a === 'verify') return '与上方「验收」同一动作'
+  if (a === 'notes') return '打开下方偏差登记'
   return ''
 })
+
+function layerPill(bucket) {
+  if (bucket === 'flow') return 'pill-amber'
+  if (bucket === 'review') return 'pill-amber'
+  if (bucket === 'content' || bucket === 'pack' || bucket === 'path') return 'pill-rose'
+  return 'pill-neutral'
+}
+
+function toggleLayer(id) {
+  expandedLayer.value = expandedLayer.value === id ? '' : id
+}
+
+async function jumpToQa() {
+  if (!reviewExpanded.value.includes('diag')) {
+    reviewExpanded.value = [...reviewExpanded.value, 'diag']
+  }
+  await nextTick()
+  const el = document.getElementById('delivery-qa-block')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    qaJumpFlash.value = true
+    setTimeout(() => {
+      qaJumpFlash.value = false
+    }, 1600)
+  }
+}
+
+async function jumpToNotes() {
+  if (!reviewExpanded.value.includes('notes')) {
+    reviewExpanded.value = [...reviewExpanded.value, 'notes']
+  }
+  await nextTick()
+  document.getElementById('delivery-notes-block')?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'center',
+  })
+}
+
+function onDiagnosisNext() {
+  const a = diagnosis.value?.nextAction
+  if (a === 'verify') return onVerify()
+  if (a === 'repack') return onRepack()
+  if (a === 'close-rebake') return onCloseAndRebake()
+  if (a === 'start') return onStart()
+  if (a === 'notes') return jumpToNotes()
+}
 
 const gateModalTitle = computed(() => {
   if (regressions.value.length && blockingGates.value.length) {
@@ -800,6 +876,8 @@ watch(
   () => props.projectId,
   () => {
     showGateDetails.value = false
+    expandedLayer.value = ''
+    seedReviewExpanded()
   },
 )
 
@@ -1203,60 +1281,141 @@ async function onResolveNote(noteId, done) {
 .review-more {
   margin-top: 2px;
 }
-.block-panel {
-  border-radius: 8px;
+/* 深浅色 / 主题色：只吃全局 token（--banner-* / --surface / --teal / --ink） */
+.diag-card {
+  border-radius: var(--radius, 6px);
   padding: 10px 12px;
-  border: 1px solid var(--border, #e8e8e8);
+  border: 1px solid var(--line);
+  margin-top: 2px;
+  color: var(--ink);
+  background: var(--surface-2);
 }
-.block-panel.tone-info {
-  background: rgba(32, 128, 180, 0.08);
-  border-color: rgba(32, 128, 180, 0.35);
+.diag-card.tone-warn {
+  background: var(--banner-warn-bg);
+  border-color: var(--banner-warn-line);
 }
-.block-panel.tone-warn {
-  background: rgba(180, 120, 32, 0.1);
-  border-color: rgba(180, 120, 32, 0.4);
+.diag-card.tone-fail {
+  background: var(--banner-fail-bg);
+  border-color: var(--banner-fail-line);
 }
-.block-panel.tone-error {
-  background: rgba(180, 48, 48, 0.1);
-  border-color: rgba(180, 48, 48, 0.4);
+.diag-card.tone-ok {
+  background: var(--banner-ok-bg);
+  border-color: var(--banner-ok-line);
 }
-.block-title {
-  font-size: 13px;
+.diag-verdict {
+  margin: 0;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-}
-.block-points {
-  margin: 8px 0 0;
-  padding-left: 1.1em;
-  font-size: 12px;
   line-height: 1.45;
+  color: var(--ink);
 }
-.block-gates {
-  margin-top: 8px;
+.diag-phase {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: var(--muted);
 }
-.block-preview {
-  margin-top: 6px;
+.diag-layers {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.block-preview-line {
+.diag-layer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+.diag-layer-row:hover,
+.diag-layer-row[aria-expanded='true'] {
+  border-color: var(--teal);
+  background: var(--surface);
+}
+.diag-layer-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+}
+.diag-layer-one {
+  flex: 1 1 140px;
   font-size: 12px;
-  line-height: 1.4;
+  color: var(--ink-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.block-toggle {
-  border: none;
-  background: transparent;
-  color: var(--teal-deep, #3aa8a0);
-  font: inherit;
+.diag-chev {
   font-size: 12px;
-  padding: 0;
+  color: var(--muted);
+}
+.diag-layer-detail {
+  padding: 8px 10px;
+  margin: 0 0 2px;
+  border-radius: 5px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.diag-detail-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink-2);
+}
+.diag-meta {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.diag-meta .mono {
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  color: var(--ink-2);
+}
+.diag-link {
+  margin-left: 8px;
+  color: var(--teal);
+  text-decoration: none;
+}
+.diag-link:hover {
+  color: var(--teal-deep);
+  text-decoration: underline;
+}
+.diag-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 6px;
-  cursor: pointer;
-  text-align: left;
+}
+.diag-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-size: 13px;
+  color: var(--ink);
+}
+.diag-next-hint {
+  flex: 1 1 120px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.diag-jump-hl {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 /* 弹层可能 teleport 到 body：正文用非 scoped 规则，避免说明被截断 */
 .boss-check-label {

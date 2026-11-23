@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>诊断小卡 · 家在第六步交付区</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* 与 frontend/src/styles.css 同源 token */
+    :root {
+      --ink: #15202b;
+      --ink-2: #3d4f5f;
+      --muted: #6b7c8a;
+      --line: #d5dde3;
+      --line-soft: #e8eef2;
+      --surface: #ffffff;
+      --surface-2: #f4f7f9;
+      --bg: #e9eef2;
+      --teal: #0b6e75;
+      --teal-deep: #08545a;
+      --teal-soft: #d7eef0;
+      --amber: #b45309;
+      --amber-soft: #fef3c7;
+      --green: #047857;
+      --green-soft: #d1fae5;
+      --red: #b91c1c;
+      --red-soft: #fee2e2;
+      --banner-warn-bg: #fffbeb;
+      --banner-warn-line: #fcd34d;
+      --banner-fail-bg: #fef2f2;
+      --banner-fail-line: #fecaca;
+      --banner-ok-bg: #f0fdf6;
+      --banner-ok-line: #a7e3c4;
+      --font: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: ui-monospace, Consolas, monospace;
+      --radius: 6px;
+      color-scheme: light;
+    }
+    html[data-theme="dark"] {
+      --ink: #e8eef2;
+      --ink-2: #b8c5d0;
+      --muted: #8a9ba8;
+      --line: #2a3a48;
+      --line-soft: #1e2c38;
+      --surface: #151e27;
+      --surface-2: #1a2430;
+      --bg: #0c1218;
+      --teal: #2dd4bf;
+      --teal-deep: #5eead4;
+      --teal-soft: #134e4a;
+      --amber: #fbbf24;
+      --amber-soft: #422006;
+      --green: #34d399;
+      --green-soft: #064e3b;
+      --red: #f87171;
+      --red-soft: #450a0a;
+      --banner-warn-bg: rgba(66, 32, 6, 0.45);
+      --banner-warn-line: #b45309;
+      --banner-fail-bg: rgba(69, 10, 10, 0.45);
+      --banner-fail-line: #991b1b;
+      --banner-ok-bg: rgba(6, 78, 59, 0.35);
+      --banner-ok-line: #047857;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+    .page { max-width: 880px; margin: 0 auto; padding: 24px 18px 72px; }
+    .mock-label { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+    h1 { font-size: 18px; font-weight: 600; margin: 0 0 6px; }
+    .sub { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
+    .rule {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 640px) { .rule { grid-template-columns: 1fr; } }
+    .rule > div {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--ink-2);
+    }
+    .rule strong { display: block; color: var(--ink); margin-bottom: 4px; font-size: 13px; }
+    .rail {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 12px;
+      padding: 8px 10px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .rail span {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      color: var(--muted);
+    }
+    .rail span.on {
+      background: var(--teal-soft);
+      color: var(--teal);
+      font-weight: 600;
+    }
+    .rail span.done { color: var(--ink-2); }
+    .light-strip {
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      font-size: 12px;
+      color: var(--ink-2);
+    }
+    .light-strip strong { color: var(--ink); }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .zone-tag {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      padding: 6px 12px 0;
+    }
+    .ready {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      padding: 10px 12px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .phase { font-weight: 600; }
+    .phase.warn { color: var(--amber); }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink-2);
+    }
+    .pill.amber { background: var(--amber-soft); border-color: var(--banner-warn-line); color: var(--amber); }
+    .pill.green { background: var(--green-soft); border-color: var(--banner-ok-line); color: var(--green); }
+    .pill.red { background: var(--red-soft); border-color: var(--banner-fail-line); color: var(--red); }
+    .pill.click { cursor: pointer; }
+    .pill.click:hover { outline: 1px solid var(--teal); }
+    .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; font-weight: 500; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn.text { border: none; background: none; color: var(--teal); padding: 0 4px; font-size: 12px; }
+
+    /* —— 顶卡：故意短 —— */
+    .diag {
+      margin: 12px;
+      border: 1px solid var(--banner-warn-line);
+      background: var(--banner-warn-bg);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--ink);
+    }
+    .verdict {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 0 8px;
+    }
+    .layer-rows { display: grid; gap: 4px; margin: 0 0 8px; }
+    .layer-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 8px;
+      padding: 5px 8px;
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      border: 1px solid var(--line-soft);
+      border-radius: 5px;
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      width: 100%;
+      color: var(--ink);
+    }
+    .layer-row:hover, .layer-row[aria-expanded="true"] {
+      border-color: var(--teal);
+      background: var(--surface);
+    }
+    .layer-row .name { font-weight: 600; font-size: 13px; }
+    .layer-row .one { flex: 1 1 160px; font-size: 12px; color: var(--ink-2); }
+    .layer-row .chev { color: var(--muted); font-size: 12px; }
+    .layer-detail {
+      display: none;
+      margin: 0 0 6px;
+      padding: 8px 10px;
+      background: var(--surface);
+      border: 1px solid var(--line-soft);
+      border-radius: 5px;
+      font-size: 12px;
+      color: var(--ink-2);
+    }
+    .layer-detail.open { display: block; }
+    .layer-detail .locus { margin-top: 6px; color: var(--muted); }
+    .layer-detail a { color: var(--teal); text-decoration: none; }
+    .next-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      padding-top: 6px;
+      border-top: 1px dashed rgba(21,32,43,0.12);
+    }
+    .budget {
+      margin: 0 12px 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* —— 下方：明细账，默认折 —— */
+    .below {
+      border-top: 1px solid var(--line-soft);
+      padding: 0 12px 12px;
+    }
+    details.ledger {
+      border: 1px solid var(--line-soft);
+      border-radius: 6px;
+      margin-top: 8px;
+      background: var(--surface-2);
+    }
+    details.ledger[open] { background: var(--surface); }
+    details.ledger summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    details.ledger summary::-webkit-details-marker { display: none; }
+    .ledger-bd { padding: 0 12px 12px; font-size: 12px; color: var(--ink-2); }
+    .ledger-bd ul { margin: 6px 0 0; padding-left: 18px; }
+    .ledger-bd li { margin: 4px 0; }
+    .highlight {
+      outline: 2px solid var(--teal);
+      outline-offset: 1px;
+      border-radius: 4px;
+      transition: outline 0.2s;
+    }
+    .note {
+      margin-top: 16px;
+      padding: 10px 12px;
+      border-left: 3px solid var(--teal);
+      background: var(--surface);
+      font-size: 12px;
+      color: var(--ink-2);
+    }
+    code { font-family: var(--mono); font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <p class="mock-label">样稿 · 家在第 6 步 · docs/mocks/delivery-diagnosis-card-preview.html</p>
+    <h1>完整小卡只出现在「质检交付」</h1>
+    <p class="sub">
+      阶段轨点到第 6 步才进交付区；前五步只用轻条。
+      <button type="button" class="btn" id="theme-toggle" style="margin-left:8px">切换深色</button>
+    </p>
+
+    <div class="rail" aria-label="阶段轨">
+      <span class="done">1 材料</span>
+      <span class="done">2 匹配</span>
+      <span class="done">3 生成</span>
+      <span class="done">4 论文材料</span>
+      <span class="done">5 答辩 PPT</span>
+      <span class="on">6 质检交付</span>
+    </div>
+
+    <div class="light-strip">
+      <strong>对照 · 若人还在第 3 步生成失败</strong>
+      只出轻条：「编译失败 BUILD_COMPILE · 打开失败分析」+ 可选「去质检交付」。
+      <em>不会</em>在生成页画下面这张分层小卡。
+    </div>
+
+    <div class="rule">
+      <div>
+        <strong>第 6 步内 · 诊断卡（短）</strong>
+        总判 ≤ 2 行；每层一行头；下一步一行。宿主 = 交付工作台，替换旧阻断卡。
+      </div>
+      <div>
+        <strong>第 6 步内 · 下方折叠账本</strong>
+        清单 / QA 全文 / 审计。顶卡可跳转，不把全文抬到首屏。
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="zone-tag">第 6 步 · 交付区 · ① 就绪条</div>
+      <div class="ready">
+        <span class="phase warn">待重打包</span>
+        <div class="pills">
+          <span class="pill">门禁 16/18</span>
+          <span class="pill">清单 32/32</span>
+          <span class="pill amber">挡包 2</span>
+          <span class="pill green">通过 31</span>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn">进入复审</button>
+          <button type="button" class="btn primary">验收</button>
+          <button type="button" class="btn" disabled>重打包</button>
+        </div>
+      </div>
+
+      <div class="zone-tag">第 6 步 · ② 诊断卡（仅此处出现完整分层）</div>
+      <p class="budget">高度预算：约 5～7 行正文；再长就违例（应进折叠/弹层）</p>
+      <article class="diag" id="diag">
+        <p class="verdict">叠了三层：工程与 ZIP 不同步；质量摘要角色串台；学生包瘦身未过。清单已齐。</p>
+        <div class="layer-rows">
+          <button type="button" class="layer-row" data-layer="flow" aria-expanded="false">
+            <span class="pill amber">流程</span>
+            <span class="name">工程已变更</span>
+            <span class="one">ZIP 过期 · 消红后仍须验收重打包</span>
+            <span class="chev">▾</span>
+          </button>
+          <div class="layer-detail" id="detail-flow">
+            当前 ZIP 与工程不同步。下载是结果不是病因。
+          </div>
+
+          <button type="button" class="layer-row" data-layer="qa" aria-expanded="false">
+            <span class="pill red">内容审</span>
+            <span class="name">交付质量摘要</span>
+            <span class="one">管理员导语写成主办方「本方场次」</span>
+            <span class="chev">▾</span>
+          </button>
+          <div class="layer-detail" id="detail-qa">
+            warn 挡包已开 · GATE_QA / p3q<br />
+            平台管理员场次页用了主办方口径导语。
+            <div class="locus">
+              A 档 · builders_slot archiveAdminLead
+              · <button type="button" class="btn text" id="jump-qa">在下方看 QA 全文 →</button>
+            </div>
+          </div>
+
+          <button type="button" class="layer-row" data-layer="lean" aria-expanded="false">
+            <span class="pill red">包洁净</span>
+            <span class="name">学生包瘦身</span>
+            <span class="one">详情异域残留 · 缺 cinema-teal</span>
+            <span class="chev">▾</span>
+          </button>
+          <div class="layer-detail" id="detail-lean">
+            BAKE_PACK_LEAN / p3lean · ArchiveItemDetail contentOn；theme_missing:cinema-teal
+            <div class="locus">A 档 · pack_prune / archive_detail_prune · pack_themes</div>
+          </div>
+        </div>
+        <div class="next-line">
+          <strong>下一步</strong>
+          <span>改工厂或验收治愈 → 验收 → 重打包</span>
+          <button type="button" class="btn primary">进入复审</button>
+        </div>
+      </article>
+
+      <div class="zone-tag">第 6 步 · ③ 下方明细账（默认折起）</div>
+      <div class="below">
+        <details class="ledger" id="ledger-diag">
+          <summary>
+            <span>复审明细 · 待收敛 0 · 门禁 2</span>
+            <span class="pill amber">点顶卡「内容审」可跳到 QA</span>
+          </summary>
+          <div class="ledger-bd">
+            <p><strong>挡包门禁</strong>（名录；说明已在顶卡一行头）</p>
+            <ul>
+              <li>交付质量摘要</li>
+              <li>学生包瘦身 · ZIP 最终确认</li>
+            </ul>
+            <p id="qa-block" style="margin-top:12px"><strong>质量摘要（QA）</strong></p>
+            <ul>
+              <li><span class="pill amber">warn</span> 平台管理员「演出审核」使用主办方口径 archiveAdminLead · labels.archiveAdminLead</li>
+              <li><span class="pill">info</span> 顶栏搜索仍像影院「影片」口径（未挡包）</li>
+              <li><span class="pill">info</span> effectHallImax / domainLabel 影院残留（未挡包）</li>
+            </ul>
+            <p style="margin-top:12px"><strong>已通过清单</strong> · 31 项（略）</p>
+          </div>
+        </details>
+        <details class="ledger">
+          <summary>
+            <span>审计检查表 · 12 主项 + 理解偏差</span>
+            <span class="pill">与诊断卡无关 · 保持折</span>
+          </summary>
+          <div class="ledger-bd">人对开题勾选；机器绿仍可能理解错。不进顶卡。</div>
+        </details>
+      </div>
+    </div>
+
+    <p class="note">
+      <strong>搭配硬规矩</strong>：顶卡不复制下方 list；下方不重复总判句。
+      旧「阻断卡三点 + 门禁名预览」由短诊断卡<strong>替换</strong>，不是叠在上面再加一块。
+      门禁全文弹层可保留给「要一次看完所有 desc」；日常点层展开即可。
+      家在哪：§0；搭配：§3.1 · <code>docs/delivery-diagnosis-orchestration.md</code>
+    </p>
+  </div>
+  <script>
+    document.querySelectorAll('.layer-row').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-layer')
+        const detail = document.getElementById('detail-' + id)
+        const open = detail.classList.toggle('open')
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false')
+        btn.querySelector('.chev').textContent = open ? '▴' : '▾'
+      })
+    })
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark'
+      document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark')
+      document.getElementById('theme-toggle').textContent = dark ? '切换深色' : '切换浅色'
+    })
+    document.getElementById('jump-qa').addEventListener('click', (e) => {
+      e.stopPropagation()
+      const ledger = document.getElementById('ledger-diag')
+      ledger.open = true
+      const target = document.getElementById('qa-block')
+      target.classList.add('highlight')
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setTimeout(() => target.classList.remove('highlight'), 1600)
+    })
+  </script>
+</body>
+</html>
