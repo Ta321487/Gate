@@ -3,7 +3,7 @@
 > **本文只负责**：描述一类**新功能方向**——工厂内维护结构化资产，bake / 门禁 / 控制台消费，少改学生 ZIP。  
 > **不负责**：论文图几何（parked **m**）、题名库接线（**j**）、运营台产品化 UI（**p**）、Surface Lexicon 运维尾债（**e**）。那些是别的单。  
 > **范本**：`factory_zh_lexicon` → bake `COMMENT` + 侧栏「词表维护」（2026-11-16）。  
-> **状态**：方向册 · **波次 A+B+C 已齐**；**波次 D · #4+#5+#7+#8+#9 已齐**（2026-11-21）· 下一项 `#11` · 见 [`parked-work.md`](./parked-work.md) 碎另案 **q**。  
+> **状态**：方向册 · **波次 A+B+C 已齐**；**波次 D · #4+#5+#7+#8+#9+#11 已齐**（2026-11-23）· 见 [`parked-work.md`](./parked-work.md) 碎另案 **q**。  
 > **口令**：`做资产台` / `做资产台 #n`（n 为本文选项编号）。  
 > **索引**：[README.md](./README.md)
 
@@ -233,9 +233,9 @@ factory_demo_script
 
 匹配确认页：证据列表 + 建议 addons；人工勾选落确认。低置信仍走「已人工核域」。**不是**自动改开题。
 
-### 6.8 #11 论文图题模板
+### 6.8 #11 论文图题模板 ✅ 2026-11-23
 
-`diagram_kind × domain` → 标准图题；与 Overrides / 出图管线对接。几何仍归 parked **m**。
+`diagram_kind × domain` → `title_tpl`（`{name}`）；`factory_diagram_title` + 侧栏「论文图题」+ bake `schema.diagramTitleTemplates`；类图/序列/活动/架构/模块出图读模板。几何仍归 parked **m**。
 
 ### 6.9 #12 能力岛说明卡
 
@@ -264,7 +264,7 @@ factory_demo_script
   #7 规则参数  →  factory_rule_param + 侧栏「规则参数」+ schema.ruleParams（落点键仅补缺）
   #8 表关系叙事 →  factory_er_edge_copy + 侧栏「表关系叙事」+ schema.erEdgeCopy
   #9 测试账号  →  factory_demo_account + 侧栏「测试账号」+ schema.demoAccounts
-  #11  （未开）
+  #11 论文图题 →  factory_diagram_title + 侧栏「论文图题」+ schema.diagramTitleTemplates ✅
 ```
 
 每波次收工标准：五段合同齐 + 对口 pytest 绿 + HANDOFF 记一笔；**禁止**只写文档勾已齐。

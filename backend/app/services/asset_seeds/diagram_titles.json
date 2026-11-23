@@ -33,5 +33,12 @@
     "title_tpl": "{name}逻辑架构图",
     "sort": 50,
     "source": "migrated"
+  },
+  {
+    "diagram_kind": "modules",
+    "domain_id": "*",
+    "title_tpl": "{name}功能模块图",
+    "sort": 60,
+    "source": "migrated"
   }
 ]

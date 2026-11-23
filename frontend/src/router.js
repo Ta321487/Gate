@@ -20,6 +20,7 @@ import MenuMatrix from './views/MenuMatrix.vue'
 import RuleParams from './views/RuleParams.vue'
 import ErEdgeCopy from './views/ErEdgeCopy.vue'
 import DemoAccounts from './views/DemoAccounts.vue'
+import DiagramTitles from './views/DiagramTitles.vue'
 import ErrorPage from './views/ErrorPage.vue'
 
 const router = createRouter({
@@ -53,6 +54,7 @@ const router = createRouter({
     { path: '/rule-params', name: 'rule-params', component: RuleParams, meta: { crumb: '规则参数' } },
     { path: '/er-edge-copy', name: 'er-edge-copy', component: ErEdgeCopy, meta: { crumb: '表关系叙事' } },
     { path: '/demo-accounts', name: 'demo-accounts', component: DemoAccounts, meta: { crumb: '测试账号' } },
+    { path: '/diagram-titles', name: 'diagram-titles', component: DiagramTitles, meta: { crumb: '论文图题' } },
     {
       path: '/thesis-absorb',
       name: 'thesis-absorb',

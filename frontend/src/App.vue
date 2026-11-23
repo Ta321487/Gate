@@ -158,6 +158,7 @@ const navSections = [
       { to: '/rule-params', label: '规则参数', desc: '超时 / 提前量 / 倍率', match: ['rule-params'] },
       { to: '/er-edge-copy', label: '表关系叙事', desc: '表边一句人话', match: ['er-edge-copy'] },
       { to: '/demo-accounts', label: '测试账号', desc: '三端演示账号', match: ['demo-accounts'] },
+      { to: '/diagram-titles', label: '论文图题', desc: '图种标题模板', match: ['diagram-titles'] },
     ],
   },
 ]

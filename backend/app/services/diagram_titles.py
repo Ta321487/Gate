@@ -15,7 +15,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 SOURCES = frozenset({"migrated", "scan", "manual"})
 BAKE_SOURCES = frozenset({"migrated", "scan", "manual"})
-DIAGRAM_KINDS = frozenset({"class", "sequence", "activity", "er", "architecture"})
+DIAGRAM_KINDS = frozenset(
+    {"class", "sequence", "activity", "er", "architecture", "modules"}
+)
+KIND_LABELS_ZH = {
+    "class": "类图",
+    "sequence": "序列图",
+    "activity": "活动图",
+    "er": "E-R图",
+    "architecture": "逻辑架构图",
+    "modules": "功能模块图",
+}
 WILDCARD = "*"
 
 _lock = threading.RLock()
@@ -156,9 +166,29 @@ def resolve_figure_title(
             "activity": "{name}活动图",
             "er": "{name}E-R图",
             "architecture": "{name}逻辑架构图",
+            "modules": "{name}功能模块图",
         }
         tpl = fallback.get(kind, "{name}图")
     return tpl.replace("{name}", name).replace("{domain}", domain)
+
+
+def figure_title_from_schema(
+    schema: dict[str, Any] | None,
+    kind: str,
+    *,
+    name: str = "",
+    domain: str = WILDCARD,
+) -> str:
+    """出图消费：优先 schema.diagramTitleTemplates（bake 已解析），否则现场 resolve。"""
+    kind = _norm(kind)
+    name = _norm(name) or "系统"
+    bag = (schema or {}).get("diagramTitleTemplates")
+    if isinstance(bag, dict):
+        hit = _norm(bag.get(kind))
+        if hit:
+            return hit
+    dom = _norm(domain) or _norm((schema or {}).get("domain")) or WILDCARD
+    return resolve_figure_title(kind, domain=dom, name=name)
 
 
 def apply_diagram_titles_to_schema(
@@ -177,6 +207,19 @@ def apply_diagram_titles_to_schema(
         bag[kind] = resolve_figure_title(kind, domain=domain, name=name, rows=rows)
     schema["diagramTitleTemplates"] = bag
     return schema
+
+
+def apply_diagram_titles_to_spec(
+    spec: dict[str, Any],
+    *,
+    rows: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    sch = dict(spec.get("schema") or {})
+    domain = _norm(spec.get("domain") or sch.get("domain") or "")
+    sch = apply_diagram_titles_to_schema(sch, domain, rows=rows)
+    out = dict(spec)
+    out["schema"] = sch
+    return out
 
 
 def gap_report(*, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:

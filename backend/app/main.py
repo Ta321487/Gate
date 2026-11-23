@@ -46,6 +46,7 @@ async def lifespan(_app: FastAPI):
         from app.services.rule_params import migrate_seed_if_empty as migrate_rules
         from app.services.er_edge_copy import migrate_seed_if_empty as migrate_edges
         from app.services.demo_accounts import migrate_seed_if_empty as migrate_accts
+        from app.services.diagram_titles import migrate_seed_if_empty as migrate_titles
         from app.services.zh_lexicon import migrate_seed_if_empty as migrate_zh
 
         async with SessionLocal() as db:
@@ -61,6 +62,7 @@ async def lifespan(_app: FastAPI):
             await migrate_rules(db)
             await migrate_edges(db)
             await migrate_accts(db)
+            await migrate_titles(db)
     except Exception:  # noqa: BLE001
         from app.services.addon_suggest import bootstrap_from_seed as boot_addon
         from app.services.cap_cards import bootstrap_from_seed as boot_caps
@@ -73,6 +75,7 @@ async def lifespan(_app: FastAPI):
         from app.services.rule_params import bootstrap_from_seed as boot_rp
         from app.services.er_edge_copy import bootstrap_from_seed as boot_eec
         from app.services.demo_accounts import bootstrap_from_seed as boot_da
+        from app.services.diagram_titles import bootstrap_from_seed as boot_dt
         from app.services.zh_lexicon import bootstrap_from_seed as boot_zh
 
         boot_zh()
@@ -87,6 +90,7 @@ async def lifespan(_app: FastAPI):
         boot_rp()
         boot_eec()
         boot_da()
+        boot_dt()
     # 重启后无内存 Task 的 running 任务会永远卡在进度条（如 pack=91%）
     try:
         from app.services.jobs import fail_orphaned_jobs

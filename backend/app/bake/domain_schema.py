@@ -182,6 +182,7 @@ def build_domain_schema(
     from app.services.rule_params import apply_rule_params_to_schema
     from app.services.er_edge_copy import apply_er_edge_copy_to_schema
     from app.services.demo_accounts import apply_demo_accounts_to_schema
+    from app.services.diagram_titles import apply_diagram_titles_to_schema
 
     schema = apply_status_copy_to_schema(schema, domain)
     skin = ""
@@ -196,6 +197,7 @@ def build_domain_schema(
     schema = apply_rule_params_to_schema(schema, domain)
     schema = apply_er_edge_copy_to_schema(schema)
     schema = apply_demo_accounts_to_schema(schema, domain)
+    schema = apply_diagram_titles_to_schema(schema, domain)
     return schema
 
 
@@ -689,6 +691,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     from app.services.rule_params import apply_rule_params_to_spec
     from app.services.er_edge_copy import apply_er_edge_copy_to_spec
     from app.services.demo_accounts import apply_demo_accounts_to_spec
+    from app.services.diagram_titles import apply_diagram_titles_to_spec
 
     out = apply_status_copy_to_spec(out)
     out = apply_dict_values_to_spec(out)
@@ -696,6 +699,7 @@ def attach_accept(spec: dict[str, Any], proposal_text: str = "") -> dict[str, An
     out = apply_rule_params_to_spec(out)
     out = apply_er_edge_copy_to_spec(out)
     out = apply_demo_accounts_to_spec(out)
+    out = apply_diagram_titles_to_spec(out)
     return out
 
 
