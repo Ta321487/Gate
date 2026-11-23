@@ -111,7 +111,8 @@ function Start-GfBackendProcess {
     param(
         [Parameter(Mandatory = $true)][string]$RepoRoot,
         [int]$Port = $script:GfBackendPort,
-        [switch]$NewWindow
+        [switch]$NewWindow,
+        [switch]$NoReload
     )
     $py = Get-GfBackendVenvPython -RepoRoot $RepoRoot
     if (-not (Test-Path -LiteralPath $py)) {
@@ -124,6 +125,10 @@ function Start-GfBackendProcess {
         "--port", "$Port",
         "--no-use-colors"
     )
+    # 本地默认热重载；只盯 app，避免扫 .venv / 缓存。正式无重载：-NoReload
+    if (-not $NoReload) {
+        $arg += @("--reload", "--reload-dir", "app")
+    }
     # Default: stay in current console (WT tab). Start-Process without -NoNewWindow
     # opens a floating cmd window — that was the bug.
     if ($NewWindow) {

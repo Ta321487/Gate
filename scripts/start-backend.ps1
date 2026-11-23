@@ -1,9 +1,10 @@
-﻿# Start Gate backend with owned PID (venv). Called by start-backend.bat / launcher.
+# Start Gate backend with owned PID (venv). Called by start-backend.bat / launcher.
 # Save as UTF-8 with BOM for Windows PowerShell 5.1
 
 param(
     [switch]$NoWait,
-    [switch]$SkipClean
+    [switch]$SkipClean,
+    [switch]$NoReload
 )
 
 $ErrorActionPreference = "Stop"
@@ -49,7 +50,12 @@ if (-not $SkipClean) {
 }
 
 Write-Host "Gate API - http://127.0.0.1:$($script:GfBackendPort)" -ForegroundColor Cyan
-$proc = Start-GfBackendProcess -RepoRoot $Repo -Port $script:GfBackendPort
+if ($NoReload) {
+    Write-Host "[info] hot-reload off" -ForegroundColor DarkGray
+} else {
+    Write-Host "[info] hot-reload on (watch backend\\app)" -ForegroundColor DarkGray
+}
+$proc = Start-GfBackendProcess -RepoRoot $Repo -Port $script:GfBackendPort -NoReload:$NoReload
 Write-Host ("[ok] started venv uvicorn pid={0}" -f $proc.Id) -ForegroundColor Green
 
 if ($NoWait) {

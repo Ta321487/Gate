@@ -11,7 +11,8 @@ if not "%~1"=="" goto :run
 if defined WT_SESSION goto :run
 where wt >nul 2>nul
 if errorlevel 1 goto :run
-wt -w %GF_WT_WINDOW% --title "Gate Console" -d "%~dp0.." -- powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0launcher.ps1"
+rem Compact remote size 52x36 (buffer=window, no scrollbar). Older wt may ignore --size.
+wt -w %GF_WT_WINDOW% --size 52,36 --title "Gate Console" -d "%~dp0.." -- powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0launcher.ps1"
 exit /b 0
 :run
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0launcher.ps1" %*
