@@ -19,6 +19,7 @@ from app.services.proposal import read_proposal
 from app.services.thesis_absorb_extract import (
     EXTRACTOR_VERSION,
     apply_figure_cross_check,
+    apply_table_module_cross_check,
     build_feed_markdown,
     build_opening_draft,
     clean_background,
@@ -471,6 +472,20 @@ def _extract_bundle(
     fl = proposal.get("feature_lines") or []
     # 同步路径只落弱抽；三栏/覆盖由 async LLM 层补齐
     fb = fallback_drafts_no_llm(proposal)
+    # §3.0b：物理题注中文名 + 实体栏 ↔ 功能清单（两侧都有才对账）
+    schema_meta = dict(schema_pack.get("schema_extract_meta") or {})
+    result["warnings"] = apply_table_module_cross_check(
+        list(result.get("warnings") or []),
+        entities=list(fb.get("draft_entities") or [])
+        + [str(x) for x in list(proposal.get("entity_hints") or []) if isinstance(x, str)],
+        features=list(fb.get("draft_features") or [])
+        + [str(x) for x in fl if isinstance(x, str)],
+        table_labels=[
+            str(x)
+            for x in list(schema_meta.get("table_labels") or [])
+            if isinstance(x, str) and str(x).strip()
+        ],
+    )
     return {
         "proposal_json": proposal,
         "warnings_json": result.get("warnings") or [],
@@ -483,7 +498,7 @@ def _extract_bundle(
         "draft_entities": fb["draft_entities"],
         "draft_features": fb["draft_features"],
         "draft_schema_sql": str(schema_pack.get("draft_schema_sql") or ""),
-        "schema_extract_meta": dict(schema_pack.get("schema_extract_meta") or {}),
+        "schema_extract_meta": schema_meta,
         "status": "review" if result.get("thin_features") else "stored",
         "_extract_text": text,
     }
@@ -569,6 +584,8 @@ async def _enrich_with_llm_drafts(
         "测试用例提到设计未列",
         "角色与端不一致",
         "缺实现/结构图交叉",
+        "表有模块无",
+        "模块有表无",
     )
     old = list(row.warnings_json) if isinstance(row.warnings_json, list) else []
     if out.get("used_llm"):
@@ -578,6 +595,7 @@ async def _enrich_with_llm_drafts(
             if isinstance(w, str) and not any(p in w for p in _feat_cross)
         ]
     else:
+        # 无模型：功能清单被清空，保留同步路径已写的表↔模块告警
         base = [w for w in old if isinstance(w, str)]
     for w in llm_warns:
         if w not in base:
@@ -585,6 +603,28 @@ async def _enrich_with_llm_drafts(
     # LLM 已给出干净角色时，正文误抽端不得再挂假红
     if out.get("used_llm") and list(out.get("draft_roles") or []):
         base = [w for w in base if w != "角色与端不一致"]
+    # 有模型定稿三栏后再对账；无模型勿用空功能冲掉同步告警
+    if out.get("used_llm"):
+        meta = (
+            row.schema_extract_meta
+            if isinstance(getattr(row, "schema_extract_meta", None), dict)
+            else {}
+        )
+        base = apply_table_module_cross_check(
+            base,
+            entities=list(row.draft_entities or [])
+            + [
+                str(x)
+                for x in list(prop.get("entity_hints") or [])
+                if isinstance(x, str)
+            ],
+            features=list(row.draft_features or []),
+            table_labels=[
+                str(x)
+                for x in list(meta.get("table_labels") or [])
+                if isinstance(x, str) and str(x).strip()
+            ],
+        )
     row.warnings_json = base
     if out.get("used_llm") and cov == "covered":
         row.status = "covered"

@@ -20,6 +20,12 @@ _PHYS_CAPTION = re.compile(
     r"([\u4e00-\u9fffA-Za-z0-9]{2,24}表)\s*"
     r"([A-Za-z_][A-Za-z0-9_]{0,63})",
 )
+# 裸题注：4.18 评论表 en（PDF 常吞句首「表」；须下文仍像字段表才收）
+_BARE_PHYS_CAPTION = re.compile(
+    rf"^{_TABLE_NO}\s*"
+    r"([\u4e00-\u9fffA-Za-z0-9]{2,24}表)\s*"
+    r"([A-Za-z_][A-Za-z0-9_]{0,63})\s*$"
+)
 # 用户表（yonghu） / 表 4.1 用户表（yonghu）
 _PHYS_PAREN_EN = re.compile(
     rf"(?:表\s*{_TABLE_NO}\s*)?"
@@ -32,10 +38,10 @@ _ENUM_PHYS = re.compile(
     r"([\u4e00-\u9fff]{2,20}表?)\s*"
     r"([A-Za-z_][A-Za-z0-9_]{0,63})"
 )
-# 如表4.3所示 / 如 表4.5 所示 / 如表4.7¶所示 / 如表¶4.6 所示
+# 如表4.3所示 / 所\s*示折行 / 如表4.7¶所示
 _SHOWN_REF = re.compile(
-    rf"如\s*表\s*{_TABLE_NO}\s*所示"
-    rf"|如\s*表\s*{_TABLE_NO}(?=\s|$|[。．;；，,])"
+    rf"如\s*表\s*{_TABLE_NO}\s*所\s*示"
+    rf"|如\s*表\s*{_TABLE_NO}(?=\s|$|[。．;；，,]|所)"
 )
 _NEXT_ENUM_TABLE = re.compile(
     r"^[（(]\d+[)）]\s*[\u4e00-\u9fffA-Za-z0-9]{2,20}表\b"
@@ -153,6 +159,39 @@ def _norm_table_no(no: str) -> str:
     return t
 
 
+def _zh_table_stem(zh: str) -> str:
+    t = re.sub(r"\s+", "", zh or "")
+    return t[:-1] if t.endswith("表") and len(t) > 2 else t
+
+
+def _en_near_dup(a: str, b: str) -> bool:
+    """英文表名近形：good/goods、截断/复数（PDF 题注常吞尾字母）。"""
+    al = (a or "").strip().lower()
+    bl = (b or "").strip().lower()
+    if not al or not bl:
+        return False
+    if al == bl:
+        return True
+    if al + "s" == bl or bl + "s" == al:
+        return True
+    short, long = (al, bl) if len(al) <= len(bl) else (bl, al)
+    # 短名≥3 且为长名前缀（good⊂goods）；禁止 o/or 这类过短误并
+    return len(short) >= 3 and long.startswith(short)
+
+
+def _prefer_en_name(a: str, b: str) -> str:
+    """同表冲突时留更完整英文名（goods > good）。"""
+    a = (a or "").strip()
+    b = (b or "").strip()
+    if not a:
+        return b
+    if not b:
+        return a
+    if len(b) > len(a):
+        return b
+    return a
+
+
 def _looks_like_field_header(s: str) -> bool:
     t = re.sub(r"\s+", "", s or "")
     if not t:
@@ -194,6 +233,32 @@ def _anchor_before_field_header(lines: list[str], from_li: int) -> int:
     return from_li
 
 
+def _field_table_ahead(lines: list[str], from_li: int, *, window: int = 24) -> bool:
+    """下文是否仍像物理字段表（表头或类型锚定行）。引导词不对时的收录闸。"""
+    end = min(max(0, from_li) + window, len(lines))
+    for j in range(max(0, from_li), end):
+        s = _norm_line(lines[j])
+        if not s:
+            continue
+        if _looks_like_field_header(s) or _cell_stream_header_at(lines, j):
+            return True
+        if parse_anchored_field_line(s):
+            return True
+    return False
+
+
+def _next_caption_line_index(
+    captions: list[dict[str, Any]], start_li: int
+) -> int | None:
+    """按正文行号找下一题注（禁止按表号排序取 next → 空切）。"""
+    later = [
+        int(c.get("line_index") or -1)
+        for c in captions
+        if int(c.get("line_index") or -1) > start_li
+    ]
+    return min(later) if later else None
+
+
 def parse_physical_captions(text: str) -> list[dict[str, Any]]:
     """物理题注 → [{no, zh, en, order, line_index}]。
 
@@ -203,6 +268,24 @@ def parse_physical_captions(text: str) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
     lines = (text or "").splitlines()
+
+    def _merge_into(
+        c: dict[str, Any], *, no: str, zh: str, en: str, anchor_from: int
+    ) -> None:
+        """把新证据并进已有题注（同表号 / 近形英文），不另开一张空表。"""
+        new_li = _anchor_before_field_header(lines, anchor_from)
+        if new_li >= int(c.get("line_index") or 0):
+            c["line_index"] = new_li
+        if no and not c.get("no"):
+            c["no"] = _norm_table_no(no)
+        preferred = _prefer_en_name(str(c.get("en") or ""), en)
+        old_en = str(c.get("en") or "")
+        if preferred.lower() != old_en.lower():
+            seen.discard(old_en.lower())
+            seen.add(preferred.lower())
+            c["en"] = preferred
+        if zh and len(zh) > len(str(c.get("zh") or "")):
+            c["zh"] = zh
 
     def _push(no: str, zh: str, en: str, anchor_from: int) -> None:
         en = (en or "").strip()
@@ -223,25 +306,31 @@ def parse_physical_captions(text: str) -> list[dict[str, Any]]:
         )
 
     def _upgrade_or_push(no: str, zh: str, en: str, anchor_from: int) -> None:
-        en_l = (en or "").strip().lower()
-        if not en_l:
+        en = (en or "").strip()
+        zh = (zh or "").strip()
+        en_l = en.lower()
+        if not en_l or not _IDENT.match(en):
             return
+        no_n = _norm_table_no(no) if no else ""
+        zh_stem = _zh_table_stem(zh)
         if en_l in seen:
             for c in out:
                 if c["en"].lower() != en_l:
                     continue
                 # 更明确的「表4.n …」行：上调锚点与表号
-                new_li = _anchor_before_field_header(lines, anchor_from)
-                if new_li >= int(c.get("line_index") or 0):
-                    c["line_index"] = new_li
-                if no and not c.get("no"):
-                    c["no"] = _norm_table_no(no)
-                elif no and c.get("no") and _norm_table_no(no) != c["no"]:
-                    # 同英文偶发笔误表号，保留先写入的
-                    pass
-                if zh and len(zh) > len(str(c.get("zh") or "")):
-                    c["zh"] = zh
+                _merge_into(c, no=no, zh=zh, en=en, anchor_from=anchor_from)
                 break
+            return
+        # 同表号或同中文 + 近形英文（枚举 goods / 正式题注 good）→ 并一张，禁假漏挖
+        for c in out:
+            c_no = str(c.get("no") or "")
+            same_no = bool(no_n) and bool(c_no) and no_n == c_no
+            same_zh = bool(zh_stem) and _zh_table_stem(str(c.get("zh") or "")) == zh_stem
+            if not (same_no or same_zh):
+                continue
+            if not (_en_near_dup(str(c.get("en") or ""), en) or same_no and same_zh):
+                continue
+            _merge_into(c, no=no, zh=zh, en=en, anchor_from=anchor_from)
             return
         _push(no, zh, en, anchor_from)
 
@@ -258,6 +347,12 @@ def parse_physical_captions(text: str) -> list[dict[str, Any]]:
             )
         ):
             _upgrade_or_push(m.group(1), m.group(2), m.group(3), li)
+            continue
+        # 形态1c：裸 4.18 评论表 en——引导词缺「表」；下文仍像字段表才收
+        bm = _BARE_PHYS_CAPTION.match(line)
+        if bm:
+            if _field_table_ahead(lines, li + 1):
+                _upgrade_or_push(bm.group(1), bm.group(2), bm.group(3), li)
             continue
         # 形态1b：用户表（yonghu）
         pm = _PHYS_PAREN_EN.search(line)
@@ -281,7 +376,9 @@ def parse_physical_captions(text: str) -> list[dict[str, Any]]:
         zh = em.group(1)
         if zh and not zh.endswith("表"):
             zh = zh + "表"
-        _upgrade_or_push(no, zh, em.group(2), li)
+        # 引导词折烂仍可收：已采到表号，或下文仍像字段表
+        if no or _field_table_ahead(lines, li + 1):
+            _upgrade_or_push(no, zh, em.group(2), li)
 
     def _sort_key(c: dict[str, Any]) -> tuple:
         no = str(c.get("no") or "")
@@ -628,7 +725,7 @@ def _block_lines_for_caption(
     self_no_n = _norm_table_no(self_no) if self_no else ""
 
     def _is_same_table_caption(flat: str) -> bool:
-        m = _PHYS_CAPTION.search(flat)
+        m = _PHYS_CAPTION.search(flat) or _BARE_PHYS_CAPTION.match(flat)
         if m:
             if self_en_l and m.group(3).lower() == self_en_l:
                 return True
@@ -639,6 +736,13 @@ def _block_lines_for_caption(
             return True
         return False
 
+    def _is_other_table_caption(flat: str) -> bool:
+        if _PHYS_CAPTION.search(flat) or _PHYS_PAREN_EN.search(flat):
+            return not _is_same_table_caption(flat)
+        if _BARE_PHYS_CAPTION.match(flat):
+            return not _is_same_table_caption(flat)
+        return False
+
     # 下一块前若夹「续表」，并入本块（同表续页）
     if next_li is not None:
         for j in range(next_li, min(next_li + 3, len(all_lines))):
@@ -647,7 +751,12 @@ def _block_lines_for_caption(
                 end = len(all_lines)
                 for k in range(j + 1, len(all_lines)):
                     nk = _norm_line(all_lines[k])
-                    if _PHYS_CAPTION.search(nk) or _PHYS_PAREN_EN.search(nk) or _NEXT_ENUM_TABLE.match(nk):
+                    if (
+                        _PHYS_CAPTION.search(nk)
+                        or _PHYS_PAREN_EN.search(nk)
+                        or _BARE_PHYS_CAPTION.match(nk)
+                        or _NEXT_ENUM_TABLE.match(nk)
+                    ):
                         if _is_same_table_caption(nk):
                             continue
                         end = k
@@ -664,10 +773,10 @@ def _block_lines_for_caption(
         flat = re.sub(r"[ \t]+", " ", s)
         if _CONT_TABLE.match(flat):
             continue
-        if _PHYS_CAPTION.search(flat) or _PHYS_PAREN_EN.search(flat):
-            if _is_same_table_caption(flat):
-                continue  # 枚举后再写「表4.n …」——同表，勿截断
+        if _is_other_table_caption(flat):
             break
+        if _is_same_table_caption(flat):
+            continue  # 枚举后再写「表4.n / 裸4.n …」——同表，勿截断
         if _NEXT_ENUM_TABLE.match(s):
             break
         if _NARRATIVE_SKIP.search(s) or re.match(r"^具体内容如表|^如表\s*\d", s):
@@ -821,13 +930,13 @@ def mine_tables_l1(text: str) -> tuple[list[dict[str, Any]], list[str]]:
         return [], warnings
     lines = (text or "").splitlines()
     tables: list[dict[str, Any]] = []
-    for i, cap in enumerate(captions):
-        next_li = (
-            captions[i + 1]["line_index"] if i + 1 < len(captions) else None
-        )
+    for cap in captions:
+        start_li = int(cap["line_index"])
+        # 下一题注按正文行号，不按表号排序后的 i+1（力固评论表空切）
+        next_li = _next_caption_line_index(captions, start_li)
         block = _block_lines_for_caption(
             lines,
-            int(cap["line_index"]),
+            start_li,
             next_li,
             self_en=str(cap.get("en") or ""),
             self_no=str(cap.get("no") or ""),
@@ -1076,6 +1185,12 @@ def extract_draft_schema(
         "warnings": warnings,
         "homology_ok": homology_ok,
         "table_names": [t["name"] for t in with_cols],
+        # 中文题注：供 §3.0b 表↔模块对账（含尚无列的题注表）
+        "table_labels": [
+            str(t.get("label") or "").strip()
+            for t in tables
+            if str(t.get("label") or "").strip()
+        ],
         "mine": "l1_text",
     }
     return {

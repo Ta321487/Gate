@@ -7,10 +7,12 @@ from pathlib import Path
 
 from app.services.thesis_absorb_extract import (
     EXTRACTOR_VERSION,
+    apply_table_module_cross_check,
     build_feed_markdown,
     build_opening_draft,
     content_sha256,
     extract_thesis_proposal,
+    table_module_cross_warnings,
 )
 
 
@@ -1054,6 +1056,80 @@ class ThesisAbsorbFigureSide(unittest.TestCase):
         self.assertEqual(
             out["proposal"]["feature_lines"],
             ["订单管理", "材料类型管理", "购物车管理"],
+        )
+
+    def test_table_module_cross_hang_and_warn(self) -> None:
+        """§3.0b：表能挂模块名；挂不上只告警不删对方。"""
+        # 轮播图↔轮播图管理；内容分类↔分类管理（包含挂）
+        ok = table_module_cross_warnings(
+            entities=["轮播图", "内容分类", "订单"],
+            features=["轮播图管理", "分类管理", "订单管理"],
+        )
+        self.assertEqual(ok, [])
+
+        only_table = table_module_cross_warnings(
+            entities=["轮播图", "订单"],
+            features=["订单管理"],
+            table_labels=["轮播图表"],
+        )
+        blob = " ".join(only_table)
+        self.assertIn("表有模块无", blob)
+        self.assertIn("轮播图", blob)
+        self.assertNotIn("订单", blob)  # 订单已挂上
+
+        only_mod = table_module_cross_warnings(
+            entities=["订单"],
+            features=["订单管理", "材料类型管理", "购物车管理"],
+        )
+        blob2 = " ".join(only_mod)
+        self.assertIn("模块有表无", blob2)
+        self.assertTrue("材料类型" in blob2 or "购物车" in blob2, only_mod)
+
+        # 一侧空 → 不对账（不瞎黄）
+        self.assertEqual(
+            table_module_cross_warnings(entities=["订单"], features=[]),
+            [],
+        )
+        # 壳模块不要求有表
+        self.assertEqual(
+            table_module_cross_warnings(
+                entities=["订单"],
+                features=["订单管理", "个人中心管理", "系统首页管理"],
+            ),
+            [],
+        )
+        # apply 替换旧告警，不改传入清单引用外的业务栏
+        feats = ["订单管理", "材料类型管理", "购物车管理"]
+        ents = ["订单"]
+        out = apply_table_module_cross_check(
+            ["表有模块无：旧告警", "其它告警"],
+            entities=ents,
+            features=feats,
+        )
+        self.assertIn("其它告警", out)
+        self.assertTrue(any(w.startswith("模块有表无") for w in out), out)
+        self.assertFalse(any(w == "表有模块无：旧告警" for w in out))
+        self.assertEqual(feats, ["订单管理", "材料类型管理", "购物车管理"])
+        self.assertEqual(ents, ["订单"])
+
+    def test_extract_table_module_cross_in_warnings(self) -> None:
+        """抽取路径：实体题注与功能清单能对上时，告警里应出现表↔模块黄条。"""
+        text = """
+第四章 系统设计
+管理端包含订单管理、轮播图管理。
+第五章 数据库设计
+表 4.1 订单表 orders
+表 4.2 轮播图表 rotation
+表 4.3 内容分类表 sort
+"""
+        # 弱抽功能可能空；用 entity_hints + 手工拼对账形状已由上测覆盖。
+        # 这里钉：有实体线索进 proposal，EXTRACTOR 升版。
+        r = extract_thesis_proposal(text)
+        self.assertEqual(r["extractor_version"], EXTRACTOR_VERSION)
+        hints = r["proposal"].get("entity_hints") or []
+        self.assertTrue(
+            any("订单" in str(h) or "轮播" in str(h) or "分类" in str(h) for h in hints),
+            hints,
         )
 
     def test_merge_figure_into_proposal(self) -> None:

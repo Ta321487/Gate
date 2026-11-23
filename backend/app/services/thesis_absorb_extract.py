@@ -44,7 +44,10 @@ from app.services.proposal import (
 # v40：物理/逻辑库表章 → draft_schema_sql 落库（忠于原文，禁脑补列）
 # v41：L1 正文主矿（类型词锚定切列）；plumber 仅补空；材料有而抽空=工厂漏挖
 # v42：表头/类型/题注/行首形态加固（中文类型、制表符、括号英文名、Y/N·PRI）
-EXTRACTOR_VERSION = "42"
+# v43：§3.0b 库表↔模块/实体确定性对账（表有模块无 / 模块有表无，只告警不删）
+# v44：同表号题注英文近形合并（枚举 goods / 正式 good）禁假漏挖
+# v45：下一题注按正文行号；所\s*示折行；裸 4.n××表 en 下文像表才收
+EXTRACTOR_VERSION = "45"
 
 THIN_FEATURE_THRESHOLD = 3
 
@@ -1574,6 +1577,169 @@ def admit_features_faithful(
     return finalize_feature_lines(out, limit=limit)
 
 
+def _biz_stem(s: str) -> str:
+    """表题注 / 实体 / 功能 → 可比业务词干（去表/管理/模块）。"""
+    t = re.sub(r"\s+", "", s or "")
+    t = re.sub(r"[：:].*$", "", t)
+    t = re.sub(r"[A-Za-z][A-Za-z0-9_]*", "", t)
+    t = re.sub(r"（[^）]*）|\([^)]*\)", "", t)
+    for suf in ("模块", "管理", "表", "端"):
+        if t.endswith(suf) and len(t) > len(suf) + 1:
+            t = t[: -len(suf)]
+    return t.lower()
+
+
+def _stems_hang(a: str, b: str) -> bool:
+    """词干能否挂上：全等或一方包含另一方（分类↔内容分类）。"""
+    if not a or not b or len(a) < 2 or len(b) < 2:
+        return False
+    if a == b:
+        return True
+    return a in b or b in a
+
+
+# 导航/过程/壳：不要求有库表；也不因「无模块」告这些壳表
+_TABLE_MODULE_SKIP_STEMS = frozenset(
+    {
+        "首页",
+        "系统首页",
+        "个人中心",
+        "登录",
+        "注册",
+        "关于我们",
+        "帮助中心",
+        "欢迎页",
+        "登录页",
+        "密码",
+        "系统",
+        "基础",
+        "功能",
+        "模块",
+        "业务",
+        "信息",
+        "数据",
+        "权限",
+        "日志",
+        "统计",
+        "分析",
+        "配置",
+        "审核",
+        "查询",
+        "维护",
+        "通知",
+        "消息",
+        "公告",
+    }
+)
+
+
+def _is_table_worthy_module(feat: str) -> bool:
+    """只对「××管理/模块」业务功能要求挂表；入口短名与壳不硬要。"""
+    lab = clean_feature_label(feat) or (feat or "").strip()
+    if not lab or lab in _FEATURE_SHELL:
+        return False
+    stem = _biz_stem(lab)
+    if (
+        not stem
+        or stem in _TABLE_MODULE_SKIP_STEMS
+        or stem in _ENTITY_NAV
+        or stem in _ENTITY_META
+    ):
+        return False
+    return lab.endswith(("管理", "模块"))
+
+
+def table_module_cross_warnings(
+    *,
+    entities: list[str],
+    features: list[str],
+    table_labels: list[str] | None = None,
+) -> list[str]:
+    """§3.0b P1 库表 ↔ 模块/E-R：表能挂上业务名；只告警不删对方。
+
+    两侧都有证据才对账；禁止脑补进清单。
+    """
+    ent_items: list[tuple[str, str]] = []
+    seen_e: set[str] = set()
+    for raw in list(entities or []) + list(table_labels or []):
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        ent = _normalize_table_title_to_entity(raw, table_evidence=True)
+        stem = _biz_stem(ent or raw)
+        if (
+            not stem
+            or stem in seen_e
+            or stem in _TABLE_MODULE_SKIP_STEMS
+            or stem in _ENTITY_NAV
+            or stem in _ENTITY_META
+        ):
+            continue
+        seen_e.add(stem)
+        ent_items.append((ent or stem, stem))
+
+    feat_items: list[tuple[str, str]] = []
+    seen_f: set[str] = set()
+    for raw in features or []:
+        if not isinstance(raw, str) or not _is_table_worthy_module(raw):
+            continue
+        lab = clean_feature_label(raw) or raw.strip()
+        stem = _biz_stem(lab)
+        if not stem or stem in seen_f:
+            continue
+        seen_f.add(stem)
+        feat_items.append((lab, stem))
+
+    if not ent_items or not feat_items:
+        return []
+
+    only_table = [
+        name
+        for name, st in ent_items
+        if not any(_stems_hang(st, fs) for _, fs in feat_items)
+    ]
+    only_mod = [
+        name
+        for name, st in feat_items
+        if not any(_stems_hang(st, es) for _, es in ent_items)
+    ]
+
+    warnings: list[str] = []
+    if only_table:
+        warnings.append(
+            "表有模块无：" + "、".join(only_table[:4]) + "（仅告警，不删表）"
+        )
+    # 模块侧噪声多：≥2 条或占应挂表功能 1/3 才黄
+    if only_mod and len(only_mod) >= max(2, (len(feat_items) + 2) // 3):
+        warnings.append(
+            "模块有表无：" + "、".join(only_mod[:4]) + "（仅告警，不删模块）"
+        )
+    return warnings
+
+
+def apply_table_module_cross_check(
+    warnings: list[str] | None,
+    *,
+    entities: list[str],
+    features: list[str],
+    table_labels: list[str] | None = None,
+) -> list[str]:
+    """替换旧的表↔模块告警，写入新对账结果。"""
+    prefixes = ("表有模块无", "模块有表无")
+    out = [
+        w
+        for w in list(warnings or [])
+        if isinstance(w, str) and not any(w.startswith(p) for p in prefixes)
+    ]
+    for w in table_module_cross_warnings(
+        entities=entities,
+        features=features,
+        table_labels=table_labels,
+    ):
+        if w not in out:
+            out.append(w)
+    return out
+
+
 def _cross_check_warnings(
     *,
     roles: list[str],
@@ -1582,6 +1748,8 @@ def _cross_check_warnings(
     figure_labels: list[str],
     impl_feats: list[str],
     test_feats: list[str],
+    entities: list[str] | None = None,
+    table_labels: list[str] | None = None,
 ) -> list[str]:
     """§3.0b 交叉验证告警（不脑补改清单）。"""
     warnings: list[str] = []
@@ -1652,6 +1820,14 @@ def _cross_check_warnings(
                 "测试用例提到设计未列的能力名（仅告警，不进不做清单）："
                 + "、".join(extra_test[:4])
             )
+
+    warnings.extend(
+        table_module_cross_warnings(
+            entities=list(entities or []),
+            features=list(design_feats or []),
+            table_labels=list(table_labels or []),
+        )
+    )
 
     return warnings
 
@@ -1815,6 +1991,9 @@ def extract_thesis_proposal(text: str) -> dict[str, Any]:
     figure_labels = [
         str(x) for x in list(base.get("figure_labels") or []) if isinstance(x, str)
     ]
+    entity_hints = [
+        str(x) for x in list(base.get("entity_hints") or []) if isinstance(x, str)
+    ]
     warnings = _cross_check_warnings(
         roles=list(base["role_hints"]),
         design_ends=design_ends,
@@ -1822,6 +2001,7 @@ def extract_thesis_proposal(text: str) -> dict[str, Any]:
         figure_labels=figure_labels,
         impl_feats=impl_feats,
         test_feats=test_feats,
+        entities=entity_hints,
     )
 
     # 缺 P1 各端清单 → 弱抽
@@ -1883,6 +2063,11 @@ def apply_figure_cross_check(
     ends = list(structure_ends or prop.get("structure_ends") or [])
     fig_labs = [str(x) for x in (figure_labels or []) if str(x).strip()]
     # 只用图题端名重算角色交叉（覆盖正文误抽端导致的假红）
+    entities = [
+        str(x)
+        for x in list(prop.get("entity_hints") or [])
+        if isinstance(x, str) and str(x).strip()
+    ]
     extra = _cross_check_warnings(
         roles=roles,
         design_ends=list(ends),
@@ -1890,6 +2075,12 @@ def apply_figure_cross_check(
         figure_labels=fig_labs,
         impl_feats=[],
         test_feats=[],
+        entities=entities,
+        table_labels=[
+            str(x)
+            for x in list(prop.get("table_labels") or [])
+            if isinstance(x, str) and str(x).strip()
+        ],
     )
     warns = [w for w in list(result.get("warnings") or []) if w != "角色与端不一致"]
     if ends and _roles_ends_aligned(roles, ends):

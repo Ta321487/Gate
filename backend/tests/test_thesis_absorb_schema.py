@@ -60,6 +60,23 @@ _XIAOYU_BACK = """
 2 p_id 用户 ID int 默认 × 外键 √
 """
 
+# 小羽：枚举英文 goods、正式题注截成 good → 须并一张，禁假「漏挖」
+_XIAOYU_GOODS = """
+（6）自习室座位表 goods，用于存储可租赁的自习室座位或商品信息，包含价格、库
+存、状态等。具体内容如表 4.6所示。
+表 4.6 自习室座位表 good
+序号 字段 说明 数据类型 长度 自增 主外键 允许空
+1 g_id 座位 ID int 默认 √ 主键 ×
+2 sh_id 自习室 ID int 默认 × 外键 √
+3 name 名称 varchar 1000 × × √
+（7）平台信息表 icon，用于存储整个平台的基础信息。
+具体内容如表 4.7所示。
+表 4.7 平台信息表 icon
+序号 字段 说明 数据类型 长度 自增 主外键 允许空
+1 xt_id 系统 ID int 默认 √ 主键 ×
+2 name 系统名称 varchar 1000 × × √
+"""
+
 
 def _yonghu_rows() -> list[list[str]]:
     return [
@@ -154,6 +171,61 @@ class ThesisAbsorbSchemaTests(unittest.TestCase):
         i = sql.find("CREATE TABLE IF NOT EXISTS `backstage`")
         j = sql.find("CREATE TABLE IF NOT EXISTS `collect`")
         self.assertNotIn("`sc_id`", sql[i:j])
+
+    def test_xiaoyu_goods_good_merge_no_false_miss(self) -> None:
+        """枚举 goods + 正式题注 good → 一张 goods，字段齐，无假漏挖黄条。"""
+        caps = parse_physical_captions(_XIAOYU_GOODS)
+        ens = [c["en"] for c in caps]
+        self.assertIn("goods", ens)
+        self.assertNotIn("good", ens)
+        self.assertEqual(ens.count("goods"), 1)
+        pack = extract_draft_schema(_XIAOYU_GOODS)
+        sql = pack["draft_schema_sql"]
+        self.assertIn("`goods`", sql)
+        self.assertIn("`g_id`", sql)
+        self.assertNotIn("`good`", sql)
+        warns = " ".join(pack["schema_extract_meta"].get("warnings") or [])
+        self.assertNotIn("未切出字段列", warns)
+        self.assertNotIn("goods", warns)
+        self.assertEqual(pack["schema_extract_meta"]["table_count"], 2)
+
+    def test_ligu_doc_order_next_and_bare_caption(self) -> None:
+        """力固：所示折行 + 裸 4.n 题注；下一题注按行号，评论表不得空切。"""
+        text = """
+（17）投诉纠纷表 tousujiufen，投诉纠纷的信息存储在该表中，具体内容如表 4.17所
+示。
+4.17 投诉纠纷表 tousujiufen
+序号 字段 说明 数据类型 长度 自增 主外键 允许空
+1 tousujiufen_id 投诉纠纷 ID bigint 默认 √ 主键 ×
+2 addtime 创建时间 timestamp 默认 × × ×
+（18）评论表 discussnongchanpin，评论信息在该表中，具体内容如表 4.18所示。
+4.18 评论表 discussnongchanpin
+序号 字段 说明 数据类型 长度 自增 主外键 允许空
+1 discussnongchanpin_id 评论 ID bigint 默认 √ 主键 ×
+2 content 评论内容 longtext 200 × × ×
+"""
+        caps = parse_physical_captions(text)
+        by_en = {c["en"]: c for c in caps}
+        self.assertIn("tousujiufen", by_en)
+        self.assertEqual(by_en["tousujiufen"]["no"], "4.17")
+        self.assertIn("discussnongchanpin", by_en)
+        pack = extract_draft_schema(text)
+        sql = pack["draft_schema_sql"]
+        self.assertIn("`tousujiufen`", sql)
+        self.assertIn("`discussnongchanpin`", sql)
+        self.assertIn("`discussnongchanpin_id`", sql)
+        warns = " ".join(pack["schema_extract_meta"].get("warnings") or [])
+        self.assertNotIn("未切出字段列", warns)
+        self.assertEqual(pack["schema_extract_meta"]["table_count"], 2)
+
+    def test_bare_caption_without_field_table_rejected(self) -> None:
+        """裸 4.n 题注但下文不像字段表 → 不收。"""
+        text = (
+            "4.99 幻觉表 phantom\n"
+            "本章介绍系统实现流程，见图 5.1。\n"
+        )
+        caps = parse_physical_captions(text)
+        self.assertNotIn("phantom", [c["en"] for c in caps])
 
     def test_no_invent_columns(self) -> None:
         text = (
