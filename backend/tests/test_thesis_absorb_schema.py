@@ -98,7 +98,37 @@ class ThesisAbsorbSchemaTests(unittest.TestCase):
         )
         caps = parse_physical_captions(text)
         ens = [c["en"] for c in caps]
-        self.assertEqual(ens, ["yonghu", "orders"])
+        # 无英文题注用 t_表号；「所示」空壳仍拒
+        self.assertEqual(ens, ["yonghu", "orders", "t_4_3"])
+
+    def test_zh_only_caption_and_shi_fou_fields(self) -> None:
+        """形态：无英文题注 + 表头含非空 + 行首中文说明/en/是否三列。"""
+        text = (
+            "（1）商品信息表：存储商品信息的基本信息，该表的设计如表4.1所示。\n"
+            "表 4.1 商品信息表\n"
+            "名称 字段名 数据类型 主键 外键 非空\n"
+            "商品 ID goods_id bigint(20) 是 否 是\n"
+            "创建时间 addtime timestamp 否 否 是\n"
+            "（2）取件号码表：存储取件号码的基本信息，该表的设计如表4.2所示。\n"
+            "表 4.2 取件号码表\n"
+            "名称 字段名 数据类型 主键 外键 非空\n"
+            "取件号 ID pickup_id bigint(20) 是 否 是\n"
+        )
+        caps = parse_physical_captions(text)
+        self.assertEqual([c["zh"] for c in caps], ["商品信息表", "取件号码表"])
+        self.assertEqual([c["en"] for c in caps], ["t_4_1", "t_4_2"])
+        pack = extract_draft_schema(text)
+        self.assertGreaterEqual(pack["schema_extract_meta"]["table_count"], 2)
+        sql = pack["draft_schema_sql"]
+        self.assertIn("`t_4_1`", sql)
+        self.assertIn("`goods_id`", sql)
+        self.assertIn("`pickup_id`", sql)
+        col = parse_anchored_field_line("商品 ID goods_id bigint(20) 是 否 是")
+        assert col is not None
+        self.assertEqual(col["name"], "goods_id")
+        self.assertTrue(col["pk"])
+        self.assertFalse(col["fk"])
+        self.assertFalse(col["nullable"])
 
     def test_enum_caption_guanqing_form(self) -> None:
         caps = parse_physical_captions(_GUANQING_CANGKU)

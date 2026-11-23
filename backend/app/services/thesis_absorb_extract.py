@@ -47,7 +47,9 @@ from app.services.proposal import (
 # v43：§3.0b 库表↔模块/实体确定性对账（表有模块无 / 模块有表无，只告警不删）
 # v44：同表号题注英文近形合并（枚举 goods / 正式 good）禁假漏挖
 # v45：下一题注按正文行号；所\s*示折行；裸 4.n××表 en 下文像表才收
-EXTRACTOR_VERSION = "45"
+# v46：无英文物理题注（表4.n 中文表）用 t_表号；中文列名+en+是/否；禁「数¶据库」假实体
+# v47：总体设计功能清单形态——划分为…即 / 涵盖… / 主要功能： / 「及」拆项 / 掐「共N个模块」残片
+EXTRACTOR_VERSION = "47"
 
 THIN_FEATURE_THRESHOLD = 3
 
@@ -171,11 +173,38 @@ _SELF_CLAIM = re.compile(
 _WORK_HEAD = re.compile(
     r"(?:本文主要工作|主要研究内容|研究内容|主要工作|本文完成|本文实现|本文设计)"
 )
-# 「包含 A、B管理、C…」：顿号清单；项可为裸名或 ××管理/模块（不写死业务词）
+# 「包含/涵盖 A、B管理及C…」：顿号/及 清单；项可为裸名或 ××管理/模块
 _INCLUDE_MGMT_LIST = re.compile(
-    r"(?:其中)?(?:包含|包括)(?:[：:，,]|了)?"
+    r"(?:其中)?(?:包含|包括|涵盖)(?:[：:，,]|了)?"
     r"((?:[\u4e00-\u9fff]{2,12}(?:管理|模块)?)"
-    r"(?:[、，,/][\u4e00-\u9fff]{2,12}(?:管理|模块)?){1,24})"
+    r"(?:(?:[、，,/]|以及|及)[\u4e00-\u9fff]{2,12}(?:管理|模块)?){1,24})"
+    r"(?=等|在内|[。．；;]|$)"
+)
+# 划分为九个模块，即系统用户管理、跑腿工单管理…（同校总体设计常见）
+_DIVIDE_MODULE_IE = re.compile(
+    r"(?:划分为|分为|划分成|分成)"
+    r"(?:了)?"
+    r"(?:[一二三四五六七八九十两\d]+个)?"
+    r"(?:功能)?模块"
+    r"[，,]?"
+    r"(?:即|为|：|:)"
+    r"([^。．；;]{6,280})"
+)
+# 共划分为6个主要功能：登录、…、订单管理、用户管理
+_DIVIDE_FUNC_COLON = re.compile(
+    r"(?:共)?(?:划分为|分为|划分)"
+    r"(?:了)?"
+    r"[一二三四五六七八九十两\d]+个"
+    r"(?:主要)?功能"
+    r"[：:]"
+    r"([^。．；;]{6,200})"
+)
+# 涵盖个人中心、用户管理、公告管理…等核心功能
+_COVER_FEATURE_LIST = re.compile(
+    r"(?:涵盖|覆盖)"
+    r"(?:了)?"
+    r"([^。．；;]{8,220}?)"
+    r"(?:等(?:核心)?(?:功能|模块)|等[。．]|$)"
 )
 _LEADING_FEAT_NUM = re.compile(
     r"^(?:"
@@ -247,8 +276,10 @@ _FEATURE_JUNK = re.compile(
     r"^为|^在(?!线)|"  # 「为/在厂商管理」叙述残片；勿伤「在线客服」
     r"这些功能|可以进行|进行操作|操作和管理|等信息|"  # 口语清单尾巴
     r"通过.+模块|"
-    r"功能结构设计图|结构设计图|"
-    r"管理等$|等$"
+    r"功能结构设计图|结构设计图|示意图|"
+    r"管理等$|等$|"
+    r"^和|^与|^及|^端|"
+    r"^管理[和及与]"
     r")"
 )
 # 题注行：表 4.1 / 表4-1 / 表4．1
@@ -371,7 +402,7 @@ def normalize_thesis_text(text: str) -> str:
 
 
 def coalesce_broken_lines(lines: list[str]) -> list[str]:
-    """合并 PDF 把「1.1」与「研究背景」拆成两行的情况。"""
+    """合并 PDF 把「1.1」与「研究背景」拆成两行的情况；兼「数¶据库表」折行。"""
     out: list[str] = []
     i = 0
     n = len(lines or [])
@@ -386,6 +417,11 @@ def coalesce_broken_lines(lines: list[str]) -> list[str]:
                 out.append(f"{ln} {nxt}")
                 i += 2
                 continue
+        # 数据 / 库表 被拆成「…数」+「据库表…」→ 捏合，避免假实体「据库」
+        if out and re.search(r"数$", out[-1]) and re.match(r"^据库", ln):
+            out[-1] = out[-1] + ln
+            i += 1
+            continue
         out.append(ln)
         i += 1
     return out
@@ -541,52 +577,88 @@ def _collapse_ws(text: str) -> str:
     return re.sub(r"\s+", "", text or "")
 
 
-def extract_included_mgmt_items(text: str, *, limit: int = 40) -> list[str]:
-    """从「包含/包括 …」抠功能点。
+def _split_feature_list_chunk(chunk: str) -> list[str]:
+    """顿号清单拆项：兼「及/以及/…管理和…管理」、去掉「等/在内/共N个」。"""
+    s = (chunk or "").strip()
+    if not s:
+        return []
+    s = re.sub(r"等(?:核心)?(?:功能|模块)?.*$", "", s)
+    s = re.sub(r"在内.*$", "", s)
+    s = re.sub(r"共[一二三四五六七八九十两\d]+个(?:功能)?模块.*$", "", s)
+    s = re.sub(r"以及", "、", s)
+    # 仅「××管理及××管理」拆开；勿拆「商品及入库管理」一体名
+    s = re.sub(r"(?<=管理)(?:及|和)(?=[\u4e00-\u9fff]{2,12}管理)", "、", s)
+    out: list[str] = []
+    for part in re.split(r"[、，,/]", s):
+        item = (part or "").strip()
+        item = re.sub(r"^等+|等+$", "", item).strip()
+        item = re.sub(r"^(?:以及|及|和)", "", item).strip()
+        if item:
+            out.append(item)
+    return out
 
-    写法会变（查重），但稳形态是「××管理 / ××模块」。
-    不收 UML「××类」、口语「这些功能 / 可以进行操作和管理」。
+
+def _accept_list_feature_item(item: str) -> str | None:
+    """清单项 → 清洗后的功能名；拒 UML 类/口语残片。"""
+    item = (item or "").strip()
+    if not item or item in ("系统功能模块", "功能模块", "管理", "模块"):
+        return None
+    if re.search(
+        r"(?:包含|其中|分为|划分|定制|[一二三四五六七八九十两\d]+大|共[一二三四五六七八九十两\d]+个)",
+        item,
+    ):
+        return None
+    if item.endswith("类") or item.endswith("类等"):
+        return None
+    if re.search(r"(?:这些|可以|进行|操作和|等信息|若不|将回|匹配)", item):
+        return None
+    # 登录/注册/纯分析词单独出现不当功能主清单
+    if item in ("登录", "注册", "数据分析", "可视化统计", "数据可视化"):
+        return None
+    # 稳形态：××管理 / ××模块；短裸名仅入口
+    if item.endswith("管理") or item.endswith("模块"):
+        ok = 4 <= len(item) <= 16
+    else:
+        ok = bool(
+            2 <= len(item) <= 8
+            and re.fullmatch(r"[\u4e00-\u9fff]+", item)
+            and re.search(
+                r"(?:首页|商城|中心|论坛|资讯|个人中心|接单大厅|跑腿工单|生活服务点)$",
+                item,
+            )
+            and not re.search(
+                r"(?:根据|进行|实现|开发|本文|本系统|采用|使得|类)",
+                item,
+            )
+        )
+    if not ok:
+        return None
+    return clean_feature_label(item)
+
+
+def extract_included_mgmt_items(text: str, *, limit: int = 40) -> list[str]:
+    """从总体设计功能清单抠点。
+
+    形态族（写法可变）：包含/包括；划分为…模块即；涵盖…等；N个主要功能：。
+    稳尾巴仍是「××管理 / ××模块」。不收 UML「××类」、口语残片。
     """
     out: list[str] = []
     seen: set[str] = set()
     flat = _collapse_ws(text)
-    for m in _INCLUDE_MGMT_LIST.finditer(flat):
-        chunk = m.group(1) or ""
-        for part in re.split(r"[、，,/]", chunk):
-            item = (part or "").strip()
-            if not item or item in seen:
-                continue
-            if item in ("系统功能模块", "功能模块"):
-                continue
-            if re.search(
-                r"(?:包含|其中|分为|以及|定制|[一二三四五六七八九十两\d]+大)",
-                item,
-            ):
-                continue
-            # UML / 叙述：用户类、管理员类、这些功能、可以进行操作和管理
-            if item.endswith("类") or item.endswith("类等"):
-                continue
-            if re.search(
-                r"(?:这些|可以|进行|操作和|等信息|若不|将回|匹配)",
-                item,
-            ):
-                continue
-            # 稳形态：××管理 / ××模块（含个人中心管理）；短裸名仅首页/商城等入口
-            if item.endswith("管理") or item.endswith("模块"):
-                ok = 4 <= len(item) <= 16 and item not in ("管理", "模块")
-            else:
-                ok = bool(
-                    2 <= len(item) <= 6
-                    and re.fullmatch(r"[\u4e00-\u9fff]+", item)
-                    and re.search(r"(?:首页|商城|中心|论坛|资讯)$", item)
-                    and not re.search(
-                        r"(?:根据|进行|实现|开发|本文|本系统|采用|使得|类)",
-                        item,
-                    )
-                )
-            if not ok:
-                continue
-            cleaned = clean_feature_label(item)
+
+    chunks: list[str] = []
+    for rx in (
+        _INCLUDE_MGMT_LIST,
+        _DIVIDE_MODULE_IE,
+        _DIVIDE_FUNC_COLON,
+        _COVER_FEATURE_LIST,
+    ):
+        for m in rx.finditer(flat):
+            chunks.append(m.group(1) or "")
+
+    for chunk in chunks:
+        for part in _split_feature_list_chunk(chunk):
+            cleaned = _accept_list_feature_item(part)
             if not cleaned or cleaned in seen:
                 continue
             seen.add(cleaned)
@@ -733,16 +805,26 @@ def clean_feature_label(s: str) -> str | None:
     # 图题/「进入××模块」/口语尾巴——换开题仍会中的假功能
     if _FEATURE_JUNK.search(t):
         return None
+    # 「管理和通知公告管理共九个模块」类残片
+    if re.search(r"共[一二三四五六七八九十两\d]+个", t):
+        return None
     if re.search(r"[，、。；;！!？?]", t):
         return None
     if re.search(
         r"(?:注入|防御|攻击|加密算法|便于|分明|着重|展示前后|"
         r"使得|采用|集成|自身|代码|更加|各类|核心功能|"
-        r"这些|可以|进行操作|操作和)",
+        r"这些|可以|进行操作|操作和|提供|支持对?|角色模块|三大角色)",
         t,
     ):
         return None
     if re.search(r"[在的上等]|[a-z]", t) and t.endswith("模块"):
+        return None
+    # 叙述整句误当菜单：「中心页面提供…管理」「座位管理是自习室资源管理」
+    if len(t) >= 14 and re.search(r"(?:页面|界面|支持|提供|即可)", t):
+        return None
+    if "是" in t and t.endswith("管理") and len(t) >= 10:
+        return None
+    if "/" in t or "／" in t:
         return None
     if re.search(r"(?:功能)?测试$", t) or "测试的" in t:
         return None
@@ -921,6 +1003,9 @@ def _finalize_entity_stem(stem: str, *, table_evidence: bool = False) -> str | N
         return None
     if t in _ENTITY_META:
         return None
+    # PDF 折行残骸：数据库 →「据库」/「括库」
+    if t in ("据库", "括库") or t.endswith("据库"):
+        return None
     if t.endswith("数据") or t.startswith("本"):
         return None
     if not table_evidence:
@@ -1008,12 +1093,13 @@ def extract_entity_labels_from_text(text: str, *, limit: int = 32) -> list[str]:
     """P1：数据库章表题注 / 小节标题 / 表名： / 行首××表 → 实体。"""
     db_body = _db_design_text_slice(text) or ""
     lines_all = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
-    # 优先在库表切片内挖；切片为空则退回全篇题注
-    scan_lines = (
+    # 优先在库表切片内挖；切片为空则退回全篇题注；先捏合「数¶据库」折行
+    raw_scan = (
         [ln.strip() for ln in db_body.splitlines() if ln.strip()]
         if db_body
         else [ln for ln in lines_all if _TABLE_CAPTION_LINE.search(ln)]
     )
+    scan_lines = coalesce_broken_lines(raw_scan)
     out: list[str] = []
     seen: set[str] = set()
 
@@ -1929,6 +2015,13 @@ def extract_thesis_proposal(text: str) -> dict[str, Any]:
         limit=32,
         require_substantial=True,
     )
+    # 设计侧「划分为/涵盖」清单够厚，但实现措辞对不齐时：仍以设计主矿为准（§3 P1）
+    if len(design_includes) >= 5 and len(feature_lines) <= max(
+        2, len(design_includes) // 2
+    ):
+        feature_lines = finalize_feature_lines(
+            list(design_includes) + list(feature_lines), limit=32
+        )
 
     # 「不做」只收绪论明确否定；测试是实现验货，禁止把用例步骤标成不做
     out_scope = _out_scope_from_intro(intro_lines)

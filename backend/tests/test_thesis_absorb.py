@@ -1191,6 +1191,70 @@ class ThesisAbsorbDesignPriority(unittest.TestCase):
         self.assertIn("材料商城管理", items)
         self.assertIn("订单管理", items)
 
+    def test_divide_ie_and_ji_list_morphology(self) -> None:
+        """形态：划分为…模块即…；包含…及…；涵盖…等核心功能。"""
+        from app.services.thesis_absorb_extract import extract_included_mgmt_items
+
+        divide = (
+            "管理员端功能划分为九个模块，即系统用户管理、跑腿工单管理、订单评价管理、"
+            "生活服务管理、活动管理、轮播图管理、论坛管理，以及留言管理和通知公告管理"
+            "共九个模块。"
+        )
+        items = extract_included_mgmt_items(divide)
+        for need in (
+            "系统用户管理",
+            "跑腿工单管理",
+            "活动管理",
+            "留言管理",
+            "通知公告管理",
+        ):
+            self.assertIn(need, items, items)
+        self.assertFalse(any("共九个" in x for x in items), items)
+
+        ji = "其中用户端包含了用户管理、商家管理及菜品信息管理等核心模块。"
+        items2 = extract_included_mgmt_items(ji)
+        self.assertIn("用户管理", items2)
+        self.assertIn("商家管理", items2)
+        self.assertIn("菜品信息管理", items2)
+
+        cover = (
+            "管理员端涵盖个人中心、用户管理、公告管理、商品及入库管理、订单管理等核心功能。"
+        )
+        items3 = extract_included_mgmt_items(cover)
+        self.assertIn("用户管理", items3)
+        self.assertIn("公告管理", items3)
+        self.assertIn("商品及入库管理", items3)
+        self.assertIn("订单管理", items3)
+
+    def test_design_divide_ie_enters_feature_lines(self) -> None:
+        """总体设计「划分为…即」清单应进 feature_lines（弱抽亦收）。"""
+        text = (
+            "跑腿服务平台的设计与实现\n"
+            "第4章 系统总体设计\n"
+            "4.2 功能结构设计\n"
+            "管理员端功能划分为九个模块，即系统用户管理、跑腿工单管理、订单评价管理、"
+            "生活服务管理、活动管理、轮播图管理、论坛管理，以及留言管理和通知公告管理"
+            "共九个模块。管理员端功能结构设计参见图4.2。\n"
+            "用户端功能划分为八个模块，即首页、跑腿工单、活动管理、生活服务点、"
+            "金额管理、订单评价、留言及论坛。\n"
+            "第5章 系统实现\n"
+            "5.1 管理员系统用户管理\n"
+            "5.2 管理员跑腿工单管理\n"
+            "5.3 管理员活动管理\n"
+        )
+        r = extract_thesis_proposal(text)
+        feats = r["proposal"]["feature_lines"]
+        blob = " ".join(feats)
+        # 忠于原文：设计清单 ∩ 实现交叉；下列三项两端皆有
+        for need in ("系统用户管理", "跑腿工单管理", "活动管理"):
+            self.assertIn(need, blob, feats)
+        self.assertGreaterEqual(len(feats), 3, feats)
+        # 设计侧「划分为…即」须采到金额管理（可进 module_hints / 弱抽池）
+        from app.services.thesis_absorb_extract import extract_included_mgmt_items
+
+        mined = extract_included_mgmt_items(text)
+        self.assertIn("金额管理", mined, mined)
+
     def test_multi_end_include_lists_full(self) -> None:
         """四端清单无「等」——要全收；含「系统首页、××管理」起头。"""
         text = (
@@ -1581,14 +1645,31 @@ class ThesisAbsorbDesignPriority(unittest.TestCase):
         self.assertFalse(any(x.startswith("图") for x in cleaned))
         self.assertFalse(any(x.endswith("等") for x in cleaned))
 
-        from app.services.thesis_absorb_extract import _normalize_table_title_to_entity
+        from app.services.thesis_absorb_extract import (
+            _normalize_table_title_to_entity,
+            coalesce_broken_lines,
+            extract_entity_labels_from_text,
+        )
 
         self.assertIsNone(_normalize_table_title_to_entity("关于我们"))
         self.assertIsNone(_normalize_table_title_to_entity("订单处理"))
+        self.assertIsNone(_normalize_table_title_to_entity("据库表"))
         self.assertEqual(_normalize_table_title_to_entity("订单表"), "订单")
         self.assertEqual(_normalize_table_title_to_entity("关于我们表"), "关于我们")
         self.assertEqual(_normalize_table_title_to_entity("投诉纠纷表"), "投诉纠纷")
         self.assertEqual(_normalize_table_title_to_entity("系统简介表"), "系统简介")
+        glued = coalesce_broken_lines(
+            ["都变成实际的数", "据库表以及表和表之间的关联规则。"]
+        )
+        self.assertEqual(len(glued), 1)
+        self.assertIn("数据库表", glued[0])
+        broken = (
+            "4.6 数据库设计\n"
+            "都变成实际的数\n"
+            "据库表以及表和表之间的关联规则。\n"
+            "表 4.1 菜品信息表\n"
+        )
+        self.assertNotIn("据库", extract_entity_labels_from_text(broken))
 
         ev = build_absorb_evidence(
             "第3章 需求分析\n角色包括用户与管理员。\n"

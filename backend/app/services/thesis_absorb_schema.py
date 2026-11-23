@@ -14,17 +14,27 @@ from typing import Any
 
 # 表号：4.1 / 4．1 / 4-1 / 4－1
 _TABLE_NO = r"([0-9０-９]+(?:[.．\-—－][0-9０-９]+)?)"
-# 表 4.1 用户表 yonghu（须中文表+英文名，滤用例表）
+# 表 4.1 用户表 yonghu（中文表+英文名，滤用例表）
 _PHYS_CAPTION = re.compile(
     rf"表\s*{_TABLE_NO}\s*"
     r"([\u4e00-\u9fffA-Za-z0-9]{2,24}表)\s*"
     r"([A-Za-z_][A-Za-z0-9_]{0,63})",
+)
+# 表 4.1 ××表（无英文名形态；SQL 名用 t_表号 占位，禁拼音脑补）
+_PHYS_CAPTION_ZH_ONLY = re.compile(
+    rf"^表\s*{_TABLE_NO}\s*"
+    r"([\u4e00-\u9fffA-Za-z0-9]{2,24}表)\s*$"
 )
 # 裸题注：4.18 评论表 en（PDF 常吞句首「表」；须下文仍像字段表才收）
 _BARE_PHYS_CAPTION = re.compile(
     rf"^{_TABLE_NO}\s*"
     r"([\u4e00-\u9fffA-Za-z0-9]{2,24}表)\s*"
     r"([A-Za-z_][A-Za-z0-9_]{0,63})\s*$"
+)
+# 裸题注无英文：4.1 菜品信息表
+_BARE_PHYS_CAPTION_ZH_ONLY = re.compile(
+    rf"^{_TABLE_NO}\s*"
+    r"([\u4e00-\u9fffA-Za-z0-9]{2,24}表)\s*$"
 )
 # 用户表（yonghu） / 表 4.1 用户表（yonghu）
 _PHYS_PAREN_EN = re.compile(
@@ -259,10 +269,20 @@ def _next_caption_line_index(
     return min(later) if later else None
 
 
+def _placeholder_en_from_no(no: str) -> str:
+    """无英文题注时用表号占位（t_4_1）；禁止拼音脑补业务名。"""
+    no_n = _norm_table_no(no)
+    if not no_n:
+        return ""
+    safe = re.sub(r"[^0-9A-Za-z]+", "_", no_n).strip("_")
+    return f"t_{safe}" if safe else ""
+
+
 def parse_physical_captions(text: str) -> list[dict[str, Any]]:
     """物理题注 → [{no, zh, en, order, line_index}]。
 
-    合同要英文表名；写法：同行题注 / 括号英文名 / 枚举+如表所示。
+    优先「中文表+英文名」；仅中文题注用 t_表号 占位（禁拼音脑补）。
+    写法：同行题注 / 括号英文名 / 枚举+如表所示。
     禁止空「表 4.n所示」当题注。
     """
     out: list[dict[str, Any]] = []
@@ -280,6 +300,9 @@ def parse_physical_captions(text: str) -> list[dict[str, Any]]:
             c["no"] = _norm_table_no(no)
         preferred = _prefer_en_name(str(c.get("en") or ""), en)
         old_en = str(c.get("en") or "")
+        # 真英文盖过 t_表号 占位
+        if old_en.lower().startswith("t_") and en and not en.lower().startswith("t_"):
+            preferred = en
         if preferred.lower() != old_en.lower():
             seen.discard(old_en.lower())
             seen.add(preferred.lower())
@@ -290,7 +313,11 @@ def parse_physical_captions(text: str) -> list[dict[str, Any]]:
     def _push(no: str, zh: str, en: str, anchor_from: int) -> None:
         en = (en or "").strip()
         zh = (zh or "").strip()
-        if not en or not zh or en.lower() in seen:
+        if not zh:
+            return
+        if not en:
+            en = _placeholder_en_from_no(no)
+        if not en or en.lower() in seen:
             return
         if not _IDENT.match(en):
             return
@@ -308,9 +335,13 @@ def parse_physical_captions(text: str) -> list[dict[str, Any]]:
     def _upgrade_or_push(no: str, zh: str, en: str, anchor_from: int) -> None:
         en = (en or "").strip()
         zh = (zh or "").strip()
-        en_l = en.lower()
-        if not en_l or not _IDENT.match(en):
+        if not zh:
             return
+        if not en:
+            en = _placeholder_en_from_no(no)
+        if not en or not _IDENT.match(en):
+            return
+        en_l = en.lower()
         no_n = _norm_table_no(no) if no else ""
         zh_stem = _zh_table_stem(zh)
         if en_l in seen:
@@ -348,11 +379,26 @@ def parse_physical_captions(text: str) -> list[dict[str, Any]]:
         ):
             _upgrade_or_push(m.group(1), m.group(2), m.group(3), li)
             continue
+        # 形态1z：表 4.1 菜品信息表（无英文）；拒测试/用例表
+        zm = _PHYS_CAPTION_ZH_ONLY.match(line)
+        if (
+            zm
+            and "所示" not in line
+            and "用例" not in line
+            and "测试" not in zm.group(2)
+        ):
+            _upgrade_or_push(zm.group(1), zm.group(2), "", li)
+            continue
         # 形态1c：裸 4.18 评论表 en——引导词缺「表」；下文仍像字段表才收
         bm = _BARE_PHYS_CAPTION.match(line)
         if bm:
             if _field_table_ahead(lines, li + 1):
                 _upgrade_or_push(bm.group(1), bm.group(2), bm.group(3), li)
+            continue
+        bzm = _BARE_PHYS_CAPTION_ZH_ONLY.match(line)
+        if bzm and "用例" not in line and "测试" not in bzm.group(2):
+            if _field_table_ahead(lines, li + 1):
+                _upgrade_or_push(bzm.group(1), bzm.group(2), "", li)
             continue
         # 形态1b：用户表（yonghu）
         pm = _PHYS_PAREN_EN.search(line)
@@ -599,6 +645,10 @@ def _split_name_label(left: str) -> tuple[str, str] | None:
     )
     if m and re.search(r"[\u4e00-\u9fff]", m.group(2)):
         return m.group(3), re.sub(r"\s+", " ", m.group(2)).strip()
+    # 中文说明 + en（无序号）：评价 ID pingjia_id
+    m = re.match(r"^(.+?)\s+([A-Za-z_][A-Za-z0-9_]*)\s*$", s)
+    if m and re.search(r"[\u4e00-\u9fff]", m.group(1)):
+        return m.group(2), re.sub(r"\s+", " ", m.group(1)).strip()
     # user_id 用户编号（无序号）
     m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$", s)
     if m:
@@ -613,6 +663,13 @@ def _parse_flags_tail(tail: str, *, pk_hint: bool) -> tuple[bool, bool, bool, bo
     pk = pk or pk_hint
     auto_inc = False
     nullable = not pk
+    # 三列是/否：按「主键·外键·非空」读（末列非空 ≠ 允许空）
+    zh_marks = re.findall(r"是|否", tail or "")
+    if len(zh_marks) >= 3 and not re.search(r"[√✓×]|主键|外键|允许空", tail or ""):
+        pk = zh_marks[0] == "是" or pk
+        fk = zh_marks[1] == "是" or fk
+        nullable = zh_marks[2] == "否"
+        return pk, fk, auto_inc, nullable
     # Y/N 与勾叉
     marks = re.findall(r"[√✓×]|YES|NO|[YyNn](?![A-Za-z])", tail, re.I)
     if marks:
@@ -697,10 +754,8 @@ def _glue_block_lines(raw_lines: list[str]) -> list[str]:
                 buf = ""
                 header_done = True
             continue
-        # 新数据行：有类型锚，且（序号开头或英列名开头）
-        fresh = bool(_TYPE_ANCHOR.search(ln)) and (
-            bool(_SEQ_START.match(ln)) or bool(re.match(r"^[A-Za-z_]", ln))
-        )
+        # 新数据行：整行已能锚定切列（含无序号「中文 + en + 类型」）
+        fresh = parse_anchored_field_line(ln) is not None
         if fresh:
             if buf:
                 glued.append(buf)
@@ -926,7 +981,7 @@ def mine_tables_l1(text: str) -> tuple[list[dict[str, Any]], list[str]]:
     warnings: list[str] = []
     captions = parse_physical_captions(text or "")
     if not captions:
-        warnings.append("缺物理表题注（表4.n …表 en_name），未收 schema")
+        warnings.append("缺物理表题注（表4.n 中文表[ eng]），未收 schema")
         return [], warnings
     lines = (text or "").splitlines()
     tables: list[dict[str, Any]] = []
@@ -1008,7 +1063,7 @@ def bind_captions_to_tables(
     """兼容旧调用：无正文时退回 plumber 补空（不推荐作主路径）。"""
     warnings: list[str] = []
     if not captions:
-        warnings.append("缺物理表题注（表4.n …表 en_name），未收 schema")
+        warnings.append("缺物理表题注（表4.n 中文表[ eng]），未收 schema")
         return [], warnings
     tables = [
         {
