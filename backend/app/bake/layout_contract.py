@@ -58,6 +58,13 @@ _STYLE_BLOCK = re.compile(r"""<style\b[^>]*>([\s\S]*?)</style>""", re.I)
 _CSS_COMMENT = re.compile(r"""/\*[\s\S]*?\*/""")
 _CSS_RULE = re.compile(r"""([^{}@]+)\{([^{}]*)\}""")
 _POS_OUT = re.compile(r"""position\s*:\s*(absolute|fixed)\b""", re.I)
+# 伪元素脱流（下划线/角标）≠ 宿主按钮脱流；:hover 等伪类仍算宿主。
+# 动态扫：任意 ::ident；单冒号仅兼容遗留 :before/:after（其余 :hover/:focus 不跳）。
+_PSEUDO_ELEMENT = re.compile(
+    r"""::[A-Za-z_][\w-]*"""
+    r"""|:(?:before|after)\b""",
+    re.I,
+)
 _TOOLBAR_OPEN = re.compile(r"""<div\b[^>]*\bclass=["'][^"']*\btoolbar\b[^"']*["'][^>]*>""", re.I)
 _SCROLL_HINT = re.compile(
     r"""\b(table-scroll|dialog-scroll|overflow|overflow-y|body-scroll)\b""",
@@ -103,7 +110,7 @@ def _companion_css(src: Path, vue_rel: str) -> str:
 
 
 def _classes_from_css_body(
-    css: str, body_pred
+    css: str, body_pred, *, skip_pseudo_element: bool = False
 ) -> set[str]:
     """选择器最右简单段上、声明满足 body_pred 的 class 名。"""
     out: set[str] = set()
@@ -118,6 +125,8 @@ def _classes_from_css_body(
             if not part or part.startswith("@"):
                 continue
             last = re.split(r"""[\s>+~]+""", part)[-1]
+            if skip_pseudo_element and _PSEUDO_ELEMENT.search(last):
+                continue
             for cm in re.finditer(r"""\.([A-Za-z_][\w-]*)""", last):
                 out.add(cm.group(1))
     return out
@@ -128,8 +137,13 @@ def _classes_with_out_of_flow(css: str) -> set[str]:
 
     只取最右 compound（如 `.card .float-cta` → `float-cta`），避免容器 class 误杀。
     装饰点/轨道等非 el-button 挂载时不会红。
+    **跳过伪元素选择器**（`.tab::after { position:absolute }` 不算宿主按钮脱流）。
     """
-    return _classes_from_css_body(css, lambda body: bool(_POS_OUT.search(body)))
+    return _classes_from_css_body(
+        css,
+        lambda body: bool(_POS_OUT.search(body)),
+        skip_pseudo_element=True,
+    )
 
 
 def _classes_with_flex_wrap(css: str) -> set[str]:

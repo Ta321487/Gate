@@ -312,7 +312,7 @@
 | `primary_cta_in_slot` | `misaligned` / `clip_hide` | 主 CTA 落在约定容器 class；禁止 inline **或** CSS class（SFC `<style>` / 同页 `.css`）`position:absolute|fixed` 漂出卡片 |
 | `row_actions_column` | `column_blow` / `overlap` | 行内操作在独立列/actions 槽，不与状态 chip 同 flex 子树根 |
 | `actions_may_wrap_or_menu` | `crushed` / `overflow` | 一排操作超过 N 个须允许换行分区或收进「更多」，禁止单行硬塞挤破 |
-| `no_orphan_absolute_btn` | `misaligned` / `overlap` | 业务按钮禁止脱离文档流（inline + CSS class）；**含原生 `<button>`**（换头像等）；装饰点/裸 `<a>` 不误杀 |
+| `no_orphan_absolute_btn` | `misaligned` / `overlap` | 业务按钮禁止脱离文档流（inline + CSS class）；**含原生 `<button>`**（换头像等）；装饰点/裸 `<a>` 不误杀；**任意 `::伪元素`（及遗留 `:before`/`:after`）上的 absolute 不算宿主按钮脱流** |
 | `dialog_body_scroll` | `overflow` | 对话框超高走 body 滚动，禁止整页被 dialog 撑出横向滚动 |
 | `abs_in_stretch_slot` | `misaligned` | **通用**：存在 `align-items:stretch` 时，内含「贴底 absolute 可点」的 `position:relative` 槽必须自限高。换头像为首发样例；轮播左右箭头（非贴底）不误杀；禁止再为一控件单开模式 |
 
@@ -398,6 +398,7 @@
 | 2026-10-23 | **D1 终核**：补 `el-drawer` 入 dialog 行、`cardVoice` 入 surfaces；基线仅余 `EntityDetailLayout` 孤儿记账 |
 | 2026-10-23 | **D2 开闸**：`layout_contract` §3.2 七模式；反例必红；基线 12 条结构真阳性记账不改页；下一刀 D3 |
 | 2026-10-23 | **D2 收紧**：`primary_cta_in_slot` / `no_orphan_absolute_btn` 兼扫 CSS class（`<style>` + companion `.css`）`absolute|fixed`；装饰非按钮不误杀；基线无新债 |
+| 2026-11-21 | **D2 假阳**：`::before`/`::after` 上的 `absolute|fixed` 不再记到宿主 class（SeatShows `.perf-cat` 分类下划线） |
 | 2026-10-23 | **D3 开闸**：冒烟管道试点 `page:auth:/login` + `component:components/AuthShell.vue`；几何反例必红；宽屏+窄屏挤破探针；工厂 Vite 垫片消化 vue-split 的 `script setup src`；下一刀 D4 |
 | 2026-10-23 | **D4 开闸**：台账全表 visit（页/壳/组件/dialog）+ 多脸皮覆盖 + 挤破探针；`visual_ok` 覆盖率 100%（含已知债/孤儿不可访记账）；不为消红改学生页；下一刀 D5 |
 | 2026-10-23 | **D5 口径加厚**：助手规则之外，工厂进程须对布局闸红灯有反应（控制台/起包前路径露状态）；只写 skill 不算齐 |

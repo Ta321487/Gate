@@ -359,6 +359,36 @@ class LayoutContractD2Tests(unittest.TestCase):
         ]
         self.assertEqual(hits, [], f"装饰 absolute 误杀按钮: {hits}")
 
+    def test_pseudo_element_absolute_on_btn_class_clean(self) -> None:
+        """任意 ::伪元素 absolute 不算宿主 button 脱流（不写死 before/after 名单）。"""
+        snippet = """
+<template>
+  <button type="button" class="perf-cat">全部</button>
+  <button type="button" class="badge-host">角标</button>
+</template>
+<style>
+.perf-cat { position: relative; border: 0; }
+.perf-cat::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: -1px;
+  height: 2px;
+}
+.perf-cat.on::after { background: red; }
+.badge-host { position: relative; }
+.badge-host::marker { position: absolute; top: 0; }
+.badge-host:before { position: absolute; content: ''; }
+</style>
+"""
+        hits = [
+            f
+            for f in scan_file_contracts("probe/perf_cat_underline.vue", snippet)
+            if f.pattern_id == "no_orphan_absolute_btn"
+        ]
+        self.assertEqual(hits, [], f"伪元素 absolute 误杀业务钮: {hits}")
+
     def test_companion_css_absolute_reds(self) -> None:
         """同页 .css companion 也要扫到。"""
         vue = """
