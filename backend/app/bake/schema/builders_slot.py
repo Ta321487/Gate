@@ -383,6 +383,15 @@ def _food_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     return schema
 
 
+def cinema_seat_noun_labels(*, face: str, marketplace: bool = False) -> dict[str, str]:
+    """影院/演艺皮：大厅与主办名词（bake labels 真源；COMMENT/ER 从此拼列中文）。"""
+    performance = (face or "").strip() == "performance"
+    return {
+        "seatHallNoun": "场馆" if performance else "影厅",
+        "seatOrgNoun": "主办方" if (marketplace or performance) else "影城",
+    }
+
+
 def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
     """影院/演艺选座购票：场次档案 + 订单壳；座位图由 seat_select 能力叠菜单。
 
@@ -578,8 +587,7 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
             "请选择支付方式并输入支付密码，费用从账户余额扣除。",
         )
     labels["seatStageLabel"] = "舞台" if performance else "银幕"
-    labels["seatHallNoun"] = "场馆" if performance else "影厅"
-    labels["seatOrgNoun"] = "主办方" if (marketplace or performance) else "影城"
+    labels.update(cinema_seat_noun_labels(face=face, marketplace=marketplace))
     if performance:
         labels["seatShowsTitle"] = "演出选座"
         labels["seatShowsLead"] = (
@@ -597,6 +605,10 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         labels["cinemaComboBody"] = (
             "同日相邻场次可一并选座购票；具体优惠以主办方当日说明为准。"
         )
+        # 演艺皮：勿残留影院搜索/厅型/域标签（p3q 常抓）
+        labels["topSearchPlaceholder"] = "剧目 / 场次"
+        labels["effectHallImax"] = "环绕声厅"
+        labels["domainLabel"] = "演艺选座"
     # 支付与电子票：系统内余额 + 取票码出示（任务书「电子票」口径，非活动票夹）
     blob = f"{title}\n{proposal_text or ''}"
     if "电子票" in blob:
@@ -629,9 +641,18 @@ def _cinema_schema(title: str, proposal_text: str = "") -> dict[str, Any]:
         ticket_word = "票务" if performance else "影票"
         labels["ordersAdminLead"] = f"查看全平台{ticket_word}订单与退票，必要时介入处理。"
         labels["ordersStaffLead"] = "处理本方场次出票、核销与售后退票。"
-        # 演出审核：复用多店 pending_review（主办方新建场次待审，平台通过后才进选座目录）
-        labels["archiveReviewTitle"] = "演出审核"
-        labels["archiveAdminLead"] = "维护本方场次与座位；新场次须平台演出审核通过后方可售票。"
+        # 演出/场次审核：复用多店 pending_review；Admin=平台审，Staff=主办方维护（勿串台）
+        labels["archiveReviewTitle"] = "演出审核" if performance else "场次审核"
+        labels["archiveAdminLead"] = (
+            "审核主办方提交的场次与座位图；通过后方可对外售票。"
+            if performance
+            else "审核影城提交的场次与座位图；通过后方可对外售票。"
+        )
+        labels["archiveStaffLead"] = (
+            "维护本方场次与座位；新场次须平台演出审核通过后方可售票。"
+            if performance
+            else "维护本方场次与座位；新场次须平台审核通过后方可售票。"
+        )
         labels["archiveShelfLabel"] = "是否售票"
         labels["archiveShelfOnLabel"] = "售票中"
         labels["archiveShelfOffLabel"] = "已停售"

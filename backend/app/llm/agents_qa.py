@@ -541,6 +541,21 @@ def _marketplace_role_copy_findings(ctx: dict[str, Any]) -> list[dict[str, str]]
                 "where": "schema.seeds.noticeBody",
             }
         )
+    # 影院/演艺多主办：archiveAdminLead 不得写「本方场次」（那是主办方 Staff 句）
+    arch_admin = str(labels.get("archiveAdminLead") or "").strip()
+    if arch_admin and ("本方场次" in arch_admin or "须平台" in arch_admin):
+        findings.append(
+            {
+                "level": "error",
+                "msg": (
+                    "labels.archiveAdminLead 写「"
+                    f"{arch_admin.rstrip('。')}」，"
+                    "把主办方维护职责放到平台管理员场次页；"
+                    "管理员应审主办方场次，本方维护句归 archiveStaffLead"
+                ),
+                "where": "schema.labels.archiveAdminLead",
+            }
+        )
     return findings
 
 

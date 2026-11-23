@@ -1023,6 +1023,7 @@ class PackPruneFactorySelfGateTests(unittest.TestCase):
 
         cases = (
             (["archive", "order_lines", "favorites"], "order"),
+            (["archive", "order_lines", "seat_select"], "order"),
             (["archive", "slot_reserve"], "slot"),
             (["archive", "ticket_flow"], "ticket"),
             (["archive", "content"], "content"),
@@ -1146,6 +1147,41 @@ class PackPruneFactorySelfGateTests(unittest.TestCase):
             shop = (styles / "themes/shop.css").read_text(encoding="utf-8")
             self.assertIn('data-theme="shop-lime"', shop)
             self.assertNotIn('data-theme="shop-coral"', shop)
+
+    def test_pack_themes_rehydrate_cinema_teal_after_sand(self) -> None:
+        """潮汐探针：瘦成 cinema-sand 后换 cinema-teal，不得 theme_missing。"""
+        from app.bake.pack_themes import scan_foreign_theme_leaks, scrub_pack_themes
+
+        styles_src = BASELINE_FE / "styles"
+        if not (styles_src / "themes" / "cinema.css").is_file():
+            self.skipTest("baseline cinema.css missing")
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "ws"
+            styles = dest / "frontend/src/styles"
+            styles.mkdir(parents=True)
+            shutil.copy2(styles_src / "themes.css", styles / "themes.css")
+            shutil.copytree(styles_src / "themes", styles / "themes")
+            scrub_pack_themes(
+                dest, {"domain": "DOM-CINEMA", "theme": "cinema-sand"}
+            )
+            self.assertEqual(
+                scan_foreign_theme_leaks(
+                    dest, {"domain": "DOM-CINEMA", "theme": "cinema-teal"}
+                ),
+                ["theme_missing:cinema-teal"],
+            )
+            notes = scrub_pack_themes(
+                dest, {"domain": "DOM-CINEMA", "theme": "cinema-teal"}
+            )
+            self.assertTrue(
+                any(n.startswith("theme_rehydrate:") for n in notes), notes
+            )
+            self.assertEqual(
+                scan_foreign_theme_leaks(
+                    dest, {"domain": "DOM-CINEMA", "theme": "cinema-teal"}
+                ),
+                [],
+            )
 
 
 if __name__ == "__main__":

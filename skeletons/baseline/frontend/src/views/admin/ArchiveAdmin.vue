@@ -57,6 +57,7 @@
       </el-upload>
     </div>
     <SchemaLabelHints :keys="archiveAdminHintKeys" />
+    <p v-if="pageLead" class="page-lead">{{ pageLead }}</p>
     <p v-if="hotMode && hotRankOn" class="tip muted">{{ hotRankPageTitle }}：{{ hotRankPageLead }}</p>
     <p v-if="stallScoreSortOn && stallScoreHint" class="tip muted">{{ stallScoreLabel }}：{{ stallScoreHint }}</p>
     <ul v-if="importErrors.length" class="import-err">

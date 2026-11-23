@@ -259,6 +259,16 @@ function tagColor(name) {
   return `hsl(${h % 360} 55% 48%)`
 }
 const isSuper = computed(() => localStorage.getItem('superAdmin') === 'true')
+/** 多主办方：超管看审核监督句，主办方看本方维护句（与 OrdersAdmin 同口径） */
+const pageLead = computed(() => {
+  if (!marketplace.value) return ''
+  const labels = adminLabels.value || {}
+  const adminLead = String(labels.archiveAdminLead || '').trim()
+  const staffLead = String(labels.archiveStaffLead || '').trim()
+  if (!adminLead && !staffLead) return ''
+  if (isSuper.value) return adminLead || staffLead
+  return staffLead || adminLead
+})
 function isLowStock(row) {
   if (!marketplace.value || !row || stockAsToggle.value) return false
   return Number(row.stock) < stockWarnBelow.value

@@ -169,7 +169,15 @@ class CinemaMarketplaceSchemaTests(unittest.TestCase):
         arch = (schema.get("entities") or {}).get("archive") or {}
         self.assertTrue(arch.get("softDelete"), "多主办方场次须可上下架")
         self.assertEqual(labels.get("archiveReviewTitle"), "演出审核")
-        self.assertIn("演出审核", str(labels.get("archiveAdminLead") or ""))
+        admin_lead = str(labels.get("archiveAdminLead") or "")
+        staff_lead = str(labels.get("archiveStaffLead") or "")
+        self.assertIn("审核主办方", admin_lead)
+        self.assertNotIn("本方场次", admin_lead)
+        self.assertIn("本方场次", staff_lead)
+        self.assertIn("演出审核", staff_lead)
+        self.assertEqual(labels.get("topSearchPlaceholder"), "剧目 / 场次")
+        self.assertEqual(labels.get("domainLabel"), "演艺选座")
+        self.assertNotEqual(labels.get("effectHallImax"), "IMAX")
 
     def test_taskbook_eticket_and_show_review_align(self) -> None:
         """任务书：支付与电子票 + 演出审核 → 取票码文案 + 多店审核对齐，禁止报缺口。"""
@@ -307,6 +315,25 @@ class CinemaMarketplaceUiTests(unittest.TestCase):
         self.assertIn("座位、场次、观演体验", setup)
         self.assertIn("canPrintReceipt", setup)
         self.assertNotIn("canSetRefundFee", setup)
+
+    def test_archive_admin_role_leads_by_super(self) -> None:
+        """多主办方场次页：超管→archiveAdminLead，主办方→archiveStaffLead。"""
+        root = (
+            Path(__file__).resolve().parents[2]
+            / "skeletons"
+            / "baseline"
+            / "frontend"
+            / "src"
+            / "views"
+            / "admin"
+        )
+        vue = (root / "ArchiveAdmin.vue").read_text(encoding="utf-8")
+        setup = (root / "ArchiveAdmin.setup.js").read_text(encoding="utf-8")
+        self.assertIn("pageLead", setup)
+        self.assertIn("archiveAdminLead", setup)
+        self.assertIn("archiveStaffLead", setup)
+        self.assertIn("pageLead", vue)
+        self.assertIn('v-if="pageLead"', vue)
 
     def test_seat_attr_brush_and_snack_delete(self) -> None:
         """座位属性：刷子选类型再点座；卖品管理端可删除。"""

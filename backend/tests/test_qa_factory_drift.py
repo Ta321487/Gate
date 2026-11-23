@@ -602,6 +602,42 @@ class FactoryQaDriftRegressionTests(unittest.TestCase):
         self.assertFalse(_marketplace_role_copy_findings(clean))
         self.assertTrue(_fallback_qa(clean).get("ok"))
 
+    def test_marketplace_archive_admin_lead_blocks_organizer_ops(self) -> None:
+        """多店 archiveAdminLead 写「本方场次」→ 结构闸 error（演艺/影院探针）。"""
+        from app.llm.agents_qa import _fallback_qa, _marketplace_role_copy_findings
+
+        dirty = {
+            "schema": {"shopMarketplace": True},
+            "labels": {
+                "ordersAdminLead": "查看全平台票务订单与退票，必要时介入处理。",
+                "archiveAdminLead": "维护本方场次与座位；新场次须平台演出审核通过后方可售票。",
+                "appName": "潮汐演艺",
+            },
+            "capabilities": ["order_lines", "seat_select"],
+            "menus": {},
+            "menuKeys": {},
+            "entityKeys": [],
+            "files": {},
+            "missing_files": [],
+            "proposal": "平台管理员演出审核；主办方维护场次",
+            "domain": "DOM-CINEMA",
+        }
+        hits = _marketplace_role_copy_findings(dirty)
+        self.assertTrue(any(f.get("level") == "error" for f in hits), hits)
+        self.assertTrue(any("archiveAdminLead" in str(f.get("msg")) for f in hits), hits)
+        self.assertFalse(_fallback_qa(dirty).get("ok"))
+
+        clean = {
+            **dirty,
+            "labels": {
+                **dirty["labels"],
+                "archiveAdminLead": "审核主办方提交的场次与座位图；通过后方可对外售票。",
+                "archiveStaffLead": "维护本方场次与座位；新场次须平台演出审核通过后方可售票。",
+            },
+        }
+        self.assertFalse(_marketplace_role_copy_findings(clean))
+        self.assertTrue(_fallback_qa(clean).get("ok"))
+
     def test_order_review_blocks_buyer_copy_for_merchant(self) -> None:
         """merchant_ops + order_review：缺商家评价导语或写买家口径 → error。"""
         from app.llm.agents_qa import _fallback_qa, _order_review_role_copy_findings

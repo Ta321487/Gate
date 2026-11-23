@@ -294,11 +294,19 @@ def _scrub_api_imports(text: str, *, need_cart: bool) -> str:
 
 
 def _face_glue_order() -> str:
-    return """const orderOn = computed(() => hasCap('order_lines'))
+    # 含选座：order_lines 包可能叠 seat_select（影院/演艺）；无座时 mallOrderOn≈orderOn
+    return """const seatOn = computed(() => hasCap('seat_select') || hasTrait('seatSelect'))
+const cinemaFace = computed(() => {
+  const s = getSchema() || {}
+  return String(s.cinemaFace || labels.cinemaFace || 'cinema').trim() || 'cinema'
+})
+const isPerformance = computed(() => cinemaFace.value === 'performance')
+const orderOn = computed(() => hasCap('order_lines'))
+const mallOrderOn = computed(() => orderOn.value && !seatOn.value)
 const favOn = computed(() => hasCap('favorites'))
 const reviewOn = computed(() => hasCap('order_review'))
-const priceOn = computed(() => orderOn.value || authorLooksLikePrice.value)
-const introTab = computed(() => '详细介绍')
+const priceOn = computed(() => mallOrderOn.value || seatOn.value || authorLooksLikePrice.value)
+const introTab = computed(() => (seatOn.value && isPerformance.value ? '项目详情' : '详细介绍'))
 const entityLabel = computed(() => {
   const e = getSchema()?.entities?.archive
   return e?.label || labels.archiveItemLabel || ''
@@ -308,18 +316,24 @@ const priceLabel = computed(() => {
   return f?.label || '价格'
 })
 const showPriceLabel = computed(() => {
-  if (orderOn.value) return false
+  if (mallOrderOn.value || seatOn.value) return false
   const lab = String(priceLabel.value || '').trim()
   if (!lab) return false
   if (/单价|价格|售价/.test(lab) && lab.length <= 8) return false
   return true
 })
 const buyLabel = computed(() => labels.buyNowLabel || '加入购物车')
-const noticeTab = computed(() => '购买须知')
+const seatCtaLabel = computed(() => labels.seatMapCta || labels.seatCtaLabel || '选座购票')
+const noticeTab = computed(() => {
+  if (seatOn.value) return labels.cinemaNoticeLabel || '购票须知'
+  return '购买须知'
+})
 const noticeText = computed(
   () =>
     labels.archiveBuyNotice
-    || '下单后可在「我的订单」查看进度。',
+    || (seatOn.value
+      ? (labels.cinemaNoticeBody || '选座购票后可在「我的订单」查看取票进度。')
+      : '下单后可在「我的订单」查看进度。'),
 )
 
 """
@@ -557,34 +571,70 @@ def _intro_html(face: Face) -> str:
 """
 
 
-def _scrub_template(text: str, face: Face) -> str:
+def _scrub_aid_root_class(text: str, face: Face) -> str:
+    """根节点 class：去掉 contentOn/aid-content 动态绑定（含演艺 aid-perf 变体）。"""
     if face == "content":
-        text = text.replace(
-            '<div class="aid" :class="{ \'aid-content\': contentOn }" v-loading="loading">',
-            '<div class="aid aid-content" v-loading="loading">',
-        )
+        repl = '<div class="aid aid-content" v-loading="loading">'
     else:
-        text = text.replace(
-            '<div class="aid" :class="{ \'aid-content\': contentOn }" v-loading="loading">',
-            '<div class="aid" v-loading="loading">',
+        # 订单/选座脸保留 aid-perf；其它脸只要静态 aid
+        keep_perf = face == "order"
+        repl = (
+            '<div class="aid" :class="{ \'aid-perf\': seatOn && isPerformance }" '
+            'v-loading="loading">'
+            if keep_perf
+            else '<div class="aid" v-loading="loading">'
+        )
+    # 多行 / 单行旧绑定
+    text = re.sub(
+        r'<div\s+class="aid"\s+:class="\{[^}]*contentOn[^}]*\}"\s+v-loading="loading"\s*>',
+        repl,
+        text,
+        count=1,
+        flags=re.S,
+    )
+    # 残片：任何仍挂 contentOn 的 :class 片段
+    text = re.sub(r"'aid-content'\s*:\s*contentOn\s*,?\s*", "", text)
+    text = re.sub(r'\s*:class="\{\s*\}"', "", text)
+    return text
+
+
+def _scrub_template(text: str, face: Face) -> str:
+    text = _scrub_aid_root_class(text, face)
+
+    # 购票须知 tab（仅选座演艺）；非 order 脸裁掉
+    if face != "order":
+        text = re.sub(
+            r"[ \t]*<button\b[^>]*v-if=\"seatOn && isPerformance\"[^>]*>[\s\S]*?</button>\s*",
+            "",
+            text,
+            count=1,
         )
 
     if face == "order":
         text = _cut_el_button_by_pred(text, "slotOn")
         text = _cut_el_button_by_pred(text, "ticketOn")
-        # order 按钮保留 v-if="orderOn"
+        # 保留 seatOn / mallOrderOn
     elif face == "slot":
+        text = _cut_div_vif(text, "mallOrderOn")
         text = _cut_div_vif(text, "orderOn")
+        text = _cut_el_button_by_pred(text, "seatOn")
+        text = _cut_el_button_by_pred(text, "mallOrderOn")
         text = _cut_el_button_by_pred(text, "orderOn")
         text = _cut_el_button_by_pred(text, "ticketOn")
         text = text.replace('v-else-if="slotOn"', 'v-if="slotOn"')
     elif face == "ticket":
+        text = _cut_div_vif(text, "mallOrderOn")
         text = _cut_div_vif(text, "orderOn")
+        text = _cut_el_button_by_pred(text, "seatOn")
+        text = _cut_el_button_by_pred(text, "mallOrderOn")
         text = _cut_el_button_by_pred(text, "orderOn")
         text = _cut_el_button_by_pred(text, "slotOn")
         text = text.replace('v-else-if="ticketOn"', 'v-if="ticketOn"')
     else:  # content
+        text = _cut_div_vif(text, "mallOrderOn")
         text = _cut_div_vif(text, "orderOn")
+        text = _cut_el_button_by_pred(text, "seatOn")
+        text = _cut_el_button_by_pred(text, "mallOrderOn")
         text = _cut_el_button_by_pred(text, "orderOn")
         text = _cut_el_button_by_pred(text, "slotOn")
         text = _cut_el_button_by_pred(text, "ticketOn")
@@ -599,6 +649,12 @@ def _scrub_style(text: str, face: Face) -> str:
             text,
             count=1,
         )
+        # 无注释头时仍清掉 .aid-content 规则块，避免 p3lean 扫到 aid-content
+        text = re.sub(
+            r"\.aid-content[^{]*\{[^}]*\}\s*",
+            "",
+            text,
+        )
     if face != "order":
         text = re.sub(
             r"\.aid-qty \{[\s\S]*?\.aid-qty span \{[\s\S]*?\}\n",
@@ -606,7 +662,20 @@ def _scrub_style(text: str, face: Face) -> str:
             text,
             count=1,
         )
+        text = re.sub(r"\.aid-qty[^{]*\{[^}]*\}\s*", "", text)
     return text
+
+
+def _script_glue_start(text: str) -> str:
+    """胶起点：优先含选座块，否则自 orderOn。"""
+    for marker in (
+        "/** 选座购票",
+        "const seatOn = computed",
+        "const orderOn = computed",
+    ):
+        if marker in text:
+            return marker
+    return "const orderOn = computed"
 
 
 def _scrub_script(text: str, face: Face) -> str:
@@ -617,10 +686,10 @@ def _scrub_script(text: str, face: Face) -> str:
         "content": _face_glue_content,
     }[face]()
 
-    # 替换从 orderOn 到 noticeText 结束（下一个 const authorLooksLikePrice）
+    # 替换从选座/orderOn 到 noticeText 结束（下一个 const authorLooksLikePrice）
     text = _replace_between(
         text,
-        "const orderOn = computed",
+        _script_glue_start(text),
         "const authorLooksLikePrice = computed",
         glue,
     )
@@ -641,12 +710,31 @@ def _scrub_script(text: str, face: Face) -> str:
         count=1,
     )
 
+    detail_end = (
+        "const seatShowFacts = computed"
+        if "const seatShowFacts = computed" in text
+        else "const introHtml = computed"
+    )
     text = _replace_between(
         text,
         "const detailAttrLines = computed",
-        "const introHtml = computed",
+        detail_end,
         _detail_attrs(face),
     )
+    if face != "order":
+        text = _remove_const_block(text, "seatShowFacts")
+        text = _remove_function(text, "goSeatMap")
+        text = re.sub(
+            r'[ \t]*<ul v-if="seatShowFacts\.length"[\s\S]*?</ul>\s*',
+            "",
+            text,
+            count=1,
+        )
+        text = re.sub(
+            r'[ \t]*<span v-if="seatOn && isPerformance"[^>]*>[\s\S]*?</span>\s*',
+            "",
+            text,
+        )
     text = _replace_between(
         text,
         "const introHtml = computed",
@@ -660,6 +748,7 @@ def _scrub_script(text: str, face: Face) -> str:
         text = _remove_function(text, "goSlots")
     if face != "order":
         text = _remove_function(text, "buyNow")
+        text = _remove_function(text, "goSeatMap")
 
     text = _scrub_api_imports(text, need_cart=(face == "order"))
 

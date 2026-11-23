@@ -202,6 +202,7 @@
 | **R-TRADE-03** | FOOD 档口：主管 lead 是否写成档口接单发餐 | `_food_schema` 拆 Admin/Staff lead；`OrdersAdmin` 按超管露出；`_food_role_copy_findings` | `test_food_canteen_vs_restaurant` + `test_food_admin_order_lead_blocks_stall_ops` | **已齐** |
 | **R-TRADE-04** | 单店 notice「管理员确认发货」在扫成多店时与角色树冲突 | `_shop_schema` 多店改用 `mp_notice_*` / 默认多店句；闸挡残留 | `test_marketplace_schema_flag` + `test_marketplace_notice_blocks_admin_ship_copy` | **已齐** |
 | **R-TRADE-05** | CINEMA/非物流壳：模块文案是否仍写发货 | 已有 `skin_invariants` + cinema fulfillMode；本轮钉回归断言 | `test_cinema_not_logistics_ship_copy` + skin leak 矩阵 | **已齐** |
+| **R-TRADE-06** | 演艺/影院多主办：`archiveAdminLead` 写「本方场次」= 主办活塞进平台审 | `builders_slot`：Admin=审核主办方场次；`archiveStaffLead`=本方维护；`ArchiveAdmin` 按超管露 lead | `_marketplace_role_copy_findings`；`test_cinema_marketplace` + `test_qa_factory_drift` | **已齐**（2026-11-23） |
 
 **trade 组已知未挡**：本组 L4 条目已闸；未知口语仍依赖 p3q/LLM；材料图 L5 不在本条范围。**禁止**说「换开题都没事了」。
 
