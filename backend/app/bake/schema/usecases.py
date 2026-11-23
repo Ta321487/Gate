@@ -72,6 +72,74 @@ _ACTION_TAIL_RE = re.compile(
 )
 _MATERIAL_FILLER_RE = re.compile(r"(操作)?等$")
 
+# 开题模块名里的虚尾/营销前缀：进用例圈名要剥，禁「个人中心汇总功能」「可视化选座购票」原样上图
+_HOLLOW_NOUN_TAILS: tuple[str, ...] = (
+    "汇总功能",
+    "功能模块",
+    "业务模块",
+    "模块",
+    "汇总",
+    "功能",
+    "子系统",
+    "系统",
+)
+_DECOR_NOUN_PREFIXES: tuple[str, ...] = (
+    "可视化",
+    "智能化",
+    "智慧化",
+    "数字化",
+    "信息化",
+    "一站式",
+    "全方位",
+    "全流程",
+    "个性化",
+    "自动化",
+    "在线式",
+)
+# 近义修饰：同一一级下「互动评价」与「评价」不得拆成两条详情
+_EVAL_DECOR_PREFIXES: tuple[str, ...] = ("互动", "在线", "用户", "商品", "订单")
+
+
+def _scrub_usecase_noun(name: str) -> str:
+    """剥开题模块虚尾与营销前缀，得到可上图的业务名词（跨域通用，禁题名专线）。"""
+    s = re.sub(r"\s+", "", str(name or "").strip())
+    if not s:
+        return ""
+    for _ in range(4):
+        hit = False
+        for suf in _HOLLOW_NOUN_TAILS:
+            if s.endswith(suf) and len(s) > len(suf):
+                s = s[: -len(suf)]
+                hit = True
+                break
+        if not hit:
+            break
+    for _ in range(3):
+        hit = False
+        for pre in _DECOR_NOUN_PREFIXES:
+            if s.startswith(pre) and len(s) > len(pre) + 1:
+                s = s[len(pre) :]
+                hit = True
+                break
+        if not hit:
+            break
+    # 「互动评价」→「评价」：修饰+业务核，核仍是评价类
+    for pre in _EVAL_DECOR_PREFIXES:
+        if s.startswith(pre) and s.endswith("评价") and len(s) >= len(pre) + 2:
+            s = s[len(pre) :]
+            break
+    return s.strip("的之与和") or ""
+
+
+def _label_has_hollow_fluff(lab: str) -> bool:
+    """圈名仍带开题虚词/营销腔 → 须再洗或改走语义对。"""
+    s = str(lab or "")
+    if any(t in s for t in ("汇总功能", "汇总详情", "可视化", "智能化", "一站式", "全方位")):
+        return True
+    if re.search(r"(查看|浏览|管理|编辑).+(功能)$", s):
+        return True
+    return False
+
 _EXTEND_KEY_HINTS = frozenset(
     {
         "coupons",
@@ -619,7 +687,7 @@ def _strip_leading_verb(lab: str) -> str:
 
 def _noun_stem(lab: str) -> str:
     """去掉动词前缀与常见后缀/动作尾，得到业务名词干。"""
-    s = _strip_module_word(lab)
+    s = _scrub_usecase_noun(_strip_module_word(lab)) or _strip_module_word(lab)
     # 「评价管理」「用户管理」：先去尾「管理」，避免「评价」被当成动词前缀掏空
     if s.endswith("管理") and len(s) > 2:
         head = s[:-2]
@@ -627,14 +695,21 @@ def _noun_stem(lab: str) -> str:
             s = head
     raw_keep = s
     stem = _strip_leading_verb(s)
+    stem = _scrub_usecase_noun(stem) or stem
     for _ in range(3):
         m = _ACTION_TAIL_RE.search(stem)
         if not m or len(stem) <= len(m.group(1)):
             break
         stem = stem[: -len(m.group(1))]
-    for suf in ("功能", "管理", "列表", "中心", "信息", "记录", "模块", "浏览", "检索", "查询"):
-        if stem.endswith(suf) and len(stem) > len(suf):
-            stem = stem[: -len(suf)]
+    # 多轮剥后缀：个人中心汇总 → 剥汇总后再剥中心
+    for _ in range(4):
+        hit = False
+        for suf in ("功能", "管理", "列表", "中心", "信息", "记录", "模块", "浏览", "检索", "查询", "汇总"):
+            if stem.endswith(suf) and len(stem) > len(suf):
+                stem = stem[: -len(suf)]
+                hit = True
+                break
+        if not hit:
             break
     stem = stem.replace("我的", "") or stem
     if not stem or stem in ("管理", "查看", "进行", "编辑", "办理"):
@@ -696,7 +771,7 @@ def _scrub_material_seed(seed: str) -> str:
 
 
 def _polish_usecase_label(lab: str) -> str:
-    """二级/细节标签终洗：禁 CRUD 堆砌、禁权限腔残留。"""
+    """二级/细节标签终洗：禁 CRUD 堆砌、禁权限腔残留、禁开题虚尾/营销前缀。"""
     s = re.sub(r"\s+", "", str(lab or "").strip())
     if not s:
         return s
@@ -705,6 +780,15 @@ def _polish_usecase_label(lab: str) -> str:
     s = s.replace("分别", "")
     s = _drop_proposal_etc(s)
     s = _dedupe_verb_noun_tail(s)
+    # 动宾：保留动词，只洗宾语里的虚词/营销腔
+    m = _VERB_PREFIX_RE.match(s)
+    if m:
+        verb, rest = m.group(0), s[m.end() :]
+        rest2 = _scrub_usecase_noun(rest) or rest
+        if rest2 != rest:
+            s = f"{verb}{rest2}" if rest2 else verb
+    else:
+        s = _scrub_usecase_noun(s) or s
     if not s or s in ("管理", "查看", "进行"):
         return "管理业务"
     # 「管理商品信息」已够，勿再叠「信息信息」
@@ -1012,8 +1096,19 @@ def _finalize_includes(l1_label: str, kids: list[dict[str, Any]]) -> list[dict[s
         if lab in used or lab == l1_label:
             lab = _mint_distinct_l2(l1_label, used)
         lab = _polish_usecase_label(lab)
+        if _label_has_hollow_fluff(lab):
+            lab = _mint_distinct_l2(l1_label, used)
         if not lab or lab in used or lab == l1_label:
             lab = _mint_distinct_l2(l1_label, used)
+        # 仅拦近义「…详情」对撞（互动评价详情 vs 评价详情）；列表/发表同干不重铸
+        if lab.endswith("详情"):
+            stem_now = _noun_stem(lab)
+            if any(
+                u.endswith("详情") and _noun_stem(u) == stem_now and u != lab
+                for u in used
+                if u != l1_label
+            ):
+                lab = _mint_distinct_l2(l1_label, used)
         row["label"] = lab
         used.add(lab)
         out.append(row)
@@ -1365,6 +1460,7 @@ def _strip_module_word(name: str) -> str:
     for suf in ("功能模块", "模块"):
         if lab.endswith(suf) and len(lab) > len(suf):
             lab = lab[: -len(suf)]
+    lab = _scrub_usecase_noun(lab) or lab
     return lab.strip("的之") or str(name or "").strip()
 
 
@@ -1437,7 +1533,7 @@ def _mat_pick_keep_label(a: str, b: str) -> str:
 def _l1_label_from_material(name: str, *, side: str) -> str:
     raw = _strip_module_word(name)
     if not raw:
-        return "查看其它功能" if side == "user" else "管理其它功能"
+        return "查看其它业务" if side == "user" else "管理其它业务"
     if raw in ("登录注册", "登录", "注册") or ("登录" in raw and "注册" in raw):
         return "登录注册" if side == "user" else "登录系统"
     if raw in ("注册",) and side == "user":
@@ -1459,6 +1555,8 @@ def _l1_label_from_material(name: str, *, side: str) -> str:
         return "联系客服" if side == "user" else "管理客服"
     if any(t in raw for t in ("评价",)):
         return "管理评价" if side == "admin" else ("查看评价" if side == "user" else "管理评价")
+    if any(t in raw for t in ("选座", "购票")):
+        return "选座购票" if side == "user" else "管理场次选座"
     if any(t in raw for t in ("活动", "公告", "促销")):
         return "管理活动" if side == "admin" else "查看活动"
     if any(t in raw for t in ("数据分析", "统计")):
@@ -1469,11 +1567,13 @@ def _l1_label_from_material(name: str, *, side: str) -> str:
         return ensure_verb_prefix(raw, default_verb="管理")
     if any(t in raw for t in ("商品", "农产品")):
         return "管理农产品" if side == "admin" else "浏览商品"
-    if any(t in raw for t in ("个人中心", "个人信息")):
-        return "管理个人中心"
+    if any(t in raw for t in ("个人中心", "个人信息", "个人")):
+        return "查看个人资料" if side == "user" else "管理个人中心"
     if _VERB_PREFIX_RE.match(raw):
-        return _dedupe_verb_noun_tail(raw)
-    return ensure_verb_prefix(raw, default_verb="管理" if side == "admin" else "查看")
+        return _polish_usecase_label(_dedupe_verb_noun_tail(raw))
+    return _polish_usecase_label(
+        ensure_verb_prefix(raw, default_verb="管理" if side == "admin" else "查看")
+    )
 
 
 def _match_section_for_actor(
@@ -1870,15 +1970,20 @@ def _l2_from_material_module(
             key0 = str(mks[0] or "")
         cur_lab = str(only.get("label") or "")
         used = {cur_lab, name}
-        # 材料已给出清楚动宾：只补第二步，禁止整段换成泛化「查看业务列表」
+        # 材料已给出清楚动宾：只补第二步；虚词/营销腔/个人中心/评价桶不算「清楚」，改走语义对
+        blob_nm = f"{name}|{cur_lab}"
         specific = bool(
             cur_lab
             and _VERB_PREFIX_RE.match(cur_lab)
             and "业务" not in cur_lab
             and not re.match(r"^查看.+列表$", cur_lab)
+            and not _label_has_hollow_fluff(cur_lab)
+            and not _label_has_hollow_fluff(name)
+            and not any(t in blob_nm for t in ("个人", "中心", "资料", "评价", "选座", "购票"))
         )
         if specific:
-            second = _mint_distinct_l2(name or cur_lab, used)
+            # 补第二步时跟当前圈名词干，禁止用开题生模块名再拼出「互动评价详情」
+            second = _mint_distinct_l2(cur_lab or name, used)
             kids.append(
                 {
                     "id": f"{l1_id}:detail",
@@ -2637,6 +2742,8 @@ def assert_usecase_invariants(
                 raise ValueError(f"usecase: 二级名词干未清洗 {klab}")
             if klab in ("查看管理列表", "编辑管理信息"):
                 raise ValueError(f"usecase: 二级名词干退化 {klab}")
+            if _label_has_hollow_fluff(klab) or _label_has_hollow_fluff(lab):
+                raise ValueError(f"usecase: 禁止开题虚词/营销腔圈名 {klab or lab}")
             if klab == lab:
                 raise ValueError(f"usecase: 二级不得与一级同名 {klab}")
             if klab.startswith("确认") and any(

@@ -207,6 +207,50 @@ class UsecaseContractTests(unittest.TestCase):
             for kid in uc["includes"]:
                 self.assertNotEqual(kid.get("label"), "进行支付")
 
+    def test_scrub_hollow_and_decor_nouns(self) -> None:
+        """开题虚尾/营销前缀：剥净后才进圈名（跨域通用，禁题名专线）。"""
+        from app.bake.schema.usecases import _noun_stem, _polish_usecase_label, _scrub_usecase_noun
+
+        self.assertEqual(_scrub_usecase_noun("个人中心汇总功能"), "个人中心")
+        self.assertEqual(_scrub_usecase_noun("可视化选座购票"), "选座购票")
+        self.assertEqual(_scrub_usecase_noun("互动评价"), "评价")
+        self.assertEqual(_noun_stem("查看个人中心汇总功能"), "个人")
+        self.assertNotIn("可视化", _polish_usecase_label("查看可视化选座购票详情"))
+        self.assertNotIn("汇总", _polish_usecase_label("查看个人中心汇总功能"))
+
+    def test_cinema_user_l2_no_hollow_fluff(self) -> None:
+        """演艺开题「可视化/汇总功能/互动评价」不得原样上用户用例二级。"""
+        opening = (
+            "用户功能模块划分为：登录注册模块、购物车模块、可视化选座购票模块、"
+            "互动评价模块、个人中心汇总功能；"
+            "主办方商家后台功能模块划分为：演出场次管理模块、场馆座位管理模块、"
+            "订单核销管理模块、店铺订单统计模块、售后退票处理模块；"
+            "平台管理员后台功能模块划分为：轮播图管理模块、用户管理模块、"
+            "主办方商家管理模块、演出审核管理模块、全局订单管理模块、"
+            "评价内容管理模块、公告管理模块。"
+        )
+        schema = build_domain_schema(
+            "潮汐演艺票务销售网站", "DOM-CINEMA", proposal_text=opening
+        )
+        model = usecase_model(
+            schema, actor="user", proposal_text=opening, title_fallback="潮汐演艺"
+        )
+        blob = json.dumps(model, ensure_ascii=False)
+        for bad in ("汇总功能", "汇总详情", "可视化", "互动评价详情", "个人中心汇总"):
+            self.assertNotIn(bad, blob, bad)
+        self.assertIn("发表评价", blob)
+        self.assertIn("编辑个人资料", blob)
+        self.assertIn("选座购票", blob)
+        # 评价桶：禁止两条近义「…评价详情」
+        review_detail = [
+            str(k.get("label") or "")
+            for uc in model["level1"]
+            for k in uc.get("includes") or []
+            if "评价" in str(k.get("label") or "") and str(k.get("label") or "").endswith("详情")
+        ]
+        self.assertLessEqual(len(review_detail), 1, review_detail)
+        assert_usecase_invariants(model, schema=schema, actor="user")
+
     def test_cinema_houtai_enum_admin_not_merchant_body(self) -> None:
         """「主办方商家后台 / 平台管理员后台」并存时，管理员用例不得吃进主办方场次核销枚举。"""
         opening = (
@@ -301,7 +345,7 @@ class UsecaseContractTests(unittest.TestCase):
             for kid in uc["includes"]:
                 self.assertRegex(
                     kid["label"],
-                    r"^(查看|进行|编辑|提交|管理|选择|确认|登录|注册|办理|预约|浏览|进入|使用|申请|收藏|发表|加入|联系|审核|支付|添加|修改|删除|回复|新增|干预)",
+                    r"^(查看|进行|编辑|提交|管理|选择|确认|登录|注册|办理|预约|浏览|进入|使用|申请|收藏|发表|加入|联系|审核|支付|添加|修改|删除|回复|新增|干预|填写|选购)",
                 )
         self.assertEqual(model.get("style", {}).get("id"), style["id"])
 
