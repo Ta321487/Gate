@@ -327,9 +327,13 @@ def usecase_model_to_mermaid(model: dict[str, Any] | None) -> str:
                 continue
             kid_id = str(kid.get("id") or "")
             kmid = mermaid_id(kid_id, prefix="U_")
-            rel = mermaid_label(str(kid.get("relation") or "include"))
+            rel = str(kid.get("relation") or "include")
             lines.append(f'  {kmid}(["{mermaid_label(str(kid.get("label") or kid_id))}"])')
-            lines.append(f"  {umid} -.->|{rel}| {kmid}")
+            # UML：include 一级→二级；extend 扩展→基用例
+            if rel == "extend":
+                lines.append(f"  {kmid} -.->|<<extend>>| {umid}")
+            else:
+                lines.append(f"  {umid} -.->|<<include>>| {kmid}")
     return "\n".join(lines) + "\n"
 
 

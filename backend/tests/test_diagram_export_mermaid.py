@@ -132,6 +132,39 @@ def test_usecase_mermaid_skips_hidden():
     assert "幽灵" not in text
 
 
+def test_usecase_mermaid_extend_arrow_points_to_base():
+    from app.bake.schema.diagram_mermaid import mermaid_id
+
+    model = {
+        "actor": {"id": "user", "label": "买家"},
+        "level1": [
+            {
+                "id": "user_uc_order",
+                "label": "查看订单",
+                "includes": [
+                    {
+                        "id": "user_uc_order:list",
+                        "label": "浏览订单列表",
+                        "relation": "include",
+                    },
+                    {
+                        "id": "user_uc_order:pay",
+                        "label": "进行支付",
+                        "relation": "extend",
+                    },
+                ],
+            }
+        ],
+    }
+    text = usecase_model_to_mermaid(model)
+    umid = mermaid_id("user_uc_order", prefix="U_")
+    pay = mermaid_id("user_uc_order:pay", prefix="U_")
+    lst = mermaid_id("user_uc_order:list", prefix="U_")
+    assert f"{pay} -.->|<<extend>>| {umid}" in text
+    assert f"{umid} -.->|<<include>>| {lst}" in text
+    assert f"{umid} -.->|<<extend>>| {pay}" not in text
+
+
 def test_module_mermaid_tree():
     model = {
         "title": "模块",

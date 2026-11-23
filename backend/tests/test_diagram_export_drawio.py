@@ -235,6 +235,43 @@ def test_usecase_drawio_skips_hidden_includes():
     assert "登录" in xml
 
 
+def test_usecase_drawio_extend_arrow_points_to_base():
+    """UML：<<extend>> 须从扩展用例指向基用例，禁止一级→支付这种反画。"""
+    model = {
+        "title": "用例",
+        "actor": {"id": "user", "label": "买家"},
+        "level1": [
+            {
+                "id": "user_uc_order",
+                "label": "查看订单",
+                "includes": [
+                    {
+                        "id": "user_uc_order:list",
+                        "label": "浏览订单列表",
+                        "relation": "include",
+                    },
+                    {
+                        "id": "user_uc_order:pay",
+                        "label": "进行支付",
+                        "relation": "extend",
+                    },
+                ],
+            }
+        ],
+    }
+    xml = usecase_model_to_drawio(model)
+    l1 = stable_cell_id("ucu", "user_uc_order")
+    pay = stable_cell_id("ucu", "user_uc_order:pay")
+    lst = stable_cell_id("ucu", "user_uc_order:list")
+    assert "<<extend>>" in xml or "&lt;&lt;extend&gt;&gt;" in xml
+    assert "<<include>>" in xml or "&lt;&lt;include&gt;&gt;" in xml
+    # extend：支付 → 查看订单
+    assert f'source="{pay}"' in xml and f'target="{l1}"' in xml
+    assert f'source="{l1}" target="{pay}"' not in xml
+    # include：查看订单 → 列表
+    assert f'source="{l1}"' in xml and f'target="{lst}"' in xml
+
+
 def test_architecture_drawio_homology():
     model = {
         "figure_title": "系统逻辑架构图",

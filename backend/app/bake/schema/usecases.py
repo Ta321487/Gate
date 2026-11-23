@@ -2305,16 +2305,21 @@ def _actor_svg(cx: float, cy: float, label: str) -> str:
 
 
 def _edge_points(layout: dict[str, Any], fid: str, tid: str) -> tuple[float, float, float, float]:
+    """按圆心左右关系取椭圆/Actor 近侧端点，保证 extend（右→左）箭头不绕远。"""
     nodes = {n["id"]: n for n in layout["l1"] + layout["l2"]}
     if fid == "actor":
         a = layout["actor"]
-        x1, y1 = a["cx"] + 20, a["cy"]
+        ax, ay, aw = float(a["cx"]), float(a["cy"]), 40.0
     else:
         a = nodes[fid]
-        x1, y1 = a["cx"] + a["w"] / 2, a["cy"]
+        ax, ay, aw = float(a["cx"]), float(a["cy"]), float(a["w"])
     b = nodes[tid]
-    x2, y2 = b["cx"] - b["w"] / 2, b["cy"]
-    return x1, y1, x2, y2
+    bx, by, bw = float(b["cx"]), float(b["cy"]), float(b["w"])
+    if ax <= bx:
+        x1, x2 = ax + aw / 2, bx - bw / 2
+    else:
+        x1, x2 = ax - aw / 2, bx + bw / 2
+    return x1, ay, x2, by
 
 
 def render_usecase_svg(model: dict[str, Any]) -> str:

@@ -491,12 +491,17 @@ def usecase_model_to_drawio(model: dict[str, Any] | None) -> str:
                 )
             )
             rel = str(kid.get("relation") or "include")
+            # UML：include 一级→二级；extend 扩展用例→基用例（二级→一级）
+            if rel == "extend":
+                src, tgt, lab = kid_cid, cid, "<<extend>>"
+            else:
+                src, tgt, lab = cid, kid_cid, "<<include>>"
             cells.append(
                 mx_edge(
                     stable_cell_id("uce", f"{uid}_{kid_id}"),
-                    source=cid,
-                    target=kid_cid,
-                    value=f"«{rel}»",
+                    source=src,
+                    target=tgt,
+                    value=lab,
                     style="endArrow=open;dashed=1;html=1;strokeColor=#000000;",
                 )
             )
