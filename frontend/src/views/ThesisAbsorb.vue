@@ -54,13 +54,13 @@
               >移除</n-button>
             </div>
           </div>
-          <!-- 上传：真百分比；抽取：与 LongOpWait 同款走动条，不报假 % -->
+          <!-- 有真 % 才定长条；上传无事件 / 抽取中 → 与 LongOpWait 同款走动条 -->
           <div
-            v-if="job.status === 'uploading'"
+            v-if="job.status === 'uploading' && Number(job.pct) > 0"
             class="progress"
           ><i :style="{ width: job.pct + '%' }" /></div>
           <div
-            v-else-if="job.status === 'extracting'"
+            v-else-if="job.status === 'uploading' || job.status === 'extracting'"
             class="sub-progress"
             aria-hidden="true"
           ><i /></div>
@@ -760,7 +760,7 @@ const uploadBusy = computed(() =>
 const uploadQueueHint = computed(() => {
   const n = uploadJobList.value.length
   if (!n) return ''
-  if (uploadBusy.value) return '进行中 · 抽取段不显示完成百分比'
+  if (uploadBusy.value) return '进行中 · 走动条表示仍在处理'
   return `共 ${n} 条`
 })
 
@@ -1223,6 +1223,12 @@ function jobBarColor(job) {
   return ''
 }
 
+/** 从列表取任务代理，避免改 plain 对象导致进度条不刷新 */
+function findUploadJob(id) {
+  const list = Array.isArray(uploadJobs.value) ? uploadJobs.value : []
+  return list.find((j) => j.id === id) || null
+}
+
 function clearJobTimers(job) {
   if (job?.tick) {
     clearInterval(job.tick)
@@ -1234,55 +1240,76 @@ function clearJobTimers(job) {
   }
 }
 
-function startExtractWait(job) {
+function startExtractWait(jobOrId) {
+  const id = typeof jobOrId === 'string' ? jobOrId : jobOrId?.id
+  const job = findUploadJob(id)
   if (!job || job.status === 'extracting') return
   job.status = 'extracting'
   job.startedAt = Date.now()
   job.elapsedSec = 0
   if (job.tick) clearInterval(job.tick)
   job.tick = setInterval(() => {
-    job.elapsedSec = Math.floor((Date.now() - job.startedAt) / 1000)
+    const cur = findUploadJob(job.id)
+    if (!cur || cur.status !== 'extracting') {
+      if (cur?.tick) {
+        clearInterval(cur.tick)
+        cur.tick = null
+      }
+      return
+    }
+    cur.elapsedSec = Math.floor((Date.now() - cur.startedAt) / 1000)
   }, 1000)
 }
 
 function dismissJob(id) {
-  const list = Array.isArray(uploadJobs.value) ? uploadJobs.value : []
-  const job = list.find((j) => j.id === id)
+  const job = findUploadJob(id)
   clearJobTimers(job)
+  const list = Array.isArray(uploadJobs.value) ? uploadJobs.value : []
   uploadJobs.value = list.filter((j) => j.id !== id)
 }
 
 async function uploadOne(file) {
   if (!file || uploadBusy.value) return
-  const job = {
-    id: `ta-${Date.now()}-${++uploadSeq}`,
-    name: file.name || '终稿',
-    status: 'uploading',
-    pct: 0,
-    elapsedSec: 0,
-    startedAt: 0,
-    recordId: null,
-    error: '',
-    tick: null,
-    fallbackTick: null,
-  }
+  const jobId = `ta-${Date.now()}-${++uploadSeq}`
   const prev = Array.isArray(uploadJobs.value) ? uploadJobs.value : []
-  uploadJobs.value = [...prev, job]
-  // 无上传进度事件时：很快切到不确定抽取态，避免假 % 卡死
-  job.fallbackTick = setTimeout(() => {
-    job.fallbackTick = null
-    if (job.status === 'uploading') startExtractWait(job)
-  }, 800)
+  uploadJobs.value = [
+    ...prev,
+    {
+      id: jobId,
+      name: file.name || '终稿',
+      status: 'uploading',
+      pct: 0,
+      elapsedSec: 0,
+      startedAt: 0,
+      recordId: null,
+      error: '',
+      tick: null,
+      fallbackTick: null,
+    },
+  ]
+  // 无上传进度事件时：很快切到走动条抽取态，避免空进度条
+  const seeded = findUploadJob(jobId)
+  if (seeded) {
+    seeded.fallbackTick = setTimeout(() => {
+      const j = findUploadJob(jobId)
+      if (!j) return
+      j.fallbackTick = null
+      if (j.status === 'uploading') startExtractWait(jobId)
+    }, 800)
+  }
   try {
     const res = await api.thesisAbsorbUpload(file, (e) => {
-      if (!e?.total) return
-      if (job.fallbackTick) {
-        clearTimeout(job.fallbackTick)
-        job.fallbackTick = null
+      const j = findUploadJob(jobId)
+      if (!j || !e?.total) return
+      if (j.fallbackTick) {
+        clearTimeout(j.fallbackTick)
+        j.fallbackTick = null
       }
-      job.pct = Math.min(100, Math.round((e.loaded / e.total) * 100))
-      if (e.loaded >= e.total) startExtractWait(job)
+      j.pct = Math.min(100, Math.round((e.loaded / e.total) * 100))
+      if (e.loaded >= e.total) startExtractWait(jobId)
     })
+    const job = findUploadJob(jobId)
+    if (!job) return
     clearJobTimers(job)
     job.status = 'done'
     job.pct = 100
@@ -1295,6 +1322,8 @@ async function uploadOne(file) {
     }
     if (job.recordId) openDetail(job.recordId)
   } catch (e) {
+    const job = findUploadJob(jobId)
+    if (!job) return
     clearJobTimers(job)
     job.status = 'error'
     job.pct = 100
