@@ -27,6 +27,15 @@ HUB_BYPASS_MODULES: frozenset[str] = frozenset(
         "org_crosscut",  # §0 X-ORG：标签/批量启停常开；字典/外观/组织/岗位菜单扫词开，非 cap
         "list_crosscut",  # §0 X-LIST：组合筛选/导出列/顶栏搜索扫词开，非 cap
         "ux_crosscut",  # §0 X-UX：使用说明页扫词开，非 cap
+        # 分域 L4 岗位 lead 文案 ensure_*，非独立 cap；见 role-boundary-copy-batch
+        "borrow_role_leads",
+        "repair_role_leads",
+        "follow_role_leads",
+        "approve_role_leads",
+        "apply_role_leads",
+        "content_role_leads",
+        "interact_role_leads",
+        "fallback_role_leads",
     }
 )
 

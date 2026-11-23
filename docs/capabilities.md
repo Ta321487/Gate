@@ -56,6 +56,14 @@
 | `org_crosscut` | §0 X-ORG 通识横切：用户标签与批量启停常开；数据字典/系统外观/组织树/岗位菜单为开题扫词才挂，非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
 | `list_crosscut` | §0 X-LIST：档案组合筛选 / 导出列勾选 / 顶栏搜索为开题扫词才挂，非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
 | `ux_crosscut` | §0 X-UX：使用说明、文件列表、省市区、二次确认、一级佣金均为开题扫词才挂，非独立 cap；落点见 [`crosscut-delivery-batch.md`](./crosscut-delivery-batch.md) |
+| `borrow_role_leads` | 借用组 L4：单据页总管 vs 一线 lead 文案 `ensure_*`，非独立 cap；见 [`role-boundary-copy-batch.md`](./role-boundary-copy-batch.md) |
+| `repair_role_leads` | 报修组 L4：总管 vs 楼管/调度 lead，非独立 cap |
+| `follow_role_leads` | 跟进组 L4：总管 vs 辅导员/专员 lead，非独立 cap |
+| `approve_role_leads` | 审批组 L4：总管 vs 承办岗 lead，非独立 cap |
+| `apply_role_leads` | 报名组 L4：总管 vs 助理 lead，非独立 cap |
+| `content_role_leads` | 内容组 L4：站长 vs 版主/运营 lead，非独立 cap |
+| `interact_role_leads` | 互动组 L4：总管 vs 一线 lead，非独立 cap |
+| `fallback_role_leads` | 通用路径缺岗时补 Admin/Staff lead，非独立 cap |
 
 源码：`backend/app/bake/features/proposal_caps.py` → `HUB_BYPASS_MODULES`。
 
