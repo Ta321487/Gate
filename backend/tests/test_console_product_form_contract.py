@@ -74,6 +74,20 @@ class ConsoleProductFormContractTest(unittest.TestCase):
         self.assertIn("hit?.name || hit?.label", ops)
         self.assertIn("formatArchDomParts", ops)
 
+    def test_default_all_filter_not_lit(self):
+        """进门默认「全部」不高亮；仅收窄筛点亮（项目 + 终稿吸收）。"""
+        ops = (FE / "opsShared.js").read_text(encoding="utf-8")
+        self.assertIn("export function filterChipOn", ops)
+        self.assertIn("id !== allId", ops)
+        for rel in ("views/Projects.vue", "views/ThesisAbsorb.vue"):
+            src = (FE / rel).read_text(encoding="utf-8")
+            with self.subTest(view=rel):
+                self.assertIn("filterChipOn", src)
+                self.assertNotIn(":class=\"{ on: filter === 'all' }\"", src)
+                self.assertNotIn(":class=\"{ on: filterMode === 'all' }\"", src)
+                self.assertNotIn("{ on: filter === f.id }", src)
+                self.assertNotIn("{ on: filterMode === f.id }", src)
+
 
 if __name__ == "__main__":
     unittest.main()

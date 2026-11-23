@@ -78,7 +78,7 @@
       <div class="stats">
         <div
           class="stat clickable"
-          :class="{ on: filterMode === 'all' }"
+          :class="{ on: filterChipOn(filterMode, 'all') }"
           role="button"
           tabindex="0"
           @click="setFilter('all')"
@@ -90,7 +90,7 @@
         </div>
         <div
           class="stat clickable"
-          :class="{ on: filterMode === 'unknown' }"
+          :class="{ on: filterChipOn(filterMode, 'unknown') }"
           role="button"
           tabindex="0"
           @click="setFilter('unknown')"
@@ -102,7 +102,7 @@
         </div>
         <div
           class="stat clickable"
-          :class="{ on: filterMode === 'thin' }"
+          :class="{ on: filterChipOn(filterMode, 'thin') }"
           role="button"
           tabindex="0"
           @click="setFilter('thin')"
@@ -114,7 +114,7 @@
         </div>
         <div
           class="stat clickable"
-          :class="{ on: filterMode === 'covered' }"
+          :class="{ on: filterChipOn(filterMode, 'covered') }"
           role="button"
           tabindex="0"
           @click="setFilter('covered')"
@@ -143,7 +143,7 @@
               :key="f.id"
               type="button"
               class="pill filter-pill"
-              :class="[f.pill, { on: filterMode === f.id }]"
+              :class="[f.pill, { on: filterChipOn(filterMode, f.id) }]"
               @click="setFilter(f.id)"
             >{{ f.label }}</button>
           </div>
@@ -199,7 +199,14 @@
           <div class="proj-meta">
             <span class="pill" :class="coverageClass(detail.coverage)">{{ coverageLabel(detail.coverage) }}</span>
             <span class="pill pill-neutral">{{ statusLabel(detail.status) }}</span>
-            <span>ID <span class="mono">{{ detail.id }}</span></span>
+            <span class="mono">{{ detail.display_no || ('#' + detail.id) }}</span>
+            <span
+              v-if="detail.public_id"
+              class="mono muted"
+              style="cursor:pointer"
+              title="点击复制对账键"
+              @click="copyText(detail.public_id)"
+            >{{ detail.public_id }}</span>
             <span v-if="(detail.source_files || [])[0]" class="muted" :title="(detail.source_files || [])[0]">
               {{ (detail.source_files || [])[0] }}
             </span>
@@ -218,8 +225,8 @@
             size="small"
             type="primary"
             :disabled="detail.thin_features && !forceFeed"
-            :loading="feedBusy === detail.id"
-            @click="copyFeed(detail.id)"
+            :loading="feedBusy === (detail.public_id || detail.id)"
+            @click="copyFeed(detail.public_id || detail.id)"
           >复制给助手</n-button>
           <n-button type="error" secondary size="small" @click="doDelete">删除</n-button>
         </div>
@@ -232,13 +239,13 @@
           class="row"
           style="gap:8px;align-items:flex-start;margin-bottom:6px"
         >
-          <div style="flex:1">
-            与另一条终稿有 {{ ov.overlap_count }} 处相近
+          <div style="flex:1;min-width:0">
+            与「{{ maskTitles ? (`记录 #${ov.id}`) : overlapPeerLabel(ov) }}」有 {{ ov.overlap_count }} 处相近
             <div class="small muted">{{ (ov.overlap_lines || []).slice(0, 4).join('；') }}</div>
           </div>
           <n-button size="small" quaternary @click="openDetail(ov.id)">去看看</n-button>
         </div>
-        <div class="small muted">两条都会保留，不会自动合并。</div>
+        <div class="small muted">相近终稿都会保留，不会自动合并。</div>
       </div>
 
       <div v-if="detail.needs_reextract" class="ta-alert mb-12">
@@ -263,24 +270,41 @@
 
       <div class="detail-stage-body">
         <div class="panel panel-quiet mb-12">
-          <div class="panel-hd"><h3>基本信息</h3></div>
+          <div class="panel-hd"><h3>记录概要</h3></div>
           <div class="panel-bd">
             <div class="ta-id-grid">
-              <div><span class="ta-k">角色</span><span class="mono">{{ detail.role }}</span></div>
-              <div><span class="ta-k">重点</span><span class="mono">{{ detail.focus }}</span></div>
-              <div><span class="ta-k">字数</span>{{ detail.char_count }}</div>
               <div>
-                <span class="ta-k">图侧</span>
+                <span class="ta-k">文档类型</span>
+                <span :title="detail.role || undefined">{{ absorbRoleLabel(detail.role) }}</span>
+              </div>
+              <div>
+                <span class="ta-k">抽取范围</span>
+                <span :title="detail.focus || undefined">{{ absorbFocusLabel(detail.focus) }}</span>
+              </div>
+              <div><span class="ta-k">正文规模</span>{{ detail.char_count != null ? `${detail.char_count} 字` : '—' }}</div>
+              <div>
+                <span class="ta-k">图文对账</span>
                 {{ figureStatusLabel }}
               </div>
-              <div><span class="ta-k">要点</span>{{ featureCountHint }}</div>
+              <div><span class="ta-k">功能要点</span>{{ featureCountHint }}</div>
+            </div>
+            <div class="mt-12">
+              <div class="ta-section-label" style="margin-bottom:8px">文中技术栈</div>
+              <div v-if="detailTechStack.length" class="ta-chips">
+                <span
+                  v-for="(t, i) in detailTechStack"
+                  :key="`ts-${i}`"
+                  class="pill pill-neutral ta-feat-pill"
+                >{{ t }}</span>
+              </div>
+              <div v-else class="muted small">正文未点名常见技术选型</div>
             </div>
             <n-collapse class="mt-8">
-              <n-collapse-item title="技术信息" name="tech">
+              <n-collapse-item title="抽取元数据" name="tech">
                 <div class="small muted mono">
                   抽取轮次 {{ detail.extract_round }} ·
                   抽取器 v{{ detail.extractor_version }} ·
-                  哈希 {{ shortHash(detail.content_sha256) }}
+                  内容指纹 {{ shortHash(detail.content_sha256) }}
                 </div>
               </n-collapse-item>
             </n-collapse>
@@ -409,15 +433,7 @@
         <div class="panel panel-quiet mb-12">
           <div class="panel-hd">
             <h3>覆盖情况</h3>
-            <div class="row" style="gap:6px;align-items:center">
-              <span class="small muted">{{ machineUnlocked ? '可改预选' : '模型预选已锁定' }}</span>
-              <n-button
-                size="small"
-                quaternary
-                :title="machineUnlocked ? '重新锁定机器结果' : '解锁后可改覆盖与备注'"
-                @click="toggleMachineUnlock"
-              >{{ machineUnlocked ? '重新锁定' : '解锁调整' }}</n-button>
-            </div>
+            <span class="small muted">{{ machineUnlocked ? '可改预选' : '模型预选已锁定 · 上方解锁后可改' }}</span>
           </div>
           <div class="panel-bd" :class="{ 'ta-locked': !machineUnlocked, locked: !machineUnlocked }">
             <n-radio-group
@@ -458,13 +474,7 @@
           <div class="panel-hd">
             <h3>补齐建议</h3>
             <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
-              <span class="small muted">{{ machineUnlocked ? '可增删改' : '机器结果已锁定' }} · {{ draftsLlmHint }}</span>
-              <n-button
-                size="small"
-                quaternary
-                :title="machineUnlocked ? '重新锁定' : '解锁后可改角色/实体/功能'"
-                @click="toggleMachineUnlock"
-              >{{ machineUnlocked ? '重新锁定' : '解锁调整' }}</n-button>
+              <span class="small muted">{{ machineUnlocked ? '可增删改' : '已锁定 · 上方解锁后可改' }} · {{ draftsLlmHint }}</span>
               <n-button
                 v-if="machineUnlocked"
                 size="small"
@@ -643,10 +653,12 @@
                 style="color: var(--warning-color, #b45309)"
               >{{ w }}</div>
             </div>
-            <pre
+            <CodePreview
               v-if="(detail.draft_schema_sql || '').trim()"
-              class="spec-preview ta-pair-pre"
-            >{{ detail.draft_schema_sql }}</pre>
+              :code="detail.draft_schema_sql"
+              lang="sql"
+              extra-class="ta-pair-pre"
+            />
             <div v-else class="muted small">尚未抽出可核对的 CREATE TABLE（缺题注或字段表时会空着落库）。</div>
           </div>
         </div>
@@ -661,8 +673,8 @@
                   size="small"
                   type="primary"
                   :disabled="detail.thin_features && !forceFeed"
-                  :loading="feedBusy === detail.id"
-                  @click="copyFeed(detail.id)"
+                  :loading="feedBusy === (detail.public_id || detail.id)"
+                  @click="copyFeed(detail.public_id || detail.id)"
                 >复制给助手</n-button>
               </div>
             </div>
@@ -727,9 +739,10 @@ import { computed, h, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { api, message, confirm } from '../api'
-import { debounce } from '../opsShared'
+import { debounce, filterChipOn } from '../opsShared'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import ContentLoading from '../components/ContentLoading.vue'
+import CodePreview from '../components/CodePreview.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -775,7 +788,8 @@ const filters = [
 
 const detailId = computed(() => {
   const id = route.params.id
-  return id ? Number(id) : null
+  if (id == null || id === '') return null
+  return String(id)
 })
 const detail = ref(null)
 const detailLoading = ref(false)
@@ -821,6 +835,11 @@ const knife2Open = computed(() => detail.value?.coverage === 'covered')
 const detailOverlaps = computed(() =>
   Array.isArray(detail.value?.overlaps) ? detail.value.overlaps : [],
 )
+const detailTechStack = computed(() => {
+  const raw = detail.value?.proposal?.tech_stack_lines
+  if (!Array.isArray(raw)) return []
+  return raw.map((x) => String(x || '').trim()).filter(Boolean)
+})
 const detailWarnings = computed(() =>
   Array.isArray(detail.value?.warnings) ? detail.value.warnings : [],
 )
@@ -883,11 +902,19 @@ const figureStatusLabel = computed(() => {
   const d = detail.value
   if (!d) return '—'
   const n = figureLabelPreview.value.length
-  if (n) return `已对账（结构图标签 ${n}）`
-  if (d.has_figure_text) return '含图注（结构标签未读出或未交叉）'
-  if (d.figure_extract_ready) return '可对账（重新抽取后写入）'
-  return '仅文字'
+  if (n) return `已对账 · 结构图标签 ${n}`
+  if (d.has_figure_text) return '含图注 · 结构标签待解析'
+  if (d.figure_extract_ready) return '待写入 · 请重新抽取'
+  return '仅正文'
 })
+
+function absorbRoleLabel(v) {
+  return ({ thesis: '终稿论文' })[v] || v || '—'
+}
+
+function absorbFocusLabel(v) {
+  return ({ thesis_impl: '系统实现' })[v] || v || '—'
+}
 const detailSections = computed(() => {
   const secs = detail.value?.proposal?.sections
   if (!Array.isArray(secs)) return []
@@ -920,6 +947,14 @@ function coveragePillNode(v) {
 }
 
 const listColumns = computed(() => [
+  {
+    title: '编号',
+    key: 'display_no',
+    width: 72,
+    render(row) {
+      return h('span', { class: 'mono', title: row.public_id || '' }, row.display_no || `#${row.id}`)
+    },
+  },
   {
     title: '题名',
     key: 'title',
@@ -983,7 +1018,7 @@ const listColumns = computed(() => [
       return h('div', { class: 'row', style: 'gap:4px;flex-wrap:wrap' }, [
         h(
           NButton,
-          { size: 'tiny', quaternary: true, onClick: () => openDetail(row.id) },
+          { size: 'tiny', quaternary: true, onClick: () => openDetail(row) },
           { default: () => '打开' },
         ),
         h(
@@ -991,8 +1026,8 @@ const listColumns = computed(() => [
           {
             size: 'tiny',
             quaternary: true,
-            loading: feedBusy.value === row.id,
-            onClick: () => copyFeed(row.id),
+            loading: feedBusy.value === (row.public_id || row.id),
+            onClick: () => copyFeed(row.public_id || row.id),
           },
           { default: () => '复制给助手' },
         ),
@@ -1161,6 +1196,13 @@ function displayTitle(row) {
   const t = row?.proposal?.title || ''
   if (t && !looksLikeTocTitle(t)) return t
   return fileDisplayName(row) || t || `记录 #${row?.id || ''}`
+}
+
+/** overlaps 条目：title/source_files 在顶层，不是 proposal 下 */
+function overlapPeerLabel(ov) {
+  const t = String(ov?.title || '').trim()
+  if (t && !looksLikeTocTitle(t)) return t
+  return fileDisplayName(ov) || t || `记录 #${ov?.id || ''}`
 }
 
 function shortTime(iso) {
@@ -1346,8 +1388,12 @@ function onDrop(ev) {
   uploadOne(ev.dataTransfer?.files?.[0])
 }
 
-function openDetail(id) {
-  router.push(`/thesis-absorb/${id}`)
+function openDetail(idOrRow) {
+  let key = idOrRow
+  if (idOrRow && typeof idOrRow === 'object') {
+    key = idOrRow.public_id || idOrRow.id
+  }
+  router.push(`/thesis-absorb/${key}`)
 }
 
 function closeDetail() {

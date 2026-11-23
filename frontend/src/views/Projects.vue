@@ -237,7 +237,7 @@
       <div class="stats">
         <div
           class="stat clickable"
-          :class="{ on: filter === 'all' }"
+          :class="{ on: filterChipOn(filter, 'all') }"
           role="button"
           tabindex="0"
           @click="setFilter('all')"
@@ -249,7 +249,7 @@
         </div>
         <div
           class="stat clickable"
-          :class="{ on: filter === 'pending' }"
+          :class="{ on: filterChipOn(filter, 'pending') }"
           role="button"
           tabindex="0"
           @click="setFilter('pending')"
@@ -261,7 +261,7 @@
         </div>
         <div
           class="stat clickable"
-          :class="{ on: filter === 'ready' }"
+          :class="{ on: filterChipOn(filter, 'ready') }"
           role="button"
           tabindex="0"
           @click="setFilter('ready')"
@@ -273,7 +273,7 @@
         </div>
         <div
           class="stat clickable"
-          :class="{ on: filter === 'delivered' }"
+          :class="{ on: filterChipOn(filter, 'delivered') }"
           role="button"
           tabindex="0"
           @click="setFilter('delivered')"
@@ -318,7 +318,7 @@
               :key="f.id"
               type="button"
               class="pill filter-pill"
-              :class="[f.pill, { on: filter === f.id }]"
+              :class="[f.pill, { on: filterChipOn(filter, f.id) }]"
               @click="setFilter(f.id)"
             >{{ f.label }}</button>
           </div>
@@ -373,6 +373,7 @@ import CopyIconButton from '../components/CopyIconButton.vue'
 import {
   debounce,
   domainCascaderOptions,
+  filterChipOn,
   formatArchDomParts,
   getCatalog,
   projectStatusLabel,

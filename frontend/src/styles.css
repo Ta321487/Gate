@@ -36,8 +36,15 @@
   --bg-soft: #f4f7f9;
   --text: #15202b;
   --accent: #0b6e75;
-  --code-bg: #0f1720;
-  --code-fg: #c8d6e0;
+  /* 代码壳跟浅色台面；token 用深色可读色 */
+  --code-bg: #f1f5f8;
+  --code-fg: #1e293b;
+  --tok-kw: #0369a1;
+  --tok-str: #047857;
+  --tok-cmt: #64748b;
+  --tok-num: #b45309;
+  --tok-ident: #854d0e;
+  --tok-key: #0e7490;
   --radius: 6px;
   --scrollbar-size: 6px;
   --scrollbar-thumb: color-mix(in srgb, var(--ink) 28%, transparent);
@@ -88,6 +95,12 @@ html[data-theme="dark"] {
   --accent: #2dd4bf;
   --code-bg: #0a1018;
   --code-fg: #c8d6e0;
+  --tok-kw: #7dd3fc;
+  --tok-str: #86efac;
+  --tok-cmt: #94a3b8;
+  --tok-num: #fcd34d;
+  --tok-ident: #fde68a;
+  --tok-key: #67e8f9;
   color-scheme: dark;
 }
 
@@ -1218,6 +1231,13 @@ button.filter-pill.on {
   font-family: var(--mono); font-size: 11px; line-height: 1.65; overflow: auto; white-space: pre-wrap;
 }
 .spec-preview { max-height: 280px; }
+/* 只读代码预览 token（CodePreview · 色跟主题 --tok-*） */
+.code-preview .tok-kw { color: var(--tok-kw); }
+.code-preview .tok-str { color: var(--tok-str); }
+.code-preview .tok-cmt { color: var(--tok-cmt); font-style: italic; }
+.code-preview .tok-num { color: var(--tok-num); }
+.code-preview .tok-ident { color: var(--tok-ident); }
+.code-preview .tok-key { color: var(--tok-key); }
 /*
  * 库表论文稿预览：跟测例 tc-frame / tc-table 同一套日夜表色。
  * Word 白底黑字只在复制/下载的 HTML 里；预览用 !important 盖掉内联稿纸色。

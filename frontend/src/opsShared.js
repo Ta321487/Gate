@@ -27,6 +27,14 @@ export function statusPillNode(label, pillClass = 'pill-neutral') {
 }
 
 /**
+ * 可点 stats / filter-pill 的选中态。
+ * 「全部」是默认清单，进门不高亮；只有收窄筛才点亮（避免莓果强调色整格红）。
+ */
+export function filterChipOn(current, id, allId = 'all') {
+  return current === id && id !== allId
+}
+
+/**
  * 人工履约标记文案（内部值 ready / delivered 不变）。
  * ready = 已审待发；delivered = 已发出。勿与机器「可下载」混称。
  */

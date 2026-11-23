@@ -129,7 +129,7 @@
       <div class="row" style="justify-content:flex-end;margin:0 0 8px">
         <CopyIconButton :text="specText" tip="复制配置" />
       </div>
-      <pre class="spec-preview" style="max-height:60vh">{{ specText }}</pre>
+      <CodePreview :code="specText" lang="json" max-height="60vh" />
     </n-modal>
     <n-modal
       v-model:show="showThesisDbExport"
@@ -389,6 +389,7 @@ import { computed, ref, watch } from 'vue'
 import { bindPd } from './bindPd'
 import { isDark } from '../../theme'
 import CopyIconButton from '../../components/CopyIconButton.vue'
+import CodePreview from '../../components/CodePreview.vue'
 import ArchitectureDiagramViewer from '../../components/ArchitectureDiagramViewer.vue'
 import SequenceDiagramViewer from '../../components/SequenceDiagramViewer.vue'
 import ActivityDiagramViewer from '../../components/ActivityDiagramViewer.vue'
