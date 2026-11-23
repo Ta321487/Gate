@@ -21,13 +21,16 @@
         <div class="nav-label">工作台</div>
         <div class="nav-item active" data-nav="home"><span class="dot"></span><span>开工台</span></div>
         <div class="nav-item" data-nav="projects"><span class="dot"></span><span>项目</span></div>
+        <div class="nav-item" data-nav="thesis-absorb"><span class="dot"></span><span>终稿吸收</span></div>
         <div class="nav-item" data-nav="jobs"><span class="dot"></span><span>任务队列</span></div>
         <div class="nav-item" data-nav="fail-analysis"><span class="dot"></span><span>失败分析</span></div>
         <div class="nav-item" data-nav="help"><span class="dot"></span><span>帮助文档</span></div>
-        <div class="nav-label">系统</div>
+        <div class="nav-label">运行与连接</div>
         <div class="nav-item" data-nav="llm"><span class="dot"></span><span>大模型</span></div>
         <div class="nav-item" data-nav="unsplash"><span class="dot"></span><span>Unsplash</span></div>
         <div class="nav-item" data-nav="system"><span class="dot"></span><span>运行环境</span></div>
+        <div class="nav-label">资产台</div>
+        <div class="nav-item" data-nav="assets"><span class="dot"></span><span>资产台总览</span></div>
       </nav>
       <div class="sidebar-foot">毕设港 · 运营台</div>
     </aside>
@@ -2034,6 +2037,58 @@
         </section>
 
         <!-- ========== HELP ========== -->
+        <section id="view-thesis-absorb" class="view">
+          <h1 class="page-title">终稿吸收</h1>
+          <p class="page-desc">只有终稿、没有开题时：上传终稿 → 厂库抽取（角色 / 实体 / 功能 + 可选库表 DDL）→ 覆盖三态 → 喂助手。不建项、不出包、不硬匹配。</p>
+          <div class="panel">
+            <div class="panel-hd"><h3>示意 · 列表与抽取</h3><span class="pill">mock</span></div>
+            <div class="panel-bd stack">
+              <p class="small muted">本页为静态示意；真实上传 / 重抽 / schema 预览见正式台 <code>/thesis-absorb</code>。</p>
+              <div class="table-wrap">
+                <table class="data">
+                  <thead>
+                    <tr><th>材料</th><th>覆盖</th><th>抽取版</th><th>schema</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>力固钢材销售·终稿.pdf</td>
+                      <td><span class="pill pill-teal">partial</span></td>
+                      <td class="mono">v42</td>
+                      <td class="mono">15 CREATE</td>
+                    </tr>
+                    <tr>
+                      <td>小羽自习室·终稿.pdf</td>
+                      <td><span class="pill pill-teal">partial</span></td>
+                      <td class="mono">v42</td>
+                      <td class="mono">16 CREATE</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="row gap">
+                <button type="button" class="btn" data-action="toast" data-msg="正式台可上传终稿并重抽">上传终稿</button>
+                <button type="button" class="btn ghost" data-action="toast" data-msg="正式台可复制喂助手稿">喂助手</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-assets" class="view">
+          <h1 class="page-title">资产台总览</h1>
+          <p class="page-desc">工厂可维护结构化资产，bake 时注入学生包。原型只列入口；各页 CRUD 以正式台为准。</p>
+          <div class="panel">
+            <div class="panel-hd"><h3>维护页（对齐侧栏）</h3><span class="pill">mock</span></div>
+            <div class="panel-bd">
+              <ul class="stack" style="margin:0;padding-left:1.2em;line-height:1.8">
+                <li>词表维护 · 状态话术 · 字典台 · 演示剧本</li>
+                <li>开关建议 · 能力说明 · 错误码中文 · 控件语义</li>
+                <li>菜单矩阵 · 规则参数 · 表关系叙事 · 测试账号</li>
+              </ul>
+              <p class="small muted" style="margin-top:12px">真源 <code>docs/factory-asset-catalogs.md</code>；正式路由见 <code>frontend/src/App.vue</code> 资产台分段。</p>
+            </div>
+          </div>
+        </section>
+
         <section id="view-help" class="view">
           <h1 class="page-title">帮助文档</h1>
           <p class="page-desc">本说明面向运营人员：标准流程、交付条件与术语。卡壳时先看「运营诊断 · 四痛点」。与正式运营台 <span class="mono">frontend/</span> 帮助页同口径；本页为静态摘要。</p>

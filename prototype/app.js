@@ -253,12 +253,14 @@
       const crumbs = {
         home: [{ label: "毕设港", to: "home" }, { label: "开工台" }],
         projects: [{ label: "毕设港", to: "home" }, { label: "项目" }],
+        "thesis-absorb": [{ label: "毕设港", to: "home" }, { label: "终稿吸收" }],
         jobs: [{ label: "毕设港", to: "home" }, { label: "任务队列" }],
         "fail-analysis": [{ label: "毕设港", to: "home" }, { label: "失败分析" }],
         help: [{ label: "毕设港", to: "home" }, { label: "帮助文档" }],
         llm: [{ label: "毕设港", to: "home" }, { label: "大模型" }],
         unsplash: [{ label: "毕设港", to: "home" }, { label: "Unsplash" }],
         system: [{ label: "毕设港", to: "home" }, { label: "运行环境" }],
+        assets: [{ label: "毕设港", to: "home" }, { label: "资产台总览" }],
         project: [
           { label: "毕设港", to: "home" },
           { label: "项目", to: "projects" },
@@ -1476,6 +1478,10 @@
     function handleAction(action, el, e) {
       if (!action) return;
 
+      if (action === "toast") {
+        toast(el.dataset.msg || "已记录（静态示意）");
+        return;
+      }
       if (action === "home-view") {
         showView(el.dataset.view || "projects");
         return;

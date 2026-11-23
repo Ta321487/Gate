@@ -23,7 +23,7 @@ flowchart TB
     end
 
     subgraph L2["② 运营前端 frontend/ · :5300 · Vue 3 + Naive UI + Vite"]
-        FE_VIEW["views/ 开工台 · 项目 · 任务 · 失败分析 · 资产台侧栏 · 大模型 · Unsplash · 运行环境 · 帮助"]
+        FE_VIEW["views/ 开工台 · 项目 · 终稿吸收 · 任务 · 失败分析 · 资产台侧栏 · 大模型 · Unsplash · 运行环境 · 帮助"]
         FE_DETAIL["views/projectDetail/ · 匹配 / 生成 / 产物 / 运行 / 日志"]
         FE_API["api.js（axios baseURL=/api）+ SSE 进度订阅"]
     end
@@ -31,9 +31,9 @@ flowchart TB
     subgraph L3["③ 运营后端 backend/ · :8000 · FastAPI"]
         API_PROJ["api/projects/ · 上传分堆 · 匹配 · 生成 · 下载 · 运行"]
         API_JOBS["api/jobs · 任务队列 · 取消 / 重试 · 失败分析"]
-        API_SYS["api/system* · 大模型 / 用量 / 环境 · 资产台 CRUD"]
+        API_SYS["api/system* · 大模型 / 用量 / 环境 · 资产台 CRUD · 终稿吸收"]
         API_PPT["api/defense_ppt · 答辩 PPT"]
-        SVC["services/ · 编排层<br/>projects · jobs · runtime · delivery_review · proposal · 资产台 · bake_fail_*"]
+        SVC["services/ · 编排层<br/>projects · jobs · runtime · delivery_review · proposal · thesis_absorb* · 资产台 · bake_fail_*"]
     end
 
     subgraph L4["④ 生成核心 backend/app/bake · 确定性 bake"]
@@ -50,12 +50,12 @@ flowchart TB
 
     subgraph L5["⑤ LLM 层 backend/app/llm · 只填白名单岛"]
         LLM_FLOW["unit_flow/ · Plan → Unit 并发 → Merge"]
-        LLM_AG["agents_* · match / island / usecase / fix / qa / sample"]
+        LLM_AG["agents_* · match / island / usecase / fix / qa / sample / thesis_absorb"]
         LLM_RT["client · runtime · model_catalog（DeepSeek / Gemini）"]
     end
 
     subgraph L6["⑥ 工厂元库"]
-        META["默认 SQLite data/factory.db<br/>或 MySQL（docker-compose）"]
+        META["默认 SQLite data/factory.db<br/>或 MySQL（docker-compose）<br/>含 factory_* 资产台 + factory_thesis_absorb"]
     end
 
     subgraph L7["⑦ 运行预览沙箱 backend/app/services/runtime.py"]
@@ -203,6 +203,7 @@ flowchart TB
 
     RT --> V0["/ 开工台 OpsHome.vue"]
     RT --> V1["/projects 项目 Projects.vue"]
+    RT --> VA["/thesis-absorb 终稿吸收 ThesisAbsorb.vue<br/>上传终稿 → 抽取三栏/覆盖 → draft schema · 喂助手（不建项、不出包）"]
     RT --> V2["/projects/:id 详情 ProjectDetail.vue"]
     RT --> V3["/jobs 任务队列 · /fail-analysis 失败分析"]
     RT --> V4["/llm 大模型（/deepseek /gemini 重定向）"]
@@ -222,6 +223,7 @@ flowchart TB
 
     V0 --> API["api.js · axios baseURL='/api'<br/>timeout 60s（重操作 600s / 轮询 8s 静默）"]
     V1 --> API
+    VA --> API
     V2 --> API
     V3 --> API
     V4 --> API
@@ -235,7 +237,8 @@ flowchart TB
 | 技术栈 | Vue `^3.5.39` + vue-router `^4.6.4` + Naive UI `^2.44.1` + axios `^1.18.1` + jszip；Vite `^5.4.11` |
 | **没有**的东西 | 无 Pinia / Vuex、无 TypeScript、无 ESLint 配置、无 `playwright.config.*`（装了没接线） |
 | 状态管理 | 不用 store：`ProjectDetail.vue` 是薄壳，全部逻辑在 `views/projectDetail/useProjectDetail.js`，用 `provide(PD_KEY, …)` + `bindPd()` 下发给各标签页；各 Tab 不直接调 `api.*` |
-| 壳的职责 | `App.vue` 同时是布局与导航（无单独 layout 组件）：侧栏**工作台** · **运行与连接**（大模型 / Unsplash / 运行环境）· **资产台**（词表等 `factory_*` 维护页）；顶栏主题色点 + 日夜间；面包屑由 `route.meta.crumb` 推导 |
+| 壳的职责 | `App.vue` 同时是布局与导航（无单独 layout 组件）：侧栏**工作台**（含**终稿吸收**，紧挨项目）· **运行与连接**（大模型 / Unsplash / 运行环境）· **资产台**（词表等 `factory_*` 维护页）；顶栏主题色点 + 日夜间；面包屑由 `route.meta.crumb` 推导 |
+| 终稿吸收 | 只有终稿、无开题时：上传 → 厂库抽取（角色/实体/功能 + 可选 `draft_schema_sql`）→ 覆盖三态 → 喂助手；**不建项、不出包、不硬匹配**；真源 [`docs/thesis-absorb.md`](./docs/thesis-absorb.md)；路由 `/thesis-absorb` |
 | 资产台 | 工厂可维护结构化资产（词表 COMMENT、状态话术、字典选项等），bake 注入学生包；真源见 [`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md) |
 | 错误处理 | axios 响应拦截器统一 `message.error`；`silent: true` 用于轮询不刷屏；未捕获异常经 `app.config.errorHandler` 跳 `/error/500` |
 
@@ -263,7 +266,7 @@ flowchart TB
 flowchart TB
     subgraph API["app/api · HTTP 边界（只做校验 / 编排调用）"]
         A1["projects/：common · crud · schema · runtime · delivery_review · overrides"]
-        A2["jobs · system.py 聚合 system_*（大模型 / 用量 / 环境 / 资产台）"]
+        A2["jobs · system.py 聚合 system_*（大模型 / 用量 / 环境 / 资产台 / 终稿吸收）"]
         A3["defense_ppt"]
     end
 
@@ -273,6 +276,7 @@ flowchart TB
         SV3["runtime + runtime_reconcile（进程与投影）"]
         SV4["delivery_review（复审 / 验圈 / 合卷）"]
         SV5["proposal · proposal_match · proposal_diff · upload_cluster"]
+        SV5A["thesis_absorb · thesis_absorb_extract · thesis_absorb_figures · thesis_absorb_schema"]
         SV6["student_db · student_copy · student_api_smoke"]
         SV7["defense_ppt/（planner · job_runner · export_pptx · figures · screenshots）"]
         SV8["资产台：zh_lexicon · status_copy · dict_values · … · demo_accounts"]
@@ -294,7 +298,7 @@ flowchart TB
         B7["pack_prune.py · 出包前按挂载剪未用岛"]
     end
 
-    MODELS["app/models · Project / Job / LlmCall / SettingRow + factory_* 资产表"]
+    MODELS["app/models · Project / Job / LlmCall / SettingRow + factory_* 资产表 + FactoryThesisAbsorb"]
     SCHEMAS["app/schemas · Pydantic 出入参"]
 
     API --> SERVICES
@@ -309,7 +313,8 @@ flowchart TB
 **分层纪律（从代码注释可读出的约定）**
 
 - `api/` 只做 HTTP；业务写进 `services/`；`services/projects.py` 是**门面**，正文按职责拆到 `project_match` / `project_delivery` / `project_disk` / `project_projection`，新逻辑不再往门面堆。
-- `api/system.py` 只聚合：大模型 / 用量 / 环境走 `system_deepseek` 等；资产台各页走同级 `system_zh_lexicon` / `system_dict_values` / …（导入副作用挂到共享 `system_router`）。
+- `api/system.py` 只聚合：大模型 / 用量 / 环境走 `system_deepseek` 等；资产台各页走同级 `system_zh_lexicon` / `system_dict_values` / …；终稿吸收走 `system_thesis_absorb`（导入副作用挂到共享 `system_router`）。
+- 终稿吸收**独立于** `projects`：厂库表 `factory_thesis_absorb`；抽取 `thesis_absorb_extract` + 可选 LLM `thesis_absorb_drafts`；库表章 → `draft_schema_sql`（`thesis_absorb_schema`，不进 ZIP）；真源 [`docs/thesis-absorb.md`](./docs/thesis-absorb.md)。
 - `bake/` 尽量保持确定性、可单测；LLM 相关一律在 `llm/`。能力岛正文落在 `bake/features/<cap>.py`（扫词、菜单、`ensure_*` SQL），`sql/fragments.py` 只按开关调用。
 - 论文类图：`class_model.py` 从 SQL + Java 组装模型；布局/折线 `class_layout`；出图 `class_svg`（零交叉拆分，禁止臆造类）。
 - 域目录：**A～F 具名 → G 真交叉 → H 兜底**（见 [`docs/domains.md`](./docs/domains.md)）；匹配落到 `DOM-*`，兜底才是 `DOM-GENERIC`。
@@ -321,7 +326,7 @@ flowchart TB
 
 ## 6. 数据模型与磁盘布局
 
-工厂元库两类表：（1）运营主表 `projects` / `jobs` / `llm_calls` / `settings` + `project_overrides`（1:1 绑项目）；（2）资产台 **`factory_*`**——**库内无 FK**，逻辑上按 `domain` / 业务键与选题对齐，bake 时注入学生包（图上用虚意关联标「无FK·bake」）。图内资产台列只列主键与业务键；全列见 `app/models/__init__.py`。
+工厂元库三类表：（1）运营主表 `projects` / `jobs` / `llm_calls` / `settings` + `project_overrides`（1:1 绑项目）；（2）资产台 **`factory_*`**——**库内无 FK**，逻辑上按 `domain` / 业务键与选题对齐，bake 时注入学生包（图上用虚意关联标「无FK·bake」）；（3）**终稿吸收** `factory_thesis_absorb`——独立厂库记录，**不** bake 进 ZIP；可选 `trial_project_id` 弱挂试跑项目。图内资产台/吸收列只列主键与业务键；全列见 `app/models/__init__.py`。
 
 ```mermaid
 erDiagram
@@ -341,6 +346,7 @@ erDiagram
     PROJECT }o--o{ FACTORY_ER_EDGE_COPY : "无FK·表边·bake"
     PROJECT }o--o{ FACTORY_DEMO_ACCOUNT : "无FK·domain×角色·bake"
     PROJECT }o--o{ FACTORY_DIAGRAM_TITLE : "无FK·图种×domain·bake"
+    FACTORY_THESIS_ABSORB }o--o| PROJECT : "trial_project_id可选·不bake"
 
     PROJECT {
         string id PK
@@ -496,6 +502,15 @@ erDiagram
         string title_tpl
         string source
     }
+    FACTORY_THESIS_ABSORB {
+        int id PK
+        string content_sha256
+        string extractor_version
+        string coverage "full/partial/gap/unknown"
+        string status
+        string draft_schema_sql "论文库表章DDL·可空"
+        string trial_project_id "可选弱挂"
+    }
 ```
 
 ```
@@ -609,7 +624,7 @@ flowchart TB
 
 | 依赖 | 用途 | 缺失 / 失败时 |
 |---|---|---|
-| DeepSeek API | 匹配推荐、填岛、标签、QA、Fix、样例题 | 无 Key 仍可 bake：业务岛走确定性填充 |
+| DeepSeek API | 匹配推荐、填岛、标签、QA、Fix、样例题、终稿吸收三栏（`thesis_absorb_drafts`） | 无 Key 仍可 bake：业务岛走确定性填充；吸收关开关或无 Key 时退回表题注弱抽 |
 | Gemini API（可选） | 与 DeepSeek 并存，可双开，优先一家失败自动换 | 单开时按 `LLM_PROVIDER` / 运营台开关 |
 | Unsplash | 登录氛围图、门户轮播（共用 `unsplash_fetch`；优先本机缓存；可选 `UNSPLASH_HTTP_PROXY`） | 缓存未命中且外网失败 → 按 `themes.css` 色板本地生成 |
 | MySQL | 学生库必用；工厂元库可选 | 工厂元库退化为 SQLite `data/factory.db` |
