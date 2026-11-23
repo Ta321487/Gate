@@ -26,6 +26,7 @@ from app.api import system_menu_matrix as _system_menu_matrix  # noqa: F401
 from app.api import system_rule_params as _system_rule_params  # noqa: F401
 from app.api import system_er_edge_copy as _system_er_edge_copy  # noqa: F401
 from app.api import system_demo_accounts as _system_demo_accounts  # noqa: F401
+from app.api import system_thesis_absorb as _system_thesis_absorb  # noqa: F401
 
 # main.py 启动时水合 DeepSeek
 from app.api.system_deepseek import _get_ds_row, _hydrate_ds_settings  # noqa: F401

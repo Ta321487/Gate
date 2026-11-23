@@ -120,6 +120,10 @@ _CALL_STAGE_ALIASES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("emit", ("配置写出", "emit")),
     ("upload_cluster", ("上传分堆", "upload cluster", "upload_cluster", "分堆")),
     ("sample_proposal", ("样例开题", "sample proposal", "sample_proposal")),
+    (
+        "thesis_absorb_drafts",
+        ("终稿吸收三栏", "终稿吸收", "thesis_absorb_drafts", "thesis absorb"),
+    ),
 )
 
 

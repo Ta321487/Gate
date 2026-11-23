@@ -274,3 +274,51 @@ def _migrate_project_columns(sync_conn) -> None:
         )
     except Exception:  # noqa: BLE001
         pass
+
+    # factory_thesis_absorb：论文库表章 → draft_schema_sql 落库
+    absorb_cols: set[str] = set()
+    try:
+        if dialect == "sqlite":
+            rows = sync_conn.execute(
+                text("PRAGMA table_info(factory_thesis_absorb)")
+            ).fetchall()
+            absorb_cols = {r[1] for r in rows}
+        else:
+            rows = sync_conn.execute(
+                text(
+                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                    "WHERE TABLE_SCHEMA=DATABASE() "
+                    "AND TABLE_NAME='factory_thesis_absorb'"
+                )
+            ).fetchall()
+            absorb_cols = {r[0] for r in rows}
+    except Exception:  # noqa: BLE001
+        absorb_cols = set()
+    if absorb_cols and "draft_schema_sql" not in absorb_cols:
+        try:
+            sync_conn.execute(
+                text(
+                    "ALTER TABLE factory_thesis_absorb "
+                    "ADD COLUMN draft_schema_sql TEXT"
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    if absorb_cols and "schema_extract_meta" not in absorb_cols:
+        try:
+            if dialect == "sqlite":
+                sync_conn.execute(
+                    text(
+                        "ALTER TABLE factory_thesis_absorb "
+                        "ADD COLUMN schema_extract_meta JSON DEFAULT '{}'"
+                    )
+                )
+            else:
+                sync_conn.execute(
+                    text(
+                        "ALTER TABLE factory_thesis_absorb "
+                        "ADD COLUMN schema_extract_meta JSON"
+                    )
+                )
+        except Exception:  # noqa: BLE001
+            pass

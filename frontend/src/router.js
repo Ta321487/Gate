@@ -54,6 +54,18 @@ const router = createRouter({
     { path: '/er-edge-copy', name: 'er-edge-copy', component: ErEdgeCopy, meta: { crumb: '表关系叙事' } },
     { path: '/demo-accounts', name: 'demo-accounts', component: DemoAccounts, meta: { crumb: '测试账号' } },
     {
+      path: '/thesis-absorb',
+      name: 'thesis-absorb',
+      component: () => import('./views/ThesisAbsorb.vue'),
+      meta: { crumb: '终稿吸收' },
+    },
+    {
+      path: '/thesis-absorb/:id',
+      name: 'thesis-absorb-detail',
+      component: () => import('./views/ThesisAbsorb.vue'),
+      meta: { crumb: '终稿吸收' },
+    },
+    {
       path: '/error/500',
       name: 'error-500',
       component: ErrorPage,

@@ -22,6 +22,7 @@ from app.llm.agents_match import (  # noqa: F401
 )
 from app.llm.agents_qa import run_qa_agent  # noqa: F401
 from app.llm.agents_sample import run_sample_proposal_agent  # noqa: F401
+from app.llm.agents_thesis_absorb import run_thesis_absorb_drafts_agent  # noqa: F401
 from app.llm.agents_thesis_diagrams import run_thesis_diagram_audit  # noqa: F401
 from app.llm.agents_usecase import (  # noqa: F401
     polish_usecase_description,
@@ -42,6 +43,7 @@ __all__ = [
     "run_fix_agent",
     "run_qa_agent",
     "run_sample_proposal_agent",
+    "run_thesis_absorb_drafts_agent",
     "run_thesis_diagram_audit",
     "polish_usecase_description",
     "polish_usecase_model_safe",

@@ -460,3 +460,37 @@ class FactoryDiagramTitle(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )
+
+
+class FactoryThesisAbsorb(Base):
+    """终稿吸收厂库记录（独立于 Project；docs/thesis-absorb.md）。"""
+
+    __tablename__ = "factory_thesis_absorb"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="thesis")
+    focus: Mapped[str] = mapped_column(String(32), nullable=False, default="thesis_impl")
+    source_files: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)
+    source_path: Mapped[Optional[str]] = mapped_column(String(512))
+    proposal_json: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="stored")
+    coverage: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown")
+    coverage_note: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    extract_round: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
+    extractor_version: Mapped[str] = mapped_column(String(16), nullable=False, default="1")
+    has_figure_text: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    char_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    feature_line_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    warnings_json: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)
+    draft_roles: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)
+    draft_entities: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)
+    draft_features: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)
+    # 论文物理/逻辑库表章 → draft schema.sql（忠于原文；空串=未抽出）
+    draft_schema_sql: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    schema_extract_meta: Mapped[Any] = mapped_column(JSON, nullable=False, default=dict)
+    trial_project_id: Mapped[Optional[str]] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )

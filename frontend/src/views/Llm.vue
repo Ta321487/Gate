@@ -199,6 +199,10 @@
           <n-switch v-model:value="form.testcase_labels" :disabled="stageLocked('testcase_labels')" />
         </div>
         <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
+          <div><strong>终稿吸收三栏</strong><div class="small muted">角色/实体/功能与覆盖预选；关闭则仅表题注弱抽</div></div>
+          <n-switch v-model:value="form.thesis_absorb_drafts" :disabled="stageLocked('thesis_absorb_drafts')" />
+        </div>
+        <div class="row-between" style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
           <div><strong>编译修复</strong><div class="small muted">构建失败时诊断并重试交付配置</div></div>
           <n-switch v-model:value="form.auto_fix" :disabled="stageLocked('auto_fix')" />
         </div>
@@ -418,7 +422,14 @@ import {
   statusPillNode,
 } from '../opsShared'
 
-const HEAVY_STAGES = ['auto_fix', 'island_fill', 'defense_ppt', 'match_recommend', 'parse_spec']
+const HEAVY_STAGES = [
+  'auto_fix',
+  'island_fill',
+  'defense_ppt',
+  'match_recommend',
+  'parse_spec',
+  'thesis_absorb_drafts',
+]
 const LIGHT_STAGES = ['er_labels', 'module_labels', 'testcase_labels', 'qa_report']
 const ALL_STAGES = [...HEAVY_STAGES, ...LIGHT_STAGES]
 
@@ -461,6 +472,7 @@ const form = reactive({
   testcase_labels: true,
   auto_fix: true,
   qa_report: false,
+  thesis_absorb_drafts: true,
   project_token_budget: 100000,
   monthly_token_budget: 1000000,
   fix_rounds_max: 5,
@@ -558,6 +570,7 @@ const stageOptions = [
       { label: '用例说明润色', value: 'usecase_prose' },
       { label: '编译修复', value: 'auto_fix' },
       { label: '质量摘要', value: 'qa_report' },
+      { label: '终稿吸收三栏', value: 'thesis_absorb_drafts' },
       { label: '论文图对账', value: 'thesis_diagram_audit' },
       { label: '配置写出', value: 'emit' },
     ],
@@ -1221,6 +1234,7 @@ async function load() {
     form.testcase_labels = dsRes.testcase_labels !== false
     form.auto_fix = dsRes.auto_fix
     form.qa_report = dsRes.qa_report
+    form.thesis_absorb_drafts = dsRes.thesis_absorb_drafts !== false
     form.project_token_budget = dsRes.project_token_budget
     form.monthly_token_budget = dsRes.monthly_token_budget
     clampProjectBudget()
@@ -1264,6 +1278,7 @@ async function save() {
         testcase_labels: form.testcase_labels,
         auto_fix: form.auto_fix,
         qa_report: form.qa_report,
+        thesis_absorb_drafts: form.thesis_absorb_drafts,
         project_token_budget: form.project_token_budget,
         monthly_token_budget: form.monthly_token_budget,
         fix_rounds_max: form.fix_rounds_max,
@@ -1284,6 +1299,7 @@ async function save() {
         testcase_labels: form.testcase_labels,
         auto_fix: form.auto_fix,
         qa_report: form.qa_report,
+        thesis_absorb_drafts: form.thesis_absorb_drafts,
         project_token_budget: form.project_token_budget,
         monthly_token_budget: form.monthly_token_budget,
         fix_rounds_max: form.fix_rounds_max,

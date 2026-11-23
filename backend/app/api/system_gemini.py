@@ -77,6 +77,7 @@ async def get_gemini(db: AsyncSession = Depends(get_db)):
         testcase_labels=bool(ds.get("testcase_labels", True)),
         auto_fix=bool(ds.get("auto_fix", True)),
         qa_report=bool(ds.get("qa_report", False)),
+        thesis_absorb_drafts=bool(ds.get("thesis_absorb_drafts", True)),
         project_token_budget=int(ds.get("project_token_budget", s.project_token_budget)),
         monthly_token_budget=int(ds.get("monthly_token_budget", s.monthly_token_budget)),
         fix_rounds_max=int(ds.get("fix_rounds_max", s.fix_rounds_max)),
@@ -119,6 +120,7 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
         "testcase_labels",
         "auto_fix",
         "qa_report",
+        "thesis_absorb_drafts",
         "project_token_budget",
         "monthly_token_budget",
         "fix_rounds_max",
@@ -140,6 +142,7 @@ async def put_gemini(body: GeminiUpdate, db: AsyncSession = Depends(get_db)):
             "testcase_labels",
             "auto_fix",
             "qa_report",
+            "thesis_absorb_drafts",
         ):
             if k in data:
                 ds_cfg[k] = data[k]

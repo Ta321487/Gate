@@ -113,6 +113,7 @@ async def get_deepseek(db: AsyncSession = Depends(get_db)):
         testcase_labels=bool(cfg.get("testcase_labels", True)),
         auto_fix=bool(cfg.get("auto_fix", True)),
         qa_report=bool(cfg.get("qa_report", False)),
+        thesis_absorb_drafts=bool(cfg.get("thesis_absorb_drafts", True)),
         project_token_budget=int(cfg.get("project_token_budget", s.project_token_budget)),
         monthly_token_budget=int(cfg.get("monthly_token_budget", s.monthly_token_budget)),
         fix_rounds_max=int(cfg.get("fix_rounds_max", s.fix_rounds_max)),
@@ -148,6 +149,7 @@ async def put_deepseek(body: DeepSeekUpdate, db: AsyncSession = Depends(get_db))
         "testcase_labels",
         "auto_fix",
         "qa_report",
+        "thesis_absorb_drafts",
     ):
         if k in data:
             cfg[k] = data[k]

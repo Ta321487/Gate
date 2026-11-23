@@ -39,6 +39,9 @@
   --code-bg: #0f1720;
   --code-fg: #c8d6e0;
   --radius: 6px;
+  --scrollbar-size: 6px;
+  --scrollbar-thumb: color-mix(in srgb, var(--ink) 28%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--ink) 42%, transparent);
   /* EN: IBM Plex Sans · CN: Noto Sans SC（与 Plex Mono 同族，中英比例更稳） */
   --font: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --mono: "IBM Plex Mono", "Noto Sans SC", ui-monospace, monospace;
@@ -88,7 +91,30 @@ html[data-theme="dark"] {
   color-scheme: dark;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+*::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+/* Naive UI 自定义滚动条：跟同一套拇指色 */
+.n-scrollbar-rail .n-scrollbar-handle {
+  background-color: var(--scrollbar-thumb) !important;
+}
+.n-scrollbar-rail .n-scrollbar-handle:hover,
+.n-scrollbar-rail .n-scrollbar-handle:active {
+  background-color: var(--scrollbar-thumb-hover) !important;
+}
 html, body, #app { height: 100%; margin: 0; }
 body {
   font-family: var(--font);
@@ -158,6 +184,8 @@ a { color: var(--teal); text-decoration: none; }
   width: 200px; background: var(--sidebar); color: var(--sidebar-text);
   display: flex; flex-direction: column; flex-shrink: 0;
   height: 100%; min-height: 0; overflow: hidden;
+  --scrollbar-thumb: color-mix(in srgb, var(--sidebar-text) 32%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--sidebar-text) 48%, transparent);
 }
 .brand { padding: 16px 14px 14px; border-bottom: 1px solid var(--sidebar-line); flex-shrink: 0; }
 .brand-mark {
@@ -174,7 +202,12 @@ a { color: var(--teal); text-decoration: none; }
   background: var(--teal);
 }
 .brand-sub { margin-top: 3px; font-size: 10px; color: #7a8f9c; letter-spacing: 0.04em; text-transform: uppercase; }
-.nav { padding: 8px 8px; flex: 1; min-height: 0; overflow: auto; }
+.nav {
+  padding: 8px 8px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
 .nav-label { padding: 10px 10px 4px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #6a8090; }
 .nav-item {
   display: flex; align-items: flex-start; gap: 8px;

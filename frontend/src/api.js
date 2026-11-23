@@ -418,6 +418,24 @@ export const api = {
   demoAccountsGaps: () => http.get('/system/demo-accounts/gaps', { timeout: 60000 }),
   demoAccountsUpsert: (body) => http.put('/system/demo-accounts', body),
   demoAccountsDelete: (id) => http.delete(`/system/demo-accounts/${id}`),
+  thesisAbsorbMeta: () => http.get('/system/thesis-absorb/meta', { timeout: 30000 }),
+  thesisAbsorbList: (params) => http.get('/system/thesis-absorb', { params, timeout: 30000 }),
+  thesisAbsorbGet: (id) => http.get(`/system/thesis-absorb/${id}`, { timeout: 60000 }),
+  thesisAbsorbUpload: (file, onProgress) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return http.post('/system/thesis-absorb/upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress,
+      ...HEAVY_OPTS,
+    })
+  },
+  // 与上传同档：大 PDF OCR + LLM（含重试）常超过 2 分钟
+  thesisAbsorbReextract: (id) =>
+    http.post(`/system/thesis-absorb/${id}/reextract`, null, { ...HEAVY_OPTS }),
+  thesisAbsorbPatch: (id, body) => http.patch(`/system/thesis-absorb/${id}`, body),
+  thesisAbsorbFeed: (id) => http.post(`/system/thesis-absorb/${id}/feed`),
+  thesisAbsorbDelete: (id) => http.delete(`/system/thesis-absorb/${id}`),
   addonSuggest: (params) => http.get('/system/addon-suggest', { params }),
   addonSuggestMeta: () => http.get('/system/addon-suggest/meta', { timeout: 60000 }),
   addonSuggestMigrate: () => http.post('/system/addon-suggest/migrate'),

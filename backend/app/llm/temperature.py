@@ -63,6 +63,7 @@ TEMP_DEFAULT = TEMP_STRUCTURED
 # 任务名 → 温度（Agent / stage 字符串）
 TASK_TEMPERATURE: dict[str, float] = {
     "upload_cluster": TEMP_ABSOLUTE,
+    "thesis_absorb_drafts": TEMP_ABSOLUTE,
     "match_recommend": TEMP_STRUCTURED,
     "parse_spec": TEMP_BOUNDED_COPY,
     "qa_report": TEMP_STRUCTURED,

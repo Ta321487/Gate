@@ -19,6 +19,7 @@ DEFAULT_DS = {
     "defense_ppt": True,
     "auto_fix": True,
     "qa_report": False,
+    "thesis_absorb_drafts": True,
     "fill_unit_concurrency": 3,
 }
 
@@ -56,6 +57,7 @@ class LlmRuntime:
     defense_ppt: bool
     auto_fix: bool
     qa_report: bool
+    thesis_absorb_drafts: bool
     fix_rounds_max: int
     fill_unit_concurrency: int
     project_token_budget: int
@@ -87,6 +89,7 @@ class LlmRuntime:
             "defense_ppt": self.defense_ppt,
             "auto_fix": self.auto_fix,
             "qa_report": self.qa_report,
+            "thesis_absorb_drafts": self.thesis_absorb_drafts,
         }.get(stage, False)
 
     def endpoint_chain(self) -> list[ProviderEndpoint]:
@@ -240,6 +243,7 @@ async def load_llm_runtime(db: AsyncSession) -> LlmRuntime:
         defense_ppt=bool(cfg.get("defense_ppt", True)),
         auto_fix=bool(cfg.get("auto_fix", True)),
         qa_report=bool(cfg.get("qa_report", False)),
+        thesis_absorb_drafts=bool(cfg.get("thesis_absorb_drafts", True)),
         fix_rounds_max=int(cfg.get("fix_rounds_max", s.fix_rounds_max)),
         fill_unit_concurrency=max(
             1,
