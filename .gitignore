@@ -53,7 +53,15 @@ review-*.png
 review2-*.png
 
 .pytest_cache/
+backend/.pytest_last.txt
+backend/_dbg_*.py
 
 # local tempfile leftovers (tempfile falls back to cwd on Windows)
 backend/tmp*/
 backend/tmp*
+
+# 终稿吸收本机探针 PDF（不进仓；夹具用 tests 内嵌片段）
+data/thesis_absorb/
+
+# drawio 本地备份
+*.bak.drawio
