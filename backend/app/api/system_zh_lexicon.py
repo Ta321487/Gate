@@ -50,6 +50,11 @@ async def zh_lexicon_meta(db: AsyncSession = Depends(get_db)):
         skins_by_domain.setdefault(dom, [])
         if flavor and flavor not in skins_by_domain[dom]:
             skins_by_domain[dom].append(flavor)
+    # 影院同域双皮：下拉要露出 performance（种子/已有行也会并进来）
+    cinema_skins = skins_by_domain.setdefault("DOM-CINEMA", [])
+    for sk in ("cinema", "performance"):
+        if sk not in cinema_skins:
+            cinema_skins.append(sk)
     for r in rows:
         dom = str(r.get("domain") or "")
         sk = str(r.get("skin") or "")

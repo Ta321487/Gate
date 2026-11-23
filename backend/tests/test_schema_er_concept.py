@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import unittest
 
@@ -318,6 +319,93 @@ CREATE TABLE ticket_expense_line (
         full_names = {t["name"] for t in full["tables"] if isinstance(t, dict)}
         self.assertIn("sys_user:user", full_names)
         self.assertIn("sys_auth_session", full_names)
+
+    def test_sample_omit_address_when_menu_absent(self) -> None:
+        """用户端未挂 addresses → 概念图藏 user_address（跟能力名解耦）。"""
+        from app.bake.schema.er_labels import _labels_from_domain_schema
+        from app.bake.schema.er_model import sample_omit_tables_from_schema
+
+        self.assertEqual(
+            sample_omit_tables_from_schema(
+                {"menus": {"user": [{"key": "my_orders", "label": "订单"}]}}
+            ),
+            ["user_address"],
+        )
+        self.assertEqual(
+            sample_omit_tables_from_schema(
+                {
+                    "menus": {
+                        "user": [
+                            {"key": "addresses", "label": "收货地址"},
+                            {"key": "cart", "label": "购物车"},
+                        ]
+                    }
+                }
+            ),
+            [],
+        )
+        m = {
+            "tables": [
+                {"name": "sys_user", "label": "用户"},
+                {"name": "user_address", "label": "收货地址"},
+                {"name": "biz_order", "label": "订单"},
+            ],
+            "relations": [],
+            "sample_omit_tables": ["user_address"],
+        }
+        sample = apply_er_display_mode(m, "sample")
+        names = {t["name"] for t in sample["tables"] if isinstance(t, dict)}
+        self.assertNotIn("user_address", names)
+        self.assertIn("user_address", set(sample.get("tables_omitted_sample") or []))
+        full = apply_er_display_mode(m, "full")
+        self.assertIn(
+            "user_address",
+            {t["name"] for t in full["tables"] if isinstance(t, dict)},
+        )
+
+    def test_er_col_labels_follow_seat_nouns(self) -> None:
+        """出图列中文跟 schema.labels 的 seat* 名词；学生包不见皮参数。"""
+        import tempfile
+        from pathlib import Path
+
+        from app.bake.schema.er_labels import _labels_from_domain_schema
+        from app.services import zh_lexicon as zl
+
+        zl.invalidate_cache()
+        zl.bootstrap_from_seed()
+        raw = {
+            "domain": "DOM-CINEMA",
+            "cinemaFace": "performance",
+            "labels": {
+                "cinemaFace": "performance",
+                "seatHallNoun": "场馆",
+                "seatOrgNoun": "主办方",
+            },
+            "entities": {},
+            "menus": {},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "domain.schema.json"
+            p.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+            _t, cols, _bt, _r, _fk = _labels_from_domain_schema(p)
+        self.assertEqual(cols.get("hall_note"), "场馆名称")
+        self.assertEqual(cols.get("owner_username"), "主办方账号")
+        raw2 = {
+            "domain": "DOM-CINEMA",
+            "cinemaFace": "cinema",
+            "labels": {
+                "cinemaFace": "cinema",
+                "seatHallNoun": "影厅",
+                "seatOrgNoun": "影城",
+            },
+            "entities": {},
+            "menus": {},
+        }
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "domain.schema.json"
+            p.write_text(json.dumps(raw2, ensure_ascii=False), encoding="utf-8")
+            _t, cols2, _bt, _r, _fk = _labels_from_domain_schema(p)
+        self.assertEqual(cols2.get("hall_note"), "影厅名称")
 
 
 if __name__ == "__main__":

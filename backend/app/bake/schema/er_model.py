@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -481,14 +482,36 @@ def _collapse_role_side(name: str) -> str:
     return n
 
 
-def _is_sample_shell_table(name: str) -> bool:
+def sample_omit_tables_from_schema(domain: dict | None) -> list[str]:
+    """论文概念图按交付菜单藏表：用户端未挂 addresses → 概念图不画 user_address。
+
+    跟能力名解耦：seat_select / 酒店 / 租车等凡摘掉地址簿菜单的，同一规则；
+    full 模式与物理 SQL 仍保留表。
+    """
+    if not isinstance(domain, dict):
+        return []
+    menus = domain.get("menus") if isinstance(domain.get("menus"), dict) else {}
+    user = menus.get("user") if isinstance(menus.get("user"), list) else []
+    keys = {
+        str(m.get("key") or "").strip()
+        for m in user
+        if isinstance(m, dict) and m.get("key")
+    }
+    omit: list[str] = []
+    if "addresses" not in keys:
+        omit.append("user_address")
+    return omit
+
+
+def _is_sample_shell_table(name: str, extra: set[str] | frozenset[str] | None = None) -> bool:
     n = str(name or "").strip()
     if not n:
         return False
-    if n in _ER_SAMPLE_SHELL_TABLES:
+    bag = _ER_SAMPLE_SHELL_TABLES | (set(extra) if extra else set())
+    if n in bag:
         return True
     base = n.split(":", 1)[0]
-    return base in _ER_SAMPLE_SHELL_TABLES
+    return base in bag
 
 
 def apply_er_display_mode(
@@ -499,6 +522,7 @@ def apply_er_display_mode(
 
     full=现网全量（角色拆分 + 壳表联系仍可见）。
     不改 schema.sql；只影响论文 E-R 图面与导出。
+    ``sample_omit_tables``：按交付菜单藏表（如用户端无 addresses → 藏 user_address）。
     """
     mode_n = normalize_er_display(mode)
     out = dict(model) if isinstance(model, dict) else {}
@@ -508,6 +532,11 @@ def apply_er_display_mode(
         out["conceptual_entities"] = conceptual_entity_names(out)
         return out
 
+    extra_omit = {
+        str(x).strip()
+        for x in (out.get("sample_omit_tables") or [])
+        if str(x).strip()
+    }
     omitted: list[str] = []
     tables: list[dict] = []
     for t in out.get("tables") or []:
@@ -519,7 +548,7 @@ def apply_er_display_mode(
         if t.get("role_of"):
             omitted.append(name)
             continue
-        if _is_sample_shell_table(name):
+        if _is_sample_shell_table(name, extra_omit):
             omitted.append(name)
             continue
         tables.append(dict(t))
@@ -553,7 +582,9 @@ def apply_er_display_mode(
             continue
         if left not in kept or right not in kept:
             continue
-        if _is_sample_shell_table(left) or _is_sample_shell_table(right):
+        if _is_sample_shell_table(left, extra_omit) or _is_sample_shell_table(
+            right, extra_omit
+        ):
             continue
         via = str(r.get("via") or "")
         key = (left, right, via)
@@ -574,6 +605,11 @@ def apply_er_display_mode(
 
 def conceptual_entity_names(model: dict) -> list[str]:
     """分图/属性图可选实体：非中间表、非角色拆分逻辑实体、非论文壳表。"""
+    extra_omit = {
+        str(x).strip()
+        for x in (model.get("sample_omit_tables") or [])
+        if str(x).strip()
+    }
     out: list[str] = []
     for t in model.get("tables") or []:
         if not isinstance(t, dict):
@@ -585,7 +621,7 @@ def conceptual_entity_names(model: dict) -> list[str]:
         name = str(t.get("name") or "").strip()
         if not name:
             continue
-        if _is_sample_shell_table(name):
+        if _is_sample_shell_table(name, extra_omit):
             continue
         out.append(name)
     return out
@@ -711,6 +747,15 @@ def build_schema_model(workspace: Path, *, with_er_patch: bool = True) -> dict |
         extra_rel_zh=rzh,
         fk_aliases=fk_aliases,
     )
+    try:
+        domain = json.loads(domain_path.read_text(encoding="utf-8")) if domain_path.is_file() else {}
+    except Exception:  # noqa: BLE001
+        domain = {}
+    omit = sample_omit_tables_from_schema(domain if isinstance(domain, dict) else None)
+    if omit:
+        model["sample_omit_tables"] = sorted(
+            set(model.get("sample_omit_tables") or []) | set(omit)
+        )
     from app.bake.schema.page_columns import (
         apply_page_column_labels,
         mark_page_missing,
@@ -721,13 +766,13 @@ def build_schema_model(workspace: Path, *, with_er_patch: bool = True) -> dict |
     model = apply_page_column_labels(model, page_index, czh=czh)
     patch = load_er_label_patch(workspace) if with_er_patch else None
     if with_er_patch:
-        # 先盖物理表（含 sys_user 列），再拆角色实体
-        model = apply_er_label_patch(model, patch)
+        # 先盖物理表（含 sys_user 列），再拆角色实体；交付列词优先于 COMMON
+        model = apply_er_label_patch(model, patch, col_zh_priority=czh)
     # 同一张用户表按 JSON roles 拆逻辑实体（申领人 / 库管员…），总图不再只写「用户」
     model = expand_user_role_entities(model, domain_path)
     if with_er_patch:
         # 再盖一次：角色实体表名（sys_user:user）与展开后的联系名
-        model = apply_er_label_patch(model, patch)
+        model = apply_er_label_patch(model, patch, col_zh_priority=czh)
     # 角色展开后重算概念实体清单（中间表标记保留）
     model = annotate_assoc_links(model, raw_tables)
     return mark_page_missing(model, page_index)

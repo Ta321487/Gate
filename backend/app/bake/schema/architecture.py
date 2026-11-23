@@ -95,9 +95,17 @@ def architecture_model(
 ) -> dict[str, Any]:
     title = str(schema.get("title") or "").strip() or title_fallback
     roles = architecture_roles(schema)
+    try:
+        from app.services.diagram_titles import figure_title_from_schema
+
+        fig_title = figure_title_from_schema(
+            schema, "architecture", name=title or "系统"
+        )
+    except Exception:  # noqa: BLE001
+        fig_title = "系统逻辑架构图"
     return {
         "title": title,
-        "figure_title": "系统逻辑架构图",
+        "figure_title": fig_title,
         "roles": roles,
         "layers": [
             {"id": "ui", "label": "界面", "bold": False},

@@ -1403,10 +1403,32 @@ def domain_sql(
         item_table=resolved_item,
         archetypes=arches_for_sql,
     )
-    # 词表 → COMMENT（列名仍英文）；老师打开 schema.sql 可见中文说明
-    from app.services.zh_lexicon import annotate_sql_comments
+    # 词表 → COMMENT（列名仍英文）；皮词覆盖来自 bake labels，学生只见汉字
+    from app.services.zh_lexicon import (
+        annotate_sql_comments,
+        column_zh_overrides_from_labels,
+        lexicon_skin_for_bake,
+    )
 
-    text = annotate_sql_comments(text, domain=domain or "", skin="")
+    skin = lexicon_skin_for_bake(
+        domain=domain or "",
+        title=title or "",
+        proposal_text=proposal_text or "",
+    )
+    col_overrides: dict[str, str] = {}
+    if (domain or "") == "DOM-CINEMA":
+        from app.bake.schema.builders_slot import cinema_seat_noun_labels
+        from app.bake.scene_scan import scan_shop_marketplace
+
+        col_overrides = column_zh_overrides_from_labels(
+            cinema_seat_noun_labels(
+                face=skin or "cinema",
+                marketplace=scan_shop_marketplace(title or "", proposal_text or ""),
+            )
+        )
+    text = annotate_sql_comments(
+        text, domain=domain or "", skin=skin, col_overrides=col_overrides
+    )
     # 演示日历不在 bake 时写死「今天」：交付后隔月答辩仍靠启动时 SeedCalendarAligner 平移
     return (
         text.replace("${DB_NAME}", db_name)

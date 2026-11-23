@@ -127,6 +127,92 @@ class SequenceDiagramTests(unittest.TestCase):
         )
         self.assertNotIn("users", kinds)
 
+    def test_primary_home_menu_and_selection_generic(self) -> None:
+        """家路径 → primary；默认选题抬主入口、辅购物车让位（不绑题名/单域）。"""
+        from app.bake.schema.sequence import primary_user_menu_keys
+
+        schema = {
+            "labels": {"userHomePath": "/seats/shows", "appName": "选座票务"},
+            "roles": {"user": {"label": "观众"}, "admin": {"label": "管理员"}},
+            "menus": {
+                "user": [
+                    {"key": "seat_shows", "label": "场次选座"},
+                    {"key": "cart", "label": "购物车"},
+                    {"key": "my_orders", "label": "我的订单"},
+                ],
+                "admin": [{"key": "orders", "label": "订单管理"}],
+            },
+            "entities": {"order": {"label": "订单"}, "archive": {"key": "cinema_show", "label": "场次"}},
+            "capabilities": ["seat_select", "order_lines"],
+        }
+        self.assertEqual(primary_user_menu_keys(schema), {"seat_shows"})
+        # 合成候选：主入口分低 + open；购物车分高——选题后须含主入口
+        cands = [
+            {
+                "id": "user::cart::cart",
+                "side": "user",
+                "menu_key": "cart",
+                "kind": "cart",
+                "label": "购物车",
+                "name": "用购物车",
+                "actor": "观众",
+                "score": 149,
+                "primary": False,
+            },
+            {
+                "id": "user::seat_shows::open",
+                "side": "user",
+                "menu_key": "seat_shows",
+                "kind": "open",
+                "label": "场次选座",
+                "name": "用场次选座",
+                "actor": "观众",
+                "score": 83,
+                "primary": True,
+            },
+            {
+                "id": "user::my_orders::my_orders",
+                "side": "user",
+                "menu_key": "my_orders",
+                "kind": "my_orders",
+                "label": "我的订单",
+                "name": "看订单",
+                "actor": "观众",
+                "score": 87,
+                "primary": False,
+            },
+            {
+                "id": "admin::orders::orders",
+                "side": "admin",
+                "menu_key": "orders",
+                "kind": "orders",
+                "label": "订单管理",
+                "name": "管订单",
+                "actor": "管理员",
+                "score": 80,
+                "primary": False,
+            },
+        ]
+        ids = default_sequence_selection(cands)
+        by = {c["id"]: c for c in cands}
+        picked = [str(by[i].get("menu_key") or "") for i in ids]
+        self.assertIn("seat_shows", picked, msg=picked)
+        # 另：家路径是预约列表时同样抬分
+        self.assertEqual(
+            primary_user_menu_keys(
+                {
+                    "labels": {"userHomePath": "/my/reservations"},
+                    "menus": {
+                        "user": [
+                            {"key": "my_reservations", "label": "我的预约"},
+                            {"key": "profile", "label": "资料"},
+                        ]
+                    },
+                }
+            ),
+            {"my_reservations"},
+        )
+
     def test_my_orders_confirm_receive_phases(self) -> None:
         """买家订单写路径默认确认收货；终态文案不是「数据保存成功」。"""
         from app.bake.schema.sequence import _build_business_phase, _feature_entity

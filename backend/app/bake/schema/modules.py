@@ -413,13 +413,30 @@ def _strip_identity_head(raw: str) -> str:
 
 
 def _remap_end_jargon(label: str, schema: dict[str, Any] | None) -> str:
-    """前台/后台不进身份框；映射到交付角色名或中性「用户/管理员」。"""
+    """光杆「前台/后台」映射到交付角色；「主办方商家后台」只剥尾缀，禁止并进 admin。
+
+    旧逻辑 ``endswith("后台")`` 会把「主办方商家后台」与「平台管理员后台」都映射成
+    同一 admin 名，后段被 ``seen_lab`` 丢弃，商家枚举整段串到平台管理员——多端票务/
+    多商家开题必中。只认 jargon 全集；带角色前缀的仅剥「前台/后台」尾。
+    """
     lab = (label or "").strip()
-    roles = schema.get("roles") if isinstance(schema, dict) and isinstance(schema.get("roles"), dict) else {}
-    if lab in _END_JARGON_USER or lab.endswith("前台"):
+    roles = (
+        schema.get("roles")
+        if isinstance(schema, dict) and isinstance(schema.get("roles"), dict)
+        else {}
+    )
+    if lab in _END_JARGON_USER:
         return _identity_label_from_slot(roles, "user")
-    if lab in _END_JARGON_ADMIN or lab.endswith("后台"):
+    if lab in _END_JARGON_ADMIN:
         return _identity_label_from_slot(roles, "admin")
+    for suf in ("前台", "后台"):
+        if lab.endswith(suf) and len(lab) > len(suf):
+            stem = lab[: -len(suf)].strip("的之 \t")
+            if stem:
+                return stem
+            return _identity_label_from_slot(
+                roles, "user" if suf == "前台" else "admin"
+            )
     return lab
 
 
@@ -1114,14 +1131,17 @@ def _score_identity_section(sec_lab: str, *, slot: str, role_lab: str) -> int:
     if slot == "admin" and any(t in s for t in ("管理员", "平台", "总管", "馆长", "主管")):
         sc += 8
     if slot == "staff" and any(
-        t in s for t in ("商家", "商户", "店家", "馆员", "骑手", "店员", "前台", "楼管")
+        t in s
+        for t in ("商家", "商户", "店家", "馆员", "骑手", "店员", "前台", "楼管", "主办方")
     ):
         sc += 8
-    # 商家/馆员等非 user/admin 槽：挂 user/admin 时打低分，避免误占总管枝
+    # 商家/馆员/主办方等非 user/admin 槽：挂 user/admin 时打低分，避免误占总管枝
     if slot in ("user", "admin") and any(
-        t in s for t in ("商家", "商户", "店家", "馆员", "骑手")
+        t in s for t in ("商家", "商户", "店家", "馆员", "骑手", "主办方")
     ):
-        sc -= 20
+        # 「平台管理员」含「管理」但不应因误伤；仅当段头像商家/主办方时扣分
+        if not any(t in s for t in ("管理员", "总管", "馆长", "主管")):
+            sc -= 20
     if slot == "user" and any(t in s for t in ("管理", "后台")):
         sc -= 6
     if slot == "admin" and any(t in s for t in ("用户", "买家", "学生")) and "管理" not in s:
@@ -1456,8 +1476,15 @@ def _model_from_parsed_identities(
         note = _ALIGNED_LEAF_NOTE
     else:
         note = ""
+    try:
+        from app.services.diagram_titles import resolve_figure_title
+
+        fig_title = resolve_figure_title("modules", name=title or "系统")
+    except Exception:  # noqa: BLE001
+        fig_title = f"{title}功能模块图" if title else "功能模块图"
     return {
         "title": title,
+        "figure_title": fig_title,
         "layout": "identity",
         "leaf_source": leaf_source,
         "leaf_source_note": note,
@@ -1764,8 +1791,17 @@ def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
         else:
             roots.append(_node(f"biz:{biz_id}", group_lab, source="biz", children=kids))
 
+    try:
+        from app.services.diagram_titles import figure_title_from_schema
+
+        fig_title = figure_title_from_schema(
+            schema, "modules", name=title or "系统"
+        )
+    except Exception:  # noqa: BLE001
+        fig_title = f"{title}功能模块图" if title else "功能模块图"
     return {
         "title": title,
+        "figure_title": fig_title,
         "layout": "biz",
         "leaf_source": "schema",
         "leaf_source_note": "",

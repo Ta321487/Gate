@@ -58,6 +58,61 @@ class ZhLexiconUnit(unittest.TestCase):
             "全局状态",
         )
 
+    def test_cinema_face_overrides_from_labels_not_seed(self) -> None:
+        """演艺皮汉字来自 bake labels 覆盖；种子不写死 DOM×皮行。"""
+        from app.bake.schema.builders_slot import cinema_seat_noun_labels
+
+        # 无侧栏域×皮行时 resolve 仍全局默认
+        self.assertEqual(zl.suggested_column_zh("hall_note"), "影厅名称")
+        self.assertEqual(
+            zl.resolve_zh(
+                "column",
+                "hall_note",
+                domain="DOM-CINEMA",
+                skin="performance",
+                for_bake=True,
+            ),
+            "影厅名称",
+        )
+        ov = zl.column_zh_overrides_from_labels(
+            cinema_seat_noun_labels(face="performance")
+        )
+        self.assertEqual(ov.get("hall_note"), "场馆名称")
+        self.assertEqual(ov.get("owner_username"), "主办方账号")
+        ov_c = zl.column_zh_overrides_from_labels(
+            cinema_seat_noun_labels(face="cinema")
+        )
+        self.assertEqual(ov_c.get("hall_note"), "影厅名称")
+        self.assertEqual(
+            zl.lexicon_skin_for_bake(
+                domain="DOM-CINEMA",
+                title="潮汐演艺票务",
+                proposal_text="剧场选座购票",
+            ),
+            "performance",
+        )
+
+    def test_annotate_sql_comments_respects_label_overrides(self) -> None:
+        sql = """
+CREATE TABLE IF NOT EXISTS cinema_show (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  hall_note VARCHAR(128) DEFAULT '',
+  owner_username VARCHAR(64) DEFAULT ''
+);
+"""
+        from app.bake.schema.builders_slot import cinema_seat_noun_labels
+
+        ov = zl.column_zh_overrides_from_labels(
+            cinema_seat_noun_labels(face="performance")
+        )
+        out = zl.annotate_sql_comments(
+            sql, domain="DOM-CINEMA", skin="performance", col_overrides=ov
+        )
+        self.assertIn("COMMENT '场馆名称'", out)
+        self.assertIn("COMMENT '主办方账号'", out)
+        cinema = zl.annotate_sql_comments(sql, domain="DOM-CINEMA", skin="cinema")
+        self.assertIn("COMMENT '影厅名称'", cinema)
+
     def test_annotate_sql_comments(self) -> None:
         sql = """
 CREATE TABLE IF NOT EXISTS biz_order (

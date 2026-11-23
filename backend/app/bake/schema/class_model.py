@@ -1010,12 +1010,18 @@ def _sample_methods(
 
 def _filter_sample_shell_classes(model: dict[str, Any]) -> list[str]:
     """论文示例藏壳表；返回被藏的 table id。"""
+    extra = {
+        str(x).strip()
+        for x in (model.get("sample_omit_tables") or [])
+        if str(x).strip()
+    }
+    shell = _SAMPLE_SHELL_TABLES | extra
     classes = [c for c in (model.get("classes") or []) if isinstance(c, dict)]
     keep: list[dict[str, Any]] = []
     omitted: list[str] = []
     for cls in classes:
         tid = str(cls.get("table") or cls.get("id") or "").strip()
-        if tid in _SAMPLE_SHELL_TABLES:
+        if tid in shell:
             omitted.append(tid)
             continue
         keep.append(cls)
@@ -1153,7 +1159,7 @@ def build_class_model(
         er_like, page_column_index(workspace, model=er_like), czh=czh
     )
     patch = load_er_label_patch(workspace)
-    er_like = apply_er_label_patch(er_like, patch)
+    er_like = apply_er_label_patch(er_like, patch, col_zh_priority=czh)
     # E-R 可能 scrub 成「关联/收藏」；类图模板画法：边文案一律空，via 只留结构
     for r in er_like.get("relations") or []:
         if isinstance(r, dict):
@@ -1175,6 +1181,20 @@ def build_class_model(
         title=title,
         domain_ents=domain_ents,
     )
+    try:
+        from app.services.diagram_titles import figure_title_from_schema
+
+        dom_id = ""
+        if isinstance(domain, dict):
+            dom_id = str(domain.get("domain") or "").strip()
+        model["figure_title"] = figure_title_from_schema(
+            domain if isinstance(domain, dict) else {},
+            "class",
+            name=title or "系统",
+            domain=dom_id,
+        )
+    except Exception:  # noqa: BLE001
+        pass
     model["evidence"]["domain_schema"] = domain_path.is_file()
     java_stats = enrich_classes_from_java(
         model["classes"],
@@ -1200,6 +1220,14 @@ def build_class_model(
     except Exception:  # noqa: BLE001
         pass
     _scrub_class_edge_labels(model)
+    if isinstance(domain, dict):
+        from app.bake.schema.er_model import sample_omit_tables_from_schema
+
+        omit = sample_omit_tables_from_schema(domain)
+        if omit:
+            model["sample_omit_tables"] = sorted(
+                set(model.get("sample_omit_tables") or []) | set(omit)
+            )
     apply_class_display_mode(model, display_mode)
     patch, saved_mode = load_class_layout_bundle(workspace)
     # 仅当落盘显示规则与当前不同时收紧间距（切 sample/full）；同规则保持拖拽坐标

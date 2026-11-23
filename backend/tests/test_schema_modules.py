@@ -379,6 +379,82 @@ class ModuleDiagramTests(unittest.TestCase):
         self.assertTrue(any(x in labs for x in ("买家", "用户")))
         self.assertTrue(any("管" in x or x == "管理员" for x in labs))
 
+    def test_parse_merchant_admin_both_end_with_houtai(self) -> None:
+        """「主办方商家后台」与「平台管理员后台」不得并成一段（潮汐/多商家票务腔）。"""
+        text = (
+            "用户功能模块划分为：登录注册模块、购物车模块、可视化选座购票模块、"
+            "互动评价模块、个人中心汇总功能；"
+            "主办方商家后台功能模块划分为：演出场次管理模块、场馆座位管理模块、"
+            "订单核销管理模块、店铺订单统计模块、售后退票处理模块；"
+            "平台管理员后台功能模块划分为：轮播图管理模块、用户管理模块、"
+            "主办方商家管理模块、演出审核管理模块、全局订单管理模块、"
+            "评价内容管理模块、公告管理模块。"
+        )
+        schema = {
+            "roles": {
+                "user": {"label": "观众"},
+                "admin": {"label": "平台管理员"},
+                "subadmin": {"label": "主办方商家"},
+                "staff_posts": [
+                    {"id": "shop_merchant", "label": "主办方商家", "packs": ["merchant_ops"]}
+                ],
+            }
+        }
+        secs = parse_identity_modules(text, schema=schema)
+        labs = [s["label"] for s in secs]
+        self.assertEqual(len(secs), 3, msg=f"labs={labs}")
+        self.assertEqual(labs[0], "用户")
+        self.assertIn("商家", labs[1])  # 主办方商家（剥「后台」）
+        self.assertIn("管理员", labs[2])
+        merch = [m["label"] for m in secs[1]["modules"]]
+        admin = [m["label"] for m in secs[2]["modules"]]
+        self.assertIn("演出场次管理模块", merch)
+        self.assertIn("订单核销管理模块", merch)
+        self.assertNotIn("演出场次管理模块", admin)
+        self.assertIn("轮播图管理模块", admin)
+        self.assertIn("演出审核管理模块", admin)
+        self.assertIn("全局订单管理模块", admin)
+
+    def test_cinema_marketplace_modules_keep_merchant_enum_off_admin(self) -> None:
+        """演艺多主办方：模块图平台管理员枝不得挂主办方场次/核销枚举。"""
+        from app.bake.domain_schema import build_domain_schema
+
+        title = "潮汐演艺票务销售网站"
+        text = (
+            f"{title}的设计与实现。"
+            "用户功能模块划分为：登录注册模块、购物车模块、可视化选座购票模块、"
+            "互动评价模块、个人中心汇总功能；"
+            "主办方商家后台功能模块划分为：演出场次管理模块、场馆座位管理模块、"
+            "订单核销管理模块、店铺订单统计模块、售后退票处理模块；"
+            "平台管理员后台功能模块划分为：轮播图管理模块、用户管理模块、"
+            "主办方商家管理模块、演出审核管理模块、全局订单管理模块、"
+            "评价内容管理模块、公告管理模块。"
+            "用户选座购票，主办方维护场次。"
+        )
+        schema = build_domain_schema(title, "DOM-CINEMA", proposal_text=text)
+        posts = (schema.get("roles") or {}).get("staff_posts") or []
+        self.assertTrue(
+            any(str(p.get("id")) == "shop_merchant" for p in posts if isinstance(p, dict)),
+            msg="演艺多主办方须交付商家岗",
+        )
+        model = module_model(schema, proposal_text=text, layout="identity")
+        branches = {c["label"]: c for c in model["root"]["children"]}
+        self.assertIn("平台管理员", branches)
+        # 主办方枝须在
+        merch_key = next((k for k in branches if "主办" in k or "商家" in k), None)
+        self.assertIsNotNone(merch_key, msg=f"branches={list(branches)}")
+        admin_labs = [c["label"] for c in branches["平台管理员"]["children"]]
+        merch_labs = [c["label"] for c in branches[merch_key]["children"]]
+        admin_blob = " ".join(admin_labs)
+        self.assertNotIn("核销", admin_blob)
+        self.assertNotIn("店铺订单统计", admin_blob)
+        # 商家材料名可对齐进主办方枝，或回落菜单「场次管理」——不得进管理员枝当「演出场次管理」
+        self.assertNotIn("演出场次管理", admin_labs)
+        self.assertTrue(
+            any("场次" in x or "订单" in x for x in merch_labs),
+            msg=f"merch_labs={merch_labs}",
+        )
+
     def test_model_by_identity_from_materials(self) -> None:
         schema = self._shop_schema()
         model = module_model(

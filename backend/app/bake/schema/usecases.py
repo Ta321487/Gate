@@ -1492,15 +1492,38 @@ def _match_section_for_actor(
         sc = 0
         if lab and (lab in s or s in lab):
             sc += 10
-        if aid == "user" and any(t in s for t in ("用户", "买家", "读者", "学生", "住客", "顾客", "会员")):
+        if aid == "user" and any(
+            t in s for t in ("用户", "买家", "读者", "学生", "住客", "顾客", "会员")
+        ):
             sc += 8
-        if aid == "admin" and any(t in s for t in ("管理员", "平台", "总管", "馆长", "主管")):
+        if aid == "admin" and any(
+            t in s for t in ("管理员", "平台", "总管", "馆长", "主管")
+        ):
             sc += 8
         if aid.startswith("staff:") or aid == "subadmin":
-            if any(t in s for t in ("商家", "商户", "店家", "馆员", "前台", "店员", "骑手", "专员")):
+            if any(
+                t in s
+                for t in (
+                    "商家",
+                    "商户",
+                    "店家",
+                    "馆员",
+                    "前台",
+                    "店员",
+                    "骑手",
+                    "专员",
+                    "主办方",
+                )
+            ):
                 sc += 8
             if lab and any(t in s for t in (lab,)):
                 sc += 6
+        # 与 modules._score_identity_section 同口径：商家/主办方段不得被 admin 抢走
+        if aid == "admin" and any(
+            t in s for t in ("商家", "商户", "店家", "骑手", "主办方")
+        ):
+            if not any(t in s for t in ("管理员", "总管", "馆长", "主管")):
+                sc -= 20
         return sc
 
     ranked = sorted(sections, key=lambda sec: -score(str(sec.get("label") or "")))

@@ -74,6 +74,43 @@ def _labels_from_domain_schema(
     if notice:
         tables["sys_notice"] = notice
 
+    # 列中文真源：词表 resolve(domain, skin)；labels 名词仅在皮维词条未迁入时兜底
+    domain_id = str(data.get("domain") or "").strip()
+    skin_id = ""
+    try:
+        from app.services.zh_lexicon import (
+            column_zh_map,
+            lexicon_skin_for_bake,
+            resolve_zh,
+        )
+
+        skin_id = lexicon_skin_for_bake(domain=domain_id, schema=data)
+        for ck, cz in column_zh_map(domain=domain_id, skin=skin_id).items():
+            _put_col(cols, ck, cz)
+
+        def _lex_skin_miss(col_key: str) -> bool:
+            if not skin_id:
+                return True
+            scoped = resolve_zh(
+                "column", col_key, domain=domain_id, skin=skin_id, for_bake=True
+            )
+            global_zh = resolve_zh("column", col_key, for_bake=True)
+            return not scoped or scoped == global_zh
+
+        hall_noun = str(labels.get("seatHallNoun") or "").strip()
+        if hall_noun and _lex_skin_miss("hall_note"):
+            _put_col(cols, "hall_note", f"{hall_noun}名称")
+        org_noun = str(labels.get("seatOrgNoun") or "").strip()
+        if org_noun and _lex_skin_miss("owner_username"):
+            _put_col(cols, "owner_username", f"{org_noun}账号")
+    except Exception:  # noqa: BLE001
+        hall_noun = str(labels.get("seatHallNoun") or "").strip()
+        if hall_noun:
+            _put_col(cols, "hall_note", f"{hall_noun}名称")
+        org_noun = str(labels.get("seatOrgNoun") or "").strip()
+        if org_noun:
+            _put_col(cols, "owner_username", f"{org_noun}账号")
+
     menus = data.get("menus") if isinstance(data.get("menus"), dict) else {}
     for role_menus in menus.values():
         if not isinstance(role_menus, list):
@@ -157,6 +194,19 @@ def _labels_from_domain_schema(
                     _put_col(scoped, "next_follow_at", nf)
         if slot == "archive" and key:
             archive_key, archive_label = key, label
+            # 档案槽位「场馆名称/影厅名称」→ SQL hall_note；勿把「场馆类型」盖上去
+            scoped = by_table.setdefault(key, {})
+            for f in ent.get("fields") or []:
+                if not isinstance(f, dict):
+                    continue
+                fl = str(f.get("label") or "").strip()
+                if not fl:
+                    continue
+                if fl in ("场馆", "影厅") or fl.endswith("场馆名称") or fl.endswith("影厅名称"):
+                    if "类型" in fl or "分类" in fl:
+                        continue
+                    _put_col(scoped, "hall_note", fl)
+                    _put_col(cols, "hall_note", fl)
 
     # 单据表通用 FK：book_id / item_id → 档案实体编号
     if archive_key and archive_label:
@@ -818,8 +868,17 @@ def sanitize_er_label_patch(
     return {"tables": tables_out, "columns": columns_out, "relations": relations_out}
 
 
-def apply_er_label_patch(model: dict, patch: dict | None) -> dict:
-    """把 {tables, columns, relations} 中文补丁盖到 schema model 上。"""
+def apply_er_label_patch(
+    model: dict,
+    patch: dict | None,
+    *,
+    col_zh_priority: dict[str, str] | None = None,
+) -> dict:
+    """把 {tables, columns, relations} 中文补丁盖到 schema model 上。
+
+    列名优先级：col_zh_priority（词表 domain×skin 解析结果）> 工厂 COMMON > 手工/LLM 补丁。
+    禁止 COMMON 全局默认盖掉皮维词条（如演艺皮 hall_note=场馆名称）。
+    """
     clean = sanitize_er_label_patch(patch)
     if not clean["tables"] and not clean["columns"] and not clean["relations"]:
         return scrub_relation_labels(model)
@@ -830,6 +889,8 @@ def apply_er_label_patch(model: dict, patch: dict | None) -> dict:
         for ck, lab in cols.items()
     }
     rmap = clean["relations"]
+    # 交付词盖 COMMON；无交付词时仍用 COMMON 压住坏补丁
+    factory_cols = {**_COMMON_COL_ZH, **(col_zh_priority or {})}
 
     for t in model.get("tables") or []:
         if not isinstance(t, dict):
@@ -842,9 +903,8 @@ def apply_er_label_patch(model: dict, patch: dict | None) -> dict:
                 if not isinstance(c, dict):
                     continue
                 cname = str(c.get("name") or "")
-                # 工厂 COMMON 精确键优先，旧手工/LLM 补丁不得锁死论文稿
-                if cname in _COMMON_COL_ZH:
-                    c["label"] = _COMMON_COL_ZH[cname]
+                if cname in factory_cols:
+                    c["label"] = factory_cols[cname]
                     continue
                 key = (tname, cname)
                 if key in cmap:

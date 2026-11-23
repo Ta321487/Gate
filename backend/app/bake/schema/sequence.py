@@ -33,7 +33,7 @@ _SEQUENCE_DEMOTE_KINDS = frozenset(
         "online_sessions",
         "schedule_jobs",
         "site_stat",
-        "open",
+        # open：业务主入口也常标 open，改由 _SEQUENCE_DEMOTE_OPEN_MENUS 按菜单 demote
         "content_user",
         "content_admin",
         "addresses",
@@ -60,6 +60,22 @@ _SEQUENCE_CORE_BOOST: dict[str, int] = {
     "dm": 10,
     "category": 8,
 }
+# kind=open 的壳菜单才 demote；业务主入口（家路径）不因 open 被挤掉
+_SEQUENCE_DEMOTE_OPEN_MENUS: frozenset[str] = frozenset(
+    {
+        "users",
+        "profile",
+        "messages",
+        "banners",
+        "online_sessions",
+        "schedule_jobs",
+        "site_stat",
+        "content",
+        "addresses",
+        "lookup",
+        "guestbook",
+    }
+)
 
 _PARTICIPANTS = ("actor", "page", "controller", "db")
 _PARTICIPANT_LABELS = {
@@ -168,12 +184,47 @@ def candidate_id(case: dict[str, Any]) -> str:
     return f"{side}::{key}::{kind}"
 
 
+def primary_user_menu_keys(schema: dict[str, Any] | None) -> set[str]:
+    """用户端主入口 menu_key：跟 labels.userHomePath 对齐（跨域，不绑题名）。
+
+    例：/seats/shows → seat_shows；/browse → archive；路径片段命中交付菜单 key。
+    """
+    if not isinstance(schema, dict):
+        return set()
+    labels = schema.get("labels") if isinstance(schema.get("labels"), dict) else {}
+    home = str(labels.get("userHomePath") or "").strip().lower().replace("\\", "/")
+    menus = schema.get("menus") if isinstance(schema.get("menus"), dict) else {}
+    user = menus.get("user") if isinstance(menus.get("user"), list) else []
+    keys = [
+        str(m.get("key") or "").strip()
+        for m in user
+        if isinstance(m, dict) and str(m.get("key") or "").strip()
+    ]
+    if not home or not keys:
+        return set()
+    hit: set[str] = set()
+    home_compact = home.strip("/")
+    for key in keys:
+        slug = key.replace("_", "/")
+        parts = [p for p in key.split("_") if p]
+        if key in home or slug in home_compact or home_compact.endswith(slug):
+            hit.add(key)
+            continue
+        if parts and all(p in home for p in parts):
+            hit.add(key)
+            continue
+        if parts and parts[-1] in home and any(p in home for p in parts[:-1]):
+            hit.add(key)
+    return hit
+
+
 def list_sequence_candidates(
     schema: dict[str, Any],
     *,
     proposal_text: str = "",
 ) -> list[dict[str, Any]]:
     raw = build_usecase_description_candidates(schema, proposal_text=proposal_text)
+    primary = primary_user_menu_keys(schema)
     out: list[dict[str, Any]] = []
     for c in raw:
         if not isinstance(c, dict):
@@ -181,33 +232,52 @@ def list_sequence_candidates(
         cid = candidate_id(c)
         side = str(c.get("side") or "user")
         actor = _short_role(str(c.get("actor") or ""), side=side)
+        menu_key = str(c.get("menu_key") or "")
         out.append(
             {
                 "id": cid,
                 "side": side,
-                "menu_key": str(c.get("menu_key") or ""),
+                "menu_key": menu_key,
                 "kind": str(c.get("kind") or ""),
                 "label": str(c.get("label") or ""),
                 "name": str(c.get("name") or ""),
                 "actor": actor,
                 "score": int(c.get("score") or 0),
+                "primary": menu_key in primary and side == "user",
             }
         )
     return out
 
 
 def default_sequence_selection(candidates: list[dict[str, Any]]) -> list[str]:
-    """序列图默认 3 席：主链路优先，跳过纯登录（业务图已带登录序幕）。"""
+    """序列图默认 3 席：主链路优先，跳过纯登录（业务图已带登录序幕）。
+
+    家路径菜单（candidate.primary）抬分；kind=open 仅对壳菜单 demote。
+    家路径不是购物车时，购物车让位（选座保留购物车等辅路径通例）。
+    """
+    has_primary = any(
+        isinstance(c, dict) and c.get("primary") for c in candidates
+    )
     ranked: list[tuple[int, dict[str, Any]]] = []
     for c in candidates:
         if not isinstance(c, dict):
             continue
         kind = str(c.get("kind") or "").strip()
+        menu_key = str(c.get("menu_key") or "").strip()
         if kind in _SEQUENCE_SKIP_KINDS:
             continue
         score = int(c.get("score") or 0) + int(_SEQUENCE_CORE_BOOST.get(kind, 0))
-        if kind in _SEQUENCE_DEMOTE_KINDS:
+        if c.get("primary"):
+            score += 100
+        demote = False
+        if kind in _SEQUENCE_DEMOTE_KINDS and kind != "open":
+            demote = True
+        elif kind == "open" and menu_key in _SEQUENCE_DEMOTE_OPEN_MENUS:
+            demote = True
+        if demote:
             score -= 45
+        if has_primary and kind == "cart" and not c.get("primary"):
+            score -= 40
         ranked.append((score, c))
     ranked.sort(
         key=lambda x: (
@@ -1855,10 +1925,20 @@ def build_sequence_diagram(
     actor = _short_role(str(case.get("actor") or _role_label(schema, side)), side=side)
     name = str(case.get("name") or case.get("label") or "功能").strip()
     messages, phases = build_diagram_messages(case, schema, workspace)
+    try:
+        from app.services.diagram_titles import resolve_figure_title
+
+        fig_title = resolve_figure_title(
+            "sequence",
+            domain=str(schema.get("domain") or ""),
+            name=name,
+        )
+    except Exception:  # noqa: BLE001
+        fig_title = f"{name}序列图"
     return {
         "id": candidate_id(case),
         "index": index,
-        "figure_title": f"{name}序列图",
+        "figure_title": fig_title,
         "kind": str(case.get("kind") or ""),
         "menu_key": str(case.get("menu_key") or ""),
         "side": side,

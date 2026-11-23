@@ -207,6 +207,54 @@ class UsecaseContractTests(unittest.TestCase):
             for kid in uc["includes"]:
                 self.assertNotEqual(kid.get("label"), "进行支付")
 
+    def test_cinema_houtai_enum_admin_not_merchant_body(self) -> None:
+        """「主办方商家后台 / 平台管理员后台」并存时，管理员用例不得吃进主办方场次核销枚举。"""
+        opening = (
+            "用户功能模块划分为：登录注册模块、购物车模块、可视化选座购票模块、"
+            "互动评价模块、个人中心汇总功能；"
+            "主办方商家后台功能模块划分为：演出场次管理模块、场馆座位管理模块、"
+            "订单核销管理模块、店铺订单统计模块、售后退票处理模块；"
+            "平台管理员后台功能模块划分为：轮播图管理模块、用户管理模块、"
+            "主办方商家管理模块、演出审核管理模块、全局订单管理模块、"
+            "评价内容管理模块、公告管理模块。"
+        )
+        schema = build_domain_schema(
+            "潮汐演艺票务销售网站", "DOM-CINEMA", proposal_text=opening
+        )
+        admin = usecase_model(
+            schema, actor="admin", proposal_text=opening, title_fallback="潮汐演艺"
+        )
+        self.assertIn("开题", admin.get("source_note", ""))
+        self.assertIn("平台管理员", admin.get("source_note", ""))
+        blob = json.dumps(admin, ensure_ascii=False)
+        self.assertNotIn("订单核销", blob)
+        self.assertNotIn("店铺订单统计", blob)
+        self.assertNotIn("场馆座位", blob)
+        # 管理员段应能露出审核/用户/公告等材料名（经润色后仍含词干）
+        self.assertTrue(
+            any(
+                t in blob
+                for t in ("审核", "用户", "公告", "轮播", "广告", "评价", "订单")
+            ),
+            msg=blob[:800],
+        )
+        actors = list_usecase_actors(schema)
+        merchant = next((a for a in actors if a["id"].startswith("staff:")), None)
+        self.assertIsNotNone(merchant)
+        merch = usecase_model(
+            schema,
+            actor=merchant["id"],
+            proposal_text=opening,
+            title_fallback="潮汐演艺",
+        )
+        # 商家侧应吃到主办方材料段（开题溯源），而非管理员轮播段
+        self.assertIn("开题", merch.get("source_note", ""))
+        mnote = merch.get("source_note", "")
+        self.assertTrue(
+            any(t in mnote for t in ("主办", "商家")),
+            msg=mnote,
+        )
+
     def test_l2_drops_proposal_etc(self) -> None:
         """开题「节日优惠等公告信息」不得原样进二级，否则质检当开题语气词并挡住下载。"""
         from app.bake.schema.usecases import _label_from_material_seed

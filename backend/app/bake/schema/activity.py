@@ -246,10 +246,20 @@ def build_activity_diagram(
     kind = str(case.get("kind") or "")
     messages, phases = build_diagram_messages(case, schema, workspace)
     nodes, edges = _messages_to_activity(messages, phases=phases, kind=kind)
+    try:
+        from app.services.diagram_titles import resolve_figure_title
+
+        fig_title = resolve_figure_title(
+            "activity",
+            domain=str(schema.get("domain") or ""),
+            name=name,
+        )
+    except Exception:  # noqa: BLE001
+        fig_title = f"{name}活动图"
     return {
         "id": candidate_id(case),
         "index": index,
-        "figure_title": f"{name}活动图",
+        "figure_title": fig_title,
         "kind": kind,
         "menu_key": str(case.get("menu_key") or ""),
         "side": side,

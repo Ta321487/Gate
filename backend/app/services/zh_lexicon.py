@@ -117,7 +117,71 @@ def _seed_payload() -> list[dict[str, str]]:
         put("stem", key, zh)
     for key, zh in ez._TABLE_PART_ZH.items():
         put("table_part", key, zh)
+    # 域×皮异名：进库表由侧栏维护 / migrate 追加，禁止在种子里写死 DOM 皮文案
     return list(by_key.values())
+
+
+def lexicon_skin_for_bake(
+    *,
+    domain: str = "",
+    title: str = "",
+    proposal_text: str = "",
+    schema: dict[str, Any] | None = None,
+) -> str:
+    """bake/出图用的皮 id：优先 schema.cinemaFace，否则开题扫（仅工厂侧参数）。"""
+    if isinstance(schema, dict):
+        face = _norm(str(schema.get("cinemaFace") or ""))
+        if not face:
+            labels = schema.get("labels") if isinstance(schema.get("labels"), dict) else {}
+            face = _norm(str(labels.get("cinemaFace") or ""))
+        if face:
+            return face
+    if _norm(domain) == "DOM-CINEMA":
+        try:
+            from app.bake.scene_scan import cinema_product_kind
+
+            return _norm(cinema_product_kind(title or "", proposal_text or ""))
+        except Exception:  # noqa: BLE001
+            return "cinema"
+    return ""
+
+
+def column_zh_map(*, domain: str = "", skin: str = "") -> dict[str, str]:
+    """列键 → 中文：对全局列键走 resolve_zh(domain, skin)（窄皮覆盖宽全局）。"""
+    domain, skin = _norm(domain), _norm(skin)
+    if _rows_cache is None:
+        bootstrap_from_seed()
+    keys: set[str] = set()
+    with _lock:
+        keys.update(_global_maps.get("column") or {})
+        for r in _rows_cache or []:
+            if r.get("kind") == "column" and _norm(r.get("key_name")):
+                keys.add(_norm(r.get("key_name")))
+    out: dict[str, str] = {}
+    for key in keys:
+        zh = resolve_zh(
+            "column", key, domain=domain, skin=skin, for_bake=True
+        )
+        if zh:
+            out[key] = zh
+    return out
+
+
+def column_zh_overrides_from_labels(labels: dict[str, Any] | None) -> dict[str, str]:
+    """从 bake schema.labels 拼列中文覆盖（同源 seat* 名词，非词表种子写死）。
+
+    规则固定、汉字来自 labels；侧栏域×皮行仍可另写覆盖同列。
+    """
+    if not isinstance(labels, dict):
+        return {}
+    out: dict[str, str] = {}
+    hall = _norm(str(labels.get("seatHallNoun") or ""))
+    if hall:
+        out["hall_note"] = f"{hall}名称"
+    org = _norm(str(labels.get("seatOrgNoun") or ""))
+    if org:
+        out["owner_username"] = f"{org}账号"
+    return out
 
 
 def _apply_global_maps(rows: Iterable[dict[str, Any]]) -> None:
@@ -780,8 +844,18 @@ def annotate_sql_comments(
     *,
     domain: str = "",
     skin: str = "",
+    col_overrides: dict[str, str] | None = None,
 ) -> str:
-    """幂等：CREATE 体里无 COMMENT 的列按词表补上。"""
+    """幂等：CREATE 体里无 COMMENT 的列按词表补上。
+
+    ``col_overrides``：本包 bake 皮词（来自 schema.labels，非词表种子写死）。
+    优先于 resolve；学生包只见最终汉字。
+    """
+    overrides = {
+        _norm(k): _norm(v)
+        for k, v in (col_overrides or {}).items()
+        if _norm(k) and _norm(v)
+    }
 
     def repl(m: re.Match[str]) -> str:
         head, tname, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
@@ -807,7 +881,7 @@ def annotate_sql_comments(
             if _COMMENT_RE.search(rest):
                 lines_out.append(raw)
                 continue
-            zh = suggested_column_zh(
+            zh = overrides.get(_norm(cname)) or suggested_column_zh(
                 cname, domain=domain, skin=skin, table_name=tname
             ) or suggested_column_zh(cname)
             if not zh:
