@@ -392,6 +392,17 @@ def _bake_project_body(
     portal_banners = fetch_portal_banners(
         dest, domain, theme, schema, catalog_kind=shop_kind
     )
+    # 预置轮播写入 sys_banner，管理端与主页同源（禁止前端另垫一套）
+    from app.bake.portal_banners import inject_portal_banner_seeds
+
+    sql_path = dest / "sql" / "schema.sql"
+    if sql_path.is_file():
+        _write(
+            sql_path,
+            inject_portal_banner_seeds(
+                sql_path.read_text(encoding="utf-8"), portal_banners
+            ),
+        )
     _write_factory_delivered(
         dest,
         title,

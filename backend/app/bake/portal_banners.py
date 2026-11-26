@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -659,3 +660,82 @@ def portal_banners_from_workspace(
             "lead": cap["lead"],
         })
     return slides
+
+
+_SYS_BANNER_INSERT_RE = re.compile(
+    r"INSERT\s+INTO\s+sys_banner\b[\s\S]*?;\s*",
+    flags=re.IGNORECASE,
+)
+
+_WELCOME_FALLBACK_SEED = (
+    "INSERT INTO sys_banner (slot, title, lead_text, image_url, link_url, sort_order, enabled)\n"
+    "SELECT 'home', '欢迎使用', '系统已就绪，可开始浏览业务入口。', '', '/notices', 0, 1 FROM DUAL\n"
+    "WHERE NOT EXISTS (SELECT 1 FROM sys_banner WHERE slot='home' AND title='欢迎使用');\n"
+)
+
+
+def _sql_quote(value: str) -> str:
+    return "'" + str(value or "").replace("\\", "\\\\").replace("'", "''") + "'"
+
+
+def render_sys_banner_seed_sql(banners: list[dict[str, Any]] | None) -> str:
+    """把门户轮播帧写成 sys_banner 种子（与管理端同源）。无帧时回退欢迎条。"""
+    rows: list[dict[str, Any]] = []
+    for b in banners or []:
+        if not isinstance(b, dict):
+            continue
+        title = str(b.get("title") or "").strip()
+        lead = str(b.get("lead") or "").strip()
+        src = str(b.get("src") or b.get("imageUrl") or b.get("image_url") or "").strip()
+        link = str(b.get("linkUrl") or b.get("href") or b.get("link_url") or "").strip()
+        if not (title or src):
+            continue
+        rows.append(
+            {
+                "title": title or "通知",
+                "lead": lead,
+                "src": src,
+                "link": link,
+            }
+        )
+    if not rows:
+        return _WELCOME_FALLBACK_SEED
+    lines: list[str] = [
+        "-- 门户轮播种子：与 frontend/public/portal-banners 及管理端广告位同源",
+    ]
+    for i, row in enumerate(rows):
+        title_q = _sql_quote(row["title"])
+        lead_q = _sql_quote(row["lead"])
+        src_q = _sql_quote(row["src"])
+        link_q = _sql_quote(row["link"])
+        # 有图按 image_url 幂等；无图按 title（兼容欢迎条）
+        if row["src"]:
+            exists = (
+                f"SELECT 1 FROM sys_banner WHERE slot='home' AND image_url={src_q}"
+            )
+        else:
+            exists = (
+                f"SELECT 1 FROM sys_banner WHERE slot='home' AND title={title_q}"
+            )
+        lines.append(
+            "INSERT INTO sys_banner (slot, title, lead_text, image_url, link_url, sort_order, enabled)\n"
+            f"SELECT 'home', {title_q}, {lead_q}, {src_q}, {link_q}, {i}, 1 FROM DUAL\n"
+            f"WHERE NOT EXISTS ({exists});"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def inject_portal_banner_seeds(sql: str, banners: list[dict[str, Any]] | None) -> str:
+    """替换 schema.sql 里已有的 sys_banner INSERT，写入门户帧（或欢迎兜底）。"""
+    text = sql or ""
+    text = _SYS_BANNER_INSERT_RE.sub("", text)
+    seed = render_sys_banner_seed_sql(banners)
+    marker = "CREATE TABLE IF NOT EXISTS sys_banner"
+    idx = text.lower().find(marker.lower())
+    if idx < 0:
+        return text.rstrip() + "\n\n" + seed
+    # 插在 sys_banner 建表语句之后
+    semi = text.find(";", idx)
+    if semi < 0:
+        return text.rstrip() + "\n\n" + seed
+    return text[: semi + 1] + "\n\n" + seed + text[semi + 1 :]

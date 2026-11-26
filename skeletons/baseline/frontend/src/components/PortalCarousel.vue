@@ -47,7 +47,7 @@ const props = defineProps({
   intervalMs: { type: Number, default: 5600 },
 })
 
-/** 预置静态图 + 管理端 sys_banner（有图才进轮播） */
+/** 管理端 sys_banner 为真源；仅库空时用包内 portalBanners 兜底（禁止双源拼帧） */
 const apiBanners = ref([])
 const raw = computed(() => {
   const baked = Array.isArray(APP_DELIVERED?.portalBanners) ? APP_DELIVERED.portalBanners : []
@@ -56,8 +56,9 @@ const raw = computed(() => {
     title: b.title || '',
     lead: b.lead || '',
     linkUrl: b.linkUrl || b.href || '',
-  }))
-  return [...fromApi, ...baked].filter((x) => x && x.src)
+  })).filter((x) => x && (x.src || x.title))
+  if (fromApi.length) return fromApi
+  return baked.filter((x) => x && x.src)
 })
 const slides = ref([])
 const index = ref(0)

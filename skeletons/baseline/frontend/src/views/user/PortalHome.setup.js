@@ -61,7 +61,7 @@ const claimText = computed(
     appName,
 )
 
-/** 管理端 sys_banner（slot=home）优先，预置首页横幅 垫底；与 PortalCarousel 同源 */
+/** 管理端 sys_banner 为真源；仅库空时用包内 portalBanners 兜底（与 PortalCarousel 同源） */
 const apiBanners = ref([])
 const banners = computed(() => {
   const baked = Array.isArray(APP_DELIVERED?.portalBanners) ? APP_DELIVERED.portalBanners : []
@@ -70,11 +70,12 @@ const banners = computed(() => {
     title: b.title || '',
     lead: b.lead || '',
     linkUrl: b.linkUrl || b.href || '',
-  }))
-  // 有图优先；无图但有标题的也保留（mall 纯色兜底文案）
-  const merged = [...fromApi, ...baked].filter((x) => x && (x.src || x.title))
-  const withSrc = merged.filter((x) => x.src)
-  return withSrc.length ? withSrc : merged
+  })).filter((x) => x && (x.src || x.title))
+  if (fromApi.length) {
+    const withSrc = fromApi.filter((x) => x.src)
+    return withSrc.length ? withSrc : fromApi
+  }
+  return baked.filter((x) => x && x.src)
 })
 const claimCover = computed(() => banners.value[0]?.src || APP_DELIVERED?.authHero || '')
 
