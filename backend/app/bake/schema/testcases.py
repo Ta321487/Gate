@@ -792,18 +792,25 @@ def render_testcase_markdown(
     fields: int,
     rows: list[dict[str, str]],
 ) -> str:
+    from app.bake.schema.zh_copy import squeeze_cjk_alnum_spaces
+
     fields_n = normalize_testcase_fields(fields)
     headers = _TEMPLATE_HEADERS[fields_n]
     titles = [h[1] for h in headers]
     keys = [h[0] for h in headers]
     lines = [
-        f"## {title} — 软件测试用例（{fields_n}字段）",
+        f"## {squeeze_cjk_alnum_spaces(title)} — 软件测试用例（{fields_n}字段）",
         "",
         "| " + " | ".join(titles) + " |",
         "| " + " | ".join(["---"] * len(titles)) + " |",
     ]
     for r in rows:
-        cells = [str(r.get(k) or "").replace("|", "\\|").replace("\n", "<br>") for k in keys]
+        cells = [
+            squeeze_cjk_alnum_spaces(str(r.get(k) or ""))
+            .replace("|", "\\|")
+            .replace("\n", "<br>")
+            for k in keys
+        ]
         lines.append("| " + " | ".join(cells) + " |")
     lines.append("")
     return "\n".join(lines)
@@ -817,12 +824,14 @@ def testcase_model(
     label_patch: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     schema = schema if isinstance(schema, dict) else {}
+    from app.bake.schema.zh_copy import squeeze_cjk_alnum_spaces, squeeze_material
+
     fields_n = normalize_testcase_fields(fields)
-    title = _app_title(schema, title_fallback)
+    title = squeeze_cjk_alnum_spaces(_app_title(schema, title_fallback))
     raw_rows = build_testcase_rows(schema)
     if label_patch:
         raw_rows = apply_testcase_label_patch(raw_rows, label_patch)
-    projected = project_rows(raw_rows, fields_n)
+    projected = squeeze_material(project_rows(raw_rows, fields_n))
     headers = [{"key": k, "title": t} for k, t in _TEMPLATE_HEADERS[fields_n]]
     return {
         "title": title,

@@ -17,9 +17,9 @@
         <p v-if="intro" class="ucd-intro">{{ intro }}</p>
         <div v-for="(c, i) in cases" :key="c.id || i" class="ucd-case">
           <p class="ucd-cap">
-            （{{ i + 1 }}）{{ c.name }}功能的用例说明，见表 {{ c.table_no }} 所示。
+            （{{ i + 1 }}）{{ c.name }}功能的用例说明，见表{{ c.table_no }}所示。
           </p>
-          <p class="ucd-table-title">表 {{ c.table_no }} “{{ c.name }}”的用例描述表</p>
+          <p class="ucd-table-title">表{{ c.table_no }} “{{ c.name }}”的用例描述表</p>
           <table class="ucd-table">
             <tbody>
               <tr>
@@ -57,6 +57,17 @@ import { message } from '../api'
 import ContentLoading from './ContentLoading.vue'
 import DiagramRubricBanner from './DiagramRubricBanner.vue'
 import { isDark } from '../theme'
+import {
+  copyMaterialText,
+  squeezeCjkAlnumSpaces,
+  writeMaterialClipboard,
+} from '../utils/zhCopy'
+import {
+  escapeHtml,
+  kvTableHtml,
+  wordCellParagraphs,
+  wrapWordHtml,
+} from '../utils/thesisTableHtml'
 
 const props = defineProps({
   intro: { type: String, default: '' },
@@ -82,50 +93,39 @@ const fileBase = computed(
     'usecase-descriptions',
 )
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 function htmlForWord() {
-  const border = 'border:1px solid #000;'
-  const thStyle =
-    `${border}padding:4pt 6pt;vertical-align:middle;text-align:center;` +
-    `font-weight:bold;color:#000;background:#fff;width:88pt;white-space:nowrap;`
-  const tdStyle =
-    `${border}padding:4pt 6pt;vertical-align:top;text-align:left;` +
-    `font-weight:normal;color:#000;background:#fff;`
+  const pStyle = 'margin:0 0 8pt;color:#000;font-size:12pt;font-family:宋体,SimSun,serif'
   const parts = []
   if (props.intro) {
-    parts.push(`<p style="color:#000;font-size:12pt;font-family:宋体,SimSun,serif">${escapeHtml(props.intro)}</p>`)
+    parts.push(`<p style="${pStyle}">${escapeHtml(props.intro)}</p>`)
   }
   for (let i = 0; i < (props.cases || []).length; i++) {
     const c = props.cases[i]
-    const flowHtml = (c.flow || [])
-      .map((s, si) => `${si + 1}. ${escapeHtml(s)}`)
-      .join('<br>')
-    parts.push(
-      `<p style="color:#000;font-size:12pt;font-family:宋体,SimSun,serif">（${i + 1}）${escapeHtml(c.name)}功能的用例说明，见表 ${escapeHtml(c.table_no)} 所示。</p>`,
+    const flowHtml = wordCellParagraphs(
+      (c.flow || []).map((s, si) => `${si + 1}. ${escapeHtml(s)}`),
     )
     parts.push(
-      `<p style="color:#000;font-size:12pt;font-family:宋体,SimSun,serif;text-align:center">表 ${escapeHtml(c.table_no)} “${escapeHtml(c.name)}”的用例描述表</p>`,
+      `<p style="${pStyle}">${escapeHtml(
+        squeezeCjkAlnumSpaces(
+          `（${i + 1}）${c.name}功能的用例说明，见表${c.table_no}所示。`,
+        ),
+      )}</p>`,
     )
     parts.push(
-      `<table border="1" cellspacing="0" cellpadding="0" ` +
-        `style="border-collapse:collapse;border:1px solid #000;width:100%;` +
-        `font-size:12pt;font-family:宋体,SimSun,serif;color:#000;background:#fff;margin-bottom:12pt">` +
-        `<tbody>` +
-        `<tr><th style="${thStyle}">用例名称</th><td style="${tdStyle}">${escapeHtml(c.name)}</td></tr>` +
-        `<tr><th style="${thStyle}">执行者</th><td style="${tdStyle}">${escapeHtml(c.actor)}</td></tr>` +
-        `<tr><th style="${thStyle}">简要说明</th><td style="${tdStyle}">${escapeHtml(c.summary)}</td></tr>` +
-        `<tr><th style="${thStyle}">基本事件流</th><td style="${tdStyle}">${flowHtml}</td></tr>` +
-        `</tbody></table>`,
+      `<p style="${pStyle};text-align:center">${escapeHtml(
+        squeezeCjkAlnumSpaces(`表${c.table_no} “${c.name}”的用例描述表`),
+      )}</p>`,
+    )
+    parts.push(
+      kvTableHtml([
+        ['用例名称', escapeHtml(c.name)],
+        ['执行者', escapeHtml(c.actor)],
+        ['简要说明', escapeHtml(c.summary)],
+        ['基本事件流', flowHtml],
+      ]),
     )
   }
-  return `<html><body>${parts.join('')}</body></html>`
+  return wrapWordHtml(parts.join(''))
 }
 
 function plainText() {
@@ -133,35 +133,30 @@ function plainText() {
   if (props.intro) lines.push(props.intro, '')
   for (let i = 0; i < (props.cases || []).length; i++) {
     const c = props.cases[i]
-    lines.push(`（${i + 1}）${c.name}功能的用例说明，见表 ${c.table_no} 所示。`)
-    lines.push(`表 ${c.table_no} “${c.name}”的用例描述表`)
+    lines.push(
+      squeezeCjkAlnumSpaces(
+        `（${i + 1}）${c.name}功能的用例说明，见表${c.table_no}所示。`,
+      ),
+    )
+    lines.push(squeezeCjkAlnumSpaces(`表${c.table_no} “${c.name}”的用例描述表`))
     lines.push(`用例名称\t${c.name}`)
     lines.push(`执行者\t${c.actor}`)
     lines.push(`简要说明\t${c.summary}`)
-    lines.push(`基本事件流\t${(c.flow || []).map((s, si) => `${si + 1}. ${s}`).join(' ')}`)
+    lines.push(
+      `基本事件流\t${(c.flow || []).map((s, si) => `${si + 1}. ${s}`).join('\n')}`,
+    )
     lines.push('')
   }
   return lines.join('\n')
 }
 
 async function copyAll() {
-  const html = htmlForWord()
-  const text = plainText()
   try {
-    if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([text], { type: 'text/plain' }),
-        }),
-      ])
-    } else {
-      await navigator.clipboard.writeText(text)
-    }
+    await writeMaterialClipboard({ html: htmlForWord(), text: plainText() })
     message.success('已复制，可粘贴到 Word')
   } catch {
     try {
-      await navigator.clipboard.writeText(text)
+      await copyMaterialText(plainText())
       message.warning('已复制为纯文本')
     } catch {
       message.error('复制失败')
@@ -171,7 +166,7 @@ async function copyAll() {
 
 async function copyMarkdown() {
   try {
-    await navigator.clipboard.writeText(props.markdown || '')
+    await copyMaterialText(props.markdown || '')
     message.success('已复制 Markdown')
   } catch {
     message.error('复制失败')
@@ -179,7 +174,9 @@ async function copyMarkdown() {
 }
 
 function downloadMd() {
-  const blob = new Blob([props.markdown || ''], { type: 'text/markdown;charset=utf-8' })
+  const blob = new Blob([squeezeCjkAlnumSpaces(props.markdown || '')], {
+    type: 'text/markdown;charset=utf-8',
+  })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
   a.download = `${fileBase.value}.md`
@@ -220,27 +217,39 @@ function downloadMd() {
   text-align: center;
   font-weight: 600;
 }
+/* 预览：校模板三线+轻网格（复制 Word 走 htmlForWord 内联粗/细线） */
 .ucd-table {
   width: 100%;
   border-collapse: collapse;
+  border: none;
+  border-top: 2px solid var(--ink, #0f172a);
+  border-bottom: 2px solid var(--ink, #0f172a);
   font-size: 13px;
   background: var(--surface, #fff);
   color: var(--ink, #0f172a);
 }
 .ucd-table th,
 .ucd-table td {
-  border: 1px solid var(--line, #cbd5e1);
+  border: 1px solid var(--ink, #0f172a);
   padding: 8px 10px;
   vertical-align: top;
   color: inherit;
   background: transparent;
+}
+.ucd-table tr:first-child th,
+.ucd-table tr:first-child td {
+  border-top-width: 2px;
+}
+.ucd-table tr:last-child th,
+.ucd-table tr:last-child td {
+  border-bottom-width: 2px;
 }
 .ucd-table th {
   width: 96px;
   text-align: center;
   font-weight: 600;
   white-space: nowrap;
-  background: color-mix(in srgb, var(--ink, #0f172a) 6%, var(--surface, #fff));
+  background: transparent;
 }
 .ucd-flow {
   margin: 0;
@@ -263,14 +272,13 @@ function downloadMd() {
 .ucd-viewer.is-dark .ucd-table {
   background: transparent;
   color: inherit;
+  border-top-color: #e8eef2;
+  border-bottom-color: #e8eef2;
 }
 .ucd-viewer.is-dark .ucd-table th,
 .ucd-viewer.is-dark .ucd-table td {
-  border-color: #334155;
+  border-color: #94a3b8;
   background: transparent;
   color: inherit;
-}
-.ucd-viewer.is-dark .ucd-table th {
-  background: color-mix(in srgb, #fff 8%, transparent);
 }
 </style>

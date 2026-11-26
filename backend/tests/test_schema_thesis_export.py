@@ -63,7 +63,7 @@ class SchemaThesisExportTests(unittest.TestCase):
         )
         self.assertNotIn("sys_user:user", names)
         phys = export["physical"]
-        self.assertIn("共设计 5 张数据表", phys)
+        self.assertIn("共设计5张数据表", phys)
         self.assertIn("辅助表", phys)
         self.assertIn("sys_auth_session", phys)
         self.assertIn("category_id", phys)
@@ -75,6 +75,10 @@ class SchemaThesisExportTests(unittest.TestCase):
         self.assertIn("主键", phys)
         html = export["physical_html"]
         self.assertIn("<table", html)
+        self.assertIn('border="0"', html)
+        self.assertNotIn('border="1"', html)
+        self.assertIn("1.5pt solid #000", html)
+        self.assertIn("0.5pt solid #000", html)
         self.assertIn("列名", html)
         self.assertIn("category_id", html)
         self.assertIn("background:#fff", html)

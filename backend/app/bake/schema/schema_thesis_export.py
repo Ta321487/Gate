@@ -6,6 +6,7 @@
 行文对齐样例论文（柚子动漫周边）：
 - 4.6.2 逻辑：``表名(属性、…)`` 一行一表；引言说明横线=主键、波浪线=外键
 - 4.6.3 物理：``（n）表：…如表4.n所示`` + ``表4.n…`` + 制表符八列，可贴 Word 转表格
+- HTML 表样式：校模板「三线 + 轻网格」（见 ``thesis_table_html``），与用例描述/测例同源
 """
 
 from __future__ import annotations
@@ -17,6 +18,13 @@ from app.bake.schema.er_model import (
     _ER_SAMPLE_SHELL_TABLES,
     _is_sample_shell_table,
     apply_er_display_mode,
+)
+from app.bake.schema.thesis_table_html import (
+    WORD_P as _WORD_P,
+    html_body_inner,
+    html_esc as _html_esc,
+    rows_to_html_table as _rows_to_html_table,
+    wrap_word_html as _wrap_word_html,
 )
 
 _CREATE_RE = re.compile(
@@ -63,16 +71,6 @@ def _zh_table_name(table: dict[str, Any]) -> str:
     if label.endswith("表"):
         return label
     return f"{label}表"
-
-
-def _html_esc(s: str) -> str:
-    return (
-        str(s or "")
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
 
 
 def _logical_attr_plain(col: dict[str, Any]) -> str:
@@ -234,66 +232,11 @@ def _physical_intro(
         f"考虑到{db}的数据存储需求，最终选定 MySQL 作为数据库系统。"
         "MySQL 具备传输速度快、性能优越等特点，能够很好地满足系统运行需要。"
         f"围绕不同功能模块，共设计 {n} 张数据表"
-        f"（业务表 {len(biz)} 张"
-        + (f"，辅助表 {len(shells)} 张" if shells else "")
+        f"（业务表{len(biz)}张"
+        + (f"，辅助表{len(shells)}张" if shells else "")
         + f"），主要包括：{main_names}。"
         "以下表结构均来自交付包 sql/schema.sql，未增删表或字段。表格的结构如下"
     )
-
-
-# 粘贴 Word / 下载 HTML：固定白底黑字（与用例描述表同源口径），不跟工厂深色主题
-_WORD_P = (
-    "margin:0 0 8pt;color:#000;background:#fff;"
-    "font-size:12pt;font-family:宋体,SimSun,serif;line-height:1.5;"
-)
-_WORD_TH = (
-    "border:1px solid #000;padding:4pt 6pt;vertical-align:middle;text-align:center;"
-    "font-weight:bold;color:#000;background:#fff;white-space:nowrap;"
-)
-_WORD_TD = (
-    "border:1px solid #000;padding:4pt 6pt;vertical-align:top;text-align:left;"
-    "font-weight:normal;color:#000;background:#fff;"
-)
-_WORD_TABLE = (
-    "border-collapse:collapse;border:1px solid #000;width:100%;"
-    "font-size:10.5pt;font-family:宋体,SimSun,serif;color:#000;background:#fff;"
-    "margin:0 0 12pt;"
-)
-
-
-def _rows_to_html_table(rows: list[list[str]]) -> str:
-    if not rows:
-        return ""
-    head, *body = rows
-    th = "".join(f'<th style="{_WORD_TH}">{_html_esc(c)}</th>' for c in head)
-    trs = [f"<tr>{th}</tr>"]
-    for r in body:
-        tds = "".join(f'<td style="{_WORD_TD}">{_html_esc(c)}</td>' for c in r)
-        trs.append(f"<tr>{tds}</tr>")
-    return (
-        f'<table border="1" cellspacing="0" cellpadding="0" style="{_WORD_TABLE}">'
-        + "".join(trs)
-        + "</table>"
-    )
-
-
-def _wrap_word_html(inner: str) -> str:
-    """整页白底黑字，避免粘贴时吃到工厂深色容器样式。"""
-    return (
-        "<html><head><meta charset=\"utf-8\"></head>"
-        '<body style="color:#000;background:#fff;margin:12pt;">'
-        f"{inner}</body></html>"
-    )
-
-
-_BODY_INNER_RE = re.compile(r"<body[^>]*>(.*)</body>", re.I | re.S)
-
-
-def html_body_inner(doc: str) -> str:
-    """预览用：去掉 html/body 壳，只取正文。"""
-    s = str(doc or "")
-    m = _BODY_INNER_RE.search(s)
-    return (m.group(1) if m else s).strip()
 
 
 def render_physical_design(
@@ -327,7 +270,7 @@ def render_physical_design_html(
     *,
     db_name: str = "",
 ) -> str:
-    """4.6.3 物理设计 HTML 表格：白底黑字，复制可贴 Word 成表。"""
+    """4.6.3 物理设计 HTML：校模板三线+轻网格，复制可贴 Word 成表。"""
     ordered, biz, shells = _ordered_physical_tables(model)
     parts: list[str] = [
         f'<p style="{_WORD_P}"><b>4.6.3  数据库物理设计</b></p>',
@@ -452,15 +395,23 @@ def render_thesis_db_export(
     db_name: str = "",
     type_paren: bool = True,
 ) -> dict[str, Any]:
+    from app.bake.schema.zh_copy import squeeze_cjk_alnum_spaces
+
     tables = physical_tables(model)
     summary = schema_table_summary(model)
     shells = list(summary.get("shell_tables") or [])
-    logical = render_logical_design(model)
-    physical = render_physical_design(model, db_name=db_name, type_paren=type_paren)
-    logical_html = render_logical_design_html(model)
-    physical_html = render_physical_design_html(model, db_name=db_name)
-    logical_md = render_logical_design_md(model)
-    physical_md = render_physical_design_md(model, db_name=db_name)
+    logical = squeeze_cjk_alnum_spaces(render_logical_design(model))
+    physical = squeeze_cjk_alnum_spaces(
+        render_physical_design(model, db_name=db_name, type_paren=type_paren)
+    )
+    logical_html = squeeze_cjk_alnum_spaces(render_logical_design_html(model))
+    physical_html = squeeze_cjk_alnum_spaces(
+        render_physical_design_html(model, db_name=db_name)
+    )
+    logical_md = squeeze_cjk_alnum_spaces(render_logical_design_md(model))
+    physical_md = squeeze_cjk_alnum_spaces(
+        render_physical_design_md(model, db_name=db_name)
+    )
     combined = logical.rstrip() + "\n\n" + physical
     combined_html = _wrap_word_html(
         html_body_inner(logical_html) + "\n" + html_body_inner(physical_html)
@@ -472,7 +423,7 @@ def render_thesis_db_export(
         "combined": combined,
         "logical_html": logical_html,
         "physical_html": physical_html,
-        "combined_html": combined_html,
+        "combined_html": squeeze_cjk_alnum_spaces(combined_html),
         "logical_md": logical_md,
         "physical_md": physical_md,
         "combined_md": combined_md,

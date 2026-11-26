@@ -169,7 +169,11 @@ def resolve_figure_title(
             "modules": "{name}功能模块图",
         }
         tpl = fallback.get(kind, "{name}图")
-    return tpl.replace("{name}", name).replace("{domain}", domain)
+    from app.bake.schema.zh_copy import squeeze_cjk_alnum_spaces
+
+    return squeeze_cjk_alnum_spaces(
+        tpl.replace("{name}", name).replace("{domain}", domain)
+    )
 
 
 def figure_title_from_schema(

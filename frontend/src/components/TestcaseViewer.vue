@@ -43,6 +43,17 @@ import { computed, ref, watch } from 'vue'
 import { message } from '../api'
 import ContentLoading from './ContentLoading.vue'
 import { isDark } from '../theme'
+import {
+  copyMaterialText,
+  squeezeCjkAlnumSpaces,
+  writeMaterialClipboard,
+} from '../utils/zhCopy'
+import {
+  escapeHtml,
+  gridTableHtml,
+  wordCellParagraphs,
+  wrapWordHtml,
+} from '../utils/thesisTableHtml'
 
 const props = defineProps({
   columns: { type: Array, default: () => [] },
@@ -81,14 +92,6 @@ const fileBase = computed(
   () => String(props.downloadName || 'testcases').replace(/\.(md|txt)$/i, '') || 'testcases',
 )
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
 function tableTsv() {
   const cols = props.columns || []
   const head = cols.map((c) => c.title).join('\t')
@@ -102,58 +105,28 @@ function tableTsv() {
   return `${head}\n${body}`
 }
 
-/** Word 粘贴用：纯黑白线框（无灰底/主题色），表头加粗居中 */
+/** Word 粘贴：校模板三线+轻网格（顶/表头下/底粗线） */
 function tableHtmlForWord() {
   const cols = props.columns || []
-  const border = 'border:1px solid #000;'
-  const thStyle =
-    `${border}padding:4pt 6pt;vertical-align:middle;text-align:center;` +
-    `font-weight:bold;color:#000;background:#fff;white-space:nowrap;`
-  const tdStyle =
-    `${border}padding:4pt 6pt;vertical-align:top;text-align:left;` +
-    `font-weight:normal;color:#000;background:#fff;`
-  const th = cols.map((c) => `<th style="${thStyle}">${escapeHtml(c.title)}</th>`).join('')
-  const trs = (props.rows || [])
-    .map((r) => {
-      const tds = cols
-        .map((c) => {
-          const raw = String(r[c.key] ?? '')
-          const html = escapeHtml(raw).replace(/\n/g, '<br>')
-          return `<td style="${tdStyle}">${html}</td>`
-        })
-        .join('')
-      return `<tr>${tds}</tr>`
-    })
-    .join('')
-  // Word 更认带完整 html 壳 + 显式黑白样式的表
-  return (
-    `<html><body>` +
-    `<table border="1" cellspacing="0" cellpadding="0" ` +
-    `style="border-collapse:collapse;border:1px solid #000;width:100%;` +
-    `font-size:12pt;font-family:宋体,SimSun,serif;color:#000;background:#fff">` +
-    `<thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>` +
-    `</body></html>`
+  const head = cols.map((c) => escapeHtml(c.title))
+  const body = (props.rows || []).map((r) =>
+    cols.map((c) => {
+      const raw = squeezeCjkAlnumSpaces(String(r[c.key] ?? ''))
+      return wordCellParagraphs(escapeHtml(raw).split(/\r\n|\n|\r/))
+    }),
   )
+  return wrapWordHtml(gridTableHtml([head, ...body]))
 }
 
 async function copyTable() {
   const html = tableHtmlForWord()
   const tsv = tableTsv()
   try {
-    if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([tsv], { type: 'text/plain' }),
-        }),
-      ])
-    } else {
-      await navigator.clipboard.writeText(tsv)
-    }
+    await writeMaterialClipboard({ html, text: tsv })
     message.success('已复制表格，可粘贴到 Word')
   } catch {
     try {
-      await navigator.clipboard.writeText(tsv)
+      await copyMaterialText(tsv)
       message.warning('已复制为纯文本，建议在 Word 中粘贴后转表格')
     } catch {
       message.error('复制失败')
@@ -163,7 +136,7 @@ async function copyTable() {
 
 async function copyMarkdown() {
   try {
-    await navigator.clipboard.writeText(props.markdown || '')
+    await copyMaterialText(props.markdown || '')
     message.success('已复制 Markdown')
   } catch {
     message.error('复制失败')
@@ -171,7 +144,9 @@ async function copyMarkdown() {
 }
 
 function downloadMd() {
-  const blob = new Blob([props.markdown || ''], { type: 'text/markdown;charset=utf-8' })
+  const blob = new Blob([squeezeCjkAlnumSpaces(props.markdown || '')], {
+    type: 'text/markdown;charset=utf-8',
+  })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
   a.download = `${fileBase.value}.md`
@@ -193,25 +168,34 @@ function downloadMd() {
   border: 1px solid var(--line);
   background: var(--surface-2, #fafafa);
 }
+/* 预览：校模板三线+轻网格（复制 Word 走 tableHtmlForWord） */
 .tc-table {
   width: 100%;
   border-collapse: collapse;
+  border: none;
+  border-top: 2px solid var(--ink, #0f172a);
+  border-bottom: 2px solid var(--ink, #0f172a);
   font-size: 13px;
   background: var(--surface, #fff);
   color: var(--ink, #0f172a);
 }
 .tc-table th,
 .tc-table td {
-  border: 1px solid var(--line, #cbd5e1);
+  border: 1px solid var(--ink, #0f172a);
   padding: 6px 8px;
   vertical-align: top;
-  text-align: left;
+  text-align: center;
   color: inherit;
+  background: transparent;
 }
-.tc-table th {
-  background: color-mix(in srgb, var(--ink, #0f172a) 6%, var(--surface, #fff));
+.tc-table thead th {
+  border-top-width: 2px;
+  border-bottom-width: 2px;
   font-weight: 600;
   white-space: nowrap;
+}
+.tc-table tbody tr:last-child td {
+  border-bottom-width: 2px;
 }
 .tc-table td {
   min-width: 72px;
@@ -222,8 +206,11 @@ function downloadMd() {
 }
 .tc-viewer.is-dark .tc-table {
   background: transparent;
+  border-top-color: #e8eef2;
+  border-bottom-color: #e8eef2;
 }
-.tc-viewer.is-dark .tc-table th {
-  background: color-mix(in srgb, #fff 8%, transparent);
+.tc-viewer.is-dark .tc-table th,
+.tc-viewer.is-dark .tc-table td {
+  border-color: #94a3b8;
 }
 </style>

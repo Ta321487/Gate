@@ -107,13 +107,18 @@ def workflow_prose_from_diagram(diagram: dict[str, Any] | None) -> dict[str, Any
             }
         )
 
+    from app.bake.schema.zh_copy import squeeze_cjk_alnum_spaces
+
     lines = [f"（{s['n']}）{s['text']}" for s in steps]
     plain = heading + "\n" + "\n".join(lines) if lines else heading
     return {
-        "title": heading,
-        "topic": topic,
-        "steps": steps,
-        "plain": plain,
+        "title": squeeze_cjk_alnum_spaces(heading),
+        "topic": squeeze_cjk_alnum_spaces(topic),
+        "steps": [
+            {**s, "text": squeeze_cjk_alnum_spaces(str(s.get("text") or ""))}
+            for s in steps
+        ],
+        "plain": squeeze_cjk_alnum_spaces(plain),
         "source_note": "由本张序列图消息逐步改写，不发明图外步骤；换题随交付菜单与勾选变化。",
     }
 
