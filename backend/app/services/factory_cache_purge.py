@@ -16,6 +16,7 @@ from app.services import runtime as rt
 # 已知子目录（按名清理；也扫 cache 根下其它一级目录）
 _NAMED_BUCKETS = (
     "baseline-frontend",
+    "npm-cache",
     "auth-heroes",
     "portal-banners",
     "local-atmosphere",

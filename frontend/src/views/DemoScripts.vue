@@ -7,18 +7,16 @@
           配置各域答辩演示步骤与所需业务数据，出包写入演示剧本。
         </p>
       </div>
-      <div class="row" style="gap:8px;flex-wrap:wrap">
-        <n-button size="small" :loading="gapLoading" :disabled="!gapDomain" @click="scanGaps">
-          检查待补
-        </n-button>
-        <n-button
-          size="small"
-          :loading="migrating"
-          title="仅追加缺失项，不覆盖已有记录"
-          @click="migrate"
-        >导入初始剧本</n-button>
-        <n-button size="small" type="primary" @click="openCreate">登记步骤</n-button>
-      </div>
+      <AssetDeskActions
+        :gap-loading="gapLoading"
+        :migrating="migrating"
+        :check-disabled="!gapDomain"
+        migrate-label="导入初始剧本"
+        create-label="登记步骤"
+        @check="scanGaps"
+        @migrate="migrate"
+        @create="openCreate"
+      />
     </div>
 
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
@@ -30,18 +28,18 @@
         </div>
         <div class="stat">
           <div class="label">待补</div>
-          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapsScanned ? gapCount : '—' }}</div>
+          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapStatDisplay(gapsScanned, gapCount) }}</div>
         </div>
       </div>
 
-      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12" @update:value="onTab">
+      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12">
         <n-tab-pane name="entries" tab="步骤" />
         <n-tab-pane name="gaps" tab="待补" />
       </n-tabs>
 
       <div v-show="mainTab === 'entries'" class="panel panel-quiet">
         <div class="panel-hd">
-          <div class="row ds-filter-row">
+          <div class="row asset-desk-filter-row">
             <n-select
               v-model:value="domain"
               size="small"
@@ -80,7 +78,7 @@
             <div class="empty-desc">用顶栏导入或登记一条。</div>
           </div>
           <template v-else>
-            <div class="ds-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -141,7 +139,7 @@
 
       <div v-show="mainTab === 'gaps'" class="panel panel-quiet">
         <div class="panel-hd">
-          <div class="row ds-filter-row" style="align-items:center">
+          <div class="row asset-desk-filter-row" style="align-items:center">
             <n-select
               v-model:value="gapDomain"
               size="small"
@@ -167,7 +165,7 @@
             </div>
           </div>
           <template v-else>
-            <div class="ds-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -194,7 +192,7 @@
 
     <n-drawer v-model:show="drawerOpen" :width="420" placement="right" @after-leave="onDrawerLeave">
       <n-drawer-content :title="editingId ? '改步骤' : '登记步骤'" closable>
-        <div class="ds-drawer-form">
+        <div class="asset-desk-drawer-form">
           <n-form-item label="域" :show-feedback="false">
             <n-select
               v-model:value="form.domain_id"
@@ -291,8 +289,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api, message } from '../api'
+import { gapStatDisplay } from '../utils/assetDesk'
 import { confirm } from '../ui'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import AssetDeskActions from '../components/AssetDeskActions.vue'
 
 const booted = ref(false)
 const loading = ref(false)
@@ -467,9 +467,6 @@ function domainSelectLabel(dom) {
   return `${domainLabel(dom)}（${dom}）`
 }
 
-function onTab(tab) {
-  if (tab === 'gaps' && gapDomain.value && !gapsScanned.value) scanGaps()
-}
 
 function onPageSize() {
   page.value = 1
@@ -684,57 +681,3 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.ds-table-wrap {
-  overflow: auto;
-  max-height: calc(100vh - 380px);
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.data-table th,
-.data-table td {
-  text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--line, var(--line-soft));
-  vertical-align: middle;
-  color: var(--ink-2, var(--ink));
-}
-.data-table th {
-  color: var(--muted);
-  font-weight: 500;
-  position: sticky;
-  top: 0;
-  background: var(--surface);
-  z-index: 1;
-}
-.data-table tr.is-editing {
-  background: color-mix(in srgb, var(--teal-soft, #2a9d8f) 22%, transparent);
-}
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-}
-.bad {
-  color: var(--error, #c00);
-}
-.pager-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.ds-filter-row {
-  gap: 8px;
-  flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
-}
-.ds-drawer-form :deep(.n-form-item) {
-  margin-bottom: 10px;
-}
-</style>

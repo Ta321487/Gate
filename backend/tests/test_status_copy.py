@@ -24,11 +24,16 @@ class StatusCopyUnit(unittest.TestCase):
         assert ticket is not None
         self.assertEqual(ticket["label"], "待审核")
         self.assertEqual(ticket["domain_id"], "DOM-LIBRARY")
-        # 无专行的域吃 *
-        generic = sc.resolve_status("DOM-CERT", "ticket", "pending")
+        # 无状态机具名行的内容域仍吃 *
+        generic = sc.resolve_status("DOM-BLOG", "ticket", "pending")
         assert generic is not None
         self.assertEqual(generic["label"], "待审")
         self.assertEqual(generic["domain_id"], "*")
+        # F2：原缺具名的审批域已盖专行
+        cert = sc.resolve_status("DOM-CERT", "ticket", "pending")
+        assert cert is not None
+        self.assertEqual(cert["label"], "待开具")
+        self.assertEqual(cert["domain_id"], "DOM-CERT")
 
     def test_domain_overrides_wildcard(self) -> None:
         rows = sc._seed_payload() + [
@@ -45,8 +50,8 @@ class StatusCopyUnit(unittest.TestCase):
         ]
         hit = sc.resolve_status("DOM-LIBRARY", "ticket", "pending", rows=rows)
         self.assertEqual(hit["label"], "待馆员审")
-        # 无专行域仍吃 *（CERT 不在种子专行里）
-        other = sc.resolve_status("DOM-CERT", "ticket", "pending", rows=rows)
+        # 无专行域仍吃 *（内容向无 ticket 具名）
+        other = sc.resolve_status("DOM-BLOG", "ticket", "pending", rows=rows)
         self.assertEqual(other["label"], "待审")
 
     def test_apply_injects_status_copy_and_states(self) -> None:
@@ -145,6 +150,35 @@ class StatusCopyUnit(unittest.TestCase):
         keys = [(r["domain_id"], r["machine_id"], r["status_code"]) for r in rows]
         self.assertEqual(len(keys), len(set(keys)))
         self.assertGreaterEqual(len(rows), 100)
+
+    def test_catalog_domain_gaps_zero(self) -> None:
+        """有状态机的域须具名话术；扫 68 域零缺口。"""
+        report = sc.catalog_domain_gaps()
+        self.assertEqual(
+            report["gap_count"],
+            0,
+            msg="; ".join(
+                f"{g['domain_id']}.{g['machine_id']}.{g['status_code']}"
+                for g in report["gaps"][:20]
+            ),
+        )
+        self.assertEqual(report["domain_count"], 68)
+
+    def test_named_cert_meeting_salon(self) -> None:
+        self.assertEqual(
+            sc.resolve_status("DOM-SEAL", "ticket", "approved")["label"], "已用章"
+        )
+        self.assertEqual(
+            sc.resolve_status("DOM-MEETING", "reservation", "confirmed")["label"],
+            "已预约",
+        )
+        self.assertEqual(
+            sc.resolve_status("DOM-SALON", "reservation", "completed")["label"],
+            "已服务",
+        )
+        self.assertEqual(
+            sc.resolve_status("DOM-EXPENSE", "ticket", "pending")["label"], "待报销"
+        )
 
 
 if __name__ == "__main__":

@@ -21,6 +21,8 @@ import RuleParams from './views/RuleParams.vue'
 import ErEdgeCopy from './views/ErEdgeCopy.vue'
 import DemoAccounts from './views/DemoAccounts.vue'
 import DiagramTitles from './views/DiagramTitles.vue'
+import DiagramVerbs from './views/DiagramVerbs.vue'
+import UsecaseFlows from './views/UsecaseFlows.vue'
 import ErrorPage from './views/ErrorPage.vue'
 
 const router = createRouter({
@@ -55,6 +57,8 @@ const router = createRouter({
     { path: '/er-edge-copy', name: 'er-edge-copy', component: ErEdgeCopy, meta: { crumb: '表关系叙事' } },
     { path: '/demo-accounts', name: 'demo-accounts', component: DemoAccounts, meta: { crumb: '测试账号' } },
     { path: '/diagram-titles', name: 'diagram-titles', component: DiagramTitles, meta: { crumb: '论文图题' } },
+    { path: '/diagram-verbs', name: 'diagram-verbs', component: DiagramVerbs, meta: { crumb: '实体动作词' } },
+    { path: '/usecase-flows', name: 'usecase-flows', component: UsecaseFlows, meta: { crumb: '用例流程' } },
     {
       path: '/thesis-absorb',
       name: 'thesis-absorb',

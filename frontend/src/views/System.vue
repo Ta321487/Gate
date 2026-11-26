@@ -160,7 +160,7 @@
         </div>
         <div class="panel-bd">
           <p class="small muted mb-12">
-            这里主要是各题共用的前端依赖（baseline-frontend）和配图缓存。清理后下次预览会重新装依赖，可能多等几分钟。
+            这里主要是各题共用的前端依赖（baseline-frontend）、工厂自管 npm-cache，以及配图缓存。清理后下次预览会重新装依赖，可能多等几分钟。
             不会动开题材料、项目工程、骨架和本机 Maven 仓库。有预览在跑时不能清。
           </p>
           <template v-if="cacheInfo">

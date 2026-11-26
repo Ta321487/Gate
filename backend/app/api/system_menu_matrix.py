@@ -101,8 +101,13 @@ async def migrate_menu_matrix(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/system/menu-matrix/gaps", summary="缺少的菜单矩阵行")
-async def menu_matrix_gaps(db: AsyncSession = Depends(get_db)):
+async def menu_matrix_gaps(
+    scan_domains: bool = Query(False, description="扫 catalog 全部域具名常驻菜单"),
+    db: AsyncSession = Depends(get_db),
+):
     rows = await mm.load_all_rows(db)
+    if scan_domains:
+        return {"ok": True, **mm.catalog_domain_gaps(rows=rows)}
     return {"ok": True, **mm.gap_report(rows=rows)}
 
 

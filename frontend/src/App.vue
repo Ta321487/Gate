@@ -159,6 +159,8 @@ const navSections = [
       { to: '/er-edge-copy', label: '表关系叙事', desc: '表边一句人话', match: ['er-edge-copy'] },
       { to: '/demo-accounts', label: '测试账号', desc: '三端演示账号', match: ['demo-accounts'] },
       { to: '/diagram-titles', label: '论文图题', desc: '图种标题模板', match: ['diagram-titles'] },
+      { to: '/diagram-verbs', label: '实体动作词', desc: '图内业务动词词源', match: ['diagram-verbs'] },
+      { to: '/usecase-flows', label: '用例流程', desc: '用例描述表事件流', match: ['usecase-flows'] },
     ],
   },
 ]

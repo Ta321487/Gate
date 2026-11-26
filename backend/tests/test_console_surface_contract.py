@@ -38,6 +38,9 @@ class ConsoleSurfaceContractTest(unittest.TestCase):
         self.assertIn(".surface-main", css)
         self.assertIn(".surface-tray", css)
         self.assertIn(".surface-toolbar", css)
+        self.assertIn(".asset-desk-table-wrap", css)
+        self.assertIn(".asset-desk-filter-row", css)
+        self.assertIn(".asset-desk-drawer-form", css)
         self.assertIn(".panel-quiet", css)
         self.assertIn(".surface-detail .detail-stage-body", css)
         # 全局 panel 扁平：头栏不再厚底 surface-2 墙
@@ -260,8 +263,8 @@ class ConsoleSurfaceContractTest(unittest.TestCase):
         self.assertIn("demoAccounts", src)
         self.assertNotIn('role="button"', src)
 
-    def test_asset_catalog_gap_stat_unknown_dash(self):
-        """资产台「待补」未扫/加载中用 —，禁止假 0 冒充已齐（§3.5 R2）。"""
+    def test_asset_desk_shared_chrome(self):
+        """资产台内部统一：共用类 + AssetDeskActions + 筛条「查询」（§3.5 R8）。"""
         views = (
             "ZhLexicon.vue",
             "StatusCopy.vue",
@@ -276,14 +279,57 @@ class ConsoleSurfaceContractTest(unittest.TestCase):
             "ErEdgeCopy.vue",
             "DemoAccounts.vue",
             "DiagramTitles.vue",
+            "DiagramVerbs.vue",
+            "UsecaseFlows.vue",
         )
-        needle = "{{ gapsScanned ? gapCount : '—' }}"
+        actions = (FE / "components" / "AssetDeskActions.vue").read_text(encoding="utf-8")
+        self.assertIn("检查待补", actions)
+        self.assertIn('type="primary"', actions)
+        for name in views:
+            src = (FE / "views" / name).read_text(encoding="utf-8")
+            with self.subTest(view=name):
+                self.assertIn("AssetDeskActions", src)
+                self.assertIn("asset-desk-table-wrap", src)
+                self.assertIn("asset-desk-filter-row", src)
+                self.assertIn(">查询</n-button>", src)
+                self.assertNotIn(">刷新</n-button>", src)
+                # 表壳/筛条样式不得再私抄进 scoped
+                self.assertNotIn(".asset-desk-table-wrap {", src)
+                self.assertNotIn(".asset-desk-filter-row {", src)
+                self.assertNotIn(".data-table {", src)
+
+    def test_asset_catalog_gap_stat_unknown_dash(self):
+        """资产台「待补」未扫用 —；切页签不自动扫（§3.5 R2）。"""
+        views = (
+            "ZhLexicon.vue",
+            "StatusCopy.vue",
+            "DictValues.vue",
+            "DemoScripts.vue",
+            "AddonSuggest.vue",
+            "CapCards.vue",
+            "ErrorCopy.vue",
+            "WidgetHints.vue",
+            "MenuMatrix.vue",
+            "RuleParams.vue",
+            "ErEdgeCopy.vue",
+            "DemoAccounts.vue",
+            "DiagramTitles.vue",
+            "DiagramVerbs.vue",
+            "UsecaseFlows.vue",
+        )
+        needle = "gapStatDisplay(gapsScanned, gapCount)"
         bad_raw = ':class="{ bad: gapCount > 0 }">{{ gapCount }}'
+        util = (FE / "utils" / "assetDesk.js").read_text(encoding="utf-8")
+        self.assertIn("return '—'", util)
+        self.assertIn("不自动扫", util)
         for name in views:
             src = (FE / "views" / name).read_text(encoding="utf-8")
             with self.subTest(view=name):
                 self.assertIn(needle, src)
                 self.assertNotIn(bad_raw, src)
+                # 切「待补」页签不得顺手 scanGaps（须点顶栏「检查待补」）
+                self.assertNotIn('@update:value="onTab"', src)
+                self.assertNotIn("function onTab(", src)
 
     def test_ops_accent_presets(self):
         theme = (FE / "theme.js").read_text(encoding="utf-8")

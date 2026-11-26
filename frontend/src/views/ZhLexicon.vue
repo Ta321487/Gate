@@ -7,17 +7,24 @@
           给库列起中文名，出包后写进 schema.sql 的注释。列名保持英文。
         </p>
       </div>
-      <div class="row" style="gap:8px;flex-wrap:wrap">
-        <n-button size="small" :loading="gapLoading" @click="scanGaps">检查待补</n-button>
-        <n-button
-          size="small"
-          :disabled="!suggestableGapCount"
-          :loading="draftLoading"
-          @click="applySuggestDrafts"
-        >生成建议草稿</n-button>
-        <n-button size="small" :loading="migrating" @click="migrate">导入初始词表</n-button>
-        <n-button size="small" type="primary" @click="openCreate">登记词条</n-button>
-      </div>
+      <AssetDeskActions
+        :gap-loading="gapLoading"
+        :migrating="migrating"
+        migrate-label="导入初始词表"
+        create-label="登记词条"
+        @check="scanGaps"
+        @migrate="migrate"
+        @create="openCreate"
+      >
+        <template #extra>
+          <n-button
+            size="small"
+            :disabled="!suggestableGapCount"
+            :loading="draftLoading"
+            @click="applySuggestDrafts"
+          >生成建议草稿</n-button>
+        </template>
+      </AssetDeskActions>
     </div>
 
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
@@ -29,11 +36,11 @@
         </div>
         <div class="stat">
           <div class="label">待补</div>
-          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapsScanned ? gapCount : '—' }}</div>
+          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapStatDisplay(gapsScanned, gapCount) }}</div>
         </div>
       </div>
 
-      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12" @update:value="onTab">
+      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12">
         <n-tab-pane name="entries" tab="词条" />
         <n-tab-pane name="gaps" tab="待补" />
       </n-tabs>
@@ -41,7 +48,7 @@
       <!-- 词条 -->
       <div v-show="mainTab === 'entries'" class="panel panel-quiet">
         <div class="panel-hd">
-          <div class="row zl-filter-row">
+          <div class="row asset-desk-filter-row">
             <n-select
               v-model:value="kind"
               size="small"
@@ -82,7 +89,7 @@
               @keyup.enter="reloadFromTop"
             />
           </div>
-          <n-button size="small" :loading="loading" @click="reloadFromTop">刷新</n-button>
+          <n-button size="small" :loading="loading" @click="reloadFromTop">查询</n-button>
         </div>
         <div class="panel-bd">
           <div v-if="!items.length" class="empty-hint">
@@ -90,7 +97,7 @@
             <div class="empty-desc">用顶栏导入或登记一条。</div>
           </div>
           <template v-else>
-            <div class="zl-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -150,7 +157,7 @@
       <!-- 待补：条数只在底部分页；检查只走顶栏「检查待补」 -->
       <div v-show="mainTab === 'gaps'" class="panel panel-quiet">
         <div class="panel-hd">
-          <div class="row zl-filter-row" style="align-items:center">
+          <div class="row asset-desk-filter-row" style="align-items:center">
             <n-select
               v-model:value="gapDomain"
               size="small"
@@ -177,7 +184,7 @@
             </div>
           </div>
           <template v-else>
-            <div class="zl-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -237,7 +244,7 @@
 
     <n-drawer v-model:show="drawerOpen" :width="400" placement="right" @after-leave="onDrawerLeave">
       <n-drawer-content :title="editingId ? '改词条' : '登记词条'" closable>
-        <div class="zl-drawer-form">
+        <div class="asset-desk-drawer-form">
           <n-form-item label="类型" :show-feedback="false">
             <n-select
               v-model:value="form.kind"
@@ -264,7 +271,7 @@
               :placeholder="formZhPlaceholder"
             />
           </n-form-item>
-          <p v-if="zhDupWarn" class="small zl-warn">{{ zhDupWarn }}</p>
+          <p v-if="zhDupWarn" class="small asset-desk-warn">{{ zhDupWarn }}</p>
           <template v-if="formShowDomainSkin">
             <n-form-item label="域" :show-feedback="false">
               <n-select
@@ -321,8 +328,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api, message } from '../api'
+import { gapStatDisplay } from '../utils/assetDesk'
 import { confirm } from '../ui'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import AssetDeskActions from '../components/AssetDeskActions.vue'
 
 const ZH_MAX_LEN = 64
 
@@ -538,9 +547,6 @@ function domainSelectLabel(dom) {
   return `${domainLabel(dom)}（${dom}）`
 }
 
-function onTab(tab) {
-  if (tab === 'gaps' && !gapsScanned.value) scanGaps()
-}
 
 function onPageSize() {
   page.value = 1
@@ -800,76 +806,7 @@ onMounted(async () => {
   await loadMeta()
   await load()
   await loadColumnCorpus()
-  try {
-    const res = await api.zhLexiconGaps()
-    gapCount.value = res.gap_count ?? 0
-    gaps.value = res.gaps || []
-    gapsScanned.value = true
-  } catch {
-    /* ignore */
-  }
+  // 待补约定：未点「检查待补」前显示 —；切页签不扫，进门也不预扫
 })
 </script>
 
-<style scoped>
-.zl-table-wrap {
-  overflow: auto;
-  max-height: calc(100vh - 380px);
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.data-table th,
-.data-table td {
-  text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--line, var(--line-soft));
-  vertical-align: middle;
-  color: var(--ink-2, var(--ink));
-}
-.data-table th {
-  color: var(--muted);
-  font-weight: 500;
-  position: sticky;
-  top: 0;
-  background: var(--surface);
-  z-index: 1;
-}
-.data-table tr.is-editing {
-  background: color-mix(in srgb, var(--teal-soft, #2a9d8f) 22%, transparent);
-}
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-}
-.bad {
-  color: var(--error, #c00);
-}
-.pager-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.zl-filter-row {
-  gap: 8px;
-  flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
-}
-.panel-quiet .panel-hd {
-  align-items: flex-start;
-}
-.zl-drawer-form :deep(.n-form-item) {
-  margin-bottom: 10px;
-}
-.zl-warn {
-  margin: -4px 0 10px;
-  color: var(--warning, #b45309);
-  line-height: 1.4;
-}
-</style>

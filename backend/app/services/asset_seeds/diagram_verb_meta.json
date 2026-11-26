@@ -1,0 +1,62 @@
+[
+  {
+    "verb_key": "apply",
+    "label_zh": "发起 / 申请",
+    "desc_zh": "发起申请、报名、提交单据的主动作"
+  },
+  {
+    "verb_key": "approve",
+    "label_zh": "通过",
+    "desc_zh": "受理方同意申请"
+  },
+  {
+    "verb_key": "reject",
+    "label_zh": "驳回",
+    "desc_zh": "受理方拒绝申请"
+  },
+  {
+    "verb_key": "ship",
+    "label_zh": "主履约（交付）",
+    "desc_zh": "把单据推向已履约：出票 / 发货 / 入住 / 取车 / 出餐"
+  },
+  {
+    "verb_key": "complete",
+    "label_zh": "收尾（完成）",
+    "desc_zh": "履约收尾：确认观演 / 离店 / 还车 / 确认收货"
+  },
+  {
+    "verb_key": "confirm",
+    "label_zh": "受理 / 接单",
+    "desc_zh": "受理方接单或确认预订"
+  },
+  {
+    "verb_key": "cancel",
+    "label_zh": "取消",
+    "desc_zh": "用户或受理方取消单据"
+  },
+  {
+    "verb_key": "return",
+    "label_zh": "归还 / 退回",
+    "desc_zh": "归还物品、退回流程"
+  },
+  {
+    "verb_key": "remind",
+    "label_zh": "催办",
+    "desc_zh": "催促办理（催还 / 催取）"
+  },
+  {
+    "verb_key": "expire",
+    "label_zh": "置为逾期",
+    "desc_zh": "系统把单据置为逾期态（材料实测动词）"
+  },
+  {
+    "verb_key": "finalize",
+    "label_zh": "结项",
+    "desc_zh": "把流程一次性收口（材料实测动词）"
+  },
+  {
+    "verb_key": "submit",
+    "label_zh": "提交",
+    "desc_zh": "提交单据进入流程（材料实测动词）"
+  }
+]

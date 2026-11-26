@@ -1418,5 +1418,1535 @@
     "empty_zh": "",
     "for_roles": "admin,staff,user",
     "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审核",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已异动",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已办结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审核",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已认定",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已归档",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审批",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已放行",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待开具",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已开具",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已领取",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待年审",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已通过",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "未通过",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已办结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审批",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已签约",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已归档",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待认定",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已认定",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "未认定",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已归档",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已通过",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已退回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已结案",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待报销",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已报销",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已结清",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待备案",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已备案",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已办结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待派车",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已派车",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已收车",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待认定",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已认定",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "未通过",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已归档",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待确认",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已带看",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已取消",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已完成",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审核",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已认定",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已归档",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审核",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已通过",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "未通过",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已办结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审批",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已采购",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已到货",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待评审",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已立项",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "未立项",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已结项",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审批",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已通过",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已下架",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审批",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已用章",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已办结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "machine_id": "reservation",
+    "status_code": "pending",
+    "label_zh": "待确认",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "machine_id": "reservation",
+    "status_code": "confirmed",
+    "label_zh": "已预约",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "machine_id": "reservation",
+    "status_code": "completed",
+    "label_zh": "已使用",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "machine_id": "reservation",
+    "status_code": "cancelled",
+    "label_zh": "已取消",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "machine_id": "reservation",
+    "status_code": "pending",
+    "label_zh": "待确认",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "machine_id": "reservation",
+    "status_code": "confirmed",
+    "label_zh": "已预约",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "machine_id": "reservation",
+    "status_code": "completed",
+    "label_zh": "已服务",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "machine_id": "reservation",
+    "status_code": "cancelled",
+    "label_zh": "已取消",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审",
+    "action_zh": "通过",
+    "empty_zh": "暂无待审单据",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已完结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "machine_id": "reservation",
+    "status_code": "pending",
+    "label_zh": "待确认",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "machine_id": "reservation",
+    "status_code": "cancelled",
+    "label_zh": "已取消",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审",
+    "action_zh": "通过",
+    "empty_zh": "暂无待审单据",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已完结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "machine_id": "ticket",
+    "status_code": "pending_final",
+    "label_zh": "待终审",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已完结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已完结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已通过",
+    "action_zh": "",
+    "empty_zh": "还没有已通过的单据",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "machine_id": "reservation",
+    "status_code": "pending",
+    "label_zh": "待确认",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "machine_id": "reservation",
+    "status_code": "cancelled",
+    "label_zh": "已取消",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "machine_id": "reservation",
+    "status_code": "pending",
+    "label_zh": "待确认",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "machine_id": "reservation",
+    "status_code": "cancelled",
+    "label_zh": "已取消",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审",
+    "action_zh": "通过",
+    "empty_zh": "暂无待审单据",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "machine_id": "reservation",
+    "status_code": "pending",
+    "label_zh": "待确认",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "machine_id": "reservation",
+    "status_code": "confirmed",
+    "label_zh": "已预约",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "machine_id": "reservation",
+    "status_code": "cancelled",
+    "label_zh": "已取消",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已通过",
+    "action_zh": "",
+    "empty_zh": "还没有已通过的单据",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已完结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "machine_id": "ticket",
+    "status_code": "pending_final",
+    "label_zh": "待终审",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "machine_id": "reservation",
+    "status_code": "pending",
+    "label_zh": "待确认",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "machine_id": "reservation",
+    "status_code": "confirmed",
+    "label_zh": "已预约",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "machine_id": "reservation",
+    "status_code": "cancelled",
+    "label_zh": "已取消",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "machine_id": "ticket",
+    "status_code": "pending_final",
+    "label_zh": "待终审",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审",
+    "action_zh": "通过",
+    "empty_zh": "暂无待审单据",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "machine_id": "ticket",
+    "status_code": "returned",
+    "label_zh": "已完结",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审",
+    "action_zh": "通过",
+    "empty_zh": "暂无待审单据",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "machine_id": "ticket",
+    "status_code": "approved",
+    "label_zh": "已通过",
+    "action_zh": "",
+    "empty_zh": "还没有已通过的单据",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "machine_id": "ticket",
+    "status_code": "pending",
+    "label_zh": "待审",
+    "action_zh": "通过",
+    "empty_zh": "暂无待审单据",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "machine_id": "ticket",
+    "status_code": "rejected",
+    "label_zh": "已驳回",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "machine_id": "ticket",
+    "status_code": "overdue",
+    "label_zh": "已失效",
+    "action_zh": "",
+    "empty_zh": "",
+    "for_roles": "admin,staff,user",
+    "source": "migrated"
   }
 ]

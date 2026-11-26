@@ -47,6 +47,8 @@ async def lifespan(_app: FastAPI):
         from app.services.er_edge_copy import migrate_seed_if_empty as migrate_edges
         from app.services.demo_accounts import migrate_seed_if_empty as migrate_accts
         from app.services.diagram_titles import migrate_seed_if_empty as migrate_titles
+        from app.services.diagram_verbs import migrate_seed_if_empty as migrate_verbs
+        from app.services.usecase_flows import migrate_seed_if_empty as migrate_ucf
         from app.services.zh_lexicon import migrate_seed_if_empty as migrate_zh
 
         async with SessionLocal() as db:
@@ -63,6 +65,8 @@ async def lifespan(_app: FastAPI):
             await migrate_edges(db)
             await migrate_accts(db)
             await migrate_titles(db)
+            await migrate_verbs(db)
+            await migrate_ucf(db)
     except Exception:  # noqa: BLE001
         from app.services.addon_suggest import bootstrap_from_seed as boot_addon
         from app.services.cap_cards import bootstrap_from_seed as boot_caps
@@ -76,6 +80,8 @@ async def lifespan(_app: FastAPI):
         from app.services.er_edge_copy import bootstrap_from_seed as boot_eec
         from app.services.demo_accounts import bootstrap_from_seed as boot_da
         from app.services.diagram_titles import bootstrap_from_seed as boot_dt
+        from app.services.diagram_verbs import bootstrap_from_seed as boot_dvb
+        from app.services.usecase_flows import bootstrap_from_seed as boot_ucf
         from app.services.zh_lexicon import bootstrap_from_seed as boot_zh
 
         boot_zh()
@@ -91,6 +97,8 @@ async def lifespan(_app: FastAPI):
         boot_eec()
         boot_da()
         boot_dt()
+        boot_dvb()
+        boot_ucf()
     # 重启后无内存 Task 的 running 任务会永远卡在进度条（如 pack=91%）
     try:
         from app.services.jobs import fail_orphaned_jobs

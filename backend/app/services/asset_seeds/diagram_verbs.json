@@ -1,0 +1,2186 @@
+[
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交申请",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "报名",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "提醒",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "取消报名",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交申领",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过出库",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "退库",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交请假",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "批准",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "销假",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交登记",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交申请",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "分配通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "退宿办结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交备案",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交意向",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "调剂确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "调剂驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "complete",
+    "action_zh": "办理还车",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "ship",
+    "action_zh": "办理取车",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "申请开具",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "归寝登记",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催签",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "撤销登记",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "complete",
+    "action_zh": "确认观影",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "ship",
+    "action_zh": "出票",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过审核",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "complete",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "expire",
+    "action_zh": "置为逾期",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "finalize",
+    "action_zh": "终审",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "submit",
+    "action_zh": "提交审核",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交材料",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交合同",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "申请选课",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "提醒",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "退选",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交认定",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交跟进",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "发起牵线",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "同意牵线",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "不合适",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "结束流程",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交报修",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "受理",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完成",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "申请借用",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催还",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "归还",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交材料",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交评教",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交上报",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交报销",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交备案",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交用车",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "cancel",
+    "action_zh": "取消",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "complete",
+    "action_zh": "完成",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "confirm",
+    "action_zh": "接单",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "ship",
+    "action_zh": "出餐",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "回复",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "提醒",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "撤回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交申请",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "办结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交申请",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "教务确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "办结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "complete",
+    "action_zh": "办理离店",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "ship",
+    "action_zh": "办理入住",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "entity_key": "reservation",
+    "verb_key": "apply",
+    "action_zh": "预约机时",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交借用",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催还",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "归还完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交周报",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "导师通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "退回修改",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催交",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "审阅完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交故障",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "受理",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完成",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交时长",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "申请准入",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "批准",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "办结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "申请借阅",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催还",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "归还",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "登记意向",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "申请认领",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "提醒",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "撤销认领",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交申报",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交志愿",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "调剂确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "调剂驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "撤销志愿",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交志愿",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "调剂确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "调剂驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "撤销志愿",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交志愿",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "调剂确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "调剂驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催确认",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "撤销志愿",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "凭码取件",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "核销出库",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催取",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "取消取件",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交材料",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交申购",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交申报",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交方案",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交报修",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "受理",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完成",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "投递简历",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "不合适",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "结束流程",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交用章",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "申请核销",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "同意扣减",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "完结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交报名",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "确认报名",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "取消报名",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "提交申请",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "销结",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "action_zh": "预约到访",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "action_zh": "通过并发卡",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "reject",
+    "action_zh": "驳回",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "remind",
+    "action_zh": "催办",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "action_zh": "取消预约",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "ship",
+    "action_zh": "发货",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "complete",
+    "action_zh": "确认收货",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "cancel",
+    "action_zh": "取消",
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "skin_id": "",
+    "entity_key": "order",
+    "verb_key": "confirm",
+    "action_zh": "确认",
+    "source": "migrated"
+  }
+]

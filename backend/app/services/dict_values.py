@@ -21,9 +21,14 @@ KEY_MAX_LEN = 64
 # 报修 / 交易组（缺口扫描用；码表正文在 asset_seeds/dict_values.json → 库）
 REPAIR_DOMAINS = frozenset({"DOM-DORM", "DOM-PROPERTY", "DOM-IT"})
 TRADE_DOMAINS = frozenset({"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"})
+# 有订单态的域（refund_type 具名期望；与 TRADE 可重叠）
+ORDER_DOMAINS = frozenset(
+    {"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA", "DOM-CARRENT", "DOM-HOTEL"}
+)
 
 _lock = threading.RLock()
 _rows_cache: list[dict[str, Any]] | None = None
+_ticket_domains_cache: frozenset[str] | None = None
 
 
 def _norm(s: str | None) -> str:
@@ -278,14 +283,53 @@ def list_dict_options(
     return items
 
 
+def ticket_domains() -> frozenset[str]:
+    """catalog 中实体带 ticket.states 的域（懒缓存）。"""
+    global _ticket_domains_cache
+    if _ticket_domains_cache is not None:
+        return _ticket_domains_cache
+    from app.bake import domain_schema as ds
+    from app.bake.catalog import DOMAINS
+    from app.services import status_copy as sc
+
+    saved_sc = sc.apply_status_copy_to_schema
+    saved_dv = apply_dict_values_to_schema
+    import app.services.dict_values as dv_mod
+
+    sc.apply_status_copy_to_schema = lambda s, d, **k: s  # type: ignore[assignment]
+    dv_mod.apply_dict_values_to_schema = lambda s, d, **k: s  # type: ignore[assignment]
+    found: set[str] = set()
+    try:
+        for dom in DOMAINS:
+            sch = ds.build_domain_schema("字典台域探针", dom)
+            ent = (sch.get("entities") or {}).get("ticket")
+            if isinstance(ent, dict) and isinstance(ent.get("states"), dict) and ent["states"]:
+                found.add(dom)
+    finally:
+        sc.apply_status_copy_to_schema = saved_sc  # type: ignore[assignment]
+        dv_mod.apply_dict_values_to_schema = saved_dv  # type: ignore[assignment]
+    _ticket_domains_cache = frozenset(found)
+    return _ticket_domains_cache
+
+
 def expected_dicts_for_domain(domain_id: str) -> dict[str, tuple[str, ...]]:
     domain_id = _norm(domain_id) or WILDCARD_DOMAIN
     out: dict[str, tuple[str, ...]] = {}
     exp = _expected()
     if domain_id in exp:
         out.update(exp[domain_id])
-    if domain_id in REPAIR_DOMAINS or domain_id == WILDCARD_DOMAIN:
+    # ticket_priority：* 行 + 凡有单据态 / 报修组
+    if (
+        domain_id == WILDCARD_DOMAIN
+        or domain_id in REPAIR_DOMAINS
+        or domain_id in ticket_domains()
+    ):
         out.update(exp.get("*", {}))
+    # refund_type：订单域若种子尚未写专行，仍用 SHOP 码表作期望
+    if domain_id in ORDER_DOMAINS and "refund_type" not in out:
+        shop_refund = exp.get("DOM-SHOP", {}).get("refund_type")
+        if shop_refund:
+            out["refund_type"] = shop_refund
     return out
 
 
@@ -389,6 +433,50 @@ def gap_report(
                 }
             )
     return {"gap_count": len(gaps), "gaps": gaps, "domain_id": domain_id}
+
+
+def catalog_domain_gaps(*, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """扫 catalog：期望字典码须有具名域行（仅 * 不够加厚）。
+
+    无期望字典的域（纯内容向等）不记缺口。
+    """
+    from app.bake.catalog import DOMAINS
+
+    data = _rows_or_seed(rows)
+    named = {
+        (
+            _norm(r.get("domain_id")),
+            _norm(r.get("dict_key")),
+            _norm(r.get("value_code")),
+        )
+        for r in data
+        if _norm(r.get("domain_id")) not in ("", WILDCARD_DOMAIN)
+        and _norm(r.get("source")) in BAKE_SOURCES
+        and bool(r.get("enabled", True))
+        and _norm(r.get("dict_key"))
+        and _norm(r.get("value_code"))
+        and _norm(r.get("label_zh"))
+    }
+    gaps: list[dict[str, str]] = []
+    for dom in sorted(DOMAINS):
+        for dict_key, codes in expected_dicts_for_domain(dom).items():
+            for code in codes:
+                if (dom, dict_key, code) in named:
+                    continue
+                gaps.append(
+                    {
+                        "domain_id": dom,
+                        "skin_id": "",
+                        "dict_key": dict_key,
+                        "value_code": code,
+                        "reason": "域缺具名字典（仅有 * 不够加厚）",
+                    }
+                )
+    return {
+        "gap_count": len(gaps),
+        "gaps": gaps,
+        "domain_count": len(DOMAINS),
+    }
 
 
 async def upsert_entry(

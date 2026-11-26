@@ -134,10 +134,26 @@ def _rows_or_seed(rows: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
 
 
 def _domain_rows(domain: str, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """具名域盖 *：同 role×menu_id 以具名为准；禁止有具名就丢掉跨域壳菜单。"""
+    domain = _norm(domain) or WILDCARD
+    star = [r for r in rows if _norm(r.get("domain_id")) in ("", WILDCARD)]
+    if domain == WILDCARD:
+        return star
     named = [r for r in rows if _norm(r.get("domain_id")) == domain]
-    if named:
-        return named
-    return [r for r in rows if _norm(r.get("domain_id")) in ("", WILDCARD)]
+    if not named:
+        return star
+    by_key: dict[tuple[str, str], dict[str, Any]] = {}
+    for r in star:
+        mid = _norm(r.get("menu_id"))
+        role = _norm(r.get("role"))
+        if role and mid:
+            by_key[(role, mid)] = r
+    for r in named:
+        mid = _norm(r.get("menu_id"))
+        role = _norm(r.get("role"))
+        if role and mid:
+            by_key[(role, mid)] = r
+    return list(by_key.values())
 
 
 def _menu_keys(items: list[Any]) -> set[str]:
@@ -291,6 +307,53 @@ def gap_report(*, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     except Exception:  # noqa: BLE001
         pass
     return {"gap_count": len(gaps), "gaps": gaps}
+
+
+# 68 域加厚：每域须有三端常驻入口具名（可改文案；能力菜单仍可吃 *）
+ALWAYS_ON_NAMED: tuple[tuple[str, str], ...] = (
+    ("admin", "dashboard"),
+    ("staff", "dashboard"),
+    ("user", "home"),
+)
+
+
+def catalog_domain_gaps(*, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """扫 catalog：每域须有 always_on 三端具名行（仅 * 不够加厚）。"""
+    from app.bake.catalog import DOMAINS
+
+    data = _rows_or_seed(rows)
+    have = {
+        (
+            _norm(r.get("domain_id")),
+            _norm(r.get("role")),
+            _norm(r.get("menu_id")),
+        )
+        for r in data
+        if _norm(r.get("domain_id")) not in ("", WILDCARD)
+        and _norm(r.get("source")) in BAKE_SOURCES
+        and bool(r.get("enabled", True))
+        and bool(r.get("always_on"))
+        and _norm(r.get("role"))
+        and _norm(r.get("menu_id"))
+    }
+    gaps: list[dict[str, Any]] = []
+    for dom in sorted(DOMAINS):
+        for role, mid in ALWAYS_ON_NAMED:
+            if (dom, role, mid) in have:
+                continue
+            gaps.append(
+                {
+                    "domain_id": dom,
+                    "role": role,
+                    "menu_id": mid,
+                    "reason": "域缺具名常驻菜单（仅有 * 不够加厚）",
+                }
+            )
+    return {
+        "gap_count": len(gaps),
+        "gaps": gaps,
+        "domain_count": len(DOMAINS),
+    }
 
 
 async def upsert_entry(

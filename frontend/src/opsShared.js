@@ -180,10 +180,10 @@ export function stepStatusMark(st) {
 }
 
 export const LOG_SIDES = [
-  { id: 'job', label: '任务' },
-  { id: 'backend', label: '后端' },
-  { id: 'frontend', label: '前端' },
-  { id: 'deepseek', label: '大模型' },
+  { id: 'job', label: '任务', file: 'job.log' },
+  { id: 'backend', label: '后端', file: 'backend.log' },
+  { id: 'frontend', label: '前端', file: 'frontend.log' },
+  { id: 'deepseek', label: '大模型', file: 'deepseek.log' },
 ]
 
 let _catalogPromise = null

@@ -348,21 +348,35 @@ export const api = {
   statusCopy: (params) => http.get('/system/status-copy', { params }),
   statusCopyMeta: () => http.get('/system/status-copy/meta', { timeout: 60000 }),
   statusCopyMigrate: () => http.post('/system/status-copy/migrate'),
-  statusCopyGaps: (domainId) =>
-    http.get('/system/status-copy/gaps', {
-      params: { domain_id: domainId },
+  statusCopyGaps: (params) => {
+    const p =
+      typeof params === 'string'
+        ? { domain_id: params }
+        : params && typeof params === 'object'
+          ? params
+          : {}
+    return http.get('/system/status-copy/gaps', {
+      params: p,
       timeout: 120000,
-    }),
+    })
+  },
   statusCopyUpsert: (body) => http.put('/system/status-copy', body),
   statusCopyDelete: (id) => http.delete(`/system/status-copy/${id}`),
   dictValues: (params) => http.get('/system/dict-values', { params }),
   dictValuesMeta: () => http.get('/system/dict-values/meta', { timeout: 60000 }),
   dictValuesMigrate: () => http.post('/system/dict-values/migrate'),
-  dictValuesGaps: (domainId, skinId = '') =>
-    http.get('/system/dict-values/gaps', {
-      params: { domain_id: domainId, skin_id: skinId || undefined },
+  dictValuesGaps: (params, skinId = '') => {
+    const p =
+      typeof params === 'string'
+        ? { domain_id: params, skin_id: skinId || undefined }
+        : params && typeof params === 'object'
+          ? { ...params, skin_id: params.skin_id ?? (skinId || undefined) }
+          : {}
+    return http.get('/system/dict-values/gaps', {
+      params: p,
       timeout: 120000,
-    }),
+    })
+  },
   dictValuesUpsert: (body) => http.put('/system/dict-values', body),
   dictValuesDelete: (id) => http.delete(`/system/dict-values/${id}`),
   demoScripts: (params) => http.get('/system/demo-scripts', { params }),
@@ -397,7 +411,8 @@ export const api = {
   menuMatrix: (params) => http.get('/system/menu-matrix', { params }),
   menuMatrixMeta: () => http.get('/system/menu-matrix/meta', { timeout: 60000 }),
   menuMatrixMigrate: () => http.post('/system/menu-matrix/migrate'),
-  menuMatrixGaps: () => http.get('/system/menu-matrix/gaps', { timeout: 60000 }),
+  menuMatrixGaps: (params) =>
+    http.get('/system/menu-matrix/gaps', { params: params || {}, timeout: 60000 }),
   menuMatrixUpsert: (body) => http.put('/system/menu-matrix', body),
   menuMatrixDelete: (id) => http.delete(`/system/menu-matrix/${id}`),
   ruleParams: (params) => http.get('/system/rule-params', { params }),
@@ -415,7 +430,8 @@ export const api = {
   demoAccounts: (params) => http.get('/system/demo-accounts', { params }),
   demoAccountsMeta: () => http.get('/system/demo-accounts/meta', { timeout: 60000 }),
   demoAccountsMigrate: () => http.post('/system/demo-accounts/migrate'),
-  demoAccountsGaps: () => http.get('/system/demo-accounts/gaps', { timeout: 60000 }),
+  demoAccountsGaps: (params) =>
+    http.get('/system/demo-accounts/gaps', { params, timeout: 120000 }),
   demoAccountsUpsert: (body) => http.put('/system/demo-accounts', body),
   demoAccountsDelete: (id) => http.delete(`/system/demo-accounts/${id}`),
   diagramTitles: (params) => http.get('/system/diagram-titles', { params }),
@@ -424,6 +440,18 @@ export const api = {
   diagramTitlesGaps: () => http.get('/system/diagram-titles/gaps', { timeout: 60000 }),
   diagramTitlesUpsert: (body) => http.put('/system/diagram-titles', body),
   diagramTitlesDelete: (id) => http.delete(`/system/diagram-titles/${id}`),
+  diagramVerbs: (params) => http.get('/system/diagram-verbs', { params }),
+  diagramVerbsMeta: () => http.get('/system/diagram-verbs/meta', { timeout: 60000 }),
+  diagramVerbsMigrate: () => http.post('/system/diagram-verbs/migrate'),
+  diagramVerbsGaps: (params) => http.get('/system/diagram-verbs/gaps', { params, timeout: 60000 }),
+  diagramVerbsUpsert: (body) => http.put('/system/diagram-verbs', body),
+  diagramVerbsDelete: (id) => http.delete(`/system/diagram-verbs/${id}`),
+  usecaseFlows: (params) => http.get('/system/usecase-flows', { params }),
+  usecaseFlowsMeta: () => http.get('/system/usecase-flows/meta', { timeout: 60000 }),
+  usecaseFlowsMigrate: () => http.post('/system/usecase-flows/migrate'),
+  usecaseFlowsGaps: (params) => http.get('/system/usecase-flows/gaps', { params, timeout: 120000 }),
+  usecaseFlowsUpsert: (body) => http.put('/system/usecase-flows', body),
+  usecaseFlowsDelete: (id) => http.delete(`/system/usecase-flows/${id}`),
   thesisAbsorbMeta: () => http.get('/system/thesis-absorb/meta', { timeout: 30000 }),
   thesisAbsorbList: (params) => http.get('/system/thesis-absorb', { params, timeout: 30000 }),
   thesisAbsorbGet: (id) => http.get(`/system/thesis-absorb/${id}`, { timeout: 60000 }),

@@ -1,0 +1,479 @@
+[
+  {
+    "domain_id": "DOM-ACAD",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-BED",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "entity_keys": [
+      "archive",
+      "favorites"
+    ]
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "entity_keys": [
+      "archive",
+      "order",
+      "reservation"
+    ]
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "entity_keys": [
+      "archive",
+      "category",
+      "guestbook",
+      "order",
+      "orderReview",
+      "seat",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "entity_keys": [
+      "archive"
+    ]
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "entity_keys": [
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "entity_keys": [
+      "archive",
+      "archiveLog",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "entity_keys": [
+      "archive"
+    ]
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "entity_keys": [
+      "archive",
+      "order"
+    ]
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "entity_keys": [
+      "archive",
+      "reservation"
+    ]
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "entity_keys": [
+      "archive",
+      "order",
+      "reservation"
+    ]
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "entity_keys": [
+      "archive",
+      "reservation",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-IT",
+    "entity_keys": [
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "entity_keys": [
+      "archive",
+      "favorites"
+    ]
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "entity_keys": [
+      "archive",
+      "reservation"
+    ]
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "entity_keys": [
+      "archive",
+      "favorites"
+    ]
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "entity_keys": [
+      "archive",
+      "reservation"
+    ]
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "entity_keys": [
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "entity_keys": [
+      "archive",
+      "reservation"
+    ]
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "entity_keys": [
+      "archive",
+      "category",
+      "dm",
+      "favorites",
+      "guestbook",
+      "order",
+      "orderReview",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "entity_keys": [
+      "archive"
+    ]
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "entity_keys": [
+      "archive",
+      "ticket"
+    ]
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "entity_keys": [
+      "archive"
+    ]
+  }
+]

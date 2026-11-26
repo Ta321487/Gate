@@ -1,0 +1,14 @@
+[
+  {
+    "entity_key": "order",
+    "required_verbs": ["ship", "complete"]
+  },
+  {
+    "entity_key": "ticket",
+    "required_verbs": ["apply", "approve", "reject"]
+  },
+  {
+    "entity_key": "review",
+    "required_verbs": []
+  }
+]

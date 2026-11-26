@@ -7,18 +7,20 @@
           维护业务枚举与展示名；出包后下拉与筛选项统一读取本台。
         </p>
       </div>
-      <div class="row" style="gap:8px;flex-wrap:wrap">
-        <n-button size="small" :loading="gapLoading" :disabled="!gapDomain" @click="scanGaps">
-          检查待补
-        </n-button>
-        <n-button
-          size="small"
-          :loading="migrating"
-          title="仅追加缺失项，不覆盖已有记录"
-          @click="migrate"
-        >导入初始字典</n-button>
-        <n-button size="small" type="primary" @click="openCreate">登记枚举</n-button>
-      </div>
+      <AssetDeskActions
+        :gap-loading="gapLoading"
+        :migrating="migrating"
+        :check-disabled="!gapDomain"
+        migrate-label="导入初始字典"
+        create-label="登记枚举"
+        @check="scanGaps(false)"
+        @migrate="migrate"
+        @create="openCreate"
+      >
+        <template #extra>
+          <n-button size="small" :loading="gapLoading" @click="scanGaps(true)">扫 68 域</n-button>
+        </template>
+      </AssetDeskActions>
     </div>
 
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
@@ -30,18 +32,18 @@
         </div>
         <div class="stat">
           <div class="label">待补</div>
-          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapsScanned ? gapCount : '—' }}</div>
+          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapStatDisplay(gapsScanned, gapCount) }}</div>
         </div>
       </div>
 
-      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12" @update:value="onTab">
+      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12">
         <n-tab-pane name="entries" tab="枚举" />
         <n-tab-pane name="gaps" tab="待补" />
       </n-tabs>
 
       <div v-show="mainTab === 'entries'" class="panel panel-quiet">
         <div class="panel-hd">
-          <div class="row dv-filter-row">
+          <div class="row asset-desk-filter-row">
             <n-select
               v-model:value="domain"
               size="small"
@@ -81,7 +83,7 @@
             <div class="empty-desc">用顶栏导入或登记一条。</div>
           </div>
           <template v-else>
-            <div class="dv-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -140,7 +142,7 @@
 
       <div v-show="mainTab === 'gaps'" class="panel panel-quiet">
         <div class="panel-hd">
-          <div class="row dv-filter-row" style="align-items:center">
+          <div class="row asset-desk-filter-row" style="align-items:center">
             <n-select
               v-model:value="gapDomain"
               size="small"
@@ -160,23 +162,30 @@
             <div class="empty-desc">
               {{
                 gapsScanned
-                  ? '该域期望的枚举码已在台账中。'
-                  : '选一个域，点顶栏「检查待补」。'
+                  ? lastScanDomains
+                    ? '68 域具名字典已齐（无期望字典的域不记缺口）。'
+                    : '该域期望的枚举码已在台账中。'
+                  : '选一个域点「检查待补」，或点「扫 68 域」。'
               }}
             </div>
           </div>
           <template v-else>
-            <div class="dv-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
+                    <th v-if="lastScanDomains">域</th>
                     <th>键</th>
                     <th>码</th>
                     <th style="width:88px"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(g, i) in pagedGaps" :key="`${g.dict_key}-${g.value_code}-${i}`">
+                  <tr
+                    v-for="(g, i) in pagedGaps"
+                    :key="`${g.domain_id || ''}-${g.dict_key}-${g.value_code}-${i}`"
+                  >
+                    <td v-if="lastScanDomains">{{ domainLabel(g.domain_id) }}</td>
                     <td class="mono">{{ g.dict_key }}</td>
                     <td class="mono">{{ g.value_code }}</td>
                     <td>
@@ -205,7 +214,7 @@
 
     <n-drawer v-model:show="drawerOpen" :width="400" placement="right" @after-leave="onDrawerLeave">
       <n-drawer-content :title="editingId ? '改枚举' : '登记枚举'" closable>
-        <div class="dv-drawer-form">
+        <div class="asset-desk-drawer-form">
           <n-form-item label="域" :show-feedback="false">
             <n-select
               v-model:value="form.domain_id"
@@ -273,8 +282,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api, message } from '../api'
+import { gapStatDisplay } from '../utils/assetDesk'
 import { confirm } from '../ui'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import AssetDeskActions from '../components/AssetDeskActions.vue'
 
 const booted = ref(false)
 const loading = ref(false)
@@ -299,6 +310,7 @@ const gaps = ref([])
 const gapCount = ref(0)
 const gapsScanned = ref(false)
 const gapDomain = ref(null)
+const lastScanDomains = ref(false)
 const gapPage = ref(1)
 const gapPageSize = ref(20)
 
@@ -381,9 +393,6 @@ function domainSelectLabel(dom) {
   return `${domainLabel(dom)}（${dom}）`
 }
 
-function onTab(tab) {
-  if (tab === 'gaps' && gapDomain.value && !gapsScanned.value) scanGaps()
-}
 
 function onPageSize() {
   page.value = 1
@@ -396,6 +405,7 @@ function reloadFromTop() {
 
 function onGapDomain() {
   gapsScanned.value = false
+  lastScanDomains.value = false
   gaps.value = []
   gapCount.value = 0
   gapPage.value = 1
@@ -503,24 +513,24 @@ async function migrate() {
   }
 }
 
-async function scanGaps() {
-  if (!gapDomain.value) {
-    message.warning('先选一个域再检查')
+async function scanGaps(scanDomains = false) {
+  if (!scanDomains && !gapDomain.value) {
+    message.warning('先选一个域再检查，或点「扫 68 域」')
     return
   }
   gapLoading.value = true
+  lastScanDomains.value = !!scanDomains
   try {
-    const res = await api.dictValuesGaps(gapDomain.value)
+    const res = scanDomains
+      ? await api.dictValuesGaps({ scan_domains: true })
+      : await api.dictValuesGaps({ domain_id: gapDomain.value })
     gaps.value = res.gaps || []
     gapCount.value = res.gap_count ?? gaps.value.length
     gapsScanned.value = true
     gapPage.value = 1
     mainTab.value = 'gaps'
-    if (gapCount.value) {
-      message.info(`待补 ${gapCount.value} 条`)
-    } else {
-      message.success('没有待补项')
-    }
+    if (gapCount.value) message.info(`待补 ${gapCount.value} 条`)
+    else message.success(scanDomains ? '68 域具名字典已齐' : '没有待补项')
   } catch (e) {
     message.error(e?.message || '检查失败')
   } finally {
@@ -550,10 +560,16 @@ async function save() {
     resetForm()
     await loadMeta()
     await load()
-    if (gapsScanned.value && gapDomain.value) {
-      const gapRes = await api.dictValuesGaps(gapDomain.value)
-      gaps.value = gapRes.gaps || []
-      gapCount.value = gapRes.gap_count ?? gaps.value.length
+    if (gapsScanned.value) {
+      const gapRes = lastScanDomains.value
+        ? await api.dictValuesGaps({ scan_domains: true })
+        : gapDomain.value
+          ? await api.dictValuesGaps({ domain_id: gapDomain.value })
+          : null
+      if (gapRes) {
+        gaps.value = gapRes.gaps || []
+        gapCount.value = gapRes.gap_count ?? gaps.value.length
+      }
     }
   } catch (e) {
     message.error(e?.message || '保存失败')
@@ -588,60 +604,3 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.dv-table-wrap {
-  overflow: auto;
-  max-height: calc(100vh - 380px);
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.data-table th,
-.data-table td {
-  text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--line, var(--line-soft));
-  vertical-align: middle;
-  color: var(--ink-2, var(--ink));
-}
-.data-table th {
-  color: var(--muted);
-  font-weight: 500;
-  position: sticky;
-  top: 0;
-  background: var(--surface);
-  z-index: 1;
-}
-.data-table tr.is-editing {
-  background: color-mix(in srgb, var(--teal-soft, #2a9d8f) 22%, transparent);
-}
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-}
-.bad {
-  color: var(--error, #c00);
-}
-.pager-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.dv-filter-row {
-  gap: 8px;
-  flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
-}
-.panel-quiet .panel-hd {
-  align-items: flex-start;
-}
-.dv-drawer-form :deep(.n-form-item) {
-  margin-bottom: 10px;
-}
-</style>

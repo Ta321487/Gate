@@ -89,15 +89,19 @@ async def migrate_status_copy(db: AsyncSession = Depends(get_db)):
 
 @router.get("/system/status-copy/gaps", summary="相对域 schema 的状态缺口")
 async def status_copy_gaps(
-    domain_id: str = Query(..., description="如 DOM-SHOP"),
+    domain_id: Optional[str] = Query(None, description="如 DOM-SHOP；与 scan_domains 二选一"),
+    scan_domains: bool = Query(False, description="扫 catalog 全部域具名话术"),
     db: AsyncSession = Depends(get_db),
 ):
     from app.bake.domain_schema import build_domain_schema
 
     rows = await sc.load_all_rows(db)
+    if scan_domains:
+        return {"ok": True, **sc.catalog_domain_gaps(rows=rows)}
+    if not domain_id:
+        raise HTTPException(400, "请指定 domain_id，或打开 scan_domains 扫 68 域")
     # 用裸 builder（未注入台）看实体上有哪些 status；再对台查缺
     schema = build_domain_schema(f"状态话术缺口探针-{domain_id}", domain_id)
-    # 去掉已注入的 statusCopy，避免循环；gap 看 entities.states
     report = sc.gap_report(domain_id, schema, rows=rows)
     return {"ok": True, **report}
 

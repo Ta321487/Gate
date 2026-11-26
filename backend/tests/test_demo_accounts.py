@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import unittest
 
+from app.bake.catalog import DOMAINS
 from app.services import demo_accounts as da
+from app.services.asset_seeds import load_seed_json
 
 
 class DemoAccountsUnit(unittest.TestCase):
     def setUp(self) -> None:
+        load_seed_json.cache_clear()
         da.invalidate_cache()
         da.bootstrap_from_seed()
 
@@ -18,6 +21,19 @@ class DemoAccountsUnit(unittest.TestCase):
         self.assertEqual(len(keys), len(set(keys)))
         roles = {r["role"] for r in rows if r.get("domain_id") == "*"}
         self.assertEqual(roles, {"admin", "staff", "user"})
+
+    def test_seed_covers_all_catalog_domains_named(self) -> None:
+        rows = da._seed_payload()
+        named = {r["domain_id"] for r in rows if r.get("domain_id") not in ("*", "", None)}
+        self.assertEqual(named, set(DOMAINS))
+        for dom in DOMAINS:
+            roles = {r["role"] for r in rows if r.get("domain_id") == dom}
+            self.assertEqual(roles, {"admin", "staff", "user"}, msg=dom)
+
+    def test_catalog_domain_gaps_zero(self) -> None:
+        report = da.catalog_domain_gaps()
+        self.assertEqual(report["domain_count"], len(DOMAINS))
+        self.assertEqual(report["gap_count"], 0)
 
     def test_apply_wildcard(self) -> None:
         out = da.apply_demo_accounts_to_schema({}, "DOM-REPAIR")

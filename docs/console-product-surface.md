@@ -98,9 +98,10 @@
 | R5 | 改单条 | **右侧 `n-drawer`**（登记/改/补）；取消关闭 = 退出编辑 | 首屏常驻大表单；无退出编辑 |
 | R6 | 空态 | `empty-title` + `empty-desc` + 一个主按钮 | 空白无说明 |
 | R7 | 分页 | 底栏 `pager-row` + `n-pagination`（10/20/50） | 无限滚动当默认 |
+| R8 | 共用类 | 表壳 `asset-desk-table-wrap`、筛条 `asset-desk-filter-row`、抽屉表单 `asset-desk-drawer-form`；样式只在 `styles.css`；筛条按钮文案统一「查询」 | 各页私抄 `.data-table` / `*-table-wrap`；词表独用「刷新」 |
 
 **首发落地**：`frontend/src/views/ZhLexicon.vue`。同规跟进：失败分析样本表、任务队列（已近）、其它新增「字典/列表改一条」页。  
-**契约**：`test_console_surface_contract.test_zh_lexicon_stripe_structure`。
+**契约**：`test_console_surface_contract.test_zh_lexicon_stripe_structure` + `test_asset_desk_shared_chrome`。
 
 ---
 
@@ -162,5 +163,6 @@
 | 2026-11-07 | **全页结构收齐**：V4 工作台去嵌套框；V5 材料/匹配/生成/预览 `panel-quiet`；V7 路径高级折 + Help；台面 V1～V8 勾齐，待 `收卡片墙验收` |
 | 2026-11-07 | **`收卡片墙验收` 通过**：S1～S7；证据三图 + `acceptance/console-surface-2026-11-07.md` |
 | 2026-11-16 | **`统一 Stripe 结构`**：§3.5 强制口径；词表维护 V7b 按 R1～R7 收口 + 契约测 |
+| 2026-11-26 | **§3.5 R8**：资产台表壳/筛条/抽屉表单项进 `styles.css`；15 页共用类；词表「刷新」改「查询」；`test_asset_desk_shared_chrome` |
 | 2026-11-24 | **只读代码高亮**：`CodePreview`（终稿 schema.sql + 生成配置 JSON）；禁日志/可编辑区；token/`--code-bg` 跟浅深主题 |
 | 2026-11-24 | **默认「全部」不高亮**：`filterChipOn`；项目 / 终稿吸收 stats+pill 同修 |

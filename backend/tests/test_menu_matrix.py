@@ -88,6 +88,32 @@ class MenuMatrixUnit(unittest.TestCase):
         for role in mm.ROLES:
             self.assertIn(role, mm.ROLE_LABELS_ZH)
 
+    def test_named_merges_wildcard_ai(self) -> None:
+        """有具名常驻行时仍继承 * 的能力菜单，不整表替换。"""
+        schema = {
+            "menus": {"admin": [], "staff": [], "user": []},
+            "capabilities": ["ai_assistant"],
+        }
+        out = mm.apply_menu_matrix_to_schema(
+            schema, "DOM-LIBRARY", addons={"ai_assistant": True}
+        )
+        admin_keys = {m.get("key") for m in out["menus"]["admin"]}
+        self.assertIn("dashboard", admin_keys)
+        self.assertIn("ai_assistant", admin_keys)
+        self.assertIn("ai_knowledge", admin_keys)
+
+    def test_catalog_domain_gaps_zero(self) -> None:
+        report = mm.catalog_domain_gaps()
+        self.assertEqual(
+            report["gap_count"],
+            0,
+            msg="; ".join(
+                f"{g['domain_id']}.{g['role']}.{g['menu_id']}"
+                for g in report["gaps"][:20]
+            ),
+        )
+        self.assertEqual(report["domain_count"], 68)
+
 
 if __name__ == "__main__":
     unittest.main()

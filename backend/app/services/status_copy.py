@@ -325,6 +325,87 @@ def gap_report(
     return {"gap_count": len(gaps), "gaps": gaps, "domain_id": domain_id}
 
 
+def _schema_machine_states(schema: dict[str, Any] | None) -> list[tuple[str, str, str, str]]:
+    """返回 (machine_id, status_code, entity_key, schema_label)。"""
+    out: list[tuple[str, str, str, str]] = []
+    ents = (schema or {}).get("entities") if isinstance(schema, dict) else {}
+    if not isinstance(ents, dict):
+        return out
+    entity_to_machine = {v: k for k, v in MACHINE_ENTITY_KEY.items()}
+    for ek, ent in ents.items():
+        if not isinstance(ent, dict):
+            continue
+        mid = entity_to_machine.get(ek)
+        if not mid:
+            continue
+        states = ent.get("states")
+        if not isinstance(states, dict):
+            continue
+        for code, lab in states.items():
+            code_n = _norm(str(code))
+            if not code_n:
+                continue
+            out.append((mid, code_n, ek, _norm(str(lab or ""))))
+    return out
+
+
+def catalog_domain_gaps(*, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """扫 catalog：凡 schema 暴露的 order/ticket/reservation 状态，须有具名域行（仅 * 不够加厚）。
+
+    无这三类状态机的域（内容向等）不记缺口。
+    """
+    from app.bake import domain_schema as ds
+    from app.bake.catalog import DOMAINS
+    from app.services import dict_values as dv
+
+    data = _rows_or_seed(rows)
+    named = {
+        (
+            _norm(r.get("domain_id")),
+            _norm(r.get("machine_id")),
+            _norm(r.get("status_code")),
+        )
+        for r in data
+        if _norm(r.get("domain_id")) not in ("", WILDCARD_DOMAIN)
+        and _norm(r.get("source")) in BAKE_SOURCES
+        and _norm(r.get("machine_id"))
+        and _norm(r.get("status_code"))
+        and _norm(r.get("label_zh"))
+    }
+    gaps: list[dict[str, str]] = []
+    # 裸 builder：domain_schema 晚导入本函数名，须改模块属性才能跳过注入
+    import app.services.status_copy as sc_mod
+
+    saved_sc = sc_mod.apply_status_copy_to_schema
+    saved_dv = dv.apply_dict_values_to_schema
+    sc_mod.apply_status_copy_to_schema = lambda s, d, **k: s  # type: ignore[assignment]
+    dv.apply_dict_values_to_schema = lambda s, d, **k: s  # type: ignore[assignment]
+    try:
+        for dom in sorted(DOMAINS):
+            sch = ds.build_domain_schema("状态话术加厚探针", dom)
+            for mid, code, ek, lab in _schema_machine_states(sch):
+                if (dom, mid, code) in named:
+                    continue
+                gaps.append(
+                    {
+                        "domain_id": dom,
+                        "machine_id": mid,
+                        "status_code": code,
+                        "entity_key": ek,
+                        "schema_label": lab,
+                        "reason": "域缺具名话术（仅有 * 不够加厚）",
+                    }
+                )
+    finally:
+        sc_mod.apply_status_copy_to_schema = saved_sc  # type: ignore[assignment]
+        dv.apply_dict_values_to_schema = saved_dv  # type: ignore[assignment]
+    return {
+        "gap_count": len(gaps),
+        "gaps": gaps,
+        "domain_count": len(DOMAINS),
+    }
+
+
 async def upsert_entry(
     db: AsyncSession,
     *,

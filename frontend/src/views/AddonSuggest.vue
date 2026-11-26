@@ -7,16 +7,14 @@
           维护开题扫词与开关证据；命中后在匹配确认展示建议，须人工确认后落库。
         </p>
       </div>
-      <div class="row" style="gap:8px;flex-wrap:wrap">
-        <n-button size="small" :loading="gapLoading" @click="scanGaps">检查待补</n-button>
-        <n-button
-          size="small"
-          :loading="migrating"
-          title="仅追加缺失项，不覆盖已有记录"
-          @click="migrate"
-        >导入初始扫词</n-button>
-        <n-button size="small" type="primary" @click="openCreate">登记扫词</n-button>
-      </div>
+      <AssetDeskActions
+        :gap-loading="gapLoading"
+        :migrating="migrating"
+        create-label="登记扫词"
+        @check="scanGaps"
+        @migrate="migrate"
+        @create="openCreate"
+      />
     </div>
 
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
@@ -28,18 +26,18 @@
         </div>
         <div class="stat">
           <div class="label">待补</div>
-          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapsScanned ? gapCount : '—' }}</div>
+          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapStatDisplay(gapsScanned, gapCount) }}</div>
         </div>
       </div>
 
-      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12" @update:value="onTab">
+      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12">
         <n-tab-pane name="entries" tab="扫词" />
         <n-tab-pane name="gaps" tab="待补" />
       </n-tabs>
 
       <div v-show="mainTab === 'entries'" class="panel panel-quiet">
         <div class="panel-hd">
-          <div class="row as-filter-row">
+          <div class="row asset-desk-filter-row">
             <n-select
               v-model:value="addonId"
               size="small"
@@ -67,7 +65,7 @@
             <div class="empty-desc">用顶栏导入或登记一条。</div>
           </div>
           <template v-else>
-            <div class="as-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -129,7 +127,7 @@
             </div>
           </div>
           <template v-else>
-            <div class="as-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -168,7 +166,7 @@
 
     <n-drawer v-model:show="drawerOpen" :width="420" placement="right" @after-leave="onDrawerLeave">
       <n-drawer-content :title="editingId ? '改扫词' : '登记扫词'" closable>
-        <div class="as-drawer-form">
+        <div class="asset-desk-drawer-form">
           <n-form-item label="开关" :show-feedback="false">
             <n-select
               v-model:value="form.addon_id"
@@ -242,8 +240,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api, message } from '../api'
+import { gapStatDisplay } from '../utils/assetDesk'
 import { confirm } from '../ui'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import AssetDeskActions from '../components/AssetDeskActions.vue'
 
 const booted = ref(false)
 const loading = ref(false)
@@ -321,9 +321,6 @@ const pagedGaps = computed(() => {
   return gaps.value.slice(start, start + gapPageSize.value)
 })
 
-function onTab(tab) {
-  if (tab === 'gaps' && !gapsScanned.value) scanGaps()
-}
 
 function onPageSize() {
   page.value = 1
@@ -517,60 +514,3 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.as-table-wrap {
-  overflow: auto;
-  max-height: calc(100vh - 380px);
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.data-table th,
-.data-table td {
-  text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--line, var(--line-soft));
-  vertical-align: middle;
-  color: var(--ink-2, var(--ink));
-}
-.data-table th {
-  color: var(--muted);
-  font-weight: 500;
-  position: sticky;
-  top: 0;
-  background: var(--surface);
-  z-index: 1;
-}
-.data-table tr.is-editing {
-  background: color-mix(in srgb, var(--teal-soft, #2a9d8f) 22%, transparent);
-}
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-}
-.bad {
-  color: var(--error, #c00);
-}
-.pager-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.as-filter-row {
-  gap: 8px;
-  flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
-}
-.panel-quiet .panel-hd {
-  align-items: flex-start;
-}
-.as-drawer-form :deep(.n-form-item) {
-  margin-bottom: 10px;
-}
-</style>

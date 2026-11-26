@@ -3,8 +3,8 @@
 > **本文只负责**：描述一类**新功能方向**——工厂内维护结构化资产，bake / 门禁 / 控制台消费，少改学生 ZIP。  
 > **不负责**：论文图几何（parked **m**）、题名库接线（**j**）、运营台产品化 UI（**p**）、Surface Lexicon 运维尾债（**e**）。那些是别的单。  
 > **范本**：`factory_zh_lexicon` → bake `COMMENT` + 侧栏「词表维护」（2026-11-16）。  
-> **状态**：方向册 · **波次 A+B+C 已齐**；**波次 D · #4+#5+#7+#8+#9+#11 已齐**（2026-11-23）· 见 [`parked-work.md`](./parked-work.md) 碎另案 **q**。  
-> **口令**：`做资产台` / `做资产台 #n`（n 为本文选项编号）。  
+> **状态**：方向册 · **波次 A+B+C+D+#14 已齐**；**#13 功能名台**已立项；**68 域加厚**进行中（资产台可维护，不烤 68 包）· 见 [`parked-work.md`](./parked-work.md) 碎另案 **q**。  
+> **口令**：`做资产台` / `做资产台 #n` / **`做功能名台`**（=#13）/ **`做 68 域加厚`**。  
 > **索引**：[README.md](./README.md)
 
 ---
@@ -58,7 +58,7 @@
 
 ---
 
-## 2. 选项总表（12）
+## 2. 选项总表（14）
 
 优先级：影响「每单都碰」的可见面 / 演示链 > 材料旁注 > 答辩装饰。
 
@@ -76,6 +76,8 @@
 | 10 | **开题 → 开关建议卡** | 扫词证据 → 建议 addons | 匹配页勾选落确认；未确认不默认瞎开 | 少对照开题拨开关 | P1（与匹配确认叠） |
 | 11 | **论文图题 / 图注模板** | `diagram_kind × domain` | 出图标题；Overrides 只改展示 | 少图题串台 | P2 |
 | 12 | **能力岛说明卡** | `cap_id` → README 段 + 入口 | 开则必有说明；关则必无 | 少 README≠实包 | P1 |
+| 13 | **功能名 / 近义折叠台** | `feature_id` → 规范 zh + aliases | `spec.features[].name`；模块图/匹配卡同源 | 少同能力双名、少清单不像产品 | **波次 E · 已立项** |
+| 14 | **用例描述流程台** | `kind × face?` → name/summary/flow 句 | 论文用例描述表；与序列动词同族 | 少 `.py` 里堆事件流中文、少演艺/影院再写死 | **波次 E · 已齐** |
 
 下文 §3～§5 把 **#1～#3** 写细到可开工；其余 §6 保持「够排期、不够开工」深度，避免册比代码还厚却零提交。
 
@@ -241,6 +243,41 @@ factory_demo_script
 
 每个 `cap` 一段学生 README + 菜单入口 id；`addons.X=true` ⇒ 说明与入口必在；`false` ⇒ 必不在。对假宣称闸是正向补全。
 
+### 6.10 #13 功能名 / 近义折叠台（立项 · 2026-11-26）
+
+**问题**：`order_extras` / `*_thicken` 各挂近义中文名 → 匹配卡 `features` 像开了俩功能（行为只有一套）。
+
+**过渡钉**（已落地、勿拆）：[`backend/app/bake/features/feature_names.py`](../backend/app/bake/features/feature_names.py) — `FEATURE_ALIAS_GROUPS` + `collapse_feature_aliases` / `ensure_feature`；测 `test_feature_names`。
+
+**正式台（未开）五段**：
+
+| 段 | 目标 |
+|----|------|
+| 真源 | `factory_feature_name`（`feature_id` / `zh` / `aliases_json` / source） |
+| 迁入 | 从 `FEATURE_ALIAS_GROUPS` + 扫 `_add_feature("` 字面量首迁；只追加 |
+| 注入 | bake/`attach_accept` 挂名只走 id→zh；产物 `features[].name` = 台内规范名 |
+| 维护面 | 侧栏「功能名」：列表 / 迁入 / 扫缺口（代码字面量 ∉ 台 → 红） |
+| 闸 | 近义双挂禁进产物；`test_feature_names` 改读台 |
+
+**口令**：`做功能名台` / `做资产台 #13`。  
+**不做**：本刀不迁 `schema.labels` / Surface Lexicon；不借机全厂扫几百条 `_add_feature` 进台（首刀只迁别名组 + 合同）。
+
+### 6.11 #14 用例描述流程台（已齐 · 2026-11-26）
+
+**问题**：论文用例描述表事件流曾整段堆在 `usecase_descriptions._flow_spec`；演艺≠影院只能改代码。
+
+**五段**：
+
+| 段 | 落点 |
+|----|------|
+| 真源 | `factory_usecase_flow`；种子 `asset_seeds/usecase_flows.json`（kind × face=`*`/`performance`/`cinema`） |
+| 迁入 | 首迁原 `_flow_spec` + 票务皮分叉；另收 68 域专菜单（`my_archive`/`peer_tickets`/资金公示拨付/成绩/成交等），禁再落 `open` 冒烟 |
+| 注入 | `_flow_spec` → `usecase_flows.resolve_flow_spec`；渲染器无业务事件流整句 |
+| 维护面 | 侧栏「用例流程」；导入种子 / 检查种子 / **扫 68 域** |
+| 闸 | `test_usecase_flows`（含 `catalog_domain_gaps` 零缺口）+ `test_schema_usecase_descriptions` |
+
+**不做**：用例图几何；`_KIND_PRIORITY` 数字不迁台；不重做序列图动词合同。
+
 ---
 
 ## 7. 建议落地顺序
@@ -265,6 +302,19 @@ factory_demo_script
   #8 表关系叙事 →  factory_er_edge_copy + 侧栏「表关系叙事」+ schema.erEdgeCopy
   #9 测试账号  →  factory_demo_account + 侧栏「测试账号」+ schema.demoAccounts
   #11 论文图题 →  factory_diagram_title + 侧栏「论文图题」+ schema.diagramTitleTemplates ✅
+
+波次 E（清单像产品 · 论文材料句）
+  #14 用例描述流程 ✅ 2026-11-26 → factory_usecase_flow + 侧栏「用例流程」；68 域菜单零缺口
+  #13 功能名台  · 待令 →  factory_feature_name + 侧栏；迁入 feature_names.py；扫缺口闸
+  口令：做功能名台 / 做资产台 #13
+
+波次 F（68 域加厚 · 资产台可维护 · 不烤 68 包）
+  目标：catalog 每 DOM 在答辩敏感面上有具名台行 + 扫 68 域零缺口；侧栏可改；种子只追加
+  F1 测试账号 ✅ 2026-11-26 → 68×三端具名昵称/提示；catalog_domain_gaps；侧栏「扫 68 域」
+  F1b 动作词   ✅ 2026-11-26 → 补 DOM-SHOP order 动词；catalog_domain_gaps 扫 68 域 schema
+  F2 状态话术 ✅ 2026-11-26 → 有状态机的域全具名（专名+缺码从 * 抄齐）；catalog_domain_gaps；侧栏「扫 68 域」
+  F3 字典/菜单 ✅ 2026-11-26 → 单据域 ticket_priority 具名 + 订单域 refund；菜单 always_on×68 具名；具名盖 * 合并；两侧栏「扫 68 域」
+  口令：做 68 域加厚（波次 F 已齐）
 ```
 
 每波次收工标准：五段合同齐 + 对口 pytest 绿 + HANDOFF 记一笔；**禁止**只写文档勾已齐。
@@ -293,6 +343,8 @@ factory_demo_script
 | #4 控件 | `docs/form-controls.md`、`archiveFieldWidget.js` |
 | #10 建议卡 | Match 确认页、`proposal_lexicon`、validation-loop 核域 |
 | #12 说明卡 | `docs/capabilities.md`、README bake、假宣称闸 |
+| #13 功能名 | `feature_names.py`、`*_thicken` `_add_feature`、`order_extras`、匹配卡 `features` |
+| #14 用例流程 | `usecase_descriptions._flow_spec`、`diagram_verbs` / `diagram_flow.json`、`docs/invariants.md` 论文图动词 |
 | #6 错误码 | `ErrorCode` / `ErrorMessages`、bake `error-messages.json` |
 | #4 控件语义 | `fieldWidgetRules.js`、`archiveFieldWidget.js`、`form_controls_widget`、`docs/form-controls.md` |
 
@@ -304,6 +356,11 @@ factory_demo_script
 
 | 日期 | 说明 |
 |------|------|
+| 2026-11-26 | **F3 字典/菜单**：单据域优先级具名、租车/酒店售后类型；菜单 always_on×68；`_domain_rows` 具名盖 `*`；测 `test_dict_values` / `test_menu_matrix` |
+| 2026-11-26 | **F2 状态话术具名**：schema 暴露的 order/ticket/reservation 全具名；`catalog_domain_gaps` + 侧栏「扫 68 域」；测 `test_status_copy` |
+| 2026-11-26 | **波次 F 开刀**：测试账号 68 具名 + SHOP 动作词；`catalog_domain_gaps`；口令 `做 68 域加厚`（不烤包） |
+| 2026-11-26 | **#14 用例描述流程台五段齐**：`factory_usecase_flow` + 侧栏；渲染器只读台；68 域菜单 `catalog_domain_gaps` 零缺口；测 `test_usecase_flows` |
+| 2026-11-26 | **#13 功能名台立项**：过渡钉 `feature_names.py` 已收近义双挂；正式台波次 E 待令 `做功能名台` |
 | 2026-11-21 | **#9 测试账号**：`factory_demo_account` + 侧栏「测试账号」；bake `schema.demoAccounts`；测 `test_demo_accounts`；与 #3 角色对齐 |
 | 2026-11-21 | **#8 表关系叙事**：`factory_er_edge_copy` + 侧栏「表关系叙事」；bake `schema.erEdgeCopy`；测 `test_er_edge_copy`；≠ 结构对账 / 几何 |
 | 2026-11-21 | **#7 规则参数**：`factory_rule_param` + 侧栏「规则参数」；bake `schema.ruleParams` / 落点键仅补缺；测 `test_rule_params` |

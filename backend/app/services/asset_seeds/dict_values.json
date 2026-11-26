@@ -808,5 +808,1575 @@
     "sort": 30,
     "enabled": true,
     "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "普通",
+    "label_zh": "普通",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "紧急",
+    "label_zh": "紧急",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "skin_id": "",
+    "dict_key": "ticket_priority",
+    "value_code": "高",
+    "label_zh": "高",
+    "sort": 30,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "refund_only",
+    "label_zh": "仅退款",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "return_refund",
+    "label_zh": "退租退款",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "refund_only",
+    "label_zh": "仅退款",
+    "sort": 10,
+    "enabled": true,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "skin_id": "",
+    "dict_key": "refund_type",
+    "value_code": "return_refund",
+    "label_zh": "退订退款",
+    "sort": 20,
+    "enabled": true,
+    "source": "migrated"
   }
 ]

@@ -462,6 +462,54 @@ class FactoryDiagramTitle(Base):
     )
 
 
+class FactoryDiagramVerb(Base):
+    """工厂级实体动作词（domain × entity × verb → 中文动作）。
+
+    论文图内业务动词唯一词源；渲染器不得自带业务词。
+    项目 domain.schema.json 的 entities.*.verbs 优先；本表为缺省与跨域默认（domain_id='*'）。
+    """
+
+    __tablename__ = "factory_diagram_verb"
+    __table_args__ = (
+        UniqueConstraint("domain_id", "skin_id", "entity_key", "verb_key", name="uk_diagram_verb"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    domain_id: Mapped[str] = mapped_column(String(64), nullable=False, default="*", index=True)
+    skin_id: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
+    entity_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    verb_key: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    action_zh: Mapped[str] = mapped_column(String(32), nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
+class FactoryUsecaseFlow(Base):
+    """工厂级用例描述流程（flow_kind × face → name/summary/flow 模板）。
+
+    face='*' 为默认；performance / cinema 覆盖票务皮。渲染器只读本台，不得再内置事件流整句。
+    """
+
+    __tablename__ = "factory_usecase_flow"
+    __table_args__ = (
+        UniqueConstraint("flow_kind", "face", name="uk_usecase_flow"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    flow_kind: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    face: Mapped[str] = mapped_column(String(32), nullable=False, default="*", index=True)
+    name_tpl: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    summary_tpl: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    flow_json: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)
+    sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class FactoryThesisAbsorb(Base):
     """终稿吸收厂库记录（独立于 Project；docs/thesis-absorb.md）。"""
 

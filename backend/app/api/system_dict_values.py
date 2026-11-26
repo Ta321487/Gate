@@ -84,11 +84,16 @@ async def migrate_dict_values(db: AsyncSession = Depends(get_db)):
 
 @router.get("/system/dict-values/gaps", summary="相对期望码的字典缺口")
 async def dict_values_gaps(
-    domain_id: str = Query(..., description="如 DOM-SHOP / DOM-DORM"),
+    domain_id: Optional[str] = Query(None, description="如 DOM-SHOP；与 scan_domains 二选一"),
     skin_id: str = Query(""),
+    scan_domains: bool = Query(False, description="扫 catalog 全部域具名字典"),
     db: AsyncSession = Depends(get_db),
 ):
     rows = await dv.load_all_rows(db)
+    if scan_domains:
+        return {"ok": True, **dv.catalog_domain_gaps(rows=rows)}
+    if not domain_id:
+        raise HTTPException(400, "请指定 domain_id，或打开 scan_domains 扫 68 域")
     report = dv.gap_report(domain_id, skin_id=skin_id, rows=rows)
     return {"ok": True, **report}
 

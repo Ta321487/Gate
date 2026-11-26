@@ -201,6 +201,30 @@ def gap_report(*, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     return {"gap_count": len(gaps), "gaps": gaps}
 
 
+def catalog_domain_gaps(*, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """扫 catalog 全部 DOM-*：每域须有 admin/staff/user 具名行（可维护加厚，不只靠 *）。"""
+    from app.bake.catalog import DOMAINS
+
+    data = _rows_or_seed(rows)
+    have = {
+        (_norm(r.get("domain_id")) or WILDCARD, _norm(r.get("role")))
+        for r in data
+        if _norm(r.get("source")) in BAKE_SOURCES and _norm(r.get("role"))
+    }
+    gaps: list[dict[str, str]] = []
+    for dom in sorted(DOMAINS):
+        for role in ("admin", "staff", "user"):
+            if (dom, role) not in have:
+                gaps.append(
+                    {
+                        "domain_id": dom,
+                        "role": role,
+                        "reason": "域缺具名账号（仅有 * 不够加厚）",
+                    }
+                )
+    return {"gap_count": len(gaps), "gaps": gaps, "domain_count": len(DOMAINS)}
+
+
 async def upsert_entry(
     db: AsyncSession,
     *,

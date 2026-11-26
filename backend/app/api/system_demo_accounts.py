@@ -78,9 +78,24 @@ async def migrate_demo_accounts(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/system/demo-accounts/gaps", summary="缺少的测试账号")
-async def demo_accounts_gaps(db: AsyncSession = Depends(get_db)):
+async def demo_accounts_gaps(
+    scan_domains: bool = Query(False, description="扫 catalog 全部域具名账号"),
+    db: AsyncSession = Depends(get_db),
+):
     rows = await da.load_all_rows(db)
-    return {"ok": True, **da.gap_report(rows=rows)}
+    seed_gaps = da.gap_report(rows=rows)
+    if not scan_domains:
+        return {"ok": True, **seed_gaps}
+    dom_gaps = da.catalog_domain_gaps(rows=rows)
+    merged = list(seed_gaps.get("gaps") or []) + list(dom_gaps.get("gaps") or [])
+    return {
+        "ok": True,
+        "gap_count": len(merged),
+        "gaps": merged,
+        "seed_gap_count": seed_gaps.get("gap_count") or 0,
+        "domain_gap_count": dom_gaps.get("gap_count") or 0,
+        "domain_count": dom_gaps.get("domain_count") or 0,
+    }
 
 
 @router.put("/system/demo-accounts", summary="新增或更新测试账号")

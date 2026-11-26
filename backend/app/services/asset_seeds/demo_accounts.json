@@ -28,5 +28,2045 @@
     "login_hint_zh": "用户端登录后办理业务。",
     "sort": 30,
     "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "教务主管",
+    "login_hint_zh": "教务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "教务员",
+    "login_hint_zh": "教务员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "活动主管",
+    "login_hint_zh": "活动主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "活动助理",
+    "login_hint_zh": "活动助理登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "报名者",
+    "login_hint_zh": "报名者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "仓管主管",
+    "login_hint_zh": "仓管主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "库管员",
+    "login_hint_zh": "库管员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "申领人",
+    "login_hint_zh": "申领人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "人事主管",
+    "login_hint_zh": "人事主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "考勤员",
+    "login_hint_zh": "考勤员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "员工",
+    "login_hint_zh": "员工登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "教务主管",
+    "login_hint_zh": "教务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "成果专员",
+    "login_hint_zh": "成果专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "宿管主管",
+    "login_hint_zh": "宿管主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "宿管员",
+    "login_hint_zh": "宿管员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "主编",
+    "login_hint_zh": "主编登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "读者",
+    "login_hint_zh": "读者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "业务主管",
+    "login_hint_zh": "业务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "车证管理员",
+    "login_hint_zh": "车证管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "申请人",
+    "login_hint_zh": "申请人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "拼车主管",
+    "login_hint_zh": "拼车主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "对接员",
+    "login_hint_zh": "对接员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "拼车用户",
+    "login_hint_zh": "拼车用户登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "门店主管",
+    "login_hint_zh": "门店主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "门店店员",
+    "login_hint_zh": "门店店员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "租车人",
+    "login_hint_zh": "租车人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "综合主管",
+    "login_hint_zh": "综合主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "证明专员",
+    "login_hint_zh": "证明专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "申请人",
+    "login_hint_zh": "申请人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "宿管主管",
+    "login_hint_zh": "宿管主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "查寝员",
+    "login_hint_zh": "查寝员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "影院主管",
+    "login_hint_zh": "影院主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "售票员",
+    "login_hint_zh": "售票员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "观影者",
+    "login_hint_zh": "观影者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "业务主管",
+    "login_hint_zh": "业务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "社团专员",
+    "login_hint_zh": "社团专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "社团负责人",
+    "login_hint_zh": "社团负责人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "业务主管",
+    "login_hint_zh": "业务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "合同专员",
+    "login_hint_zh": "合同专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "经办人",
+    "login_hint_zh": "经办人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "教务主管",
+    "login_hint_zh": "教务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "选课管理员",
+    "login_hint_zh": "选课管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "学工主管",
+    "login_hint_zh": "学工主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "认定专员",
+    "login_hint_zh": "认定专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "销售主管",
+    "login_hint_zh": "销售主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "业务员",
+    "login_hint_zh": "业务员登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "红娘主管",
+    "login_hint_zh": "红娘主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "红娘专员",
+    "login_hint_zh": "红娘专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "会员",
+    "login_hint_zh": "会员登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "资料主管",
+    "login_hint_zh": "资料主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "读者",
+    "login_hint_zh": "读者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "宿管",
+    "login_hint_zh": "宿管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "楼管",
+    "login_hint_zh": "楼管登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "实验室主管",
+    "login_hint_zh": "实验室主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "器材管理员",
+    "login_hint_zh": "器材管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "借用人",
+    "login_hint_zh": "借用人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "业务主管",
+    "login_hint_zh": "业务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "审核秘书",
+    "login_hint_zh": "审核秘书登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "送审人",
+    "login_hint_zh": "送审人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "教务主管",
+    "login_hint_zh": "教务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "公卫主管",
+    "login_hint_zh": "公卫主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "随访员",
+    "login_hint_zh": "随访员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "随访对象",
+    "login_hint_zh": "随访对象登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "教务主管",
+    "login_hint_zh": "教务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "考生",
+    "login_hint_zh": "考生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "财务主管",
+    "login_hint_zh": "财务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "报销审核员",
+    "login_hint_zh": "报销审核员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "报销人",
+    "login_hint_zh": "报销人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "工程主管",
+    "login_hint_zh": "工程主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "备案员",
+    "login_hint_zh": "备案员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "申报人",
+    "login_hint_zh": "申报人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "车队主管",
+    "login_hint_zh": "车队主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "调度员",
+    "login_hint_zh": "调度员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "用车人",
+    "login_hint_zh": "用车人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "门店主管",
+    "login_hint_zh": "门店主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "店员",
+    "login_hint_zh": "店员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "用餐者",
+    "login_hint_zh": "用餐者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "站长",
+    "login_hint_zh": "站长登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "版主",
+    "login_hint_zh": "版主登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "居民",
+    "login_hint_zh": "居民登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "资助主管",
+    "login_hint_zh": "资助主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "资助专员",
+    "login_hint_zh": "资助专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GENERIC",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "管理员",
+    "login_hint_zh": "管理员登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GENERIC",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GENERIC",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "用户",
+    "login_hint_zh": "用户登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "教务主管",
+    "login_hint_zh": "教务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "教务员",
+    "login_hint_zh": "教务员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "医务主管",
+    "login_hint_zh": "医务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "挂号员",
+    "login_hint_zh": "挂号员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "患者",
+    "login_hint_zh": "患者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "酒店主管",
+    "login_hint_zh": "酒店主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "前台",
+    "login_hint_zh": "前台登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "住客",
+    "login_hint_zh": "住客登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "平台主管",
+    "login_hint_zh": "平台主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "仪器管理员",
+    "login_hint_zh": "仪器管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "使用人",
+    "login_hint_zh": "使用人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "就业办主管",
+    "login_hint_zh": "就业办主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "实习辅导员",
+    "login_hint_zh": "实习辅导员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "实习生",
+    "login_hint_zh": "实习生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "运维主管",
+    "login_hint_zh": "运维主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "运维员",
+    "login_hint_zh": "运维员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "师生",
+    "login_hint_zh": "师生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "学工主管",
+    "login_hint_zh": "学工主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "劳动专员",
+    "login_hint_zh": "劳动专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "实验室主管",
+    "login_hint_zh": "实验室主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "安全员",
+    "login_hint_zh": "安全员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生/教师",
+    "login_hint_zh": "学生/教师登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "馆长",
+    "login_hint_zh": "馆长登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "馆员",
+    "login_hint_zh": "馆员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "读者",
+    "login_hint_zh": "读者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "业务主管",
+    "login_hint_zh": "业务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "置业顾问",
+    "login_hint_zh": "置业顾问登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "看房客户",
+    "login_hint_zh": "看房客户登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "社区招领主管",
+    "login_hint_zh": "社区招领主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "招领管理员",
+    "login_hint_zh": "招领管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "居民",
+    "login_hint_zh": "居民登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "内容总监",
+    "login_hint_zh": "内容总监登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "观众",
+    "login_hint_zh": "观众登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "场地主管",
+    "login_hint_zh": "场地主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "场地管理员",
+    "login_hint_zh": "场地管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "预约人",
+    "login_hint_zh": "预约人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "学工主管",
+    "login_hint_zh": "学工主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "综测专员",
+    "login_hint_zh": "综测专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "曲库主管",
+    "login_hint_zh": "曲库主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "听众",
+    "login_hint_zh": "听众登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "教务主管",
+    "login_hint_zh": "教务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "组队协调员",
+    "login_hint_zh": "组队协调员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "教务主管",
+    "login_hint_zh": "教务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "选题秘书",
+    "login_hint_zh": "选题秘书登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "教务主管",
+    "login_hint_zh": "教务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "导师秘书",
+    "login_hint_zh": "导师秘书登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "学生",
+    "login_hint_zh": "学生登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "驿站主管",
+    "login_hint_zh": "驿站主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "驿站店员",
+    "login_hint_zh": "驿站店员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "取件人",
+    "login_hint_zh": "取件人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "车场主管",
+    "login_hint_zh": "车场主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "预约管理员",
+    "login_hint_zh": "预约管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "车主",
+    "login_hint_zh": "车主登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "业务主管",
+    "login_hint_zh": "业务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "组织员",
+    "login_hint_zh": "组织员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "入党申请人",
+    "login_hint_zh": "入党申请人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "业务主管",
+    "login_hint_zh": "业务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "采购专员",
+    "login_hint_zh": "采购专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "申购人",
+    "login_hint_zh": "申购人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "业务主管",
+    "login_hint_zh": "业务主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "项目专员",
+    "login_hint_zh": "项目专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "申报人",
+    "login_hint_zh": "申报人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "宣传主管",
+    "login_hint_zh": "宣传主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "宣传员",
+    "login_hint_zh": "宣传员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "申报人",
+    "login_hint_zh": "申报人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "物业主管",
+    "login_hint_zh": "物业主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "物业调度",
+    "login_hint_zh": "物业调度登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "住户",
+    "login_hint_zh": "住户登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "就业办主管",
+    "login_hint_zh": "就业办主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "就业专员",
+    "login_hint_zh": "就业专员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "求职者",
+    "login_hint_zh": "求职者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "门店主管",
+    "login_hint_zh": "门店主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "预约管理员",
+    "login_hint_zh": "预约管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "顾客",
+    "login_hint_zh": "顾客登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "行政主管",
+    "login_hint_zh": "行政主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "用章管理员",
+    "login_hint_zh": "用章管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "申请人",
+    "login_hint_zh": "申请人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "商城主管",
+    "login_hint_zh": "商城主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "订单管理员",
+    "login_hint_zh": "订单管理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "买家",
+    "login_hint_zh": "买家登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "调研主管",
+    "login_hint_zh": "调研主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "受访者",
+    "login_hint_zh": "受访者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "时间银行主管",
+    "login_hint_zh": "时间银行主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "核销员",
+    "login_hint_zh": "核销员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "志愿者",
+    "login_hint_zh": "志愿者登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "计调主管",
+    "login_hint_zh": "计调主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "计调员",
+    "login_hint_zh": "计调员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "游客",
+    "login_hint_zh": "游客登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "人事主管",
+    "login_hint_zh": "人事主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "考勤员",
+    "login_hint_zh": "考勤员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "申请人",
+    "login_hint_zh": "申请人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "门卫主管",
+    "login_hint_zh": "门卫主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "接待员",
+    "login_hint_zh": "接待员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "来访人",
+    "login_hint_zh": "来访人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "role": "admin",
+    "username": "admin",
+    "password": "admin123",
+    "nickname_zh": "评选主管",
+    "login_hint_zh": "评选主管登录管理端，维护主数据与业务单据。",
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "role": "staff",
+    "username": "staff",
+    "password": "staff123",
+    "nickname_zh": "受理员",
+    "login_hint_zh": "受理员登录受理端，处理待办。",
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "role": "user",
+    "username": "user",
+    "password": "user123",
+    "nickname_zh": "投票人",
+    "login_hint_zh": "投票人登录用户端，办理业务。",
+    "sort": 30,
+    "source": "migrated"
   }
 ]

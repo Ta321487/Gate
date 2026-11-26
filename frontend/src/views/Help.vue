@@ -761,6 +761,7 @@ const sections = [
             ['表关系叙事', '表边一句人话', 'schema.erEdgeCopy'],
             ['测试账号', '三端演示账号', 'schema.demoAccounts'],
             ['论文图题', '图种×域标题模板', 'schema.diagramTitleTemplates'],
+            ['用例流程', '用例描述表事件流模板', 'factory_usecase_flow'],
           ],
         },
         bullets: [

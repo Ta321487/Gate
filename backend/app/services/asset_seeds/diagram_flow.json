@@ -1,0 +1,186 @@
+[
+  {
+    "kind": "open",
+    "side": "user",
+    "entity_key": "",
+    "verb_key": "",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "my_orders",
+    "side": "user",
+    "entity_key": "order",
+    "verb_key": "complete",
+    "from_state": "shipped",
+    "to_state": "completed"
+  },
+  {
+    "kind": "my_orders_pay",
+    "side": "user",
+    "entity_key": "order",
+    "verb_key": "confirm",
+    "from_state": "pending",
+    "to_state": "confirmed"
+  },
+  {
+    "kind": "orders",
+    "side": "admin",
+    "entity_key": "order",
+    "verb_key": "ship",
+    "from_state": "pending",
+    "to_state": "shipped"
+  },
+  {
+    "kind": "cart",
+    "side": "user",
+    "entity_key": "cart",
+    "verb_key": "checkout",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "order_reviews_user",
+    "side": "user",
+    "entity_key": "review",
+    "verb_key": "apply",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "order_reviews",
+    "side": "user",
+    "entity_key": "review",
+    "verb_key": "apply",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "order_reviews_admin",
+    "side": "admin",
+    "entity_key": "review",
+    "verb_key": "approve",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "guestbook_user",
+    "side": "user",
+    "entity_key": "guestbook",
+    "verb_key": "apply",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "guestbook_admin",
+    "side": "admin",
+    "entity_key": "guestbook",
+    "verb_key": "reply",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "reserve_user",
+    "side": "user",
+    "entity_key": "reservation",
+    "verb_key": "apply",
+    "from_state": "pending",
+    "to_state": "confirmed"
+  },
+  {
+    "kind": "reservations",
+    "side": "admin",
+    "entity_key": "reservation",
+    "verb_key": "confirm",
+    "from_state": "pending",
+    "to_state": "confirmed"
+  },
+  {
+    "kind": "my_tickets",
+    "side": "user",
+    "entity_key": "ticket",
+    "verb_key": "apply",
+    "from_state": "pending",
+    "to_state": "confirmed"
+  },
+  {
+    "kind": "ticket_pending",
+    "side": "admin",
+    "entity_key": "ticket",
+    "verb_key": "approve",
+    "from_state": "pending",
+    "to_state": "confirmed"
+  },
+  {
+    "kind": "ticket_records",
+    "side": "user",
+    "entity_key": "ticket",
+    "verb_key": "return",
+    "from_state": "confirmed",
+    "to_state": "completed"
+  },
+  {
+    "kind": "favorites",
+    "side": "user",
+    "entity_key": "favorites",
+    "verb_key": "apply",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "addresses",
+    "side": "user",
+    "entity_key": "address",
+    "verb_key": "submit",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "dm",
+    "side": "user",
+    "entity_key": "dm",
+    "verb_key": "submit",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "content_user",
+    "side": "user",
+    "entity_key": "content",
+    "verb_key": "apply",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "content_admin",
+    "side": "admin",
+    "entity_key": "content",
+    "verb_key": "submit",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "archive_admin",
+    "side": "admin",
+    "entity_key": "archive",
+    "verb_key": "submit",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "archive_user",
+    "side": "user",
+    "entity_key": "archive",
+    "verb_key": "apply",
+    "from_state": "",
+    "to_state": ""
+  },
+  {
+    "kind": "category",
+    "side": "admin",
+    "entity_key": "category",
+    "verb_key": "submit",
+    "from_state": "",
+    "to_state": ""
+  }
+]

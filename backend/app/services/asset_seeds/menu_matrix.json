@@ -68,5 +68,2045 @@
     "always_on": false,
     "sort": 40,
     "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACAD",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ACTIVITY",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ASSET",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ATTEND",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-AWARD",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BED",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-BLOG",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPASS",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARPOOL",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CARRENT",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CERT",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CHECKIN",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CINEMA",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CLUB",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CONTRACT",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-COURSE",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CREDIT",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-CRM",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DATING",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DOCLIB",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-DORM",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EQUIP",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-ETHIC",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVAL",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EVENT",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXAM",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-EXPENSE",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FITOUT",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FLEET",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FOOD",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FORUM",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-FUND",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GENERIC",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GENERIC",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GENERIC",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-GRADE",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOSPITAL",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-HOTEL",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INSTRUMENT",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-INTERN",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-IT",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABOR",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LABSAFE",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LIBRARY",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LISTING",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-LOST",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEDIA",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MEETING",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MORAL",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUSIC",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TEAM",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TOPIC",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-MUTUAL-TUTOR",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARCEL",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARKING",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PARTY",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROCURE",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROJ",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROMO",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-PROPERTY",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-RECRUIT",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SALON",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SEAL",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SHOP",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-SURVEY",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TIMEBANK",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TOUR",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-TRIP",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VISITOR",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "role": "admin",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 1,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "role": "staff",
+    "menu_id": "dashboard",
+    "label_zh": "工作台",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 2,
+    "source": "migrated"
+  },
+  {
+    "domain_id": "DOM-VOTE",
+    "role": "user",
+    "menu_id": "home",
+    "label_zh": "首页",
+    "cap_id": "",
+    "always_on": true,
+    "sort": 3,
+    "source": "migrated"
   }
 ]

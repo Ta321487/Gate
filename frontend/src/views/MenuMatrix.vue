@@ -7,16 +7,18 @@
           维护岗位 × 菜单入口；能力开启时 bake 补齐缺项。不替代学生包内 X-ORG 岗位勾选。
         </p>
       </div>
-      <div class="row" style="gap:8px;flex-wrap:wrap">
-        <n-button size="small" :loading="gapLoading" @click="scanGaps">检查待补</n-button>
-        <n-button
-          size="small"
-          :loading="migrating"
-          title="仅追加缺失项，不覆盖已有记录"
-          @click="migrate"
-        >导入初始矩阵</n-button>
-        <n-button size="small" type="primary" @click="openCreate">登记入口</n-button>
-      </div>
+      <AssetDeskActions
+        :gap-loading="gapLoading"
+        :migrating="migrating"
+        create-label="登记菜单"
+        @check="scanGaps(false)"
+        @migrate="migrate"
+        @create="openCreate"
+      >
+        <template #extra>
+          <n-button size="small" :loading="gapLoading" @click="scanGaps(true)">扫 68 域</n-button>
+        </template>
+      </AssetDeskActions>
     </div>
 
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
@@ -28,18 +30,18 @@
         </div>
         <div class="stat">
           <div class="label">待补</div>
-          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapsScanned ? gapCount : '—' }}</div>
+          <div class="value" :class="{ bad: gapsScanned && gapCount > 0 }">{{ gapStatDisplay(gapsScanned, gapCount) }}</div>
         </div>
       </div>
 
-      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12" @update:value="onTab">
+      <n-tabs v-model:value="mainTab" type="line" size="small" class="mb-12">
         <n-tab-pane name="entries" tab="入口" />
         <n-tab-pane name="gaps" tab="待补" />
       </n-tabs>
 
       <div v-show="mainTab === 'entries'" class="panel panel-quiet">
         <div class="panel-hd">
-          <div class="row mm-filter-row">
+          <div class="row asset-desk-filter-row">
             <n-select
               v-model:value="domain"
               size="small"
@@ -75,7 +77,7 @@
             <div class="empty-desc">用顶栏导入或登记一条。</div>
           </div>
           <template v-else>
-            <div class="mm-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -137,11 +139,17 @@
           <div v-if="!gaps.length" class="empty-hint">
             <div class="empty-title">{{ gapsScanned ? '没有待补项' : '还没检查过' }}</div>
             <div class="empty-desc">
-              {{ gapsScanned ? '种子与能力菜单入口已齐。' : '点顶栏「检查待补」扫描缺口。' }}
+              {{
+                gapsScanned
+                  ? lastScanDomains
+                    ? '68 域具名常驻菜单已齐。'
+                    : '种子与能力菜单入口已齐。'
+                  : '点「检查待补」或「扫 68 域」。'
+              }}
             </div>
           </div>
           <template v-else>
-            <div class="mm-table-wrap">
+            <div class="asset-desk-table-wrap">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -184,7 +192,7 @@
 
     <n-drawer v-model:show="drawerOpen" :width="440" placement="right" @after-leave="onDrawerLeave">
       <n-drawer-content :title="editingId ? '改入口' : '登记入口'" closable>
-        <div class="mm-drawer-form">
+        <div class="asset-desk-drawer-form">
           <n-form-item label="域" :show-feedback="false">
             <n-select
               v-model:value="form.domain_id"
@@ -256,8 +264,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api, message } from '../api'
+import { gapStatDisplay } from '../utils/assetDesk'
 import { confirm } from '../ui'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import AssetDeskActions from '../components/AssetDeskActions.vue'
 
 const booted = ref(false)
 const migrating = ref(false)
@@ -280,6 +290,7 @@ const q = ref('')
 const gaps = ref([])
 const gapCount = ref(0)
 const gapsScanned = ref(false)
+const lastScanDomains = ref(false)
 const gapPage = ref(1)
 const gapPageSize = ref(20)
 
@@ -376,9 +387,6 @@ function onAlwaysOn(v) {
   if (v) form.cap_id = null
 }
 
-function onTab(tab) {
-  if (tab === 'gaps' && !gapsScanned.value) scanGaps()
-}
 
 function onPageSize() {
   page.value = 1
@@ -493,17 +501,20 @@ async function migrate() {
   }
 }
 
-async function scanGaps() {
+async function scanGaps(scanDomains = false) {
   gapLoading.value = true
+  lastScanDomains.value = !!scanDomains
   try {
-    const res = await api.menuMatrixGaps()
+    const res = await api.menuMatrixGaps(
+      scanDomains ? { scan_domains: true } : {},
+    )
     gaps.value = res.gaps || []
     gapCount.value = res.gap_count ?? gaps.value.length
     gapsScanned.value = true
     gapPage.value = 1
     mainTab.value = 'gaps'
     if (gapCount.value) message.info(`待补 ${gapCount.value} 条`)
-    else message.success('没有待补项')
+    else message.success(scanDomains ? '68 域具名常驻菜单已齐' : '没有待补项')
   } catch (e) {
     message.error(e?.message || '检查失败')
   } finally {
@@ -539,7 +550,9 @@ async function save() {
     await loadMeta()
     await load()
     if (gapsScanned.value) {
-      const gapRes = await api.menuMatrixGaps()
+      const gapRes = await api.menuMatrixGaps(
+        lastScanDomains.value ? { scan_domains: true } : {},
+      )
       gaps.value = gapRes.gaps || []
       gapCount.value = gapRes.gap_count ?? gaps.value.length
     }
@@ -576,54 +589,3 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.mm-table-wrap {
-  overflow: auto;
-  max-height: calc(100vh - 380px);
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.data-table th,
-.data-table td {
-  text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--line, var(--line-soft));
-  vertical-align: middle;
-}
-.data-table th {
-  color: var(--muted);
-  font-weight: 500;
-  position: sticky;
-  top: 0;
-  background: var(--surface);
-  z-index: 1;
-}
-.data-table tr.is-editing {
-  background: color-mix(in srgb, var(--teal-soft, #2a9d8f) 22%, transparent);
-}
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-}
-.bad {
-  color: var(--error, #c00);
-}
-.pager-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-.mm-filter-row {
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.mm-drawer-form :deep(.n-form-item) {
-  margin-bottom: 10px;
-}
-</style>

@@ -1,0 +1,922 @@
+[
+  {
+    "flow_kind": "auth_login",
+    "face": "*",
+    "name_tpl": "{user}登录系统",
+    "summary_tpl": "{user}使用账号密码登录本系统。",
+    "flow": [
+      "{user}打开系统登录界面",
+      "系统展示用户名与密码登录表单",
+      "{user}输入正确的用户名与密码，点击「登录」",
+      "系统校验账号信息",
+      "校验通过后进入系统主界面，完成登录"
+    ],
+    "sort": 10,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "auth_register",
+    "face": "*",
+    "name_tpl": "{user}注册账号",
+    "summary_tpl": "{user}在注册页填写信息并完成账号注册。",
+    "flow": [
+      "{user}打开系统注册界面",
+      "系统展示注册表单",
+      "{user}填写必填注册信息，点击提交注册",
+      "系统校验并保存账号信息",
+      "注册成功后可使用新账号登录系统"
+    ],
+    "sort": 20,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "archive_user",
+    "face": "*",
+    "name_tpl": "{actor}浏览{entity}",
+    "summary_tpl": "{actor}在「{label}」中浏览并查看{entity}信息。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至「{label}」列表界面",
+      "{actor}浏览或检索{entity}列表",
+      "{actor}点击选定记录，系统展示详情信息",
+      "系统展示的数据与后台保存内容一致"
+    ],
+    "sort": 30,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "archive_admin",
+    "face": "*",
+    "name_tpl": "{actor}管理{entity}",
+    "summary_tpl": "{actor}在「{label}」中新增或维护{entity}主数据。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至「{label}」管理界面",
+      "{actor}点击新增或打开编辑，填写必填项",
+      "{actor}点击保存",
+      "系统保存{entity}信息，列表中可见更新结果"
+    ],
+    "sort": 40,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "reserve_user",
+    "face": "*",
+    "name_tpl": "{actor}提交{reserve_stem}",
+    "summary_tpl": "{actor}在「{label}」中选择可预约项并提交{reserve_stem}。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至「{label}」相关界面",
+      "{actor}选择可预约项或时段，并填写页面必填信息",
+      "{actor}点击确认或提交",
+      "系统保存{reserve_stem}信息，提示提交成功，并可在列表中查看"
+    ],
+    "sort": 50,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "reservations",
+    "face": "*",
+    "name_tpl": "{actor}办理{reserve_stem}记录",
+    "summary_tpl": "{actor}在「{label}」中查看并办理{reserve_stem}记录。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至「{label}」界面并展示记录列表",
+      "{actor}打开一条记录查看详情",
+      "{actor}按页面提供的办理操作执行办结或处理",
+      "系统更新记录状态，列表展示最新结果"
+    ],
+    "sort": 60,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "my_tickets",
+    "face": "*",
+    "name_tpl": "{actor}提交{ticket_stem}",
+    "summary_tpl": "{actor}在「{label}」中填写并提交申请。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至「{label}」界面",
+      "{actor}填写申请表单必填项",
+      "{actor}点击提交",
+      "系统保存申请信息，提示提交成功，列表出现新单据"
+    ],
+    "sort": 70,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "ticket_pending",
+    "face": "*",
+    "name_tpl": "{actor}审核{ticket_stem}",
+    "summary_tpl": "{actor}在「{label}」中对待办单据进行通过或驳回。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至待办列表界面",
+      "{actor}打开一条待办单据查看详情",
+      "{actor}执行通过/同意或驳回操作",
+      "系统更新单据状态，待办列表同步变化"
+    ],
+    "sort": 80,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "ticket_records",
+    "face": "*",
+    "name_tpl": "{actor}查询{label}",
+    "summary_tpl": "{actor}在「{label}」中按条件查看办理记录。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至记录列表界面",
+      "{actor}按条件查看办理记录",
+      "系统展示符合条件的记录列表"
+    ],
+    "sort": 90,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "cart",
+    "face": "*",
+    "name_tpl": "{actor}使用购物车",
+    "summary_tpl": "{actor}将商品加入购物车并在「{label}」中核对。",
+    "flow": [
+      "{actor}登录成功后在商品相关页面选择商品并加入购物车",
+      "系统提示加入成功",
+      "{actor}点击「{label}」进入购物车界面",
+      "{actor}核对商品与数量",
+      "系统展示购物车中的已选商品信息"
+    ],
+    "sort": 100,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "seat_shows",
+    "face": "*",
+    "name_tpl": "{actor}选座购票",
+    "summary_tpl": "{actor}在「{label}」中选择场次，进入座位图确认后完成购票。",
+    "flow": [
+      "{actor}登录成功后进入系统，点击「{label}」",
+      "系统展示可售场次列表",
+      "{actor}选定场次进入座位图，点选空闲座位",
+      "{actor}确认选座并提交购票",
+      "系统占座并生成订单，提示购票成功"
+    ],
+    "sort": 110,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "my_orders",
+    "face": "*",
+    "name_tpl": "{actor}查看{label}",
+    "summary_tpl": "{actor}在「{label}」中查看本人订单及状态。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至订单列表界面",
+      "{actor}查看订单状态或打开详情",
+      "系统展示本人订单信息与当前状态"
+    ],
+    "sort": 120,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "orders",
+    "face": "*",
+    "name_tpl": "{actor}处理订单",
+    "summary_tpl": "{actor}在「{label}」中对待处理订单执行办理操作。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至订单管理界面",
+      "{actor}打开待处理订单",
+      "{actor}执行确认、发货等办理操作",
+      "系统按办理结果更新订单状态"
+    ],
+    "sort": 130,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "addresses",
+    "face": "*",
+    "name_tpl": "{actor}维护收货地址",
+    "summary_tpl": "{actor}在「{label}」中新增或编辑收货地址。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至地址管理界面",
+      "{actor}新增或编辑地址并填写必填项",
+      "{actor}点击保存",
+      "系统保存地址信息，列表中可见该地址"
+    ],
+    "sort": 140,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "profile",
+    "face": "*",
+    "name_tpl": "{actor}维护个人资料",
+    "summary_tpl": "{actor}在「{label}」中查看并保存个人资料。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至个人资料界面并展示当前资料",
+      "{actor}修改允许编辑的字段",
+      "{actor}点击保存",
+      "系统保存成功，页面展示更新后的资料"
+    ],
+    "sort": 150,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "messages",
+    "face": "*",
+    "name_tpl": "{actor}查看站内消息",
+    "summary_tpl": "{actor}在「{label}」中查看系统消息。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至消息列表界面",
+      "{actor}查看消息列表或打开一条消息",
+      "系统展示消息内容或空状态提示"
+    ],
+    "sort": 160,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "content_user",
+    "face": "*",
+    "name_tpl": "{actor}查看公告",
+    "summary_tpl": "{actor}在「{label}」中阅读公告内容。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至公告列表界面",
+      "{actor}点击一条公告",
+      "系统展示公告标题与正文"
+    ],
+    "sort": 170,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "content_admin",
+    "face": "*",
+    "name_tpl": "{actor}发布公告",
+    "summary_tpl": "{actor}在「{label}」中新建并发布公告。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至公告管理界面",
+      "{actor}新建公告并填写标题与正文",
+      "{actor}点击发布或保存",
+      "系统保存公告，用户端可查看"
+    ],
+    "sort": 180,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "users",
+    "face": "*",
+    "name_tpl": "{actor}管理用户",
+    "summary_tpl": "{actor}在「{label}」中查看用户并进行启用/停用等管理。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至用户列表界面",
+      "{actor}查看用户列表并执行启用/停用或重置密码等管理操作",
+      "系统按操作更新用户状态"
+    ],
+    "sort": 190,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "category",
+    "face": "*",
+    "name_tpl": "{actor}维护{label}",
+    "summary_tpl": "{actor}在「{label}」中新增或编辑分类信息。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至分类管理界面",
+      "{actor}新增或编辑分类并填写必填项",
+      "{actor}点击保存",
+      "系统保存分类，列表中可见更新结果"
+    ],
+    "sort": 200,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "guestbook_user",
+    "face": "*",
+    "name_tpl": "{actor}提交留言",
+    "summary_tpl": "{actor}在「{label}」中填写并提交留言。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至留言界面",
+      "{actor}填写留言正文并提交",
+      "系统保存留言，列表中可见该留言"
+    ],
+    "sort": 210,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "guestbook_admin",
+    "face": "*",
+    "name_tpl": "{actor}管理留言",
+    "summary_tpl": "{actor}在「{label}」中回复或处理留言。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至留言管理界面",
+      "{actor}打开一条留言，执行回复或删除",
+      "系统更新留言状态，用户端可见相应结果"
+    ],
+    "sort": 220,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "dm",
+    "face": "*",
+    "name_tpl": "{actor}收发私信",
+    "summary_tpl": "{actor}在「{label}」中发送并查看私信。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至私信界面",
+      "{actor}选择或新建会话对象并发送私信",
+      "系统保存消息，会话中可见发送内容"
+    ],
+    "sort": 230,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "favorites",
+    "face": "*",
+    "name_tpl": "{actor}管理收藏",
+    "summary_tpl": "{actor}收藏业务对象并在「{label}」中查看或取消。",
+    "flow": [
+      "{actor}登录成功后在详情页点击收藏",
+      "系统提示收藏成功",
+      "{actor}进入「{label}」查看收藏列表",
+      "{actor}可取消收藏",
+      "系统同步更新收藏列表"
+    ],
+    "sort": 240,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "browse_history",
+    "face": "*",
+    "name_tpl": "{actor}查看浏览足迹",
+    "summary_tpl": "{actor}在「{label}」中查看最近浏览记录。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至足迹列表界面",
+      "{actor}查看最近浏览记录",
+      "系统展示与浏览行为一致的足迹列表"
+    ],
+    "sort": 250,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "coupons",
+    "face": "*",
+    "name_tpl": "{actor}使用优惠券",
+    "summary_tpl": "{actor}在「{label}」中领取或查看优惠券。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至优惠券界面",
+      "{actor}领取或查看可用优惠券",
+      "系统展示券列表，可按实现用于下单"
+    ],
+    "sort": 260,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "order_reviews",
+    "face": "*",
+    "name_tpl": "{actor}发表评价",
+    "summary_tpl": "{actor}在「{label}」或订单详情中提交评价。",
+    "flow": [
+      "{actor}登录成功后进入「{label}」或可评价订单详情",
+      "系统展示评价表单",
+      "{actor}填写评分与评价并提交",
+      "系统保存评价信息"
+    ],
+    "sort": 270,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "order_reviews_user",
+    "face": "*",
+    "name_tpl": "{actor}发表评价",
+    "summary_tpl": "{actor}确认收货后在「{label}」中发表评价。",
+    "flow": [
+      "{actor}登录成功后进入「{label}」或可评价订单详情",
+      "系统展示评价表单",
+      "{actor}填写评分与评价并提交",
+      "系统保存评价信息"
+    ],
+    "sort": 280,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "order_reviews_admin",
+    "face": "*",
+    "name_tpl": "{actor}管理评价",
+    "summary_tpl": "{actor}在「{label}」中查看、回复或处理评价。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至评价列表界面",
+      "{actor}打开一条评价查看详情",
+      "{actor}按页面提供的操作回复或处理",
+      "系统更新评价状态，列表展示最新结果"
+    ],
+    "sort": 290,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "week_calendar",
+    "face": "*",
+    "name_tpl": "{actor}查看{label}",
+    "summary_tpl": "{actor}在「{label}」中查看日程安排。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至周历界面",
+      "{actor}切换日期查看安排",
+      "系统展示本人相关安排"
+    ],
+    "sort": 300,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "deadline",
+    "face": "*",
+    "name_tpl": "{actor}查看{label}",
+    "summary_tpl": "{actor}在「{label}」中查看逾期或催办记录。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至催办/逾期列表界面",
+      "{actor}查看相关记录",
+      "系统展示逾期或催办信息"
+    ],
+    "sort": 310,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "lookup",
+    "face": "*",
+    "name_tpl": "{actor}维护{label}",
+    "summary_tpl": "{actor}在「{label}」中维护字典项。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至字典维护界面",
+      "{actor}新增或编辑字典项并保存",
+      "系统保存字典项，列表可见更新结果"
+    ],
+    "sort": 320,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "archive_logs",
+    "face": "*",
+    "name_tpl": "{actor}进行{label}",
+    "summary_tpl": "{actor}在「{label}」相关入口提交或查看监测记录。",
+    "flow": [
+      "{actor}登录成功后进入系统，打开「{label}」或相关详情",
+      "系统展示可操作表单或记录列表",
+      "{actor}按页面字段提交或查看记录",
+      "系统保存或展示与操作一致的结果"
+    ],
+    "sort": 330,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "blind_pools",
+    "face": "*",
+    "name_tpl": "{actor}维护盲盒奖池",
+    "summary_tpl": "{actor}在「{label}」中配置奖品、权重和隐藏款。买家买的是盒子，开出后才扣奖品库存。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统展示盲盒奖池",
+      "{actor}填写奖品、权重和是否隐藏款并保存",
+      "系统保存奖池；之后按该盲盒的保底次数计算"
+    ],
+    "sort": 340,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "group_campaigns",
+    "face": "*",
+    "name_tpl": "{actor}维护拼团",
+    "summary_tpl": "{actor}在「{label}」中设置成团人数和截止时间。人齐后才能发货，过期未齐则取消并退回余额。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统展示拼团列表",
+      "{actor}填写商品、成团人数和截止时间并保存",
+      "系统保存后，未截止的团可以开团或参团"
+    ],
+    "sort": 350,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "delivery_slots",
+    "face": "*",
+    "name_tpl": "{actor}维护配送时段",
+    "summary_tpl": "{actor}在「{label}」中维护时段和余量。结算时只能选仍有余量的时段。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统展示配送时段",
+      "{actor}填写起止时刻、余量，以及当日达或预订，并保存",
+      "系统保存后，结算页按这份名单选择"
+    ],
+    "sort": 360,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "price_spans",
+    "face": "*",
+    "name_tpl": "{actor}维护节日加价",
+    "summary_tpl": "{actor}在「{label}」中设置日期区间和倍率。下单当日命中则计入本单。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统展示节日加价",
+      "{actor}填写起止日期和倍率并保存",
+      "系统按下单当日规则把加价计入订单"
+    ],
+    "sort": 370,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "purchase_permits",
+    "face": "*",
+    "name_tpl": "{actor}审核购买申请",
+    "summary_tpl": "{actor}在「{label}」中通过或驳回购买资料。通过后才能加购和下单。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统展示待审申请",
+      "{actor}打开一条申请，执行通过或驳回",
+      "系统更新审核结果；驳回需填写原因"
+    ],
+    "sort": 380,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "my_permits",
+    "face": "*",
+    "name_tpl": "{actor}提交购买审核",
+    "summary_tpl": "{actor}在「{label}」中上传资料。通过前不能加购和下单。",
+    "flow": [
+      "{actor}登录成功后进入系统，点击「{label}」",
+      "系统展示购买审核表单",
+      "{actor}上传资料并提交",
+      "系统保存为待审，通过前不能加购和下单"
+    ],
+    "sort": 390,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "line_specs",
+    "face": "*",
+    "name_tpl": "{actor}维护规格选项",
+    "summary_tpl": "{actor}在「{label}」中维护可选规格。下单时从这份名单里选，刻字另记在订单上。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统展示规格选项",
+      "{actor}新增或停用一项并保存",
+      "系统保存后，结算页按这份名单选择"
+    ],
+    "sort": 400,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "lost_clues",
+    "face": "*",
+    "name_tpl": "{actor}查看线索留言",
+    "summary_tpl": "{actor}在「{label}」中查看路人留下的线索。游客不必注册。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统展示线索留言",
+      "{actor}打开一条留言查看内容",
+      "系统展示称呼、联系方式和线索内容"
+    ],
+    "sort": 410,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "consigns",
+    "face": "*",
+    "name_tpl": "{actor}质检寄卖",
+    "summary_tpl": "{actor}在「{label}」中质检。通过后才上架，订单完成后按当时抽成记账。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统展示待质检寄卖",
+      "{actor}执行通过上架或驳回",
+      "系统更新状态；通过后该物品才可购买"
+    ],
+    "sort": 420,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "my_consigns",
+    "face": "*",
+    "name_tpl": "{actor}提交寄卖",
+    "summary_tpl": "{actor}在「{label}」中提交物品。质检通过后才可购买，完成后可申请提现。",
+    "flow": [
+      "{actor}登录成功后进入系统，点击「{label}」",
+      "系统展示寄卖表单",
+      "{actor}填写名称、期望价和成色并提交",
+      "系统保存为待质检"
+    ],
+    "sort": 430,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "open",
+    "face": "*",
+    "name_tpl": "{actor}使用{label}",
+    "summary_tpl": "{actor}打开「{label}」并完成页面主操作。",
+    "flow": [
+      "{actor}登录成功后进入系统，点击「{label}」",
+      "系统转至「{label}」界面",
+      "{actor}查看页面主列表或主表单并完成可用操作",
+      "系统按页面实现反馈操作结果"
+    ],
+    "sort": 440,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "seat_shows",
+    "face": "performance",
+    "name_tpl": "{actor}选座购票",
+    "summary_tpl": "{actor}在「{label}」中选择演出场次，进入座位图确认后完成购票。",
+    "flow": [
+      "{actor}登录成功后进入系统，点击「{label}」",
+      "系统展示可售演出场次列表",
+      "{actor}选定场次进入座位图，点选空闲座位",
+      "{actor}确认选座并提交购票",
+      "系统占座并生成票务订单，提示购票成功"
+    ],
+    "sort": 450,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "cart",
+    "face": "performance",
+    "name_tpl": "{actor}使用购物车",
+    "summary_tpl": "{actor}将票档或演艺周边加入购物车并在「{label}」中核对。",
+    "flow": [
+      "{actor}登录成功后在选座或相关页面将票档或演艺周边加入购物车",
+      "系统提示加入成功",
+      "{actor}点击「{label}」进入购物车界面",
+      "{actor}核对已选票档或演艺周边与数量",
+      "系统展示购物车中的已选票档或演艺周边信息"
+    ],
+    "sort": 460,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "orders",
+    "face": "performance",
+    "name_tpl": "{actor}处理订单",
+    "summary_tpl": "{actor}在「{label}」中对待处理票务订单执行出票核销或确认观演等办理。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至订单管理界面",
+      "{actor}打开待处理票务订单",
+      "{actor}执行出票核销或确认观演等办理操作",
+      "系统按办理结果更新订单状态（无物流发货）"
+    ],
+    "sort": 470,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "my_orders",
+    "face": "performance",
+    "name_tpl": "{actor}查看{label}",
+    "summary_tpl": "{actor}在「{label}」中查看本人票务订单及状态。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至票务订单列表界面",
+      "{actor}查看票务订单状态或打开详情",
+      "系统展示本人票务订单信息与当前状态"
+    ],
+    "sort": 480,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "order_reviews_user",
+    "face": "performance",
+    "name_tpl": "{actor}发表评价",
+    "summary_tpl": "{actor}观演后在「{label}」中发表评价。",
+    "flow": [
+      "{actor}登录成功后进入「{label}」或可评价的观演订单详情",
+      "系统展示评价表单",
+      "{actor}填写评分与评价并提交",
+      "系统保存评价信息"
+    ],
+    "sort": 490,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "order_reviews",
+    "face": "performance",
+    "name_tpl": "{actor}发表评价",
+    "summary_tpl": "{actor}观演后在「{label}」中发表评价。",
+    "flow": [
+      "{actor}登录成功后进入「{label}」或可评价的观演订单详情",
+      "系统展示评价表单",
+      "{actor}填写评分与评价并提交",
+      "系统保存评价信息"
+    ],
+    "sort": 500,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "seat_shows",
+    "face": "cinema",
+    "name_tpl": "{actor}选座购票",
+    "summary_tpl": "{actor}在「{label}」中选择放映场次，进入座位图确认后完成购票。",
+    "flow": [
+      "{actor}登录成功后进入系统，点击「{label}」",
+      "系统展示可售放映场次列表",
+      "{actor}选定场次进入座位图，点选空闲座位",
+      "{actor}确认选座并提交购票",
+      "系统占座并生成影票订单，提示购票成功"
+    ],
+    "sort": 510,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "cart",
+    "face": "cinema",
+    "name_tpl": "{actor}使用购物车",
+    "summary_tpl": "{actor}将影票或卖品加入购物车并在「{label}」中核对。",
+    "flow": [
+      "{actor}登录成功后在选座或相关页面将影票或卖品加入购物车",
+      "系统提示加入成功",
+      "{actor}点击「{label}」进入购物车界面",
+      "{actor}核对已选影票或卖品与数量",
+      "系统展示购物车中的已选影票或卖品信息"
+    ],
+    "sort": 520,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "orders",
+    "face": "cinema",
+    "name_tpl": "{actor}处理订单",
+    "summary_tpl": "{actor}在「{label}」中对待处理票务订单执行出票核销或确认观影等办理。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至订单管理界面",
+      "{actor}打开待处理票务订单",
+      "{actor}执行出票核销或确认观影等办理操作",
+      "系统按办理结果更新订单状态（无物流发货）"
+    ],
+    "sort": 530,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "my_orders",
+    "face": "cinema",
+    "name_tpl": "{actor}查看{label}",
+    "summary_tpl": "{actor}在「{label}」中查看本人影票订单及状态。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至影票订单列表界面",
+      "{actor}查看影票订单状态或打开详情",
+      "系统展示本人影票订单信息与当前状态"
+    ],
+    "sort": 540,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "order_reviews_user",
+    "face": "cinema",
+    "name_tpl": "{actor}发表评价",
+    "summary_tpl": "{actor}观影后在「{label}」中发表评价。",
+    "flow": [
+      "{actor}登录成功后进入「{label}」或可评价的观影订单详情",
+      "系统展示评价表单",
+      "{actor}填写评分与评价并提交",
+      "系统保存评价信息"
+    ],
+    "sort": 550,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "order_reviews",
+    "face": "cinema",
+    "name_tpl": "{actor}发表评价",
+    "summary_tpl": "{actor}观影后在「{label}」中发表评价。",
+    "flow": [
+      "{actor}登录成功后进入「{label}」或可评价的观影订单详情",
+      "系统展示评价表单",
+      "{actor}填写评分与评价并提交",
+      "系统保存评价信息"
+    ],
+    "sort": 560,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "my_archive",
+    "face": "*",
+    "name_tpl": "{actor}管理我的{entity}",
+    "summary_tpl": "{actor}在「{label}」中查看并维护本人发布的{entity}。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至本人{entity}列表界面",
+      "{actor}查看、编辑或下架本人记录",
+      "系统按操作更新列表展示"
+    ],
+    "sort": 570,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "peer_tickets",
+    "face": "*",
+    "name_tpl": "{actor}办理对方确认",
+    "summary_tpl": "{actor}在「{label}」中查看需本人确认的对方单据并办理。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统展示待本人确认的单据列表",
+      "{actor}打开一条单据，执行确认或拒绝",
+      "系统更新单据状态，双方可见办理结果"
+    ],
+    "sort": 580,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "fund_publicity_mine",
+    "face": "*",
+    "name_tpl": "{actor}查阅{label}",
+    "summary_tpl": "{actor}在「{label}」中阅读公示内容。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至公示列表界面",
+      "{actor}打开一条公示查看详情",
+      "系统展示公示标题与正文"
+    ],
+    "sort": 590,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "fund_publicity_admin",
+    "face": "*",
+    "name_tpl": "{actor}登记{label}",
+    "summary_tpl": "{actor}在「{label}」中新建或维护公示信息。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至公示管理界面",
+      "{actor}新建或编辑公示并填写必填项",
+      "{actor}点击保存或发布",
+      "系统保存公示，用户端可查阅"
+    ],
+    "sort": 600,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "fund_disburse_admin",
+    "face": "*",
+    "name_tpl": "{actor}登记{label}",
+    "summary_tpl": "{actor}在「{label}」中登记拨付信息。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至拨付登记界面",
+      "{actor}填写拨付对象、金额等必填项并保存",
+      "系统保存拨付记录，列表可见更新结果"
+    ],
+    "sort": 610,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "grade_scores_mine",
+    "face": "*",
+    "name_tpl": "{actor}查询{label}",
+    "summary_tpl": "{actor}在「{label}」中查看本人成绩。",
+    "flow": [
+      "{actor}登录成功后进入系统主界面，点击「{label}」",
+      "系统转至成绩查询界面",
+      "{actor}查看本人成绩列表或明细",
+      "系统展示与登记一致的成绩信息"
+    ],
+    "sort": 620,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "grade_scores_admin",
+    "face": "*",
+    "name_tpl": "{actor}登记{label}",
+    "summary_tpl": "{actor}在「{label}」中录入或维护成绩。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至成绩登记界面",
+      "{actor}录入或修改成绩并保存",
+      "系统保存成绩，学生端可查询"
+    ],
+    "sort": 630,
+    "source": "migrated"
+  },
+  {
+    "flow_kind": "listing_deal_admin",
+    "face": "*",
+    "name_tpl": "{actor}登记{label}",
+    "summary_tpl": "{actor}在「{label}」中登记成交信息。",
+    "flow": [
+      "{actor}登录成功后进入管理端，点击「{label}」",
+      "系统转至成交登记界面",
+      "{actor}填写成交相关必填项并保存",
+      "系统保存成交记录，列表可见更新结果"
+    ],
+    "sort": 640,
+    "source": "migrated"
+  }
+]
