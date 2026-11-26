@@ -8,6 +8,7 @@ import time
 from collections import defaultdict
 from itertools import permutations
 
+from app.bake.schema.diagram_style import FONT_CN, FONT_TECH
 from app.bake.schema.layout_elk import ElkLayoutError, layout_graph
 
 ENTITY_HH = 22
@@ -637,6 +638,103 @@ def _layout_entities(
     return order, pos, outer
 
 
+def _grid_layout(
+    names: list[str],
+    edges: list[tuple[str, str]],
+    entity_hw: dict[str, float],
+) -> tuple[list[str], dict[str, tuple[float, float]]]:
+    """蛇形栅格：按「度数优先 BFS」排序后按行列摆放，行列间距留出菱形与通道。
+
+    样例 ER 的观感：实体成排，联系菱形落在行/列之间的空档里，连线走正交折线。
+    """
+    names = list(names)
+    if not names:
+        return [], {}
+    deg: dict[str, int] = {nm: 0 for nm in names}
+    adj: dict[str, list[str]] = {nm: [] for nm in names}
+    for a, b in edges:
+        if a in deg and b in deg:
+            deg[a] += 1
+            deg[b] += 1
+            if b not in adj[a]:
+                adj[a].append(b)
+            if a not in adj[b]:
+                adj[b].append(a)
+    # BFS（起点取度数最大者），保证相关实体相邻
+    def _bfs_order(st: str) -> list[str]:
+        order: list[str] = [st]
+        seen = {st}
+        queue = [st]
+        while queue:
+            cur = queue.pop(0)
+            for nxt in sorted(adj[cur], key=lambda nm: (-deg[nm], nm)):
+                if nxt not in seen:
+                    seen.add(nxt)
+                    order.append(nxt)
+                    queue.append(nxt)
+        order += [nm for nm in sorted(names, key=lambda nm: (-deg[nm], nm)) if nm not in seen]
+        return order
+
+    hubs = sorted(names, key=lambda nm: (-deg[nm], nm))[:3]
+    base = _bfs_order(hubs[0])
+    n = len(base)
+    ncol_cands = sorted(
+        {
+            max(2, int(math.ceil(math.sqrt(n * 1.2)))),
+            max(2, int(math.ceil(math.sqrt(n * 1.2))) + 1),
+            max(2, int(math.ceil(math.sqrt(n * 1.2))) - 1),
+        }
+    )
+
+    def _build(order: list[str], ncols: int) -> dict[str, tuple[float, float]]:
+        nrows = int(math.ceil(n / ncols))
+        col_w: list[float] = []
+        for j in range(ncols):
+            width = max(
+                (entity_hw.get(order[i], 40.0) for i in range(n) if i % ncols == j),
+                default=40.0,
+            )
+            col_w.append(max(2 * width + 210.0, 272.0))
+        row_h = float(2 * ENTITY_HH + 140)
+        total_w = sum(col_w)
+        pos: dict[str, tuple[float, float]] = {}
+        for idx, nm in enumerate(order):
+            r, c0 = divmod(idx, ncols)
+            c = ncols - 1 - c0 if r % 2 else c0
+            x = sum(col_w[:c]) + col_w[c] / 2.0 - total_w / 2.0
+            pos[nm] = (x, r * row_h)
+        _ = nrows
+        return pos
+
+    # 多起点 / 多列数 / 少量随机洗牌：取「直线交叉最少」的排布（相等再看跨度）
+    orders: list[list[str]] = []
+    for h in hubs:
+        o = _bfs_order(h)
+        orders.append(o)
+        orders.append(list(reversed(o)))
+    rnd = random.Random(20261125)
+    for _ in range(8):
+        o = list(base)
+        rnd.shuffle(o)
+        orders.append(o)
+
+    best: tuple[int, float, list[str], dict[str, tuple[float, float]]] | None = None
+    for o in orders:
+        for nc in ncol_cands:
+            pos = _build(o, nc)
+            cr = _straight_layout_crossings(pos, edges)
+            span = 0.0
+            for a, b in _undirected_pairs(edges):
+                if a in pos and b in pos:
+                    span += math.hypot(pos[b][0] - pos[a][0], pos[b][1] - pos[a][1])
+            key = (cr, round(span / max(1, len(edges)), 1))
+            if best is None or key < (best[0], best[1]):
+                best = (cr, key[1], o, pos)
+    if best is None:
+        return base, _build(base, ncol_cands[0])
+    return best[2], best[3]
+
+
 def _pair_offset(lp: tuple[float, float], rp: tuple[float, float], index: int, total: int) -> tuple[float, float]:
     """同对多联系时，菱形沿弦垂线错开。"""
     if total <= 1:
@@ -655,6 +753,399 @@ def _ang_norm(a: float) -> float:
     while a > math.pi:
         a -= 2 * math.pi
     return a
+
+
+# —— 正交（Manhattan）路由：对齐样例 ER，连线走折线、不穿实体框 ——
+
+_BOX_CLEAR = 12.0  # 连线与实体框的最小净距
+
+
+def _seg_cross_xy(
+    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+) -> bool:
+    """两段（各自轴对齐或任意）在内部相交；共享端点不算。"""
+    p, q = (a[0], a[1]), (a[2], a[3])
+    r, s = (b[0], b[1]), (b[2], b[3])
+    if p == r or p == s or q == r or q == s:
+        return False
+
+    def orient(o, u, v) -> float:
+        return (u[1] - o[1]) * (v[0] - u[0]) - (u[0] - o[0]) * (v[1] - u[1])
+
+    d1 = orient(p, q, r)
+    d2 = orient(p, q, s)
+    d3 = orient(r, s, p)
+    d4 = orient(r, s, q)
+    return d1 * d2 < 0 and d3 * d4 < 0
+
+
+def _seg_hits_boxes(
+    p: tuple[float, float],
+    q: tuple[float, float],
+    boxes: list[tuple[str, float, float, float, float]],
+    skip: set[str],
+) -> bool:
+    """线段是否穿过实体框（含净距）。boxes: (name, cx, cy, hw, hh)。"""
+    x1, y1 = p
+    x2, y2 = q
+    for nm, cx, cy, hw, hh in boxes:
+        if nm in skip:
+            continue
+        left, right = cx - hw - _BOX_CLEAR, cx + hw + _BOX_CLEAR
+        top, bot = cy - hh - _BOX_CLEAR, cy + hh + _BOX_CLEAR
+        if abs(y1 - y2) <= 0.5:  # 水平段
+            if top < y1 < bot and max(x1, x2) > left and min(x1, x2) < right:
+                return True
+        elif abs(x1 - x2) <= 0.5:  # 垂直段
+            if left < x1 < right and max(y1, y2) > top and min(y1, y2) < bot:
+                return True
+        else:  # 斜段：按包围盒粗判
+            if not (
+                max(x1, x2) <= left
+                or min(x1, x2) >= right
+                or max(y1, y2) <= top
+                or min(y1, y2) >= bot
+            ):
+                return True
+    return False
+
+
+def _free_channels(
+    positions: dict[str, tuple[float, float]],
+    hw: dict[str, float],
+    *,
+    axis: str,
+) -> list[float]:
+    """布局空档中线：把所有实体在某轴上的占位合并后，取每段空隙的中点。
+
+    连线只要落在这些通道上，就天然不会穿过实体框。
+    """
+    if not positions:
+        return []
+    if axis == "x":
+        ivs = sorted(
+            (x - hw.get(nm, 40.0) - 10.0, x + hw.get(nm, 40.0) + 10.0)
+            for nm, (x, _y) in positions.items()
+        )
+    else:
+        ivs = sorted(
+            (y - ENTITY_HH - 10.0, y + ENTITY_HH + 10.0)
+            for _x, y in positions.values()
+        )
+    merged: list[list[float]] = []
+    for lo, hi in ivs:
+        if merged and lo <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], hi)
+        else:
+            merged.append([lo, hi])
+    chans: list[float] = [(merged[0][0] - 46.0), (merged[-1][1] + 46.0)]
+    for i in range(len(merged) - 1):
+        lo, hi = merged[i][1], merged[i + 1][0]
+        if hi - lo >= 24.0:
+            chans.append((lo + hi) / 2)
+    return chans
+
+
+def _diamond_free(
+    cx: float,
+    cy: float,
+    dw: float,
+    dh: float,
+    placed: list[tuple[float, float, float]],
+    boxes: list[tuple[str, float, float, float, float]] | None = None,
+    pad: float = 10.0,
+) -> bool:
+    """菱形与已放菱形、实体框都要留净距（避免「菱形压框/贴框」）。"""
+    for px, py, pw in placed:
+        if abs(cx - px) < dw + pw + 8 and abs(cy - py) < 2 * dh + 8:
+            return False
+    for _nm, ex, ey, ehw, ehh in boxes or []:
+        if abs(cx - ex) < dw + ehw + pad and abs(cy - ey) < dh + ehh + pad:
+            return False
+    return True
+
+
+def _route_ortho(
+    lp: tuple[float, float],
+    rp: tuple[float, float],
+    hw1: float,
+    hw2: float,
+    boxes: list[tuple[str, float, float, float, float]],
+    vchans: list[float],
+    hchans: list[float],
+    *,
+    left_name: str,
+    right_name: str,
+    dw: float,
+    dh: float,
+    fan: float = 0.0,
+    placed: list[tuple[float, float, float]] | None = None,
+    placed_segs: list[tuple[float, float, float, float]] | None = None,
+) -> dict[str, object] | None:
+    """两实体间的正交折线（菱形落在中段）。
+
+    先试短折线（同行直连 / 竖空档 / 横空档）；都会压实体框时改走
+    「横空档 → 竖空档 → 横空档」的绕行——空档本身不含实体，天然不压框。
+    placed 为已放菱形，用于错开避免叠加。
+    """
+    ax, ay = lp
+    bx, by = rp
+    skip = {left_name, right_name}
+    placed = placed or []
+    placed_segs = placed_segs or []
+
+    def _chain_hits(chain: list[tuple[float, float]]) -> int:
+        return sum(
+            1
+            for i in range(len(chain) - 1)
+            if _seg_hits_boxes(chain[i], chain[i + 1], boxes, skip)
+        )
+
+    def _seg_cross(p: tuple[float, float], q: tuple[float, float], r: tuple[float, float], s: tuple[float, float]) -> bool:
+        """轴对齐段交叉（一横一竖），端点相接不算。"""
+        if abs(p[1] - q[1]) <= 0.5 and abs(r[0] - s[0]) <= 0.5:
+            hy, vx = p[1], r[0]
+            hx1, hx2 = min(p[0], q[0]), max(p[0], q[0])
+            vy1, vy2 = min(r[1], s[1]), max(r[1], s[1])
+        elif abs(p[0] - q[0]) <= 0.5 and abs(r[1] - s[1]) <= 0.5:
+            vx, hy = p[0], r[1]
+            vy1, vy2 = min(p[1], q[1]), max(p[1], q[1])
+            hx1, hx2 = min(r[0], s[0]), max(r[0], s[0])
+        else:
+            return False
+        if not (hx1 + 1.0 < vx < hx2 - 1.0):
+            return False
+        return vy1 + 1.0 < hy < vy2 - 1.0
+
+    def _chain_cross(chain: list[tuple[float, float]]) -> int:
+        cnt = 0
+        for i in range(len(chain) - 1):
+            for seg in placed_segs:
+                if _seg_cross(chain[i], chain[i + 1], (seg[0], seg[1]), (seg[2], seg[3])):
+                    cnt += 1
+        return cnt
+
+    cands: list[tuple[float, int, dict[str, object]]] = []
+
+    def _add(left: list[tuple[float, float]], right: list[tuple[float, float]], extra: dict[str, object]) -> None:
+        hits = _chain_hits(left) + _chain_hits(right)
+        seg_len = sum(
+            math.hypot(left[i + 1][0] - left[i][0], left[i + 1][1] - left[i][1])
+            for i in range(len(left) - 1)
+        ) + sum(
+            math.hypot(right[i + 1][0] - right[i][0], right[i + 1][1] - right[i][1])
+            for i in range(len(right) - 1)
+        )
+        route: dict[str, object] = {"left": left, "right": right}
+        route.update(extra)
+        cross = _chain_cross(left) + _chain_cross(right)
+        # 菱形撞已放菱形/实体只当软惩罚：宁可贴近，也不让整条线去交叉
+        dm0 = route.get("diamond")
+        collide = 0.0
+        if isinstance(dm0, tuple) and not _diamond_free(dm0[0], dm0[1], dw, dh, placed, boxes):
+            collide = 70.0
+        cands.append((hits * 20.0 + cross * 60.0 + seg_len * 0.02 + collide, hits, route))
+
+    # A. 同一行 → 直横线
+    if abs(by - ay) <= 6.0 and abs(bx - ax) > hw1 + hw2 + 2 * dw + 24:
+        y = ay + max(-(ENTITY_HH - 8.0), min(ENTITY_HH - 8.0, fan * 26.0))
+        mx = (ax + bx) / 2
+        p1 = (ax + hw1, y) if bx > ax else (ax - hw1, y)
+        p2 = (bx - hw2, y) if bx > ax else (bx + hw2, y)
+        # 直线整段是否压框（菱形两段合起来判定）
+        straight_hit = 1 if _seg_hits_boxes(p1, p2, boxes, skip) else 0
+        route_a: dict[str, object] = {
+            "left": [p1],
+            "right": [p2],
+            "diamond": (mx, y),
+            "axis": "h",
+            "chan": y,
+            "span": (min(ax, bx), max(ax, bx)),
+        }
+        cands.append((straight_hit * 20.0 + abs(bx - ax) * 0.02, straight_hit, route_a))
+    # B. 竖空档折线：A→通道→B
+    if abs(by - ay) >= 2 * dh + 16:
+        for c in vchans:
+            p1 = (ax + hw1, ay) if c > ax else (ax - hw1, ay)
+            p2 = (bx - hw2, by) if c < bx else (bx + hw2, by)
+            _add(
+                [p1, (c, ay)],
+                [(c, by), p2],
+                {"diamond": (c, (ay + by) / 2), "axis": "v", "chan": c, "span": (min(ay, by), max(ay, by))},
+            )
+    # C. 横空档折线：A→通道→B
+    if abs(bx - ax) >= 2 * dw + 16:
+        for y in hchans:
+            p1 = (ax, ay + ENTITY_HH) if y > ay else (ax, ay - ENTITY_HH)
+            p2 = (bx, by - ENTITY_HH) if y < by else (bx, by + ENTITY_HH)
+            _add(
+                [p1, (ax, y)],
+                [(bx, y), p2],
+                {"diamond": ((ax + bx) / 2, y), "axis": "h", "chan": y, "span": (min(ax, bx), max(ax, bx))},
+            )
+
+    # E. 竖出竖入：同源多条走同一竖脊，再各自在独立横空档分支（星形枢纽零交叉）
+    for y in hchans:
+        if y > ay + ENTITY_HH and y > by + ENTITY_HH:
+            sy = 1.0
+        elif y < ay - ENTITY_HH and y < by - ENTITY_HH:
+            sy = -1.0
+        else:
+            continue
+        if abs(bx - ax) < 2 * dw + 16:
+            continue
+        p1 = (ax, ay + ENTITY_HH * sy)
+        p2 = (bx, by + ENTITY_HH * sy)
+        _add(
+            [p1, (ax, y)],
+            [(bx, y), p2],
+            {"diamond": ((ax + bx) / 2, y), "axis": "h", "chan": y, "span": (min(ax, bx), max(ax, bx))},
+        )
+
+    # F. 外侧母线：绕到全部实体上方/下方走长横线，长距离关系不再穿过中部
+    if boxes:
+        top_y = min(y - hh for _nm, _x, y, _hw, hh in boxes) - 36.0
+        bot_y = max(y + hh for _nm, _x, y, _hw, hh in boxes) + 36.0
+        for outer_y in (top_y, bot_y):
+            sy1 = -1.0 if outer_y < ay else 1.0
+            sy2 = -1.0 if outer_y < by else 1.0
+            p1 = (ax, ay + ENTITY_HH * sy1)
+            p2 = (bx, by + ENTITY_HH * sy2)
+            mx = (ax + bx) / 2
+            _add(
+                [p1, (ax, outer_y), (mx, outer_y)],
+                [(mx, outer_y), (bx, outer_y), p2],
+                {
+                    "diamond": (mx, outer_y),
+                    "axis": "h",
+                    "chan": outer_y,
+                    "span": (min(ax, bx), max(ax, bx)),
+                },
+            )
+
+    # G. 外侧竖母线：绕到全部实体左侧/右侧走长竖线，同 F 的竖向版本
+    if boxes:
+        left_x = min(x - hw for _nm, x, _y, hw, _hh in boxes) - 44.0
+        right_x = max(x + hw for _nm, x, _y, hw, _hh in boxes) + 44.0
+        for outer_x in (left_x, right_x):
+            sx1 = -1.0 if outer_x < ax else 1.0
+            sx2 = -1.0 if outer_x < bx else 1.0
+            p1 = (ax + hw1 * sx1, ay)
+            p2 = (bx + hw2 * sx2, by)
+            my2 = (ay + by) / 2
+            _add(
+                [p1, (outer_x, ay), (outer_x, my2)],
+                [(outer_x, my2), (outer_x, by), p2],
+                {
+                    "diamond": (outer_x, my2),
+                    "axis": "v",
+                    "chan": outer_x,
+                    "span": (min(ay, by), max(ay, by)),
+                },
+            )
+
+    # F2. 外侧母线 + 空档下车：绕到外侧长横线，再从最近空档竖下、横入目标（目标列有别的框时用）
+    if boxes and vchans:
+        top_y2 = min(y - hh for _nm, _x, y, _hw, hh in boxes) - 36.0
+        bot_y2 = max(y + hh for _nm, _x, y, _hw, hh in boxes) + 36.0
+        for outer_y in (top_y2, bot_y2):
+            sy1 = -1.0 if outer_y < ay else 1.0
+            sy2 = -1.0 if outer_y < by else 1.0
+            for c in vchans:
+                if abs(c - bx) < hw2 + 12:
+                    continue
+                p1 = (ax, ay + ENTITY_HH * sy1)
+                end_y = by - ENTITY_HH if sy2 < 0 else by + ENTITY_HH
+                my = (outer_y + end_y) / 2
+                _add(
+                    [p1, (ax, outer_y), (c, outer_y), (c, my)],
+                    [(c, my), (c, end_y), (bx, end_y)],
+                    {
+                        "diamond": (c, my),
+                        "axis": "v",
+                        "chan": c,
+                        "span": (min(outer_y, end_y), max(outer_y, end_y)),
+                    },
+                )
+
+    # D. 5 段绕行（横空档 + 竖空档 + 横空档）
+    if vchans and hchans:
+        above = [y for y in hchans if y < ay]
+        below = [y for y in hchans if y > ay]
+        pick_a = max(above) if above else (min(below) if below else None)
+        above_b = [y for y in hchans if y < by]
+        below_b = [y for y in hchans if y > by]
+        pick_b = max(above_b) if above_b else (min(below_b) if below_b else None)
+        if pick_a is not None and pick_b is not None:
+            p1 = (ax, ay - ENTITY_HH) if pick_a < ay else (ax, ay + ENTITY_HH)
+            p2 = (bx, by - ENTITY_HH) if pick_b < by else (bx, by + ENTITY_HH)
+            best_c = min(vchans, key=lambda c: abs(c - (ax + bx) / 2))
+            left: list[tuple[float, float]] = [p1, (ax, pick_a), (best_c, pick_a)]
+            right: list[tuple[float, float]] = [(best_c, pick_b), (bx, pick_b), p2]
+            if abs(pick_a - pick_b) >= 2 * dh + 16:
+                _add(
+                    left,
+                    right,
+                    {"diamond": (best_c, (pick_a + pick_b) / 2), "axis": "v", "chan": best_c, "span": (min(pick_a, pick_b), max(pick_a, pick_b))},
+                )
+            else:
+                # 两端空档太近：菱形放到横空档段上
+                left = [p1, (ax, pick_a)]
+                right = [(bx, pick_a), p2]
+                _add(
+                    left,
+                    right,
+                    {"diamond": ((ax + bx) / 2, pick_a), "axis": "h", "chan": pick_a, "span": (min(ax, bx), max(ax, bx))},
+                )
+
+    cands.sort(key=lambda t: t[0])
+    # 字典序择优：先要求不压实体框（max_hits=0），无解才放宽到 1、2
+    for max_hits in (0, 1, 2):
+        for _score, hits, route in cands:
+            if hits > max_hits:
+                continue
+            dm = route["diamond"]  # type: ignore[assignment]
+            axis = route.get("axis")
+            chan = route.get("chan")
+            span = route.get("span")
+            if not _diamond_free(dm[0], dm[1], dw, dh, placed, boxes):
+                fixed = None
+                if isinstance(chan, (int, float)) and isinstance(span, tuple):
+                    for k in (1, -1, 2, -2, 3, -3):
+                        shift = k * (2 * dh + 12)
+                        ny = dm[1] + shift if axis == "v" else dm[1]
+                        nx = dm[0] if axis == "v" else dm[0] + shift
+                        lo, hi = span
+                        if axis == "v":
+                            if not (lo + dh + 6 <= ny <= hi - dh - 6):
+                                continue
+                        else:
+                            if not (lo + dw + 6 <= nx <= hi - dw - 6):
+                                continue
+                        if not _diamond_free(nx, ny, dw, dh, placed, boxes):
+                            continue
+                        fixed = (nx, ny)
+                        break
+                if fixed is None:
+                    continue
+                dm = fixed
+            left_pts = list(route["left"])  # type: ignore[arg-type]
+            right_pts = list(route["right"])  # type: ignore[arg-type]
+            if axis == "v":
+                up = dm[1] - dh if right_pts[0][1] > left_pts[-1][1] else dm[1] + dh
+                dn = dm[1] + dh if right_pts[0][1] > left_pts[-1][1] else dm[1] - dh
+                left_pts = [*left_pts, (dm[0], up)]
+                right_pts = [(dm[0], dn), *right_pts]
+            else:
+                lx = dm[0] - dw if right_pts[0][0] > left_pts[-1][0] else dm[0] + dw
+                rx = dm[0] + dw if right_pts[0][0] > left_pts[-1][0] else dm[0] - dw
+                left_pts = [*left_pts, (lx, dm[1])]
+                right_pts = [(rx, dm[1]), *right_pts]
+            route["left"] = left_pts
+            route["right"] = right_pts
+            route["diamond"] = dm
+            return route
+    return None
 
 
 def _outward_rect_port(
@@ -820,19 +1311,14 @@ def render_er_svg(
         order = list(names)
         entity_pos = {names[0]: (0.0, 0.0)} if names else {}
     else:
-        order, entity_pos, outer_pairs = _layout_entities(
-            names, edges, 0.0, 0.0, 0.0, entity_hw=entity_hw
-        )
+        # 总图：蛇形栅格（样例观感：实体成排、菱形落在行列空档）
+        order, entity_pos = _grid_layout(names, edges, entity_hw)
+        outer_pairs = set()
 
     hull_cx, hull_cy, hull_r = _layout_hull(entity_pos)
-    outer_nest_pad = 0.0
-    if outer_pairs and n > 1:
-        outer_nest_pad = (
-            hull_r * 0.55 + 100.0 + max(0, len(outer_pairs) - 1) * _OUTER_NEST_GAP
-        )
 
-    # 画布：实体包围盒 + 属性云 + 外页弧余量（实体仍分层，不撑成圆环排位）
-    pad = (72.0 if show_attrs else _ELK_PAD) + (12.0 if outer_pairs else 0.0)
+    # 画布：实体包围盒 + 属性云（总图走正交折线，不再为外页弧预留大片空白）
+    pad = 72.0 if show_attrs else _ELK_PAD
     if entity_pos:
         xs = [p[0] for p in entity_pos.values()]
         ys = [p[1] for p in entity_pos.values()]
@@ -840,7 +1326,7 @@ def render_er_svg(
         min_y, max_y = min(ys), max(ys)
     else:
         min_x = max_x = min_y = max_y = 0.0
-    margin = max_cloud + 48.0 + outer_nest_pad
+    margin = max_cloud + 48.0
     shift_x = pad + margin - min_x
     shift_y = pad + margin - min_y
     entity_pos = {k: (x + shift_x, y + shift_y) for k, (x, y) in entity_pos.items()}
@@ -888,122 +1374,404 @@ def render_er_svg(
     edge_parts: list[str] = []
     node_parts: list[str] = []
     card_parts: list[str] = []
+    records: list[dict[str, object]] = []
+    # 正交路由避让用：全部实体框（含净距）+ 布局空档通道
+    boxes: list[tuple[str, float, float, float, float]] = []
+    vchans: list[float] = []
+    hchans: list[float] = []
+    placed_diamonds: list[tuple[float, float, float]] = []
+    placed_segs: list[tuple[float, float, float, float]] = []
+    card_boxes: list[tuple[float, float, float, float]] = []
+
+    def _rec_segs(rec: dict[str, object]) -> list[tuple[float, float, float, float]]:
+        if rec["kind"] != "ortho":
+            return [
+                (rec["e1"][0], rec["e1"][1], rec["d1"][0], rec["d1"][1]),  # type: ignore[index]
+                (rec["d2"][0], rec["d2"][1], rec["e2"][0], rec["e2"][1]),  # type: ignore[index]
+            ]
+        out: list[tuple[float, float, float, float]] = []
+        for key in ("chain_l", "chain_r"):
+            chn = rec[key]  # type: ignore[index]
+            for k in range(len(chn) - 1):
+                out.append((chn[k][0], chn[k][1], chn[k + 1][0], chn[k + 1][1]))
+        return out
+
+    def _xcount(recs: list[dict[str, object]]) -> int:
+        segs = [(i, s) for i, rec in enumerate(recs) for s in _rec_segs(rec)]
+        n = 0
+        for i in range(len(segs)):
+            for j in range(i + 1, len(segs)):
+                if segs[i][0] == segs[j][0]:
+                    continue
+                if _seg_cross_xy(segs[i][1], segs[j][1]):
+                    n += 1
+        return n
 
     def _card_pos(
-        a: tuple[float, float], b: tuple[float, float], t: float = 0.35
+        a: tuple[float, float],
+        b: tuple[float, float],
+        t: float = 0.35,
+        side: float = 1.0,
+        dist: float = 12.0,
     ) -> tuple[float, float]:
         px = a[0] * (1 - t) + b[0] * t
         py = a[1] * (1 - t) + b[1] * t
         dx, dy = b[0] - a[0], b[1] - a[1]
         L = math.hypot(dx, dy) or 1.0
-        return px - dy / L * 12, py + dx / L * 12
+        return px - dy / L * dist * side, py + dx / L * dist * side
 
-    # 联系：内页直线；外页绕布局包围弧（实体不落环）
-    for ri, r in enumerate(relations):
-        lp = entity_pos.get(r["left"])
-        rp = entity_pos.get(r["right"])
-        if not lp or not rp:
-            continue
-        left_id = f"entity:{r['left']}"
-        right_id = f"entity:{r['right']}"
-        rel_id = f"rel:{ri}"
-        pk = pair_keys[ri]
-        pi = pair_seen.get(pk, 0)
-        pair_seen[pk] = pi + 1
-        use_outer = pk in outer_pairs
+    def _card_clear(
+        p: tuple[float, float],
+        boxes_: list[tuple[str, float, float, float, float]],
+        diamonds_: list[tuple[float, float, float]],
+        cards_: list[tuple[float, float]],
+    ) -> float:
+        """1/n 标签的净距（px）：<0 表示已压住别的东西；标签之间留足行距。"""
+        hw, hh = 6.5, 7.5
+        worst = 1e9
+        for nm, ex, ey, ehw, ehh in boxes_:
+            gx = abs(p[0] - ex) - (ehw + hw + 4)
+            gy = abs(p[1] - ey) - (ehh + hh + 4)
+            worst = min(worst, max(gx, gy))
+        for dx_, dy_, dhw in diamonds_:
+            gx = abs(p[0] - dx_) - (dhw + hw + 4)
+            gy = abs(p[1] - dy_) - (22 + hh + 4)
+            worst = min(worst, max(gx, gy))
+        for bx in cards_:
+            gx = abs(p[0] - bx[0]) - (hw + 11.0)
+            gy = abs(p[1] - bx[1]) - (hh + 13.0)
+            worst = min(worst, max(gx, gy))
+        return worst
 
-        hw1 = entity_hw.get(r["left"], 40)
-        hw2 = entity_hw.get(r["right"], 40)
-        rel_label = r.get("label") or r["name"]
-        dw = max(36.0, _text_w(rel_label, 12) / 2 + 16)
-        dh = 22.0
+    def _poly_card_pos(
+        pts: list[tuple[float, float]],
+        f_from_end: float,
+        side: float,
+        dist: float,
+    ) -> tuple[float, float]:
+        """沿整条折线找点：f_from_end=1 在菱形端、0 在实体端，再按垂线偏移 dist。"""
+        if len(pts) < 2:
+            return pts[-1]
+        segs = [(pts[i], pts[i + 1], math.dist(pts[i], pts[i + 1])) for i in range(len(pts) - 1)]
+        total = sum(s[2] for s in segs) or 1.0
+        target = total * (1.0 - f_from_end)
+        acc = 0.0
+        for a, b, L in segs:
+            if acc + L >= target or (a, b, L) is segs[-1]:
+                r = ((target - acc) / L) if L else 0.0
+                px, py = a[0] + (b[0] - a[0]) * r, a[1] + (b[1] - a[1]) * r
+                dx, dy = b[0] - a[0], b[1] - a[1]
+                L2 = math.hypot(dx, dy) or 1.0
+                return px - dy / L2 * dist * side, py + dx / L2 * dist * side
+            acc += L
+        return pts[-1]
 
-        if use_outer:
-            nest = outer_nest.get(pk, 0)
-            inset1 = 0.10 if _need_inset(r["left"], pk) else 0.0
-            inset2 = 0.10 if _need_inset(r["right"], pk) else 0.0
-            arc_pts, (mx, my) = _outer_arc_polyline(
-                lp, rp, cx, cy, ring_r, nest, inset1=inset1, inset2=inset2
+    def _place_card(
+        pts: list[tuple[float, float]],
+        boxes_: list[tuple[str, float, float, float, float]],
+        diamonds_: list[tuple[float, float, float]],
+        cards_: list[tuple[float, float]],
+    ) -> tuple[float, float]:
+        """沿整条折线挑净距最大的位置；优先靠菱形端，其次往中间挪开挤堆。"""
+        best_p = _poly_card_pos(pts, 0.35, 1.0, 12.0)
+        best_c = _card_clear(best_p, boxes_, diamonds_, cards_)
+        for f in (0.95, 0.9, 0.85, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3):
+            for dist in (9.0, 13.0, 18.0, 23.0, 28.0):
+                for side in (1.0, -1.0):
+                    p = _poly_card_pos(pts, f, side, dist)
+                    c = _card_clear(p, boxes_, diamonds_, cards_)
+                    if c >= 2.0:
+                        cards_.append(p)
+                        return p
+                    if c > best_c:
+                        best_c, best_p = c, p
+        if best_c < 2.0:
+            # 兜底：净距不足时放宽到更长偏移，只求不压
+            for f in (0.95, 0.8, 0.65, 0.5, 0.35, 0.2):
+                for dist in (34.0, 44.0, 56.0):
+                    for side in (1.0, -1.0):
+                        p = _poly_card_pos(pts, f, side, dist)
+                        c = _card_clear(p, boxes_, diamonds_, cards_)
+                        if c >= 2.0:
+                            cards_.append(p)
+                            return p
+                        if c > best_c:
+                            best_c, best_p = c, p
+        cards_.append(best_p)
+        return best_p
+
+    def build(pos_map: dict[str, tuple[float, float]]) -> tuple[list[dict[str, object]], int]:
+        """按给定实体坐标布一遍线，返回 (关系记录, 交叉数)。"""
+        nonlocal boxes, vchans, hchans, placed_diamonds, placed_segs, card_boxes, records
+        boxes = [(nm, x, y, entity_hw[nm], ENTITY_HH) for nm, (x, y) in pos_map.items()]
+        vchans = _free_channels(pos_map, entity_hw, axis="x")
+        hchans = _free_channels(pos_map, entity_hw, axis="y")
+        placed_diamonds = []
+        placed_segs = []
+        card_boxes = []
+        records = []
+
+        # 联系：内页直线；外页绕布局包围弧（实体不落环）
+        deg: dict[str, int] = {}
+        for r0 in relations:
+            deg[r0["left"]] = deg.get(r0["left"], 0) + 1
+            deg[r0["right"]] = deg.get(r0["right"], 0) + 1
+        # 先给枢纽（度数高）布线：枢纽腿占住空档后，低度联系的绕法自然避开
+        order = sorted(
+            range(len(relations)),
+            key=lambda i: (-max(deg.get(relations[i]["left"], 0), deg.get(relations[i]["right"], 0)), i),
+        )
+        for ri in order:
+            r = relations[ri]
+            lp = pos_map.get(r["left"])
+            rp = pos_map.get(r["right"])
+            if not lp or not rp:
+                continue
+            left_id = f"entity:{r['left']}"
+            right_id = f"entity:{r['right']}"
+            rel_id = f"rel:{ri}"
+            pk = pair_keys[ri]
+            pi = pair_seen.get(pk, 0)
+            pair_seen[pk] = pi + 1
+            use_outer = pk in outer_pairs
+
+            hw1 = entity_hw.get(r["left"], 40)
+            hw2 = entity_hw.get(r["right"], 40)
+            rel_label = r.get("label") or r["name"]
+            dw = max(36.0, _text_w(rel_label, 12) / 2 + 16)
+            dh = 22.0
+
+            fan = pi - (pair_totals[pk] - 1) / 2.0
+            route = _route_ortho(
+                lp,
+                rp,
+                hw1,
+                hw2,
+                boxes,
+                vchans,
+                hchans,
+                left_name=r["left"],
+                right_name=r["right"],
+                dw=dw,
+                dh=dh,
+                fan=fan,
+                placed=placed_diamonds,
+                placed_segs=placed_segs,
             )
-            if pair_totals[pk] > 1:
-                ox, oy = _pair_offset(arc_pts[0], arc_pts[-1], pi, pair_totals[pk])
-                mx += ox
-                my += oy
-            e1, _a1 = _outward_rect_port(lp[0], lp[1], cx, cy, hw1, ENTITY_HH)
-            e2, _a2 = _outward_rect_port(rp[0], rp[1], cx, cy, hw2, ENTITY_HH)
-            mid = len(arc_pts) // 2
-            left_chain = [e1, *arc_pts[: mid + 1]]
-            d1 = _diamond_edge(mx, my, dw, dh, left_chain[-1][0], left_chain[-1][1])
-            left_chain.append(d1)
-            right_chain = [
-                _diamond_edge(mx, my, dw, dh, arc_pts[mid][0], arc_pts[mid][1]),
-                *arc_pts[mid:],
-                e2,
-            ]
-            for i in range(len(left_chain) - 1):
-                x1, y1 = left_chain[i]
-                x2, y2 = left_chain[i + 1]
-                edge_parts.append(
-                    f'<line class="er-edge" data-from="{_esc(left_id)}" data-to="{_esc(rel_id)}" '
-                    f'data-route="outer" '
-                    f'x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-                    f'stroke="#000" stroke-width="1" fill="none"/>'
+            if route:
+                chain_l = [(float(p[0]), float(p[1])) for p in route["left"]]  # type: ignore[index]
+                chain_r = [(float(p[0]), float(p[1])) for p in route["right"]]  # type: ignore[index]
+                for chn in (chain_l, chain_r):
+                    for k in range(len(chn) - 1):
+                        placed_segs.append((chn[k][0], chn[k][1], chn[k + 1][0], chn[k + 1][1]))
+                mx, my = float(route["diamond"][0]), float(route["diamond"][1])  # type: ignore[index]
+                placed_diamonds.append((mx, my, dw))
+                records.append(
+                    {
+                        "kind": "ortho",
+                        "ri": ri, "lp": lp, "rp": rp, "hw1": hw1, "hw2": hw2,
+                        "dw": dw, "dh": dh, "fan": fan, "label": rel_label,
+                        "left_id": left_id, "right_id": right_id, "rel_id": rel_id,
+                        "card_left": r["card_left"], "card_right": r["card_right"],
+                        "chain_l": chain_l, "chain_r": chain_r, "mx": mx, "my": my,
+                        "anchor_l": (chain_l[0], chain_l[1]),
+                        "anchor_r": (chain_r[-1], chain_r[-2]),
+                    }
                 )
-            for i in range(len(right_chain) - 1):
-                x1, y1 = right_chain[i]
-                x2, y2 = right_chain[i + 1]
-                edge_parts.append(
-                    f'<line class="er-edge" data-from="{_esc(rel_id)}" data-to="{_esc(right_id)}" '
-                    f'data-route="outer" '
-                    f'x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-                    f'stroke="#000" stroke-width="1" fill="none"/>'
+            else:
+                ox, oy = _pair_offset(lp, rp, pi, pair_totals[pk])
+                mx = (lp[0] + rp[0]) / 2 + ox
+                my = (lp[1] + rp[1]) / 2 + oy
+                # 兜底直线也要避开已放菱形：沿弦换位，取第一个不压的
+                if not _diamond_free(mx, my, dw, dh, placed_diamonds, boxes):
+                    for _t in (0.36, 0.64, 0.24, 0.76, 0.15, 0.85):
+                        cand_x = lp[0] * (1 - _t) + rp[0] * _t + ox
+                        cand_y = lp[1] * (1 - _t) + rp[1] * _t + oy
+                        if _diamond_free(cand_x, cand_y, dw, dh, placed_diamonds, boxes):
+                            mx, my = cand_x, cand_y
+                            break
+                placed_diamonds.append((mx, my, dw))
+                e1 = _rect_edge(lp[0], lp[1], mx, my, hw1, ENTITY_HH)
+                d1 = _diamond_edge(mx, my, dw, dh, lp[0], lp[1])
+                d2 = _diamond_edge(mx, my, dw, dh, rp[0], rp[1])
+                e2 = _rect_edge(rp[0], rp[1], mx, my, hw2, ENTITY_HH)
+                records.append(
+                    {
+                        "kind": "straight",
+                        "ri": ri, "lp": lp, "rp": rp, "hw1": hw1, "hw2": hw2,
+                        "dw": dw, "dh": dh, "fan": fan, "label": rel_label,
+                        "left_id": left_id, "right_id": right_id, "rel_id": rel_id,
+                        "card_left": r["card_left"], "card_right": r["card_right"],
+                        "e1": e1, "d1": d1, "d2": d2, "e2": e2, "mx": mx, "my": my,
+                        "anchor_l": (e1, d1), "anchor_r": (e2, d2),
+                    }
                 )
-            c1 = _card_pos(e1, arc_pts[0])
-            c2 = _card_pos(e2, arc_pts[-1])
+
+        # 全局复检：逐条重选折线，只接受交叉数下降的重选（顺序无关）
+        best_x = _xcount(records)
+        for _round in range(8):
+            if best_x == 0:
+                break
+            improved = False
+            for idx, rec in enumerate(records):
+                if rec["kind"] != "ortho":
+                    continue
+                others_d = [
+                    (r2["mx"], r2["my"], r2["dw"])  # type: ignore[index]
+                    for j, r2 in enumerate(records)
+                    if j != idx
+                ]
+                others_s = [s for j, r2 in enumerate(records) if j != idx for s in _rec_segs(r2)]
+                new_route = _route_ortho(
+                    rec["lp"],  # type: ignore[arg-type]
+                    rec["rp"],  # type: ignore[arg-type]
+                    rec["hw1"],  # type: ignore[arg-type]
+                    rec["hw2"],  # type: ignore[arg-type]
+                    boxes,
+                    vchans,
+                    hchans,
+                    left_name=str(rec["left_id"])[7:],
+                    right_name=str(rec["right_id"])[7:],
+                    dw=rec["dw"],  # type: ignore[arg-type]
+                    dh=rec["dh"],  # type: ignore[arg-type]
+                    fan=rec["fan"],  # type: ignore[arg-type]
+                    placed=others_d,
+                    placed_segs=others_s,
+                )
+                if not new_route:
+                    continue
+                cand_l = [(float(p[0]), float(p[1])) for p in new_route["left"]]  # type: ignore[index]
+                cand_r = [(float(p[0]), float(p[1])) for p in new_route["right"]]  # type: ignore[index]
+                if cand_l == rec["chain_l"] and cand_r == rec["chain_r"]:
+                    continue
+                trial = [dict(r) for r in records]
+                trial[idx]["chain_l"] = cand_l
+                trial[idx]["chain_r"] = cand_r
+                trial[idx]["mx"] = float(new_route["diamond"][0])  # type: ignore[index]
+                trial[idx]["my"] = float(new_route["diamond"][1])  # type: ignore[index]
+                got = _xcount(trial)
+                if got < best_x:
+                    records, best_x, improved = trial, got, True
+            if not improved:
+                break
+
+        return records, best_x
+
+    # 间距自适应：同样排布按不同留白缩放，取布线后交叉最少的那个（通用，不针对单域）
+    cx0 = sum(x for x, _y in entity_pos.values()) / max(1, len(entity_pos))
+    cy0 = sum(y for _x, y in entity_pos.values()) / max(1, len(entity_pos))
+    _scale_cands: list[tuple[int, dict[str, tuple[float, float]]]] = []
+    for sx, sy in ((1.0, 1.0), (1.18, 1.0), (1.0, 1.18), (1.18, 1.18), (1.35, 1.24), (1.5, 1.0)):
+        cand_pos = {
+            nm: (cx0 + (x - cx0) * sx, cy0 + (y - cy0) * sy) for nm, (x, y) in entity_pos.items()
+        }
+        _scale_cands.append((build(cand_pos)[1], cand_pos))
+    entity_pos = min(_scale_cands, key=lambda t: t[0])[1]
+    records, best_x = build(entity_pos)
+
+    for _round in range(80):
+        if best_x == 0:
+            break
+        segs = [(i, s) for i, rec in enumerate(records) for s in _rec_segs(rec)]
+        hot: list[tuple[str, str]] = []
+        for i in range(len(segs)):
+            for j in range(i + 1, len(segs)):
+                if segs[i][0] == segs[j][0]:
+                    continue
+                if not _seg_cross_xy(segs[i][1], segs[j][1]):
+                    continue
+                for ra, rb in ((records[segs[i][0]], records[segs[j][0]]),):
+                    for ka in ("left_id", "right_id"):
+                        for kb in ("left_id", "right_id"):
+                            a, b = str(ra[ka])[7:], str(rb[kb])[7:]
+                            if a != b and (a, b) not in hot and (b, a) not in hot:
+                                hot.append((a, b))
+        improved = False
+        for a, b in hot[:40]:
+            if a not in entity_pos or b not in entity_pos:
+                continue
+            cand = dict(entity_pos)
+            cand[a], cand[b] = entity_pos[b], entity_pos[a]
+            base_records = records
+            new_records, got = build(cand)
+            if got < best_x:
+                entity_pos[a], entity_pos[b] = entity_pos[b], entity_pos[a]
+                best_x = got
+                improved = True
+            else:
+                records = base_records
+        if not improved:
+            break
+
+    records, best_x = build(entity_pos)
+
+    # 1/n 标签最后统一落位：此时全部菱形已就位，避开菱形、实体框与其他标签
+    card_boxes = []
+    for rec in records:
+        if rec["kind"] == "ortho":
+            poly_l = [(float(p[0]), float(p[1])) for p in rec["chain_l"]]  # type: ignore[index]
+            poly_r = [(float(p[0]), float(p[1])) for p in reversed(rec["chain_r"])]  # type: ignore[arg-type]
         else:
-            ox, oy = _pair_offset(lp, rp, pi, pair_totals[pk])
-            mx = (lp[0] + rp[0]) / 2 + ox
-            my = (lp[1] + rp[1]) / 2 + oy
-            e1 = _rect_edge(lp[0], lp[1], mx, my, hw1, ENTITY_HH)
-            d1 = _diamond_edge(mx, my, dw, dh, lp[0], lp[1])
-            d2 = _diamond_edge(mx, my, dw, dh, rp[0], rp[1])
-            e2 = _rect_edge(rp[0], rp[1], mx, my, hw2, ENTITY_HH)
+            poly_l = [(float(rec["e1"][0]), float(rec["e1"][1])), (float(rec["d1"][0]), float(rec["d1"][1]))]  # type: ignore[index]
+            poly_r = [(float(rec["e2"][0]), float(rec["e2"][1])), (float(rec["d2"][0]), float(rec["d2"][1]))]  # type: ignore[index]
+        rec["c1"] = _place_card(poly_l, boxes, placed_diamonds, card_boxes)
+        rec["c2"] = _place_card(poly_r, boxes, placed_diamonds, card_boxes)
+
+    for rec in records:
+        mx, my = float(rec["mx"]), float(rec["my"])
+        dw, dh = float(rec["dw"]), float(rec["dh"])
+        if rec["kind"] == "ortho":
+            for chain, fid, tid in (
+                (rec["chain_l"], rec["left_id"], rec["rel_id"]),
+                (rec["chain_r"], rec["rel_id"], rec["right_id"]),
+            ):
+                for i in range(len(chain) - 1):
+                    x1, y1 = chain[i]
+                    x2, y2 = chain[i + 1]
+                    edge_parts.append(
+                        f'<line class="er-edge" data-from="{_esc(fid)}" data-to="{_esc(tid)}" '
+                        f'data-route="ortho" '
+                        f'x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
+                        f'stroke="#000" stroke-width="1" fill="none"/>'
+                    )
+        else:
+            e1, d1, d2, e2 = rec["e1"], rec["d1"], rec["d2"], rec["e2"]
             edge_parts.append(
-                f'<line class="er-edge" data-from="{_esc(left_id)}" data-to="{_esc(rel_id)}" '
+                f'<line class="er-edge" data-from="{_esc(rec["left_id"])}" data-to="{_esc(rec["rel_id"])}" '
+                f'data-route="straight" '
                 f'x1="{e1[0]:.1f}" y1="{e1[1]:.1f}" x2="{d1[0]:.1f}" y2="{d1[1]:.1f}" '
                 f'stroke="#000" stroke-width="1" fill="none"/>'
             )
             edge_parts.append(
-                f'<line class="er-edge" data-from="{_esc(rel_id)}" data-to="{_esc(right_id)}" '
+                f'<line class="er-edge" data-from="{_esc(rec["rel_id"])}" data-to="{_esc(rec["right_id"])}" '
+                f'data-route="straight" '
                 f'x1="{d2[0]:.1f}" y1="{d2[1]:.1f}" x2="{e2[0]:.1f}" y2="{e2[1]:.1f}" '
                 f'stroke="#000" stroke-width="1" fill="none"/>'
             )
-            c1 = _card_pos(e1, d1)
-            c2 = _card_pos(e2, d2)
 
         diamond = (
             f"{mx:.1f},{my - dh:.1f} {mx + dw:.1f},{my:.1f} "
             f"{mx:.1f},{my + dh:.1f} {mx - dw:.1f},{my:.1f}"
         )
         node_parts.append(
-            f'<g class="er-node" data-kind="rel" data-id="{_esc(rel_id)}" data-shape="diamond" '
-            f'data-left="{_esc(left_id)}" data-right="{_esc(right_id)}" '
+            f'<g class="er-node" data-kind="rel" data-id="{_esc(rec["rel_id"])}" data-shape="diamond" '
+            f'data-left="{_esc(rec["left_id"])}" data-right="{_esc(rec["right_id"])}" '
             f'data-cx="{mx:.1f}" data-cy="{my:.1f}" data-hw="{dw:.1f}" data-hh="{dh:.1f}">'
             f'<polygon points="{diamond}" fill="#fff" stroke="#000" stroke-width="1.2"/>'
             f'<text x="{mx:.1f}" y="{my + 4:.1f}" text-anchor="middle" '
-            f'font-family="Microsoft YaHei, SimSun, serif" font-size="12">{_esc(rel_label)}</text>'
+            f'font-family="{FONT_CN}" font-size="12">{_esc(str(rec["label"]))}</text>'
             f"</g>"
         )
-
+        c1, c2 = rec["c1"], rec["c2"]
         card_parts.append(
-            f'<text class="er-card" data-from="{_esc(left_id)}" data-to="{_esc(rel_id)}" '
+            f'<text class="er-card" data-from="{_esc(rec["left_id"])}" data-to="{_esc(rec["rel_id"])}" '
             f'x="{c1[0]:.1f}" y="{c1[1]:.1f}" text-anchor="middle" '
-            f'font-family="sans-serif" font-size="12">{_esc(r["card_left"])}</text>'
+            f'font-family="{FONT_TECH}" font-size="12">{_esc(str(rec["card_left"]))}</text>'
         )
         card_parts.append(
-            f'<text class="er-card" data-from="{_esc(right_id)}" data-to="{_esc(rel_id)}" '
+            f'<text class="er-card" data-from="{_esc(rec["right_id"])}" data-to="{_esc(rec["rel_id"])}" '
             f'x="{c2[0]:.1f}" y="{c2[1]:.1f}" text-anchor="middle" '
-            f'font-family="sans-serif" font-size="12">{_esc(r["card_right"])}</text>'
+            f'font-family="{FONT_TECH}" font-size="12">{_esc(str(rec["card_right"]))}</text>'
         )
 
     # 实体 +（分图）属性
@@ -1020,7 +1788,7 @@ def render_er_svg(
             f'width="{hw * 2:.1f}" height="{ENTITY_HH * 2:.1f}" '
             f'fill="#fff" stroke="#000" stroke-width="1.5"/>'
             f'<text x="{x:.1f}" y="{y + 5:.1f}" text-anchor="middle" '
-            f'font-family="Microsoft YaHei, SimSun, serif" font-size="13" font-weight="600">'
+            f'font-family="{FONT_CN}" font-size="13" font-weight="600">'
             f"{_esc(label)}</text>"
             f"</g>"
         )
@@ -1060,9 +1828,54 @@ def render_er_svg(
                 f'<ellipse cx="{ax:.1f}" cy="{ay:.1f}" rx="{rx:.1f}" ry="{ATTR_RH:.1f}" '
                 f'fill="#fff" stroke="#000" stroke-width="1"/>'
                 f'<text x="{ax:.1f}" y="{ay + 4:.1f}" text-anchor="middle" '
-                f'font-family="Microsoft YaHei, sans-serif" font-size="10">{_esc(alabel)}</text>'
+                f'font-family="{FONT_CN}" font-size="10">{_esc(alabel)}</text>'
                 f"{deco}</g>"
             )
+
+    # 画布兜底：把连线/菱形/基数标签也算进边界，外侧母线不能跑出画布
+    bx_lo: list[float] = []
+    bx_hi: list[float] = []
+    by_lo: list[float] = []
+    by_hi: list[float] = []
+    for nm, (x, y) in entity_pos.items():
+        hw = entity_hw.get(nm, 40.0)
+        bx_lo.append(x - hw)
+        bx_hi.append(x + hw)
+        by_lo.append(y - ENTITY_HH)
+        by_hi.append(y + ENTITY_HH)
+    for rec in records:
+        for key in ("chain_l", "chain_r"):
+            chn = rec.get(key) or []
+            for p in chn:  # type: ignore[union-attr]
+                bx_lo.append(float(p[0]))
+                bx_hi.append(float(p[0]))
+                by_lo.append(float(p[1]))
+                by_hi.append(float(p[1]))
+        if rec.get("e1") is not None:
+            for pt in (rec["e1"], rec["d1"], rec["d2"], rec["e2"]):  # type: ignore[union-attr]
+                bx_lo.append(float(pt[0]))
+                bx_hi.append(float(pt[0]))
+                by_lo.append(float(pt[1]))
+                by_hi.append(float(pt[1]))
+        mx_, my_ = float(rec["mx"]), float(rec["my"])  # type: ignore[arg-type]
+        dw_, dh_ = float(rec["dw"]), float(rec["dh"])  # type: ignore[arg-type]
+        bx_lo.append(mx_ - dw_)
+        bx_hi.append(mx_ + dw_)
+        by_lo.append(my_ - dh_)
+        by_hi.append(my_ + dh_)
+        for ck in ("c1", "c2"):
+            cp = rec[ck]  # type: ignore[index]
+            bx_lo.append(float(cp[0]) - 9.0)
+            bx_hi.append(float(cp[0]) + 9.0)
+            by_lo.append(float(cp[1]) - 9.0)
+            by_hi.append(float(cp[1]) + 9.0)
+    if bx_lo:
+        vx = min(0.0, min(bx_lo) - 10.0)
+        vy = min(0.0, min(by_lo) - 10.0)
+        vw = int(max(float(w), max(bx_hi) + 10.0) - vx)
+        vh = int(max(float(h), max(by_hi) + 10.0) - vy)
+    else:
+        vx, vy, vw, vh = 0.0, 0.0, w, h
 
     parts = (
         ['<g class="er-edges">']
@@ -1073,15 +1886,32 @@ def render_er_svg(
         + node_parts
         + ["</g>"]
     )
-    return _svg_wrap(w, h, "\n".join(parts))
+    return _svg_wrap(vw, vh, "\n".join(parts), vx=vx, vy=vy)
 
 
-
-def _svg_wrap(w: int, h: int, inner: str) -> str:
+def _svg_wrap(w: int, h: int, inner: str, *, vx: float = 0.0, vy: float = 0.0) -> str:
     return (
         f'<?xml version="1.0" encoding="UTF-8"?>\n'
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
-        f'viewBox="0 0 {w} {h}">\n'
-        f'<rect class="er-paper" width="100%" height="100%" fill="#fff"/>\n'
+        f'viewBox="{vx:.1f} {vy:.1f} {w} {h}">\n'
+        f'<rect class="er-paper" x="{vx:.1f}" y="{vy:.1f}" width="{w}" height="{h}" fill="#fff"/>\n'
         f"{inner}\n</svg>\n"
     )
+
+
+def _svg_wrap(w: int, h: int, inner: str, *, vx: float = 0.0, vy: float = 0.0) -> str:
+    return (
+        f'<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
+        f'viewBox="{vx:.1f} {vy:.1f} {w} {h}">\n'
+        f'<rect class="er-paper" x="{vx:.1f}" y="{vy:.1f}" width="{w}" height="{h}" fill="#fff"/>\n'
+        f"{inner}\n</svg>\n"
+    )
+
+
+
+
+
+
+
+

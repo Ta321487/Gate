@@ -1579,16 +1579,30 @@ async function loadUsecaseRows() {
   if (!p.value?.id) return
   ucDiagramLoading.value = true
   try {
-    const body = await api.getUsecases(p.value.id, { actor: 'user' })
+    // 先拉 user 拿 actors 清单，再按角色全量取（参与者须三角色都进表，禁止只挂 user）
+    const first = await api.getUsecases(p.value.id, { actor: 'user' })
     const machine = {}
-    const actor = body?.actor
-    if (actor?.id) machine[`actor:${actor.id}`] = actor.label || ''
     const walk = (n) => {
       if (!n?.id) return
       machine[n.id] = n.label || ''
       for (const c of n.includes || []) walk(c)
     }
-    for (const n of body?.level1 || []) walk(n)
+    const actors = Array.isArray(first?.actors) && first.actors.length
+      ? first.actors
+      : first?.actor?.id
+        ? [first.actor]
+        : [{ id: 'user', label: '用户' }]
+    for (const a of actors) {
+      if (!a?.id) continue
+      const body =
+        a.id === 'user' || a.id === first?.actor?.id
+          ? first
+          : await api.getUsecases(p.value.id, { actor: a.id })
+      const act = body?.actor
+      if (act?.id) machine[`actor:${act.id}`] = act.label || a.label || ''
+      else machine[`actor:${a.id}`] = a.label || ''
+      for (const n of body?.level1 || []) walk(n)
+    }
     ucDiagramMachine.value = machine
   } catch {
     message.error('无法加载用例图')

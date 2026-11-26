@@ -10,6 +10,9 @@ from pathlib import Path
 from app.bake.schema.activity import (
     ACTIVITY_COUNT,
     activity_model,
+    audit_activity_edges,
+    audit_activity_labels,
+    audit_activity_nodes,
     render_activity_svg,
 )
 from app.bake.schema.sequence import (
@@ -38,19 +41,20 @@ class ActivityDiagramTests(unittest.TestCase):
         seq = sequence_model(schema)
         self.assertEqual(act["selected"], seq["selected"])
 
-    def test_three_swimlanes_user_system_db(self) -> None:
+    def test_three_swimlanes_user_controller_db(self) -> None:
         model = activity_model(self._schema("DOM-SHOP"))
         d0 = model["diagrams"][0]
         lanes = [s["id"] for s in d0["swimlanes"]]
         self.assertEqual(lanes, ["user", "system", "db"])
         labs = [s["label"] for s in d0["swimlanes"]]
-        self.assertEqual(labs, ["用户", "系统", "数据库"])
+        # 与序列图四槽位同名：角色 / 页面 / 控制器 / 数据库
+        self.assertEqual(labs, ["用户", "控制器", "数据库"])
         svg = render_activity_svg(d0)
         self.assertIn(">用户<", svg)
-        self.assertIn(">系统<", svg)
+        self.assertIn(">控制器<", svg)
         self.assertIn(">数据库<", svg)
         self.assertNotIn(">页面<", svg)
-        self.assertNotIn(">控制器<", svg)
+        self.assertNotIn(">系统<", svg)
 
     def test_symbols_start_action_decision_end(self) -> None:
         model = activity_model(self._schema("DOM-SHOP"))
@@ -219,6 +223,150 @@ class ActivityDiagramTests(unittest.TestCase):
         cands = list_sequence_candidates(schema)
         with self.assertRaises(ValueError):
             activity_model(schema, selection=[cands[0]["id"]])
+
+
+class ActivityLabelGeometryTests(unittest.TestCase):
+    """是/否 与判断条件必须贴菱形、不压线、不出泳道；折线不得穿节点。"""
+
+    def _schema(self, stem: str) -> dict:
+        path = Path(__file__).resolve().parents[0] / "golden" / "schema" / f"{stem}.json"
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def _all_diagrams(self) -> list[tuple[str, dict]]:
+        root = Path(__file__).resolve().parents[0] / "golden" / "schema"
+        out: list[tuple[str, dict]] = []
+        for path in sorted(root.glob("DOM-*.json")):
+            schema = json.loads(path.read_text(encoding="utf-8"))
+            for idx, d in enumerate(activity_model(schema)["diagrams"]):
+                out.append((f"{path.stem}[{idx}]", d))
+        return out
+
+    def test_all_golden_diagrams_have_clean_labels(self) -> None:
+        diagrams = self._all_diagrams()
+        self.assertGreater(len(diagrams), 3)
+        for tag, d in diagrams:
+            svg = render_activity_svg(d)
+            findings = audit_activity_labels(svg)
+            self.assertEqual(findings, [], msg=f"{tag}: {findings[:4]}")
+
+    def test_all_golden_diagrams_have_clean_edges(self) -> None:
+        for tag, d in self._all_diagrams():
+            findings = audit_activity_edges(render_activity_svg(d))
+            self.assertEqual(findings, [], msg=f"{tag}: {findings[:4]}")
+
+    def test_all_golden_diagrams_have_nodes_inside_lanes(self) -> None:
+        for tag, d in self._all_diagrams():
+            findings = audit_activity_nodes(render_activity_svg(d))
+            self.assertEqual(findings, [], msg=f"{tag}: {findings[:4]}")
+
+    def test_guard_label_hugs_its_decision(self) -> None:
+        """老毛病：是/否 写在整条边长中点，离菱形几十上百像素。"""
+        d = activity_model(self._schema("DOM-SHOP"))["diagrams"][0]
+        svg = render_activity_svg(d)
+        centres = [(float(mx), float(my) + 14.0) for mx, my in re.findall(
+            r'<path d="M ([-\d.]+) ([-\d.]+) L', svg
+        )]
+        self.assertTrue(centres)
+        labels = [
+            (float(mx), float(my), raw)
+            for mx, my, raw in re.findall(
+                r'<text x="([-\d.]+)" y="([-\d.]+)"(?: text-anchor="[a-z]+")?'
+                r' font-family="[^"]*" font-size="[\d.]+" fill="#000">(是|否)</text>',
+                svg,
+            )
+        ]
+        self.assertEqual(len(labels), 4, msg=labels)
+        for lx, ly, text in labels:
+            near = min(((lx - cx) ** 2 + (ly - cy) ** 2) ** 0.5 for cx, cy in centres)
+            self.assertLessEqual(near, 48.0, msg=f"{text} 离最近菱形 {near:.0f}px")
+
+    def test_audit_catches_label_on_line(self) -> None:
+        """门禁自身要有牙齿：文字压线必须报出来。"""
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<polyline points="300,300 100,300" fill="none" stroke="#000"/>'
+            '<text x="200" y="297" font-family="x" font-size="11" fill="#000">用户是否存在</text>'
+            "</svg>"
+        )
+        self.assertTrue(audit_activity_labels(svg))
+
+    def test_audit_catches_line_through_node(self) -> None:
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<polyline points="300,134 62,134" fill="none" stroke="#000"/>'
+            '<rect x="62" y="116" width="132" height="36" rx="10" fill="#fff" stroke="#000"/>'
+            "</svg>"
+        )
+        self.assertTrue(audit_activity_edges(svg))
+
+    def test_long_action_widens_box_and_lane(self) -> None:
+        """P4：长文案把任务框和三条泳道一起撑开，不缩字、不压分隔线。"""
+        from app.bake.schema.activity import _SWIMLANES, _lane_boxes, _node_boxes
+
+        diag = {
+            "figure_title": "长文案活动图",
+            "swimlanes": [dict(s) for s in _SWIMLANES],
+            "nodes": [
+                {"id": "s", "kind": "start", "lane": "user", "text": ""},
+                {
+                    "id": "a",
+                    "kind": "action",
+                    "lane": "user",
+                    "text": "核对预约时段与可选服务项目清单",
+                },
+                {
+                    "id": "d",
+                    "kind": "decision",
+                    "lane": "system",
+                    "text": "",
+                    "decision_of": "时段是否冲突",
+                },
+                {"id": "e", "kind": "end", "lane": "user", "text": ""},
+            ],
+            "edges": [
+                {"from": "s", "to": "a"},
+                {"from": "a", "to": "d"},
+                {"from": "d", "to": "e", "guard": "是"},
+            ],
+        }
+        svg = render_activity_svg(diag)
+        self.assertEqual(audit_activity_labels(svg), [])
+        self.assertEqual(audit_activity_edges(svg), [])
+        lanes = _lane_boxes(svg)
+        self.assertEqual(len(lanes), 3)
+        lane_w = lanes[0][2]
+        self.assertGreater(lane_w, 200.0)
+        for x0, _y0, x1, _y1 in _node_boxes(svg):
+            self.assertGreaterEqual(x0, lanes[0][0])
+            self.assertLessEqual(x1, lanes[0][0] + lane_w)
+        # 框宽已撑开 → 任务框字号统一 11，不再靠 12/10 缩字
+        self.assertNotIn('font-size="12.0"', svg)
+        self.assertNotIn('font-size="10.0"', svg)
+
+    def test_rubric_surfaces_geometry_findings(self) -> None:
+        """门禁要接得出：rubric 里能看到「标签压线」而不是静默出图。"""
+        from app.bake.schema.diagram_rubric import audit_activity_rubric
+
+        model = activity_model(self._schema("DOM-SHOP"))
+        bad = (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            '<polyline points="300,300 100,300" fill="none" stroke="#000"/>'
+            '<text x="200" y="297" font-family="x" font-size="11" fill="#000">用户是否存在</text>'
+            "</svg>"
+        )
+        model["diagrams"] = [dict(model["diagrams"][0], svg=bad)]
+        findings = audit_activity_rubric(model)
+        self.assertTrue(
+            any("标签压线" in f.get("msg", "") for f in findings), msg=findings
+        )
+
+        good = render_activity_svg(activity_model(self._schema("DOM-SHOP"))["diagrams"][0])
+        model["diagrams"] = [dict(model["diagrams"][0], svg=good)]
+        findings = audit_activity_rubric(model)
+        self.assertFalse(
+            [f for f in findings if "压线" in f.get("msg", "") or "穿框" in f.get("msg", "")],
+            msg=findings,
+        )
 
 
 if __name__ == "__main__":

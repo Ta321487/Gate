@@ -31,11 +31,12 @@ from app.bake.schema.er_labels import (
     apply_er_label_patch,
     load_er_label_patch,
 )
+from app.bake.schema.diagram_style import FONT_CN, FONT_MONO
 from app.bake.schema.er_model import infer_relations, parse_schema_sql
 from app.bake.schema.er_zh import _COMMON_COL_ZH, _INFRA_TABLE_ZH
 
-_FONT = "Microsoft YaHei, SimSun, serif"
-_FONT_CODE = "Consolas, Courier New, monospace"
+_FONT = FONT_CN
+_FONT_CODE = FONT_MONO
 _STROKE = 1.2
 _PAD = 48.0
 # 出图边距：外绕折线 + 箭头 marker 不贴 viewBox；默认 fit 也不裁线头
@@ -464,6 +465,9 @@ def class_model_from_er_tables(
     }
 
 _CLASS_LAYOUT_REL = Path("islands") / "class_layout.json"
+# 机器自动排版版本：算法改了（如栅格初局）自动坐标作废重排；
+# 人工拖拽坐标不受版本影响，永远以 islands/class_layout.json 为准。
+_CLASS_LAYOUT_VER = 2
 
 
 def load_class_layout_patch(workspace: Path) -> dict[str, dict[str, float]]:
@@ -475,7 +479,11 @@ def load_class_layout_patch(workspace: Path) -> dict[str, dict[str, float]]:
 def load_class_layout_bundle(
     workspace: Path,
 ) -> tuple[dict[str, dict[str, float]], str | None]:
-    """返回 (layout, 落盘时的 display_mode)。"""
+    """返回 (layout, 落盘时的 display_mode)。
+
+    保留优先级：人工拖拽(source=manual) > 版本匹配的自动坐标 > 无标记的历史文件(按人工处理)。
+    只有明确标了 source=auto 且算法版本变了的坐标才作废。
+    """
     path = workspace / _CLASS_LAYOUT_REL
     if not path.is_file():
         return {}, None
@@ -484,6 +492,14 @@ def load_class_layout_bundle(
     except Exception:
         return {}, None
     if not isinstance(data, dict):
+        return {}, None
+    try:
+        ver = int(data.get("layout_ver") or 0)
+    except (TypeError, ValueError):
+        ver = 0
+    source = str(data.get("source") or "").strip().lower()
+    if source == "auto" and ver != _CLASS_LAYOUT_VER:
+        # 旧版面算法留下的自动坐标：与新框尺寸/初局不兼容，作废重排
         return {}, None
     raw = data.get("layout")
     if not isinstance(raw, dict):
@@ -508,8 +524,13 @@ def save_class_layout_patch(
     layout: dict[str, Any],
     *,
     display_mode: str | None = None,
+    manual: bool = False,
 ) -> dict[str, Any]:
-    """保存类框位置到 islands/class_layout.json。"""
+    """保存类框位置到 islands/class_layout.json。
+
+    manual=True 表示用户在画布上手拖过的坐标：这类坐标不随算法版本作废，
+    重 bake / 重出图都原样重放；auto=False 的自动排版坐标只用于快速重开。
+    """
     cleaned: dict[str, dict[str, float]] = {}
     for k, v in (layout or {}).items():
         if not isinstance(v, dict):
@@ -527,7 +548,12 @@ def save_class_layout_patch(
             continue
     path = workspace / _CLASS_LAYOUT_REL
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload: dict[str, Any] = {"version": 1, "layout": cleaned}
+    payload: dict[str, Any] = {
+        "version": 1,
+        "layout_ver": _CLASS_LAYOUT_VER,
+        "source": "manual" if manual else "auto",
+        "layout": cleaned,
+    }
     if display_mode:
         payload["display_mode"] = (
             "full" if str(display_mode).strip().lower() == "full" else "sample"
@@ -539,11 +565,28 @@ def save_class_layout_patch(
 
 def clear_class_layout_patch(workspace: Path) -> bool:
     path = workspace / _CLASS_LAYOUT_REL
-    if path.is_file():
+    if not path.is_file():
+        return False
+    had = True
+    try:
         path.unlink()
-        _CLASS_MODEL_CACHE.pop(str(workspace.resolve()), None)
-        return True
-    return False
+    except OSError:
+        had = path.is_file()
+    if path.is_file():
+        # 某些文件系统（网络盘/同步盘）unlink 后文件仍在：退化为写空布局
+        try:
+            path.write_text(
+                json.dumps(
+                    {"version": 1, "layout_ver": _CLASS_LAYOUT_VER, "layout": {}},
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+        except OSError:
+            pass
+    _CLASS_MODEL_CACHE.pop(str(workspace.resolve()), None)
+    return had
 
 
 def refine_and_persist_class_layout(
@@ -576,7 +619,7 @@ def refine_and_persist_class_layout(
             }
         except (KeyError, TypeError, ValueError):
             continue
-    saved = save_class_layout_patch(workspace, cleaned, display_mode=mode)
+    saved = save_class_layout_patch(workspace, cleaned, display_mode=mode, manual=True)
     # 写盘会清缓存；把刚算好的 model 立刻回填，避免随后 model+svg 再排两遍
     _seed_class_model_cache(
         workspace,

@@ -17,7 +17,7 @@
       </div>
       <DiagramRubricBanner :gate="rubricGate" />
       <p class="small muted act-hint mb-8">
-        固定 3 张核心功能活动图：泳道为用户 / 系统 / 数据库；开始实心点、圆角任务、菱形判断（条件在菱形外侧，是/否在箭头上）、直角折线、结束外套圆。候选与序列图同源，文案取自 bake 包。Mermaid 与图同源，可贴 diagrams.net 作参考。
+        固定 3 张核心功能活动图：泳道为用户 / 控制器 / 数据库；开始实心点、圆角任务、菱形判断（条件在菱形外侧，是/否在箭头上）、直角折线、结束外套圆。候选与序列图同源，文案取自 bake 包。Mermaid 与图同源，可贴 diagrams.net 作参考。
       </p>
       <div class="act-pick mb-8">
         <div class="small muted mb-6">从交付功能中勾选恰好 3 个（已选 {{ localIds.length }} / 3；默认与序列图同选）</div>

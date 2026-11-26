@@ -10,14 +10,18 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
 
+from app.bake.schema.diagram_style import FONT_CN
 from app.bake.schema.testcases import _entity_label, _role_label
 from app.bake.schema.usecase_descriptions import (
     build_usecase_description_candidates,
 )
+
+logger = logging.getLogger("app.bake.schema.sequence")
 
 SEQUENCE_COUNT = 3
 
@@ -703,305 +707,6 @@ def _ent_label(entities: dict[str, Any], key: str) -> str:
     return ""
 
 
-# 与 usecase_descriptions._flow_spec 对齐的短相位（序列四槽位用，禁止容器套话）
-# 缺省 kind 走 _phases_from_flow_spec / 通用兜底，换域不加专线也能像样。
-_KIND_WRITE_PHASES: dict[str, dict[str, str]] = {
-    "cart": {
-        "select": "核对商品与数量",
-        "confirm": "去结算",
-        "submit": "提交结算",
-        "save": "保存订单与明细",
-        "ok": "结算成功",
-    },
-    "order_reviews_user": {
-        "select": "选择已购商品",
-        "confirm": "填写评价内容",
-        "submit": "提交评价",
-        "save": "保存评价信息",
-        "ok": "评价提交成功",
-    },
-    "order_reviews": {
-        "select": "选择已购商品",
-        "confirm": "填写评价内容",
-        "submit": "提交评价",
-        "save": "保存评价信息",
-        "ok": "评价提交成功",
-    },
-    "order_reviews_admin": {
-        "select": "选择待处理评价",
-        "confirm": "处理评价",
-        "submit": "提交评价处理",
-        "save": "保存评价信息",
-        "ok": "评价处理成功",
-    },
-    # 买家订单默认画确认收货（与 MyOrders「确认收货」按钮、参考答辩口径一致）
-    "my_orders": {
-        "select": "选择已发货订单",
-        "confirm": "确认收货",
-        "submit": "提交确认收货",
-        "save": "更新订单为已完成",
-        "ok": "确认收货成功",
-    },
-    "my_orders_pay": {
-        "select": "选择待支付订单",
-        "confirm": "确认支付",
-        "submit": "提交支付",
-        "save": "更新订单为已支付",
-        "ok": "支付成功",
-    },
-    "orders": {
-        "select": "选择待发货订单",
-        "confirm": "办理发货",
-        "submit": "提交发货",
-        "save": "更新订单为已发货",
-        "ok": "发货成功",
-    },
-    "addresses": {
-        "select": "选择收货地址",
-        "confirm": "编辑地址信息",
-        "submit": "保存地址",
-        "save": "保存地址信息",
-        "ok": "地址保存成功",
-    },
-    "dm": {
-        "select": "选择会话",
-        "confirm": "填写消息内容",
-        "submit": "发送私信",
-        "save": "保存消息",
-        "ok": "发送成功",
-    },
-    "guestbook_user": {
-        "select": "填写留言内容",
-        "confirm": "确认留言",
-        "submit": "提交留言",
-        "save": "保存留言信息",
-        "ok": "留言提交成功",
-    },
-    "guestbook_admin": {
-        "select": "选择留言",
-        "confirm": "回复留言",
-        "submit": "提交回复",
-        "save": "保存留言状态",
-        "ok": "留言处理成功",
-    },
-    "favorites": {
-        "select": "选择收藏项",
-        "confirm": "取消或管理收藏",
-        "submit": "更新收藏",
-        "save": "保存收藏信息",
-        "ok": "收藏更新成功",
-    },
-    "reserve_user": {
-        "select": "选择可预约项或时段",
-        "confirm": "填写预约信息",
-        "submit": "提交预约",
-        "save": "保存预约信息",
-        "ok": "预约提交成功",
-    },
-    "reservations": {
-        "select": "选择预约记录",
-        "confirm": "办理预约",
-        "submit": "提交办理",
-        "save": "更新预约状态",
-        "ok": "预约办理成功",
-    },
-    "my_tickets": {
-        "select": "填写申请表单",
-        "confirm": "核对申请信息",
-        "submit": "提交申请",
-        "save": "保存单据信息",
-        "ok": "申请提交成功",
-    },
-    "ticket_pending": {
-        "select": "选择待办单据",
-        "confirm": "审核通过或驳回",
-        "submit": "提交审核结果",
-        "save": "更新单据状态",
-        "ok": "审核完成",
-    },
-    "ticket_records": {
-        "select": "选择办理记录",
-        "confirm": "查看办理详情",
-        "submit": "查询记录",
-        "save": "读取办理数据",
-        "ok": "查询完成",
-    },
-    "archive_admin": {
-        "select": "选择主数据记录",
-        "confirm": "填写或编辑必填项",
-        "submit": "保存主数据",
-        "save": "写入主数据",
-        "ok": "主数据保存成功",
-    },
-    "archive_user": {
-        "select": "浏览或检索列表",
-        "confirm": "打开详情",
-        "submit": "查询详情",
-        "save": "读取详情数据",
-        "ok": "展示详情",
-    },
-    "content_user": {
-        "select": "选择公告",
-        "confirm": "阅读正文",
-        "submit": "打开公告",
-        "save": "读取公告内容",
-        "ok": "展示公告",
-    },
-    "content_admin": {
-        "select": "新建公告",
-        "confirm": "填写标题与正文",
-        "submit": "发布公告",
-        "save": "保存公告",
-        "ok": "公告发布成功",
-    },
-    "profile": {
-        "select": "打开个人资料",
-        "confirm": "修改可编辑字段",
-        "submit": "保存资料",
-        "save": "写入个人资料",
-        "ok": "资料保存成功",
-    },
-    "messages": {
-        "select": "选择消息",
-        "confirm": "打开消息详情",
-        "submit": "标记已读",
-        "save": "更新消息状态",
-        "ok": "消息已读",
-    },
-    "users": {
-        "select": "选择用户",
-        "confirm": "启用停用或重置密码",
-        "submit": "提交用户管理",
-        "save": "更新用户状态",
-        "ok": "用户管理成功",
-    },
-    "category": {
-        "select": "选择分类",
-        "confirm": "编辑分类信息",
-        "submit": "保存分类",
-        "save": "写入分类数据",
-        "ok": "分类保存成功",
-    },
-    "lookup": {
-        "select": "选择字典项",
-        "confirm": "编辑字典项",
-        "submit": "保存字典项",
-        "save": "写入字典数据",
-        "ok": "字典保存成功",
-    },
-    "coupons": {
-        "select": "选择优惠券",
-        "confirm": "领取或查看券",
-        "submit": "领取优惠券",
-        "save": "保存领券记录",
-        "ok": "领券成功",
-    },
-    "browse_history": {
-        "select": "查看足迹列表",
-        "confirm": "打开浏览记录",
-        "submit": "查询足迹",
-        "save": "读取足迹数据",
-        "ok": "展示足迹",
-    },
-    "week_calendar": {
-        "select": "切换日期",
-        "confirm": "查看当日安排",
-        "submit": "查询日程",
-        "save": "读取日程数据",
-        "ok": "展示日程",
-    },
-    "deadline": {
-        "select": "选择催办记录",
-        "confirm": "查看逾期详情",
-        "submit": "查询催办",
-        "save": "读取催办数据",
-        "ok": "展示催办",
-    },
-    "archive_logs": {
-        "select": "打开监测表单",
-        "confirm": "填写监测字段",
-        "submit": "提交监测记录",
-        "save": "保存监测数据",
-        "ok": "监测提交成功",
-    },
-    "blind_pools": {
-        "select": "打开盲盒奖池",
-        "confirm": "填写奖品权重与隐藏款",
-        "submit": "保存奖池",
-        "save": "写入奖池配置",
-        "ok": "奖池保存成功",
-    },
-    "group_campaigns": {
-        "select": "选择拼团活动",
-        "confirm": "设置成团人数与截止",
-        "submit": "保存拼团",
-        "save": "写入拼团配置",
-        "ok": "拼团保存成功",
-    },
-    "delivery_slots": {
-        "select": "选择配送时段",
-        "confirm": "填写余量与达达类型",
-        "submit": "保存时段",
-        "save": "写入时段配置",
-        "ok": "时段保存成功",
-    },
-    "price_spans": {
-        "select": "选择加价区间",
-        "confirm": "填写日期与倍率",
-        "submit": "保存加价规则",
-        "save": "写入加价配置",
-        "ok": "加价规则保存成功",
-    },
-    "purchase_permits": {
-        "select": "选择待审申请",
-        "confirm": "通过或驳回",
-        "submit": "提交审核结果",
-        "save": "更新审核状态",
-        "ok": "审核完成",
-    },
-    "my_permits": {
-        "select": "打开购买审核表单",
-        "confirm": "上传审核资料",
-        "submit": "提交购买申请",
-        "save": "保存待审申请",
-        "ok": "申请已提交",
-    },
-    "line_specs": {
-        "select": "选择规格项",
-        "confirm": "新增或停用规格",
-        "submit": "保存规格选项",
-        "save": "写入规格名单",
-        "ok": "规格保存成功",
-    },
-    "lost_clues": {
-        "select": "选择线索留言",
-        "confirm": "查看线索内容",
-        "submit": "打开线索",
-        "save": "读取线索数据",
-        "ok": "展示线索",
-    },
-    "consigns": {
-        "select": "选择待质检寄卖",
-        "confirm": "通过上架或驳回",
-        "submit": "提交质检结果",
-        "save": "更新寄卖状态",
-        "ok": "质检完成",
-    },
-    "my_consigns": {
-        "select": "打开寄卖表单",
-        "confirm": "填写名称期望价与成色",
-        "submit": "提交寄卖",
-        "save": "保存待质检寄卖",
-        "ok": "寄卖已提交",
-    },
-    "open": {
-        "select": "查看主列表或主表单",
-        "confirm": "完成页面主操作",
-        "submit": "提交操作",
-        "save": "保存业务数据",
-        "ok": "操作成功",
-    },
-}
 
 
 def _shorten_flow_action(line: str, *, menu_label: str = "") -> str:
@@ -1050,164 +755,53 @@ def _shorten_flow_action(line: str, *, menu_label: str = "") -> str:
     return s
 
 
-def _phases_from_flow_spec(
-    kind: str,
-    *,
-    stem: str,
-    menu_label: str,
-) -> dict[str, str] | None:
-    """用用例描述 flow 抽 select/confirm/submit，与材料表同源。"""
-    try:
-        from app.bake.schema.usecase_descriptions import _flow_spec
-    except Exception:
-        return None
-    spec = _flow_spec(kind)
-    if not isinstance(spec, dict):
-        return None
-    flow = [str(x).strip() for x in (spec.get("flow") or []) if str(x).strip()]
-    if not flow:
-        return None
-    # 跳过登录/转至界面句，取操作句
-    actions: list[str] = []
-    for line in flow:
-        if any(
-            x in line
-            for x in (
-                "登录成功",
-                "打开系统登录",
-                "系统转至",
-                "系统展示",
-                "系统保存",
-                "系统更新",
-                "系统按",
-                "系统提示",
-                "系统同步",
-                "校验通过",
-            )
-        ):
-            # 系统句有时可作 save/ok，先跳过当 select
-            continue
-        short = _shorten_flow_action(line, menu_label=menu_label)
-        if short and short not in actions:
-            actions.append(short)
-    if not actions:
-        return None
-    st = (stem or menu_label or "业务").strip()
-    ml = (menu_label or "").strip()
-    select = actions[0]
-    confirm = actions[1] if len(actions) > 1 else actions[0]
-    submit = actions[-1] if len(actions) > 2 else (
-        "提交" + (st if st and st not in confirm else "操作")
-    )
-    # 若仍像容器套话则放弃，交给上层其它兜底
-    if _is_container_template_phrase(select, stem=st, menu_label=ml):
-        return None
-    return {
-        "select": select,
-        "confirm": confirm,
-        "submit": submit if not _is_container_template_phrase(submit, stem=st, menu_label=ml) else f"提交{st}变更",
-        "save": f"保存{st}信息" if st else "保存业务数据",
-        "ok": f"{ml or st}成功" if (ml or st) else "操作成功",
-    }
-
-
-def _my_orders_write_phases(vue_btns: list[str] | None = None) -> dict[str, str]:
-    """买家订单：有「确认收货」或未单独强调支付时走收货；仅支付按钮则走支付。"""
-    btns = [str(b or "") for b in (vue_btns or [])]
-    has_recv = any("收货" in b for b in btns)
-    has_pay = any("支付" in b for b in btns)
-    if has_pay and not has_recv:
-        return dict(_KIND_WRITE_PHASES["my_orders_pay"])
-    return dict(_KIND_WRITE_PHASES["my_orders"])
-
-
 def _kind_write_fallbacks(
     kind: str,
     *,
     stem: str,
     menu_label: str,
+    menu_key: str = "",
     side: str = "user",
     vue_btns: list[str] | None = None,
+    schema: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     """无可用 Vue/Controller 文案时的写路径措辞。
 
-    优先显式相位表 → 用例描述 flow 同源 → 子串别名 → 禁容器套话的通用兜底。
+    优先级：材料词（entities.verbs/states → diagram_verbs.material_phases）→ 中性骨架。
+    业务句只来自材料/工厂动作词表；不得借别域硬编码句。
     """
+    del side, vue_btns  # 保留形参兼容旧调用；措辞不再按端/按钮分叉
     k = (kind or "").strip().lower()
     ml = (menu_label or "").strip()
+    mk = (menu_key or "").strip()
     st = (stem or ml or "记录").strip()
-    side_n = (side or "user").strip().lower() or "user"
-    adminish = side_n == "admin" or k.endswith("_admin") or k in ("orders",)
 
-    # 侧别优先：同名 kind 在用户侧走用户相位（如 reservations 作座位预约入口）
-    if k == "reservations" and not adminish:
-        return dict(_KIND_WRITE_PHASES["reserve_user"])
-    if k == "guestbook" and not adminish:
-        return dict(_KIND_WRITE_PHASES["guestbook_user"])
+    # 材料优先：词源表/项目 schema 有该 kind 的实体与动作 → 直接拼句
+    if isinstance(schema, dict):
+        try:
+            from app.services import diagram_verbs as _dv
 
-    if k == "my_orders":
-        return _my_orders_write_phases(vue_btns)
+            material = _dv.material_phases(
+                k,
+                schema,
+                domain=str(schema.get("domain") or ""),
+                menu_key=mk,
+                menu_label=ml,
+            )
+            if material:
+                return material
+        except Exception as e:  # noqa: BLE001
+            logger.warning("diagram_verbs material_phases failed kind=%s: %s", k, e)
 
-    if k in _KIND_WRITE_PHASES:
-        row = dict(_KIND_WRITE_PHASES[k])
-        if k == "archive_admin" and st and st not in ("记录", "主数据"):
-            row["select"] = f"选择{st}"
-            row["confirm"] = f"编辑{st}信息"
-            row["submit"] = f"保存{st}"
-            row["save"] = f"保存{st}信息"
-            row["ok"] = f"{ml or st}成功"
-        return row
-
-    # 别名 / 子串
-    if "review" in k:
-        key = "order_reviews_admin" if adminish else "order_reviews_user"
-        return dict(_KIND_WRITE_PHASES[key])
-    if k in ("my_orders",) or (
-        "order" in k and "review" not in k and k != "cart" and not adminish
-    ):
-        return _my_orders_write_phases(vue_btns)
-    if k == "orders" or ("order" in k and "review" not in k and adminish):
-        return dict(_KIND_WRITE_PHASES["orders"])
-    if "guestbook" in k:
-        key = "guestbook_admin" if adminish else "guestbook_user"
-        return dict(_KIND_WRITE_PHASES[key])
-    if "reserve" in k or "slot" in k:
-        key = "reservations" if adminish else "reserve_user"
-        return dict(_KIND_WRITE_PHASES.get(key) or _KIND_WRITE_PHASES["reserve_user"])
-    if "ticket" in k:
-        if "pending" in k:
-            return dict(_KIND_WRITE_PHASES["ticket_pending"])
-        if "record" in k:
-            return dict(_KIND_WRITE_PHASES["ticket_records"])
-        return dict(_KIND_WRITE_PHASES["my_tickets"])
-    if "archive" in k:
-        key = "archive_admin" if adminish else "archive_user"
-        row = dict(_KIND_WRITE_PHASES[key])
-        if key == "archive_admin" and st:
-            row["select"] = f"选择{st}"
-            row["confirm"] = f"编辑{st}信息"
-            row["submit"] = f"保存{st}"
-            row["save"] = f"保存{st}信息"
-            row["ok"] = f"{ml or st}成功"
-        return row
-    if "content" in k:
-        key = "content_admin" if adminish else "content_user"
-        return dict(_KIND_WRITE_PHASES[key])
-
-    from_flow = _phases_from_flow_spec(k, stem=st, menu_label=ml)
-    if from_flow:
-        return from_flow
-
-    # 通用：容器名（车/单/夹）勿拼「选择购物车」
-    if st and any(ch in st for ch in ("车", "单", "夹", "篮", "箱")) and len(st) <= 6:
-        return {
-            "select": "选择记录",
-            "confirm": "确认操作",
-            "submit": "提交变更",
-            "save": "保存变更",
-            "ok": f"{ml or st}成功",
-        }
-    return dict(_KIND_WRITE_PHASES["open"])
+    # 无材料实体名时的中性兜底：只用菜单名 + 技术动词，不借用任何域的业务句
+    fallback = ml or st or "记录"
+    return {
+        "select": f"查看{fallback}",
+        "confirm": f"查看{fallback}详情",
+        "submit": "提交变更",
+        "save": f"更新{fallback}状态",
+        "ok": f"{fallback}操作成功",
+    }
 
 
 def _is_container_template_phrase(text: str, *, stem: str, menu_label: str = "") -> bool:
@@ -1548,6 +1142,7 @@ def _build_business_phase(
     kind: str,
     schema: dict[str, Any] | None = None,
     side: str = "user",
+    menu_key: str = "",
 ) -> list[dict[str, Any]]:
     msgs: list[dict[str, Any]] = []
     seq = seq0
@@ -1572,8 +1167,10 @@ def _build_business_phase(
         kind,
         stem=stem_early,
         menu_label=menu_label,
+        menu_key=menu_key,
         side=side,
         vue_btns=vue_btns,
+        schema=schema,
     )
 
     open_btn = _pick_vue_btn(
@@ -1681,9 +1278,9 @@ def _build_business_phase(
         msgs.append(
             _msg(
                 seq=seq,
-                frm="page",
+                frm="actor",
                 to="page",
-                direction="self",
+                direction="request",
                 text=self1,
                 phase=phase,
                 text_source="vue" if pick else "schema_label",
@@ -1776,9 +1373,9 @@ def _build_business_phase(
         msgs.append(
             _msg(
                 seq=seq,
-                frm="page",
+                frm="actor",
                 to="page",
-                direction="self",
+                direction="request",
                 text=self2,
                 phase=phase,
                 text_source="vue" if submit_btn else "schema_label",
@@ -1839,6 +1436,7 @@ def build_diagram_messages(
     kind = str(case.get("kind") or "")
     side = str(case.get("side") or "user")
     menu_label = str(case.get("label") or "").strip()
+    menu_key = str(case.get("menu_key") or "").strip()
     actor = _short_role(str(case.get("actor") or _role_label(schema, side)), side=side)
     entity = _feature_entity(schema, kind=kind, menu_label=menu_label)
 
@@ -1847,7 +1445,7 @@ def build_diagram_messages(
         _scan_vue_buttons(
             workspace,
             menu_label,
-            menu_key=str(case.get("menu_key") or ""),
+            menu_key=menu_key,
             kind=kind,
             entity=entity,
             schema=schema,
@@ -1862,7 +1460,7 @@ def build_diagram_messages(
     biz_ctrl = _pick_controller(
         controllers,
         kind=kind,
-        menu_key=str(case.get("menu_key") or ""),
+        menu_key=menu_key,
         menu_label=menu_label,
         entity=entity,
     )
@@ -1887,6 +1485,7 @@ def build_diagram_messages(
                 kind=kind,
                 schema=schema,
                 side=side,
+                menu_key=menu_key,
             )
         )
     else:
@@ -1905,6 +1504,7 @@ def build_diagram_messages(
                 kind=kind,
                 schema=schema,
                 side=side,
+                menu_key=menu_key,
             )
         )
     # 重排序号，并折叠叠词（防「登录登录」）
@@ -1980,12 +1580,34 @@ def sequence_model(
     title = _app_title(schema, title_fallback)
     from app.bake.schema.sequence_workflow import attach_workflow_to_diagrams
 
+    # 材料缺词：该 kind 有句式形状但材料没给实体/动作词 → 图内只能出骨架句
+    material_gaps: list[dict[str, str]] = []
+    try:
+        from app.services import diagram_verbs as _dv
+
+        dom = str(schema.get("domain") or "")
+        by_case = {candidate_id(c): c for c in candidates}
+        for d in diagrams:
+            case = by_case.get(str(d.get("id") or "")) or {}
+            gap = _dv.flow_gap(
+                str(d.get("kind") or ""),
+                schema,
+                domain=dom,
+                menu_key=str(d.get("menu_key") or case.get("menu_key") or ""),
+                menu_label=str(case.get("label") or case.get("name") or ""),
+            )
+            if gap:
+                material_gaps.append({"index": str(d.get("index")), **gap})
+    except Exception as e:  # noqa: BLE001
+        logger.warning("diagram_verbs flow_gap scan failed: %s", e)
+
     model = {
         "title": title,
         "figure_title": "系统序列图",
         "candidates": candidates,
         "selected": selected,
         "diagrams": diagrams,
+        "material_gaps": material_gaps,
         "source_note": (
             "功能取自交付 menus；角色与步骤文案取自 bake 包 Controller/页面/交付中文名；"
             "示例图仅定画法；禁止模板套话。"
@@ -2062,7 +1684,7 @@ _BOX_H = 36.0
 _COL_GAP = 150.0
 _ROW_H = 36.0
 _ACT_W = 10.0
-_FONT = "Microsoft YaHei, SimSun, serif"
+_FONT = FONT_CN
 _STROKE = 1.2
 
 
@@ -2129,7 +1751,7 @@ def _activation_spans(
 
 def render_sequence_svg(diagram: dict[str, Any] | None) -> str:
     if not diagram or not isinstance(diagram.get("messages"), list):
-        body = '<text x="24" y="40" font-family="Microsoft YaHei, SimSun, serif">暂无序列图</text>'
+        body = f'<text x="24" y="40" font-family="{_FONT}">暂无序列图</text>'
         return (
             '<?xml version="1.0" encoding="UTF-8"?>'
             f'<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80">{body}</svg>'
@@ -2146,28 +1768,23 @@ def render_sequence_svg(diagram: dict[str, Any] | None) -> str:
 
     messages = [m for m in diagram["messages"] if isinstance(m, dict)]
     n = max(1, len(messages))
-    stick_w = 40.0
+    stick_w = 0.0  # 火柴人画在角色框正上方，不占左右边距
     origin_x = _PAD_X + stick_w
     xs = [origin_x + i * (_BOX_W + _COL_GAP) + _BOX_W / 2 for i in range(4)]
     box_x = [origin_x + i * (_BOX_W + _COL_GAP) for i in range(4)]
 
-    title = str(diagram.get("figure_title") or "序列图")
-    title_h = 22.0
-    y_box = _PAD_Y + title_h
+    # 图内不画标题：图注写 Word（与 E-R/类图/模块图/活动图同一口径）
+    y_box = _PAD_Y + 38.0  # 顶部留出火柴人的位置（样例：角色小人立在「用户」框上方）
     life_top = y_box + _BOX_H
     msg_y0 = life_top + 28.0
     life_bot = msg_y0 + n * _ROW_H + 24.0
 
-    total_w = origin_x + 4 * _BOX_W + 3 * _COL_GAP + _PAD_X + 40
+    total_w = origin_x + 4 * _BOX_W + 3 * _COL_GAP + _PAD_X
     total_h = life_bot + _PAD_Y
 
     parts: list[str] = [_marker_defs()]
-    parts.append(
-        f'<text x="{_f(total_w / 2)}" y="{_f(_PAD_Y + 14)}" text-anchor="middle" '
-        f'font-size="14" font-family="{_FONT}" font-weight="700" fill="#000">{_esc(title)}</text>'
-    )
-    # 火柴人（角色左侧）
-    parts.append(_stick_figure(origin_x - 22, y_box - 2))
+    # 火柴人（角色框正上方，与样例一致）
+    parts.append(_stick_figure(xs[0], y_box - 38.0))
 
     for i, lab in enumerate(labels):
         parts.append(
@@ -2202,7 +1819,7 @@ def render_sequence_svg(diagram: dict[str, Any] | None) -> str:
         is_req = direction in ("request", "self")
         raw_text = str(m.get("text") or "")
         body = _ensure_request_parens_display(raw_text, is_request=is_req)
-        label = f"{seq}、{body}"
+        label = f"{seq}.{body}"
         yi = max(0, seq - 1)
         y = msg_y0 + yi * _ROW_H
         fi = idx.get(frm, 0)

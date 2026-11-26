@@ -348,9 +348,9 @@ def architecture_model_to_mermaid(model: dict[str, Any] | None) -> str:
         rid = mermaid_id(str(r.get("id")), prefix="R_")
         lines.append(f'  {rid}["{mermaid_label(str(r.get("label") or r.get("id")))}"]')
     layers = [
-        ("ui", "界面"),
+        ("ui", "页面"),
         ("vue", "Vue"),
-        ("spring", "SpringBoot"),
+        ("spring", "Spring Boot"),
         ("mysql", "MySQL"),
     ]
     prev = None

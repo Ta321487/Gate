@@ -231,7 +231,7 @@
               </template>
               <template v-else>
               <p class="small muted mb-8">
-                贴说明书用：系统设计（功能模块图 / 系统逻辑架构图 / 系统类图 / 系统序列图 / 系统活动图）· 需求分析（用例图 / 用例描述表）· 系统测试（软件测试用例）。模块图按身份时以交付菜单为叶子真源，开题「功能模块划分为」只辅助命名（未交付模块不进图）；架构图按交付角色画 B/S 分层；类图实体与外键来自 schema.sql，属性/方法与可见性来自 bake 包 Java（六种关系线、零交叉；默认论文示例可切代码全量，拖拽后回拉重选折线），并与开题 domain.schema 对照；序列图固定 3 张核心功能（可勾选），四槽位与六条画法，文案取自 bake；活动图固定 3 张（可与序列同勾选），三泳道用户/系统/数据库，判断条件写在菱形外侧箭头上；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
+                贴说明书用：系统设计（功能模块图 / 系统逻辑架构图 / 系统类图 / 系统序列图 / 系统活动图）· 需求分析（用例图 / 用例描述表）· 系统测试（软件测试用例）。模块图按身份时以交付菜单为叶子真源，开题「功能模块划分为」只辅助命名（未交付模块不进图，差项以弱提醒施工清单列出、不挡导出）；架构图按交付角色画 B/S 分层；类图实体与外键来自 schema.sql，属性/方法与可见性来自 bake 包 Java（六种关系线、零交叉；默认论文示例可切代码全量，拖拽后回拉重选折线），并与开题 domain.schema 对照；序列图固定 3 张核心功能（可勾选），四槽位与六条画法，文案取自 bake；活动图固定 3 张（可与序列同勾选），三泳道用户/控制器/数据库，判断条件写在菱形外侧箭头上；用例图按角色走查交付菜单；用例描述表从交付菜单与开题选用 4 个主路径并对照实包操作；测例按交付菜单推导，不发明功能。
               </p>
               <div class="row mb-8" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
                 <n-button
@@ -350,6 +350,15 @@
                           >手调文字</n-button>
                         </div>
                       </div>
+                    </div>
+                    <div v-if="g.id === 'design' && modulesDeliveryGapWarn" class="banner warn" style="margin:12px 0 0">
+                      <h4>开题对账 · 弱提醒（不挡导出）</h4>
+                      <p class="small">
+                        开题点名、当前交付对不上的模块未进功能模块图
+                        <span v-if="modulesDeliveryGapCount">（{{ modulesDeliveryGapCount }} 项）</span>。
+                        打开图看施工清单 → 补匹配/能力后重 bake → 图内「重新加载」。
+                        不挡导出；完善工厂后同类会变少。
+                      </p>
                     </div>
                     <div v-if="g.id === 'design' && modulesLabelRed" class="banner fail" style="margin:12px 0 0">
                       <h4>工厂提示 · 功能模块图文案红</h4>
@@ -679,7 +688,7 @@ const {
   loadArtifactView, loadError, loadErrorCode, loadLog, loadSchema, logFilter, logLoading, logReqSeq,
   logSide, logSides, logText, markDelivery, matchAltsText, matchBusy, matchMeta, matchPath,
   matchPillClass, matchPillText, matchSourceLabel, matchWarnings, modDownloadBase, modLayoutKey, modLoading, modSvgSource,
-  modulesLayout, modulesMeta, modulesOk, modulesLabelOk, modulesLabelPending, modulesLabelRed, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
+  modulesLayout, modulesMeta, modulesOk, modulesLabelOk, modulesLabelPending, modulesLabelRed, modulesDeliveryGapWarn, modulesDeliveryGapCount, narrativeDualText, normalizeStepStatus, onArchDomChange, onArtifactView, onDelete,
   onErEntity, onErMode, onModulesLayout, onPathChange, onTcFields, openArchitecture, openClasses, openSequences, openActivities, openEr, openFillPlan, openModules,
   openPreview, openTestcases, openThesisOverrides, closeThesisOverrides, openUsecaseDescriptions, openUsecases, p, parseMysqlType, passwordHashOptions, pathEntryDeviant, pathSceneDeviant, persistenceDeviant,
   thesisSurface,
@@ -815,6 +824,7 @@ function thesisCardPillClass(card) {
   if (artifactsFrozen.value) return 'pill-amber'
   if (card.id === 'modules' && modulesLabelRed.value) return 'pill-amber'
   if (thesisRubricRed(card)) return 'pill-amber'
+  if (card.id === 'modules' && modulesDeliveryGapWarn.value) return 'pill-amber'
   if (thesisCardOk(card)) return 'pill-green'
   return 'pill-neutral'
 }
@@ -824,6 +834,7 @@ function thesisCardPillText(card) {
   if (card.id === 'modules' && modulesLabelRed.value) return '文案红'
   if (thesisRubricRed(card)) return '规则红'
   if (card.id === 'modules' && modulesLabelPending.value) return '待核验'
+  if (card.id === 'modules' && modulesDeliveryGapWarn.value) return '开题差账'
   if (thesisCardOk(card)) return '可导出'
   return p.value?.workspace_path ? '待生成' : '未生成'
 }
@@ -836,7 +847,7 @@ const thesisGroups = computed(() => [
       {
         id: 'modules',
         title: '功能模块图',
-        desc: '按身份 / 按业务切换 · 可展开细节 · 黑白线框 · 复制 PNG 或下载矢量',
+        desc: '按身份 / 按业务 · 开题未交付项弱提醒施工清单 · 复制 PNG / 矢量',
         action: '打开模块图',
         overrideSection: 'modules',
         loading: modLoading.value,
@@ -872,7 +883,7 @@ const thesisGroups = computed(() => [
       {
         id: 'activities',
         title: '系统活动图',
-        desc: '固定 3 张 · 可与序列同勾选 · 用户/系统/数据库 · 菱形条件在箭头上 · bake 文案',
+        desc: '固定 3 张 · 可与序列同勾选 · 用户/控制器/数据库 · 菱形条件在箭头上 · bake 文案',
         action: '打开活动图',
         overrideSection: 'activity',
         loading: actLoading.value,

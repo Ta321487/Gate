@@ -40,8 +40,13 @@ class UsecaseContractTests(unittest.TestCase):
         self.assertNotIn(f"（{n + 1}）", desc)
         self.assertTrue(_has_extend(model), "电商域用户侧应有 extend（如支付）")
         lay = layout_usecase(model)
-        self.assertEqual(len({round(n["cx"], 1) for n in lay["l1"]}), 1)
-        self.assertEqual(len({round(n["cx"], 1) for n in lay["l2"]}), 1)
+        # 单列时一级/二级各 1 条竖线；双列（样例画法）允许左右各 1 条
+        cols = 2 if lay.get("two_col") else 1
+        self.assertLessEqual(len({round(n["cx"], 1) for n in lay["l1"]}), cols)
+        self.assertLessEqual(len({round(n["cx"], 1) for n in lay["l2"]}), cols)
+        if cols == 2:
+            self.assertEqual(len({round(n["cx"], 1) for n in lay["l1"]}), 2)
+            self.assertEqual(len({round(n["cx"], 1) for n in lay["l2"]}), 2)
         for e in lay["edges"]:
             if e["kind"] == "extend":
                 self.assertEqual(e["label"], "<<extend>>")
@@ -81,7 +86,8 @@ class UsecaseContractTests(unittest.TestCase):
         walk(mdj)
         self.assertGreaterEqual(len(views), 5)
         widths = {int(v.get("width") or 0) for v in views}
-        self.assertEqual(len(widths), 1, widths)
+        # 对齐样例画法：一级一档、二级明显小一号，只允许两档宽度
+        self.assertLessEqual(len(widths), 2, widths)
 
     def test_verb_prefix_on_l2(self) -> None:
         schema = build_domain_schema("图书馆管理系统", "DOM-LIBRARY")
@@ -299,6 +305,52 @@ class UsecaseContractTests(unittest.TestCase):
             msg=mnote,
         )
 
+    def test_materials_dedupe_pay_into_cart_and_user_module_as_profile(self) -> None:
+        """潮汐型开题：购物车+支付不得画两个「管理购物车」；裸「用户模块」不得成「查看用户」。"""
+        opening = (
+            "用户功能模块划分为：登录注册模块、首页展示模块、用户模块、演出项目模块、"
+            "购物车模块、支付与电子票模块、订单与售后退票模块、可视化选座购票模块、"
+            "互动评价模块、个人中心汇总功能；"
+            "主办方商家后台功能模块划分为：演出场次管理模块、场馆座位管理模块、"
+            "订单核销管理模块、店铺订单统计模块、售后退票处理模块；"
+            "平台管理员后台功能模块划分为：轮播图管理模块、用户管理模块、"
+            "主办方商家管理模块、演出审核管理模块、全局订单管理模块、"
+            "评价内容管理模块、公告管理模块。"
+        )
+        schema = build_domain_schema(
+            "潮汐演艺票务销售网站", "DOM-CINEMA", proposal_text=opening
+        )
+        user = usecase_model(
+            schema, actor="user", proposal_text=opening, title_fallback="潮汐演艺"
+        )
+        labs = [uc["label"] for uc in user["level1"]]
+        self.assertEqual(labs.count("管理购物车"), 1, labs)
+        self.assertNotIn("查看用户", labs)
+        self.assertIn("查看个人资料", labs)
+        self.assertEqual(len(labs), len(set(labs)), labs)
+        # 支付细节应并进购物车桶（include 或 extend）
+        cart = next(uc for uc in user["level1"] if uc["label"] == "管理购物车")
+        cart_kids = [k.get("label") for k in cart.get("includes") or []]
+        self.assertTrue(
+            any("支付" in str(x) for x in cart_kids),
+            cart_kids,
+        )
+        assert_usecase_invariants(user, schema=schema, actor="user")
+
+        actors = list_usecase_actors(schema)
+        merchant = next((a for a in actors if a["id"].startswith("staff:")), None)
+        self.assertIsNotNone(merchant)
+        merch = usecase_model(
+            schema,
+            actor=merchant["id"],
+            proposal_text=opening,
+            title_fallback="潮汐演艺",
+        )
+        mlabs = [uc["label"] for uc in merch["level1"]]
+        self.assertEqual(mlabs.count("管理订单"), 1, mlabs)
+        self.assertEqual(len(mlabs), len(set(mlabs)), mlabs)
+        assert_usecase_invariants(merch, schema=schema, actor=merchant["id"])
+
     def test_l2_drops_proposal_etc(self) -> None:
         """开题「节日优惠等公告信息」不得原样进二级，否则质检当开题语气词并挡住下载。"""
         from app.bake.schema.usecases import _label_from_material_seed
@@ -334,9 +386,16 @@ class UsecaseContractTests(unittest.TestCase):
             self.assertEqual(desc.count(f"（{i}）"), 1)
         self.assertNotIn(f"（{n_l1 + 1}）", desc)
         lay = layout_usecase(model)
-        self.assertEqual(len({round(n["cx"], 1) for n in lay["l1"]}), 1)
-        self.assertEqual(len({round(n["cx"], 1) for n in lay["l2"]}), 1)
-        self.assertTrue(all(abs(n["w"] - lay["uc_w"]) < 0.1 for n in lay["l1"] + lay["l2"]))
+        # 单列时一级/二级各 1 条竖线；双列（样例画法）允许左右各 1 条
+        cols = 2 if lay.get("two_col") else 1
+        self.assertLessEqual(len({round(n["cx"], 1) for n in lay["l1"]}), cols)
+        self.assertLessEqual(len({round(n["cx"], 1) for n in lay["l2"]}), cols)
+        if cols == 2:
+            self.assertEqual(len({round(n["cx"], 1) for n in lay["l1"]}), 2)
+            self.assertEqual(len({round(n["cx"], 1) for n in lay["l2"]}), 2)
+        self.assertTrue(len({round(n["w"], 1) for n in lay["l1"]}) == 1)
+        self.assertTrue(len({round(n["w"], 1) for n in lay["l2"]}) == 1)
+        self.assertLessEqual(max(n["w"] for n in lay["l2"]), max(n["w"] for n in lay["l1"]))
         self.assertTrue(any(e["kind"] == "include" and e["label"] == "<<include>>" for e in lay["edges"]))
         for uc in model["level1"]:
             self.assertNotIn("综合功能", uc["label"])

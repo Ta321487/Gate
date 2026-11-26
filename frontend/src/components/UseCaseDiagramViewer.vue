@@ -122,24 +122,19 @@ const actorLocal = ref(String(props.actor || 'user'))
 let panLastX = 0
 let panLastY = 0
 
-const {
-  viewerRef,
-  frameHeight,
-  frameStyle,
-  resizing,
-  onResizeDown,
-  onResizeMove,
-  onResizeUp,
-} = useDiagramFrameResize()
-
-watch(frameHeight, async () => {
-  await nextTick()
-  fitToFrame()
-})
-
 const SCALE_MIN = 0.25
 const SCALE_MAX = 4
 const SCALE_STEP = 0.15
+
+// 须在任何 watch 之前定义，避免 TDZ（Cannot access before initialization）
+const actorOptions = computed(() => {
+  const list = Array.isArray(props.actors) ? props.actors : []
+  if (list.length) return list.map((a) => ({ id: a.id, label: a.label || a.id }))
+  return [
+    { id: 'user', label: '用户' },
+    { id: 'admin', label: '管理员' },
+  ]
+})
 
 const canvasStyle = computed(() => ({
   transform: `translate(${panX.value}px, ${panY.value}px) scale(${scale.value})`,
@@ -150,19 +145,36 @@ const fileBase = computed(
   () => String(props.downloadName || 'usecases').replace(/\.(svg|png|mdj)$/i, '') || 'usecases',
 )
 
-const actorOptions = computed(() => {
-  const list = Array.isArray(props.actors) ? props.actors : []
-  if (list.length) return list.map((a) => ({ id: a.id, label: a.label || a.id }))
-  return [
-    { id: 'user', label: '用户' },
-    { id: 'admin', label: '管理员' },
-  ]
-})
+const {
+  viewerRef,
+  frameHeight,
+  frameStyle,
+  resizing,
+  onResizeDown,
+  onResizeMove,
+  onResizeUp,
+  relayoutChrome,
+} = useDiagramFrameResize()
 
 watch(
   () => props.actor,
   (v) => {
     actorLocal.value = String(v || 'user')
+  },
+)
+
+// 描述/角色异步到位后，把拖条重新贴到「复制描述」下方（未手拖时）
+watch(
+  () => [
+    props.description,
+    props.sourceNote,
+    props.loading,
+    props.actor,
+    actorOptions.value.length,
+  ],
+  async () => {
+    await nextTick()
+    relayoutChrome()
   },
 )
 
@@ -198,6 +210,11 @@ function fitToFrame() {
   panX.value = (fw - sw * s) / 2
   panY.value = (fh - sh * s) / 2
 }
+
+watch(frameHeight, async () => {
+  await nextTick()
+  fitToFrame()
+})
 
 function loadSource(raw) {
   svgHtml.value = parseSvg(raw)
@@ -398,7 +415,8 @@ async function downloadMdj() {
 
 async function copyDesc() {
   try {
-    await navigator.clipboard.writeText(props.description || '')
+    const { copyMaterialText } = await import('../utils/zhCopy.js')
+    await copyMaterialText(props.description || '')
     message.success('已复制描述')
   } catch {
     message.error('复制描述失败')

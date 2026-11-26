@@ -920,6 +920,80 @@ class ModuleDiagramTests(unittest.TestCase):
         self.assertIn("定时任务", named_labs, named_labs)
         self.assertIn("在线用户", named_labs, named_labs)
 
+    def test_delivery_gap_lists_dropped_opening_modules(self) -> None:
+        """开题有、菜单对不上 → delivery_gap.dropped 弱提醒；不红 label_gate、不挡导出。"""
+        from app.bake.schema.modules import _align_material_modules_to_menus_with_stats
+
+        aligned, stats = _align_material_modules_to_menus_with_stats(
+            [
+                {"label": "登录注册模块", "details": []},
+                {"label": "购物车模块", "details": []},
+                {"label": "演出审核管理模块", "details": []},
+                {"label": "星际传送模块", "details": []},
+            ],
+            side="admin",
+            menus=[
+                {"key": "orders", "label": "订单管理"},
+                {"key": "users", "label": "用户管理"},
+            ],
+            role_lab="平台管理员",
+        )
+        labs = [m["label"] for m in aligned]
+        self.assertNotIn("星际传送", "".join(labs))
+        self.assertTrue(
+            any("演出审核" in x or "审核" in x for x in (stats.get("dropped") or [])),
+            stats,
+        )
+        self.assertTrue(
+            any("星际传送" in x for x in (stats.get("dropped") or [])),
+            stats,
+        )
+        # 菜单有、开题未点名 → padded
+        self.assertTrue(stats.get("padded"), stats)
+
+        opening = (
+            "用户功能模块划分为：登录注册模块、购物车模块、星际传送模块；"
+            "平台管理员后台功能模块划分为：登录、用户管理模块、演出审核管理模块、"
+            "星际传送管理模块。"
+        )
+        schema = {
+            "title": "潮汐探针",
+            "domainId": "DOM-CINEMA",
+            "roles": {
+                "user": {"label": "用户"},
+                "admin": {"label": "平台管理员"},
+            },
+            "menus": {
+                "user": [
+                    {"key": "cart", "label": "购物车"},
+                    {"key": "orders", "label": "我的订单"},
+                ],
+                "admin": [
+                    {"key": "users", "label": "用户管理"},
+                    {"key": "orders", "label": "订单管理"},
+                ],
+            },
+            "capabilities": ["order_lines", "cart"],
+        }
+        model = module_model(schema, proposal_text=opening, layout="identity")
+        gap = model.get("delivery_gap") or {}
+        self.assertEqual(gap.get("severity"), "warn", gap)
+        self.assertIs(gap.get("blocks_export"), False)
+        dropped_blob = " ".join(
+            str(r.get("label") or "") for r in (gap.get("dropped") or [])
+        )
+        self.assertIn("星际传送", dropped_blob, gap)
+        self.assertTrue(
+            any("审核" in str(r.get("label") or "") for r in (gap.get("dropped") or [])),
+            gap,
+        )
+        # 弱提醒：与文案闸解耦，不升成 error、不挡导出
+        self.assertNotEqual(gap.get("severity"), "error")
+        self.assertIs(gap.get("blocks_export"), False)
+        # 未进图项不得出现在叶子上
+        leaf_blob = " ".join(self._walk_labels(model))
+        self.assertNotIn("星际传送", leaf_blob)
+
 
 if __name__ == "__main__":
     unittest.main()

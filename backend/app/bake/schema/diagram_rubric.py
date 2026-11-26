@@ -418,11 +418,31 @@ def audit_sequence_rubric(model: dict[str, Any] | None) -> list[dict[str, str]]:
         )
         if bad:
             findings.append(bad)
+
+    # 材料缺词：有句式形状但材料没给实体/动作词 → 图内降级骨架，去资产台补词
+    for gap in (model.get("material_gaps") or [])[:6]:
+        if not isinstance(gap, dict):
+            continue
+        findings.append(
+            _finding(
+                "warn",
+                f"材料缺词：{gap.get('reason') or '实体/动作词为空'}",
+                where=f"sequences[{gap.get('index', '?')}].material",
+                fix="资产台 → 实体动作词（factory_diagram_verb）补词，或补材料 entities.verbs",
+                goto="diagram_verbs",
+            )
+        )
     return findings
 
 
 def audit_activity_rubric(model: dict[str, Any] | None) -> list[dict[str, str]]:
-    """活动图：须覆盖用户/系统/数据库泳道；有起止。"""
+    """活动图：须覆盖用户/控制器/数据库泳道（键 user/system/db）；有起止。"""
+    from app.bake.schema.activity import (
+        audit_activity_edges,
+        audit_activity_labels,
+        audit_activity_nodes,
+    )
+
     model = model if isinstance(model, dict) else {}
     findings: list[dict[str, str]] = []
     diagrams = [d for d in (model.get("diagrams") or []) if isinstance(d, dict)]
@@ -450,6 +470,39 @@ def audit_activity_rubric(model: dict[str, Any] | None) -> list[dict[str, str]]:
             findings.append(_finding("error", "活动图缺开始节点", where=where))
         if "end" not in kinds:
             findings.append(_finding("error", "活动图缺结束节点", where=where))
+        # 版面几何：是/否 与判断条件不压线、不出泳道；折线不穿节点框
+        svg = str(d.get("svg") or "")
+        if svg:
+            for msg in audit_activity_labels(svg)[:3]:
+                findings.append(
+                    _finding(
+                        "warn",
+                        f"活动图标签压线：{msg}",
+                        where=f"{where}.svg",
+                        fix="重出图（activity.py 标签锚点/避让）",
+                        goto="activities",
+                    )
+                )
+            for msg in audit_activity_edges(svg)[:3]:
+                findings.append(
+                    _finding(
+                        "warn",
+                        f"活动图连线穿框：{msg}",
+                        where=f"{where}.svg",
+                        fix="重出图（activity.py 回边折点）",
+                        goto="activities",
+                    )
+                )
+            for msg in audit_activity_nodes(svg)[:3]:
+                findings.append(
+                    _finding(
+                        "warn",
+                        f"活动图节点跨泳道：{msg}",
+                        where=f"{where}.svg",
+                        fix="重出图（activity.py 节点/泳道自适应宽）",
+                        goto="activities",
+                    )
+                )
     return findings
 
 

@@ -44,7 +44,7 @@ class ErLayoutTests(unittest.TestCase):
         self.assertEqual(_partition_geometric_outer(pos, edges), outer)
 
     def test_hub_shopish_renders_outer_route(self) -> None:
-        """用户中心辐射图：SVG 须出现外页弧标记，且实体不围环。"""
+        """用户中心辐射图：总图改走正交折线，连线不压实体框、菱形不互叠。"""
         names = [
             "user",
             "order",
@@ -75,8 +75,9 @@ class ErLayoutTests(unittest.TestCase):
         self.assertFalse(is_approx_circular(pos))
         svg = render_er_svg(model, mode="total")
         self.assertIn('data-kind="entity"', svg)
-        if outer:
-            self.assertIn('data-route="outer"', svg)
+        # 对齐样例：全部走正交折线（不再绕外页大弧）
+        self.assertNotIn('data-route="outer"', svg)
+        self.assertGreater(svg.count('data-route="ortho"'), 0)
 
     def test_render_total_svg_has_entities(self) -> None:
         model = {
@@ -153,6 +154,132 @@ class ErLayoutTests(unittest.TestCase):
                 break
         if checked == 0:
             self.skipTest("no suitable workspace fixtures")
+
+    def test_total_svg_edges_clear_entity_boxes_and_diamonds(self) -> None:
+        """门禁：总图连线不穿过实体框，联系菱形互不重叠（用户点名的“别叠在一起”）。"""
+        import itertools
+        import re
+
+        names = ["user", "order", "item", "addr", "pay", "msg", "review", "fav"]
+        edges = [
+            ("user", "order"),
+            ("user", "addr"),
+            ("user", "msg"),
+            ("user", "fav"),
+            ("order", "item"),
+            ("order", "pay"),
+            ("item", "review"),
+        ]
+        model = {
+            "tables": [{"name": n, "label": n, "columns": []} for n in names],
+            "relations": [
+                {
+                    "name": f"r{i}",
+                    "label": "关联",
+                    "left": a,
+                    "right": b,
+                    "card_left": "1",
+                    "card_right": "n",
+                }
+                for i, (a, b) in enumerate(edges)
+            ],
+        }
+        svg = render_er_svg(model, mode="total")
+
+        def _boxes(kind: str) -> list[tuple[float, float, float, float]]:
+            out = []
+            for m in re.finditer(
+                rf'data-kind="{kind}"[^>]*data-cx="([0-9.\-]+)" data-cy="([0-9.\-]+)" '
+                r'data-hw="([0-9.\-]+)" data-hh="([0-9.\-]+)"',
+                svg,
+            ):
+                cx, cy, hw, hh = (float(x) for x in m.groups())
+                out.append((cx - hw, cy - hh, cx + hw, cy + hh))
+            return out
+
+        ents = _boxes("entity")
+        rels = _boxes("rel")
+        self.assertEqual(len(ents), len(names))
+        self.assertEqual(len(rels), len(edges))
+
+        def _seg_hits(x1, y1, x2, y2, r) -> bool:
+            l, t, rr, b = r
+            eps = 1.0
+            if abs(y1 - y2) <= 0.5:
+                return t + eps < y1 < b - eps and max(x1, x2) > l + eps and min(x1, x2) < rr - eps
+            if abs(x1 - x2) <= 0.5:
+                return l + eps < x1 < rr - eps and max(y1, y2) > t + eps and min(y1, y2) < b - eps
+            return False
+
+        for m in re.finditer(
+            r'class="er-edge"[^>]*x1="([0-9.\-]+)" y1="([0-9.\-]+)" '
+            r'x2="([0-9.\-]+)" y2="([0-9.\-]+)"',
+            svg,
+        ):
+            x1, y1, x2, y2 = (float(x) for x in m.groups())
+            for r in ents:
+                self.assertFalse(
+                    _seg_hits(x1, y1, x2, y2, r),
+                    f"ER 连线压到实体框：({x1},{y1})->({x2},{y2})",
+                )
+        for a, b in itertools.combinations(rels, 2):
+            overlap = a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+            self.assertFalse(overlap, "ER 联系菱形相互重叠")
+
+    def test_total_svg_has_no_line_crossings(self) -> None:
+        """门禁：总图 ER 连线之间不出现交叉（样例口径「消灭交叉线」）。"""
+        import re
+
+        names = ["user", "order", "item", "addr", "pay", "msg", "review", "fav"]
+        edges = [
+            ("user", "order"),
+            ("user", "addr"),
+            ("user", "msg"),
+            ("user", "fav"),
+            ("order", "item"),
+            ("order", "pay"),
+            ("item", "review"),
+        ]
+        model = {
+            "tables": [{"name": n, "label": n, "columns": []} for n in names],
+            "relations": [
+                {
+                    "name": f"r{i}",
+                    "label": "关联",
+                    "left": a,
+                    "right": b,
+                    "card_left": "1",
+                    "card_right": "n",
+                }
+                for i, (a, b) in enumerate(edges)
+            ],
+        }
+        svg = render_er_svg(model, mode="total")
+        segs = [
+            (float(m.group(1)), float(m.group(2)), float(m.group(3)), float(m.group(4)))
+            for m in re.finditer(
+                r'class="er-edge"[^>]*x1="([0-9.\-]+)" y1="([0-9.\-]+)" '
+                r'x2="([0-9.\-]+)" y2="([0-9.\-]+)"',
+                svg,
+            )
+        ]
+
+        def _cross(a, b) -> bool:
+            p, q, r, s = (a[0], a[1]), (a[2], a[3]), (b[0], b[1]), (b[2], b[3])
+            if p in (r, s) or q in (r, s):
+                return False
+
+            def orient(o, u, v) -> float:
+                return (u[1] - o[1]) * (v[0] - u[0]) - (u[0] - o[0]) * (v[1] - u[1])
+
+            return orient(p, q, r) * orient(p, q, s) < 0 and orient(r, s, p) * orient(r, s, q) < 0
+
+        for i in range(len(segs)):
+            for j in range(i + 1, len(segs)):
+                self.assertFalse(
+                    _cross(segs[i], segs[j]),
+                    f"ER 连线交叉：{segs[i]} × {segs[j]}",
+                )
 
     def test_layout_graph_smoke(self) -> None:
         laid = layout_graph(

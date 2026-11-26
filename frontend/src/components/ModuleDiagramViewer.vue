@@ -80,7 +80,7 @@
         {{
           layoutLocal === 'biz'
             ? '按业务拆：业务对象 / 订单…（对照用）；叶子来自交付菜单'
-            : '按身份拆：登录身份 → 一级功能模块（论文常用）；叶子对齐交付菜单，开题只辅助命名；未交付模块不进图；【】（）细节默认不进图'
+            : '按身份拆：登录身份 → 一级功能模块（论文常用）；叶子对齐交付菜单，开题只辅助命名；未交付模块不进图（差项见下方弱提醒）；【】（）细节默认不进图'
         }}
       </p>
       <p v-if="layoutMismatch" class="small mod-hint mb-8 mod-warn">
@@ -91,6 +91,29 @@
         class="small mod-hint mb-8 mod-source-note"
         :class="labelGateBad ? 'mod-warn' : 'muted'"
       >{{ sourceNote }}</p>
+      <div v-if="deliveryGapWarn" class="banner warn mod-gap-banner mb-8">
+        <h4>开题对账 · 弱提醒（不挡导出）</h4>
+        <p class="small">
+          开题里点名了、当前交付菜单对不上的模块<strong>没有画进图</strong>。
+          图仍只反映已交付功能。把下面当作施工清单：补匹配确认 / 能力后重 bake，再点「重新加载」。
+          完善工厂后同类项会越来越少。
+        </p>
+        <ul v-if="droppedRows.length" class="small mod-findings">
+          <li v-for="(row, i) in droppedRows" :key="'d' + i">
+            <strong>未进图</strong>
+            <span v-if="row.branch" class="muted"> · {{ row.branch }}</span>
+            → 「{{ row.label }}」
+          </li>
+        </ul>
+        <details v-if="paddedRows.length" class="mod-gap-padded">
+          <summary class="small muted">开题未点名、菜单有（图上多出 · {{ paddedRows.length }}）</summary>
+          <ul class="small mod-findings">
+            <li v-for="(row, i) in paddedRows" :key="'p' + i">
+              <span v-if="row.branch" class="muted">{{ row.branch }} → </span>「{{ row.label }}」
+            </li>
+          </ul>
+        </details>
+      </div>
       <div v-if="labelGateBad" class="banner fail mod-gate-banner mb-8">
         <h4>工厂提示 · 文案红</h4>
         <p class="small">
@@ -156,6 +179,8 @@ const props = defineProps({
   labelGateOk: { type: Boolean, default: true },
   /** label_gate.findings：kind/branch/label/detail，可选 source */
   labelGateFindings: { type: Array, default: () => [] },
+  /** 开题∩交付差账：dropped 弱提醒；不挡导出 */
+  deliveryGap: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   drawioUrl: { type: String, default: '' },
   mermaidUrl: { type: String, default: '' },
@@ -171,6 +196,29 @@ const exportBlockTitle = computed(() => {
   if (labelGateBad.value) return '文案红不可导出，先按工厂提示修闸'
   if (rubricBad.value) return String(props.rubricGate?.note || '论文图规则红，不可导出')
   return undefined
+})
+
+const deliveryGapWarn = computed(() => {
+  const g = props.deliveryGap
+  if (!g || typeof g !== 'object') return false
+  if (g.severity === 'warn') return true
+  return Array.isArray(g.dropped) && g.dropped.length > 0
+})
+
+const droppedRows = computed(() => {
+  const list = Array.isArray(props.deliveryGap?.dropped) ? props.deliveryGap.dropped : []
+  return list.slice(0, 40).map((r) => ({
+    branch: String(r?.branch || '').trim(),
+    label: String(r?.label || '').trim() || '（空）',
+  }))
+})
+
+const paddedRows = computed(() => {
+  const list = Array.isArray(props.deliveryGap?.padded) ? props.deliveryGap.padded : []
+  return list.slice(0, 40).map((r) => ({
+    branch: String(r?.branch || '').trim(),
+    label: String(r?.label || '').trim() || '（空）',
+  }))
 })
 
 const KIND_ZH = {
@@ -517,11 +565,19 @@ async function downloadMermaid() {
 .mod-warn {
   color: #c45c26;
 }
-.mod-gate-banner {
+.mod-gate-banner,
+.mod-gap-banner {
   margin: 0;
 }
 .mod-gate-banner code {
   font-size: 0.92em;
+}
+.mod-gap-padded {
+  margin-top: 8px;
+}
+.mod-gap-padded summary {
+  cursor: pointer;
+  user-select: none;
 }
 .mod-findings {
   margin: 8px 0 0;

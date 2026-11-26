@@ -218,6 +218,7 @@
         :source-note="modulesMeta?.leaf_source_note || ''"
         :label-gate-ok="modulesMeta?.label_gate?.ok !== false"
         :label-gate-findings="modulesLabelFindings"
+        :delivery-gap="modulesMeta?.delivery_gap || null"
         :loading="modLoading"
         :drawio-url="modDrawioUrl"
         :mermaid-url="modMmdUrl"

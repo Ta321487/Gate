@@ -23,6 +23,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from app.bake.schema.diagram_style import FONT_CN
 from app.bake.schema.modules import (
     _SKIP_MENU_KEYS,
     _biz_id_for_item,
@@ -1452,7 +1453,9 @@ def _description_paragraph(actor: str, level1: list[dict[str, Any]]) -> str:
             bit += f"，并可扩展{_join_usecase_quotes(enames)}"
         bit += "。"
         parts.append(bit)
-    return "".join(parts)
+    from app.bake.schema.zh_copy import squeeze_cjk_alnum_spaces
+
+    return squeeze_cjk_alnum_spaces("".join(parts))
 
 
 def _strip_module_word(name: str) -> str:
@@ -1563,6 +1566,11 @@ def _l1_label_from_material(name: str, *, side: str) -> str:
         return "查看数据分析"
     if any(t in raw for t in ("分类",)):
         return "管理分类"
+    # 开题常把裸「用户模块」挂在用户功能枚举 = 账号/资料，禁止收成「查看用户」（像管用户列表）
+    if side == "user" and raw in ("用户", "用户信息", "用户中心", "会员", "会员中心"):
+        return "查看个人资料"
+    if raw in ("用户", "用户信息") and side != "user":
+        return "管理用户"
     if any(t in raw for t in ("用户管理", "商家管理")):
         return ensure_verb_prefix(raw, default_verb="管理")
     if any(t in raw for t in ("商品", "农产品")):
@@ -2028,7 +2036,7 @@ def _level1_from_materials(
     for i, mod in enumerate(mods):
         l1_id = f"{actor_id}:uc{i+1}".replace(":", "_")
         label = _l1_label_from_material(str(mod.get("label") or ""), side=side)
-        # 支付不宜单独占一级：若归一后仍叫进行支付，并入订单语义
+        # 支付不宜单独占一级：与购物车/订单同名，交给 _dedupe_level1 并 include
         if label == "进行支付":
             label = "管理购物车" if side == "user" else "管理订单"
         kids = _l2_from_material_module(mod, side=side, l1_id=l1_id, menu_items=menu_items)
@@ -2133,6 +2141,8 @@ def usecase_model(
             level1 = None
 
     if level1 is not None:
+        # 材料路径与菜单回落同一条：同名一级合并 include（支付并名购物车/订单等）
+        level1 = _dedupe_level1(level1)
         labels = schema.get("labels") if isinstance(schema.get("labels"), dict) else {}
         title = str(labels.get("appName") or "").strip() or title_fallback
         model = {
@@ -2264,6 +2274,7 @@ def usecase_model(
 
     labels = schema.get("labels") if isinstance(schema.get("labels"), dict) else {}
     title = str(labels.get("appName") or "").strip() or title_fallback
+    level1 = _dedupe_level1(level1)
     desc = _description_paragraph(actor_lab, level1)
     model = {
         "title": title,
@@ -2287,47 +2298,81 @@ _ACTOR_X = 70.0
 _L1_CX = 280.0
 _L2_CX = 520.0
 _ROW_GAP = 72.0
+# 样例：二级用例椭圆比一级小一号（约 0.76/0.72），行距也更紧
+_UC_L2_W = _UC_W * 0.76
+_UC_L2_H = _UC_H * 0.72
+_ROW_GAP_L2 = 54.0
+# 双列（样例用例图）：Actor 居中在底，一级用例分左右两列、二级朝外侧展开
+_COL_L1L2_GAP = 108.0
+_COL_CENTER_GAP = 150.0
+
+
+def _dedupe_level1(level1: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """同名一级用例只留一个（两个菜单桶撞同一中文名时合并 include，禁止画两遍）。"""
+    out: list[dict[str, Any]] = []
+    by_label: dict[str, dict[str, Any]] = {}
+    for uc in level1:
+        if not isinstance(uc, dict):
+            continue
+        lab = str(uc.get("label") or "").strip()
+        if lab and lab in by_label:
+            base = by_label[lab]
+            seen = {str(k.get("label") or "") for k in (base.get("includes") or [])}
+            for kid in uc.get("includes") or []:
+                kl = str(kid.get("label") or "")
+                if kl and kl in seen:
+                    continue
+                seen.add(kl)
+                base.setdefault("includes", []).append(kid)
+            continue
+        out.append(uc)
+        if lab:
+            by_label[lab] = uc
+    return out
 
 
 def layout_usecase(model: dict[str, Any]) -> dict[str, Any]:
-    """计算布局；椭圆同尺寸，L1/L2 各自竖线对齐。"""
-    level1 = list(model.get("level1") or [])
-    # 按 L2 行数分配纵向：每个 L1 占 max(1, n_l2) 行高
-    rows: list[dict[str, Any]] = []
-    y = _PAD_Y + _UC_H / 2
+    """计算布局；椭圆同尺寸。
+
+    行数多时按样例走双列（Actor 居中在底，一级用例分左右两列、二级朝外侧展开），
+    行数少时保持左起单列，避免窄图被拉太宽。
+    """
+    level1 = [uc for uc in (model.get("level1") or []) if isinstance(uc, dict)]
+    blocks = []
+    for uc in level1:
+        kids = [k for k in (uc.get("includes") or []) if isinstance(k, dict)]
+        blocks.append((uc, kids, max(1, len(kids))))
+
+    total_rows = sum(b[2] for b in blocks)
+    two_col = len(blocks) >= 4 and total_rows > 9
+
     l1_nodes: list[dict[str, Any]] = []
     l2_nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
 
-    for uc in level1:
-        kids = [k for k in (uc.get("includes") or []) if isinstance(k, dict)]
+    def put(uc: dict, kids: list[dict], l1_cx: float, l2_cx: float, top: float) -> float:
         n = max(1, len(kids))
-        block_h = (n - 1) * _ROW_GAP
-        l1_y = y + block_h / 2
+        block_h = (n - 1) * _ROW_GAP_L2
         l1_nodes.append(
             {
                 "id": uc["id"],
                 "label": uc["label"],
-                "cx": _L1_CX,
-                "cy": l1_y,
+                "cx": l1_cx,
+                "cy": top + block_h / 2,
                 "w": _UC_W,
                 "h": _UC_H,
                 "kind": "l1",
             }
         )
-        if not kids:
-            y += _ROW_GAP
-            continue
         for j, kid in enumerate(kids):
-            ky = y + j * _ROW_GAP
             l2_nodes.append(
                 {
                     "id": kid["id"],
                     "label": kid["label"],
-                    "cx": _L2_CX,
-                    "cy": ky,
-                    "w": _UC_W,
-                    "h": _UC_H,
+                    "cx": l2_cx,
+                    "cy": top + j * _ROW_GAP_L2,
+                    "w": _UC_L2_W,
+                    "h": _UC_L2_H,
                     "kind": "l2",
                     "relation": kid.get("relation") or "include",
                     "parent": uc["id"],
@@ -2335,7 +2380,6 @@ def layout_usecase(model: dict[str, Any]) -> dict[str, Any]:
             )
             rel = kid.get("relation") or "include"
             if rel == "extend":
-                # 扩展用例 → 基用例
                 edges.append(
                     {
                         "kind": "extend",
@@ -2353,29 +2397,51 @@ def layout_usecase(model: dict[str, Any]) -> dict[str, Any]:
                         "label": "<<include>>",
                     }
                 )
-        y += block_h + _ROW_GAP
+        return top + block_h + _ROW_GAP
 
-    actor_cy = (_PAD_Y + _UC_H / 2 + y - _ROW_GAP) / 2 if level1 else 100.0
-    if l1_nodes:
-        # 略低于一级圆心均值，减少 Actor→上部模块连线交叉
+    if two_col:
+        gap_l1l2 = _UC_W / 2 + _COL_L1L2_GAP + _UC_L2_W / 2  # 圆心距：边到边留 _COL_L1L2_GAP 放 «include»
+        x_l2_l = _PAD_X + _UC_L2_W / 2
+        x_l1_l = x_l2_l + gap_l1l2
+        x_l1_r = x_l1_l + _UC_W + _COL_CENTER_GAP
+        x_l2_r = x_l1_r + gap_l1l2
+        y_left = _PAD_Y + _UC_H / 2
+        y_right = y_left
+        for uc, kids, rows in blocks:
+            if y_left <= y_right:
+                y_left = put(uc, kids, x_l1_l, x_l2_l, y_left)
+            else:
+                y_right = put(uc, kids, x_l1_r, x_l2_r, y_right)
+        bottom = max(y_left - _ROW_GAP + _UC_H, y_right - _ROW_GAP + _UC_H)
+        actor_cx = (x_l1_l + x_l1_r) / 2.0
+        actor_cy = bottom + 86.0
+        width = x_l2_r + _UC_L2_W / 2 + _PAD_X + 20
+        height = actor_cy + 74.0
+    else:
+        y = _PAD_Y + _UC_H / 2
+        for uc, kids, _rows in blocks:
+            y = put(uc, kids, _L1_CX, _L2_CX, y)
+        actor_cx = _ACTOR_X
         ys = [float(n["cy"]) for n in l1_nodes]
-        mean_y = sum(ys) / len(ys)
-        span = max(ys) - min(ys) if len(ys) > 1 else 0.0
-        actor_cy = mean_y + span * 0.18
+        actor_cy = sum(ys) / len(ys) if ys else 100.0
+        if ys:
+            span = max(ys) - min(ys) if len(ys) > 1 else 0.0
+            actor_cy = sum(ys) / len(ys) + span * 0.18
+        width = _L2_CX + _UC_L2_W / 2 + _PAD_X + 40
+        height = max(y + _PAD_Y, actor_cy + 80, 320)
 
     assoc = [{"kind": "assoc", "from": "actor", "to": n["id"]} for n in l1_nodes]
-    height = max(y + _PAD_Y, actor_cy + 80, 320)
-    width = _L2_CX + _UC_W / 2 + _PAD_X + 40
 
     return {
         "width": width,
         "height": height,
         "uc_w": _UC_W,
         "uc_h": _UC_H,
+        "two_col": two_col,
         "actor": {
             "id": "actor",
             "label": (model.get("actor") or {}).get("label") or "用户",
-            "cx": _ACTOR_X,
+            "cx": actor_cx,
             "cy": actor_cy,
         },
         "l1": l1_nodes,
@@ -2385,13 +2451,26 @@ def layout_usecase(model: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _label_units(label: str) -> float:
+    """按显示宽度折算：汉字/全角记 1，ASCII 记 0.55。"""
+    total = 0.0
+    for ch in label:
+        total += 0.55 if ord(ch) < 0x2E80 else 1.0
+    return max(1.0, total)
+
+
 def _ellipse_svg(cx: float, cy: float, w: float, h: float, label: str) -> str:
     rx, ry = w / 2, h / 2
+    fs = 12.0
+    avail = w * 0.82
+    need = _label_units(label) * fs
+    if need > avail:
+        fs = max(8.5, fs * avail / need)
     return (
         f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" '
         f'fill="#fff" stroke="#000" stroke-width="1.2"/>'
         f'<text x="{cx:.1f}" y="{cy:.1f}" text-anchor="middle" dominant-baseline="middle" '
-        f'font-size="12" font-family="Microsoft YaHei,SimSun,sans-serif">{_esc(label)}</text>'
+        f'font-size="{fs:.1f}" font-family="{FONT_CN}">{_esc(label)}</text>'
     )
 
 
@@ -2405,7 +2484,7 @@ def _actor_svg(cx: float, cy: float, label: str) -> str:
         f'<line x1="{cx:.1f}" y1="{cy+4:.1f}" x2="{cx-14:.1f}" y2="{cy+28:.1f}" stroke="#000" stroke-width="1.2"/>'
         f'<line x1="{cx:.1f}" y1="{cy+4:.1f}" x2="{cx+14:.1f}" y2="{cy+28:.1f}" stroke="#000" stroke-width="1.2"/>'
         f'<text x="{cx:.1f}" y="{cy+46:.1f}" text-anchor="middle" font-size="12" '
-        f'font-family="Microsoft YaHei,SimSun,sans-serif">{_esc(label)}</text>'
+        f'font-family="{FONT_CN}">{_esc(label)}</text>'
     )
 
 
@@ -2449,14 +2528,14 @@ def render_usecase_svg(model: dict[str, Any]) -> str:
 
     for e in lay["edges"]:
         x1, y1, x2, y2 = _edge_points(lay, e["from"], e["to"])
-        mx, my = (x1 + x2) / 2, (y1 + y2) / 2 - 8
+        mx, my = (x1 + x2) / 2, (y1 + y2) / 2 - 7
         parts.append(
             f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
             f'stroke="#000" stroke-width="1" stroke-dasharray="6 4" marker-end="url(#arrow)"/>'
         )
         parts.append(
-            f'<text x="{mx:.1f}" y="{my:.1f}" text-anchor="middle" font-size="11" '
-            f'font-family="Microsoft YaHei,SimSun,sans-serif">{_esc(e["label"])}</text>'
+            f'<text x="{mx:.1f}" y="{my:.1f}" text-anchor="middle" font-size="10.5" '
+            f'font-family="{FONT_CN}">{_esc(e["label"])}</text>'
         )
 
     for n in lay["l1"] + lay["l2"]:
@@ -2706,6 +2785,7 @@ def assert_usecase_invariants(
                 if isinstance(plist, list):
                     allowed_keys |= {str(x) for x in plist if x}
 
+    seen_l1_labels: set[str] = set()
     for uc in level1:
         if not isinstance(uc, dict):
             raise ValueError("usecase: 一级用例结构错误")
@@ -2714,6 +2794,14 @@ def assert_usecase_invariants(
             raise ValueError(f"usecase: 一级用例拉丁文标签 {lab}")
         if any(t in lab for t in ("综合功能", "综合业务")):
             raise ValueError(f"usecase: 一级禁止空壳名 {lab}（合并须保留主业务名）")
+        if lab and lab in seen_l1_labels:
+            raise ValueError(f"usecase: 一级用例重名 {lab}（须合并 include）")
+        if lab:
+            seen_l1_labels.add(lab)
+        # 用户角色禁止「查看/管理用户」一级（开题裸「用户模块」应收成个人资料）
+        aid_chk = _normalize_actor_id(side)
+        if aid_chk == "user" and lab in ("查看用户", "浏览用户", "管理用户"):
+            raise ValueError(f"usecase: 用户侧禁止一级名 {lab}（应为个人资料语义）")
         kids = uc.get("includes") or []
         if not isinstance(kids, list) or not kids:
             raise ValueError(f"usecase: {lab} 缺少二级用例")
@@ -2778,17 +2866,23 @@ def assert_usecase_invariants(
     if st.get("same_size_ellipses"):
         if abs(lay["uc_w"] - ew) > 0.1 or abs(lay["uc_h"] - eh) > 0.1:
             raise ValueError("usecase: 椭圆尺寸与客户样式不一致")
-        for n in lay["l1"] + lay["l2"]:
+        # 同层同尺寸：一级按样式，二级按样例小一号（tier 内必须完全一致）
+        for n in lay["l1"]:
             if abs(float(n["w"]) - ew) > 0.1 or abs(float(n["h"]) - eh) > 0.1:
-                raise ValueError("usecase: 存在不同尺寸的用例椭圆")
+                raise ValueError("usecase: 一级用例椭圆尺寸不一致")
+        for n in lay["l2"]:
+            if abs(float(n["w"]) - _UC_L2_W) > 0.1 or abs(float(n["h"]) - _UC_L2_H) > 0.1:
+                raise ValueError("usecase: 二级用例椭圆尺寸不一致")
+    # 双列（样例画法）时允许左右各一条竖线；单列仍须严格对齐
+    cols_allowed = 2 if lay.get("two_col") else 1
     if st.get("l1_column_align"):
         l1xs = {round(n["cx"], 1) for n in lay["l1"]}
-        if len(l1xs) != 1:
-            raise ValueError(f"usecase: 一级圆心未对齐同一竖线 {l1xs}")
+        if len(l1xs) > cols_allowed:
+            raise ValueError(f"usecase: 一级圆心未对齐竖线 {l1xs}")
     if st.get("l2_column_align") and lay["l2"]:
         l2xs = {round(n["cx"], 1) for n in lay["l2"]}
-        if len(l2xs) != 1:
-            raise ValueError(f"usecase: 二级圆心未对齐同一竖线 {l2xs}")
+        if len(l2xs) > cols_allowed:
+            raise ValueError(f"usecase: 二级圆心未对齐竖线 {l2xs}")
     for e in lay["edges"]:
         if e["kind"] == "include":
             if not any(n["id"] == e["from"] for n in lay["l1"]):

@@ -32,28 +32,28 @@ class ArchitectureDiagramTests(unittest.TestCase):
     def test_model_layers_fixed(self) -> None:
         model = architecture_model(self._schema("DOM-SHOP"))
         labs = [x["label"] for x in model["layers"]]
-        self.assertEqual(labs, ["界面", "Vue", "SpringBoot", "MySQL"])
+        self.assertEqual(labs, ["页面", "Vue", "Spring Boot", "MySQL"])  # 对齐样例层名
         self.assertEqual(model["protocol_label"], "HTTPS")
-        self.assertEqual(model["action_label"], "发起请求")
+        self.assertEqual(model["action_label"], "发送请求")  # 对齐样例
 
     def test_svg_has_boxes_and_protocol(self) -> None:
         model = architecture_model(self._schema("DOM-SHOP"))
         svg = render_architecture_svg(model)
-        self.assertIn("界面", svg)
+        self.assertIn("页面", svg)
         self.assertIn("Vue", svg)
-        self.assertIn("SpringBoot", svg)
+        self.assertIn("Spring Boot", svg)
         self.assertIn("MySQL", svg)
         self.assertIn("HTTPS", svg)
-        self.assertIn("发起请求", svg)
-        self.assertIn("#5B9BD5", svg)
+        self.assertIn("发送请求", svg)
+        self.assertIn("#000000", svg)  # 对齐样例：黑色箭头（原蓝色 5B9BD5 已弃用）
         self.assertIn('stroke="#000"', svg)
         self.assertIn("买家", svg)
         # 直角框：无 rx
         self.assertNotIn("rx=", svg)
-        # 协议文案只出现在界面↔Vue：角色数列份；下层居中一对不重复标
+        # 协议文案只出现在页面↔Vue：角色数列份；下层居中一对不重复标
         n_roles = len(model["roles"])
         self.assertEqual(svg.count(">HTTPS<"), n_roles)
-        self.assertEqual(svg.count(">发起请求<"), n_roles)
+        self.assertEqual(svg.count(">发送请求<"), n_roles)
 
     def test_svg_single_role(self) -> None:
         schema = {

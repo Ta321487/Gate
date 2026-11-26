@@ -58,12 +58,12 @@ class SequenceDiagramTests(unittest.TestCase):
         # 渲染后：实线消息带 ()，虚线返回不带
         import re
 
-        # 抽序号行
-        texts = re.findall(r">(\d+、[^<]+)<", svg)
+        # 抽序号行（编号口径对齐样例：`1.`，不是 `1、`）
+        texts = re.findall(r">(\d+\.[^<]+)<", svg)
         self.assertGreaterEqual(len(texts), 4)
         for m in d0["messages"]:
             seq = m["seq"]
-            hit = next((t for t in texts if t.startswith(f"{seq}、")), "")
+            hit = next((t for t in texts if t.startswith(f"{seq}.")), "")
             self.assertTrue(hit, msg=f"missing seq {seq}")
             if m["dir"] in ("request", "self"):
                 self.assertTrue(hit.rstrip().endswith("()"), msg=hit)
@@ -214,28 +214,52 @@ class SequenceDiagramTests(unittest.TestCase):
         )
 
     def test_my_orders_confirm_receive_phases(self) -> None:
-        """买家订单写路径默认确认收货；终态文案不是「数据保存成功」。"""
+        """材料有 verbs 时按材料拼句；材料没词时只出中性骨架，不得编「确认收货」。"""
         from app.bake.schema.sequence import _build_business_phase, _feature_entity
 
-        schema = {"entities": {"order": {"label": "订单"}}}
+        cinema = {
+            "domain": "DOM-CINEMA",
+            "entities": {
+                "order": {
+                    "label": "订单",
+                    "verbs": {"ship": "出票", "complete": "确认观演"},
+                    "states": {"pending": "待取票", "shipped": "已出票", "completed": "已观影"},
+                }
+            },
+        }
         msgs = _build_business_phase(
             seq0=0,
             actor="买家",
-            menu_label="我的订单",
-            entity=_feature_entity(schema, kind="my_orders", menu_label="我的订单"),
+            menu_label="我的票务订单",
+            entity=_feature_entity(cinema, kind="my_orders", menu_label="我的票务订单"),
             ops=[{"method": "page", "verb": "分页查询", "summary": ""}],
             vue_btns=["确认收货", "去支付"],
             kind="my_orders",
             side="user",
+            schema=cinema,
         )
         blob = " ".join(str(m["text"]) for m in msgs)
-        self.assertIn("确认收货", blob)
-        self.assertIn("确认收货成功", blob)
-        self.assertNotIn("数据保存成功", blob)
-        self.assertNotIn("支付成功", blob)
-        actor_tail = [m for m in msgs if m.get("from") == "page" and m.get("to") == "actor"]
-        self.assertTrue(actor_tail)
-        self.assertEqual(actor_tail[-1]["text"], "确认收货成功")
+        self.assertIn("确认观演", blob)
+        self.assertIn("确认观演成功", blob)
+        self.assertNotIn("确认收货", blob)
+
+        # 材料缺词（商城 order 无 verbs）：中性骨架 + 缺词告警，不借别域业务句
+        plain = {"entities": {"order": {"label": "订单"}}}
+        msgs2 = _build_business_phase(
+            seq0=0,
+            actor="买家",
+            menu_label="我的订单",
+            entity=_feature_entity(plain, kind="my_orders", menu_label="我的订单"),
+            ops=[{"method": "page", "verb": "分页查询", "summary": ""}],
+            vue_btns=["确认收货"],
+            kind="my_orders",
+            side="user",
+            schema=plain,
+        )
+        blob2 = " ".join(str(m["text"]) for m in msgs2)
+        self.assertNotIn("确认收货", blob2)
+        self.assertNotIn("发货", blob2)
+        self.assertIn("订单", blob2)
 
     def test_shop_messages_carry_delivery_labels(self) -> None:
         model = sequence_model(self._schema("DOM-SHOP"))
@@ -349,17 +373,16 @@ class SequenceDiagramTests(unittest.TestCase):
         self.assertNotIn("保存订单信息", blob)
 
     def test_cart_and_review_no_container_template_phrases(self) -> None:
-        """购物车/评价写路径禁止「选择购物车」「确认我的评价」容器套话；换题同口径。"""
+        """写路径只许「材料词 / 中性骨架」：容器套话与别域业务句一律不出现。"""
         from app.bake.schema.sequence import _build_business_phase, _feature_entity
 
         schema = {
             "entities": {
                 "cart": {"label": "购物车"},
                 "order": {"label": "订单"},
-                "review": {"label": "评价"},
+                "review": {"label": "评价", "verbs": {"apply": "提交评价"}},
             }
         }
-        # 故意塞会生成套话的 controller 写操作，也应被 kind 兜底盖住
         cart_msgs = _build_business_phase(
             seq0=0,
             actor="买家",
@@ -372,13 +395,15 @@ class SequenceDiagramTests(unittest.TestCase):
             vue_btns=[],
             kind="cart",
             side="user",
+            schema=schema,
         )
         cart_blob = " ".join(str(m["text"]) for m in cart_msgs)
         for bad in ("选择购物车", "确认购物车", "新增购物车", "提交购物车", "保存购物车信息"):
             self.assertNotIn(bad, cart_blob, msg=cart_blob)
-        self.assertIn("核对商品与数量", cart_blob)
-        self.assertIn("去结算", cart_blob)
-        self.assertIn("提交结算", cart_blob)
+        # 材料没给 cart 动作词 → 中性骨架，不得借商城的「结算 / 商品」
+        self.assertNotIn("结算", cart_blob, msg=cart_blob)
+        self.assertNotIn("商品", cart_blob, msg=cart_blob)
+        self.assertIn("购物车", cart_blob)
 
         rev_msgs = _build_business_phase(
             seq0=0,
@@ -391,14 +416,15 @@ class SequenceDiagramTests(unittest.TestCase):
             vue_btns=[],
             kind="order_reviews_user",
             side="user",
+            schema=schema,
         )
         rev_blob = " ".join(str(m["text"]) for m in rev_msgs)
         for bad in ("选择我的评价", "确认我的评价", "选择评价", "新增评价"):
             self.assertNotIn(bad, rev_blob, msg=rev_blob)
-        self.assertIn("填写评价内容", rev_blob)
+        # 材料给了 review.apply=提交评价 → 直接说材料词
         self.assertIn("提交评价", rev_blob)
 
-        # 图书借阅类：时段预约也不应「选择预约」空套（有 kind 兜底）
+        # 无 schema 的冷门 kind：中性骨架，不写「选择{菜单}」
         slot_msgs = _build_business_phase(
             seq0=0,
             actor="读者",
@@ -410,30 +436,10 @@ class SequenceDiagramTests(unittest.TestCase):
             side="user",
         )
         slot_blob = " ".join(str(m["text"]) for m in slot_msgs)
-        self.assertIn("选择可预约项或时段", slot_blob)
         self.assertNotIn("选择预约", slot_blob)
         self.assertNotIn("选择座位预约", slot_blob)
-
-        # 冷门加厚 kind：走相位表，不是「选择{菜单}」
-        for kind, needle in (
-            ("blind_pools", "填写奖品权重"),
-            ("my_consigns", "提交寄卖"),
-            ("purchase_permits", "通过或驳回"),
-            ("lookup", "保存字典项"),
-        ):
-            msgs = _build_business_phase(
-                seq0=0,
-                actor="管理员",
-                menu_label="业务配置",
-                entity="配置",
-                ops=[],
-                vue_btns=[],
-                kind=kind,
-                side="admin",
-            )
-            blob = " ".join(str(m["text"]) for m in msgs)
-            self.assertIn(needle, blob, msg=f"{kind}: {blob}")
-            self.assertNotIn("选择业务配置", blob)
+        self.assertNotIn("选择可预约项或时段", slot_blob)
+        self.assertIn("预约", slot_blob)
 
     def test_workflow_prose_follows_messages_not_sample_essay(self) -> None:
         """工作流由本图消息改写：步数对齐、含角色与动作、不塞示例范文腔。"""

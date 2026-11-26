@@ -16,6 +16,10 @@ from app.bake.schema.class_model import (
 )
 from app.bake.schema.layout_elk import ElkLayoutError, layout_graph
 
+# —— 栅格布局 + 空档正交路由（对齐样例类图：等宽紧凑成排、连线不压类框）——
+_CLASS_CELL_GAP_X = 130.0  # 列间空档（放折线通道）
+_CLASS_CELL_GAP_Y = 96.0  # 行间空档（放折线通道）
+
 # 旧竞赛预算常量保留：部分辅助函数/单测仍引用。
 _ATTACH_BUDGET_SEC = 5.0
 _SELECT_BUDGET_SEC = 2.0
@@ -329,6 +333,258 @@ def _commit_elk_layout(
         ev["layout_ms"] = round(elapsed_ms, 1)
 
 
+def _grid_layout_classes(
+    names: list[str],
+    sizes: dict[str, tuple[float, float]],
+    edges: list[tuple[str, str]],
+    *,
+    order: list[str] | None = None,
+) -> dict[str, tuple[float, float, float, float]]:
+    """栅格初局：等宽类框 + 蛇形行序，行列间留空档走线（样例类图的观感）。
+
+    order 给定时按该顺序铺（人工拖动只表达换序/换行，几何仍由这里算）。
+    """
+    if not names:
+        return {}
+    deg: dict[str, int] = {nm: 0 for nm in names}
+    adj: dict[str, list[str]] = {nm: [] for nm in names}
+    for a, b in edges:
+        if a in deg and b in deg and a != b:
+            deg[a] += 1
+            deg[b] += 1
+            if b not in adj[a]:
+                adj[a].append(b)
+            if a not in adj[b]:
+                adj[b].append(a)
+    if order:
+        seq = [nm for nm in order if nm in deg]
+        seq += [nm for nm in sorted(names, key=lambda nm: (-deg[nm], nm)) if nm not in seq]
+    else:
+        start = max(names, key=lambda nm: (deg[nm], nm))
+        seq = [start]
+        seen = {start}
+        queue = [start]
+        while queue:
+            cur = queue.pop(0)
+            for nxt in sorted(adj[cur], key=lambda nm: (-deg[nm], nm)):
+                if nxt not in seen:
+                    seen.add(nxt)
+                    seq.append(nxt)
+                    queue.append(nxt)
+        seq += [nm for nm in sorted(names, key=lambda nm: (-deg[nm], nm)) if nm not in seen]
+    order = seq
+
+    n = len(order)
+    box_w = max((sizes[nm][0] for nm in order), default=148.0)
+    cell_w = box_w + _CLASS_CELL_GAP_X
+
+    def rows_for(cols: int) -> list[list[str]]:
+        """把类均匀铺成 rows 行：末行不落单（13 个 → 4/3/3/3 而不是 4/4/4/1）。"""
+        rows = int(math.ceil(n / cols))
+        base, extra = divmod(n, rows)
+        out: list[list[str]] = []
+        idx = 0
+        for r in range(rows):
+            k = base + (1 if r < extra else 0)
+            out.append(order[idx:idx + k])
+            idx += k
+        return out
+
+    def plan(cols: int) -> tuple[float, float, list[list[str]], list[float]]:
+        grid = rows_for(cols)
+        rh = [max((sizes[nm][1] for nm in row), default=0.0) for row in grid]
+        total_h = _PAD * 2 + sum(rh) + (len(grid) - 1) * _CLASS_CELL_GAP_Y
+        total_w = _PAD * 2 + cols * cell_w - _CLASS_CELL_GAP_X
+        return total_w, total_h, grid, rh
+
+    # 列数：选长宽比最接近「一页论文横排」的方案
+    best_cols = max(2, int(math.ceil(math.sqrt(n)))) if n > 3 else n
+    best_cost = None
+    for cols in range(2, n + 1):
+        tw, th, _grid, _rh = plan(cols)
+        if tw > 3000.0:
+            continue
+        cost = abs(math.log((tw / max(th, 1.0)) / 1.35))
+        if best_cost is None or cost < best_cost:
+            best_cost = cost
+            best_cols = cols
+    ncols = best_cols
+    grid = rows_for(ncols)
+    row_h = [max((sizes[nm][1] for nm in row), default=0.0) for row in grid]
+    row_y: list[float] = []
+    acc = _PAD
+    for r in range(len(grid)):
+        row_y.append(acc)
+        acc += row_h[r] + _CLASS_CELL_GAP_Y
+
+    total_w = ncols * cell_w - _CLASS_CELL_GAP_X
+    pos: dict[str, tuple[float, float, float, float]] = {}
+    for r, row in enumerate(grid):
+        k = len(row)
+        off = (ncols - k) / 2.0  # 行内居中，末行不偏右
+        for c0, nm in enumerate(row):
+            slot = (k - 1 - c0) if r % 2 else c0  # 蛇形行序
+            x = _PAD + (slot + off) * cell_w
+            pos[nm] = (x, row_y[r], box_w, sizes[nm][1])
+    _ = total_w
+    return pos
+
+
+def _class_boxes(
+    pos: dict[str, tuple[float, float, float, float]],
+) -> list[tuple[str, float, float, float, float]]:
+    out = []
+    for nm, (x, y, w, h) in pos.items():
+        out.append((nm, x + w / 2.0, y + h / 2.0, w / 2.0, h / 2.0))
+    return out
+
+
+def _seg_free(
+    p: tuple[float, float],
+    q: tuple[float, float],
+    boxes: list[tuple[str, float, float, float, float]],
+    skip: set[str],
+) -> bool:
+    from app.bake.schema.er_svg import _seg_hits_boxes
+
+    return not _seg_hits_boxes(p, q, boxes, skip)
+
+
+_CLASS_CH_CLEAR = 12.0  # 通道离类框的最小净距
+
+
+def class_channels(
+    pos: dict[str, tuple[float, float, float, float]], *, axis: str
+) -> list[float]:
+    """类图空档中线：按真实框宽高合并占位，取每段空隙中点（通道上无类框）。"""
+    if not pos:
+        return []
+    if axis == "x":
+        ivs = sorted((x - _CLASS_CH_CLEAR, x + w + _CLASS_CH_CLEAR) for x, _y, w, _h in pos.values())
+    else:
+        ivs = sorted((y - _CLASS_CH_CLEAR, y + h + _CLASS_CH_CLEAR) for _x, y, _w, h in pos.values())
+    merged: list[list[float]] = []
+    for lo, hi in ivs:
+        if merged and lo <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], hi)
+        else:
+            merged.append([lo, hi])
+    chans: list[float] = [max(8.0, merged[0][0] - 20.0), merged[-1][1] + 20.0]
+    for i in range(len(merged) - 1):
+        lo, hi = merged[i][1], merged[i + 1][0]
+        if hi - lo >= 20.0:
+            chans.append((lo + hi) / 2.0)
+    return chans
+
+
+def grid_route(
+    frm: str,
+    to: str,
+    pos: dict[str, tuple[float, float, float, float]],
+    boxes: list[tuple[str, float, float, float, float]],
+    vchans: list[float],
+    hchans: list[float],
+    *,
+    fan1: float = 0.0,
+    fan2: float = 0.0,
+    placed: list[list[tuple[float, float]]] | None = None,
+) -> list[tuple[float, float]]:
+    """类间连线：候选链打分（直连 / 竖空档 / 横空档 / 五段绕行），优先不压框。
+
+    fan1/fan2 给同一类上多条连线的出/入点做平行错位，避免几条线叠成一条。
+    """
+    if frm not in pos or to not in pos:
+        return []
+    ax, ay, aw, ah = pos[frm]
+    bx, by, bw, bh = pos[to]
+    skip = {frm, to}
+    cx1, cy1 = ax + aw / 2.0 + fan1, ay + ah / 2.0 + fan1 * 0.3
+    cx2, cy2 = bx + bw / 2.0 + fan2, by + bh / 2.0 + fan2 * 0.3
+    tx1, ty1 = ax + aw / 2.0 + fan1, ay + ah / 2.0 + fan1
+    tx2, ty2 = bx + bw / 2.0 + fan2, by + bh / 2.0 + fan2
+
+    def border(box: tuple[float, float, float, float], tx: float, ty: float) -> tuple[float, float]:
+        x, y, w, h = box
+        cx, cy = x + w / 2.0, y + h / 2.0
+        dx, dy = tx - cx, ty - cy
+        if abs(dx) < 1e-6 and abs(dy) < 1e-6:
+            return (cx, cy)
+        sx = (w / 2.0) / abs(dx) if abs(dx) > 1e-6 else float("inf")
+        sy = (h / 2.0) / abs(dy) if abs(dy) > 1e-6 else float("inf")
+        s = min(sx, sy)
+        return (cx + dx * s, cy + dy * s)
+
+    def chain_hits(chain: list[tuple[float, float]]) -> int:
+        return sum(
+            1 for i in range(len(chain) - 1) if not _seg_free(chain[i], chain[i + 1], boxes, skip)
+        )
+
+    def chain_len(chain: list[tuple[float, float]]) -> float:
+        return sum(
+            math.hypot(chain[i + 1][0] - chain[i][0], chain[i + 1][1] - chain[i][1])
+            for i in range(len(chain) - 1)
+        )
+
+    cands: list[tuple[float, int, list[tuple[float, float]]]] = []
+    placed = placed or []
+
+    def add(chain: list[tuple[float, float]]) -> None:
+        if len(chain) < 2:
+            return
+        hits = chain_hits(chain)
+        cross = sum(1 for p in placed if _paths_conflict(chain, p))
+        cands.append((hits * 20.0 + cross * 12.0 + chain_len(chain) * 0.02, hits, chain))
+
+
+    # A. 直连（可斜；短且不压框时最像样例的对角连线）
+    add([border((ax, ay, aw, ah), cx2, cy2), border((bx, by, bw, bh), cx1, cy1)])
+
+    # B. 竖空档折线：出边 → 通道 → 入边
+    for c in vchans:
+        s1 = (ax + aw, min(ay + ah - 12.0, max(ay + 12.0, ty1))) if c > cx1 else (
+            ax,
+            min(ay + ah - 12.0, max(ay + 12.0, ty1)),
+        )
+        s2 = (bx, min(by + bh - 12.0, max(by + 12.0, ty2))) if c < cx2 else (
+            bx + bw,
+            min(by + bh - 12.0, max(by + 12.0, ty2)),
+        )
+        add([s1, (c, s1[1]), (c, s2[1]), s2])
+
+    # C. 横空档折线
+    for y in hchans:
+        px1 = min(ax + aw - 12.0, max(ax + 12.0, tx1))
+        px2 = min(bx + bw - 12.0, max(bx + 12.0, tx2))
+        s1 = (px1, ay + ah) if y > cy1 else (px1, ay)
+        s2 = (px2, by) if y < cy2 else (px2, by + bh)
+        add([s1, (s1[0], y), (s2[0], y), s2])
+
+    # D. 五段绕行：横空档 → 竖空档 → 横空档
+    if vchans and hchans:
+        above = [y for y in hchans if y < cy1]
+        below = [y for y in hchans if y > cy1]
+        h1 = max(above) if above else (min(below) if below else None)
+        above_b = [y for y in hchans if y < cy2]
+        below_b = [y for y in hchans if y > cy2]
+        h2 = max(above_b) if above_b else (min(below_b) if below_b else None)
+        if h1 is not None and h2 is not None:
+            for c in (min(vchans, key=lambda v: abs(v - (cx1 + cx2) / 2.0)),):
+                px1 = min(ax + aw - 12.0, max(ax + 12.0, tx1))
+                px2 = min(bx + bw - 12.0, max(bx + 12.0, tx2))
+                s1 = (px1, ay) if h1 < cy1 else (px1, ay + ah)
+                s2 = (px2, by) if h2 < cy2 else (px2, by + bh)
+                add([s1, (px1, h1), (c, h1), (c, h2), (px2, h2), s2])
+                add([s1, (px1, h1), (px2, h1), (px2, h2), s2])
+
+    if not cands:
+        return []
+    cands.sort(key=lambda t: t[0])
+    for _score, hits, chain in cands:
+        if hits == 0:
+            return chain
+    return cands[0][2]
+
+
 def attach_layout(model: dict[str, Any], *, assoc_mode: str | None = None) -> dict[str, Any]:
     """初局：pyelk layered 摆框并尽量画全关联；不保证零交叉。
 
@@ -371,81 +627,454 @@ def attach_layout(model: dict[str, Any], *, assoc_mode: str | None = None) -> di
         _refresh_assoc_note(model)
         return model
 
-    nodes = [
-        {"id": n, "width": float(sizes[n][0]), "height": float(sizes[n][1])}
-        for n in names
-        if n in sizes
-    ]
-    elk_edges = []
-    for i, a in enumerate(all_a):
+    edge_pairs: list[tuple[str, str]] = []
+    for a in all_a:
         frm, to = str(a.get("from") or ""), str(a.get("to") or "")
-        if not frm or not to or frm == to:
-            continue
-        if frm not in sizes or to not in sizes:
-            continue
-        elk_edges.append({"id": f"a{i}", "sources": [frm], "targets": [to]})
+        if frm and to and frm != to and frm in sizes and to in sizes:
+            edge_pairs.append((frm, to))
+    kept, merged = _merge_parallel_assocs(all_a)
+    if isinstance(ev, dict):
+        ev["assoc_merged"] = merged
 
-    try:
-        laid = layout_graph(nodes, elk_edges)
-    except ElkLayoutError:
-        # 显式失败不退回竞赛环；退网格保接口可用
-        pos = {}
-        x = _PAD
-        for n in names:
-            w, h = sizes[n]
-            pos[n] = (x, _PAD, w, h)
-            x += w + _BOX_GAP
-        paths = []
-        drawn = []
-        for a in all_a:
-            pts = _simple_ortho_path(str(a.get("from")), str(a.get("to")), pos)
-            if pts:
-                drawn.append(a)
-                paths.append(pts)
-        _commit_elk_layout(
-            model,
-            pos=pos,
-            associations=drawn,
-            paths=paths,
-            layout_algo="grid-fallback",
-            elapsed_ms=(time.perf_counter() - t0) * 1000.0,
-        )
-        _refresh_assoc_note(model)
-        return model
-
-    raw_pos = laid.get("positions") or {}
-    pos: dict[str, tuple[float, float, float, float]] = {}
-    for n in names:
-        box = raw_pos.get(n)
-        if box:
-            pos[n] = box
-        else:
-            w, h = sizes[n]
-            pos[n] = (_PAD, _PAD, w, h)
-
-    edge_paths = laid.get("edge_paths") or {}
-    paths: list[list[tuple[float, float]]] = []
-    drawn: list[dict[str, Any]] = []
-    for i, a in enumerate(all_a):
-        frm, to = str(a.get("from") or ""), str(a.get("to") or "")
-        pts = edge_paths.get(f"a{i}")
-        if not pts or len(pts) < 2:
-            pts = _simple_ortho_path(frm, to, pos)
-        if not pts:
-            continue
-        drawn.append(a)
-        paths.append([(float(x), float(y)) for x, y in pts])
-
+    # 栅格初局（样例类图：等宽紧凑成排）+ 空档正交路由
+    pos, paths, drawn = _grid_variant(kept, names, sizes, edge_pairs)
+    alt = None
+    if len(kept) >= 20 and _paths_conflicts(paths):
+        # 稠密关系（≥20 条）栅格走线会互穿：退回 ELK 分层 + ELK 折线（原零交叉路径）
+        alt = _elk_variant(kept, sizes)
+    if alt is not None and _paths_conflicts(alt[1]) < _paths_conflicts(paths):
+        pos, paths, drawn = alt
+        model["layout_algo_mode"] = "elk-dense"
     _commit_elk_layout(
         model,
         pos=pos,
         associations=drawn,
         paths=paths,
-        layout_algo="elk",
-        elapsed_ms=float(laid.get("elapsed_ms") or (time.perf_counter() - t0) * 1000.0),
+        layout_algo="elk" if model.get("layout_algo_mode") == "elk-dense" else "grid",
+        elapsed_ms=(time.perf_counter() - t0) * 1000.0,
     )
+    model["associations_all"] = kept
     _refresh_assoc_note(model)
     return model
+
+
+def _box_hits(
+    paths: list[list[tuple[float, float]]],
+    assocs: list[dict[str, Any]],
+    pos: dict[str, tuple[float, float, float, float]],
+) -> int:
+    """折线压框计数（每条线最多记 1，避免长线刷分）。"""
+    boxes = _class_boxes(pos)
+    hits = 0
+    for pts, a in zip(paths, assocs):
+        skip = {str(a.get("from") or ""), str(a.get("to") or "")}
+        if any(
+            not _seg_free(pts[i], pts[i + 1], boxes, skip)
+            for i in range(len(pts) - 1)
+        ):
+            hits += 1
+    return hits
+
+
+def _paths_conflicts(paths: list[list[tuple[float, float]]]) -> int:
+    n = 0
+    for i in range(len(paths)):
+        for j in range(i + 1, len(paths)):
+            if _paths_conflict(paths[i], paths[j]):
+                n += 1
+    return n
+
+
+def _cells_from_pos(
+    pos: dict[str, tuple[float, float, float, float]],
+) -> tuple[dict[str, tuple[int, int]], dict[int, float], dict[int, float]]:
+    """按当前排布把每个类归到 (行, 列) 槽位；保留用户拖出来的换行/换列意图。"""
+    if not pos:
+        return {}, {}, {}
+    items = sorted(
+        pos.items(), key=lambda kv: (kv[1][0] + kv[1][2] / 2.0, kv[1][1], kv[0])
+    )
+    xs = [x + w / 2.0 for _t, (x, y, w, h) in items]
+    mean_w = sum(w for _t, (x, y, w, h) in items) / max(1, len(items))
+    x_thresh = max(70.0, mean_w * 0.45)
+    col_of: dict[str, int] = {}
+    col_cx: list[float] = []
+    for tid, (x, y, w, h) in items:
+        cx = x + w / 2.0
+        if col_cx and cx - col_cx[-1] <= x_thresh:
+            col_of[tid] = len(col_cx) - 1
+            col_cx[-1] = (col_cx[-1] + cx) / 2.0
+        else:
+            col_cx.append(cx)
+            col_of[tid] = len(col_cx) - 1
+    ys = sorted(y + h / 2.0 for _t, (x, y, w, h) in pos.items())
+    mean_h = sum(h for _t, (x, y, w, h) in pos.items()) / max(1, len(pos))
+    y_thresh = max(48.0, mean_h * 0.35)
+    row_of: dict[str, int] = {}
+    row_cy: list[float] = []
+    for tid, (x, y, w, h) in sorted(pos.items(), key=lambda kv: (kv[1][1] + kv[1][3] / 2.0, kv[0])):
+        cy = y + h / 2.0
+        if row_cy and cy - row_cy[-1] <= y_thresh:
+            row_of[tid] = len(row_cy) - 1
+            row_cy[-1] = (row_cy[-1] + cy) / 2.0
+        else:
+            row_cy.append(cy)
+            row_of[tid] = len(row_cy) - 1
+    del xs, ys
+    col_w: dict[int, float] = {}
+    row_h: dict[int, float] = {}
+    for tid, (_x, _y, w, h) in pos.items():
+        col_w[col_of[tid]] = max(col_w.get(col_of[tid], 0.0), w)
+        row_h[row_of[tid]] = max(row_h.get(row_of[tid], 0.0), h)
+    cells = {tid: (row_of[tid], col_of[tid]) for tid in pos}
+    return cells, col_w, row_h
+
+
+def _pos_from_cells(    cells: dict[str, tuple[int, int]],
+    sizes: dict[str, tuple[float, float]],
+    col_w: dict[int, float],
+    row_h: dict[int, float],
+) -> dict[str, tuple[float, float, float, float]]:
+    """槽位 → 规整坐标：列宽取该列最宽框、行高取该行最高框，框在槽内居中。"""
+    col_x: dict[int, float] = {}
+    x = _PAD
+    for c in sorted(col_w):
+        col_x[c] = x
+        x += col_w[c] + _COL_GUTTER
+    row_y: dict[int, float] = {}
+    y = _PAD
+    for r in sorted(row_h):
+        row_y[r] = y
+        y += row_h[r] + _BOX_GAP
+    out: dict[str, tuple[float, float, float, float]] = {}
+    for tid, (r, c) in cells.items():
+        w, h = sizes.get(tid, (200.0, 120.0))
+        out[tid] = (
+            col_x[c] + (col_w[c] - w) / 2.0,
+            row_y[r] + (row_h[r] - h) / 2.0,
+            w,
+            h,
+        )
+    return out
+
+
+def _route_all(
+    kept: list[dict[str, Any]],
+    pos: dict[str, tuple[float, float, float, float]],
+) -> tuple[list[list[tuple[float, float]]], list[dict[str, Any]]]:
+    boxes = _class_boxes(pos)
+    vchans = class_channels(pos, axis="x")
+    hchans = class_channels(pos, axis="y")
+    fans = _edge_fans(kept)
+    deg: dict[str, int] = {}
+    for a in kept:
+        for k in (str(a.get("from")), str(a.get("to"))):
+            deg[k] = deg.get(k, 0) + 1
+    order = sorted(
+        range(len(kept)),
+        key=lambda i: (-max(deg.get(str(kept[i].get("from")), 0), deg.get(str(kept[i].get("to")), 0)), i),
+    )
+    paths: list[list[tuple[float, float]]] = []
+    drawn: list[dict[str, Any]] = []
+    for idx in order:
+        a = kept[idx]
+        frm, to = str(a.get("from")), str(a.get("to"))
+        f1, f2 = fans[idx]
+        pts = grid_route(frm, to, pos, boxes, vchans, hchans, fan1=f1, fan2=f2, placed=paths)
+        if not pts or len(pts) < 2:
+            pts = _simple_ortho_path(frm, to, pos)
+        if not pts:
+            continue
+        drawn.append(a)
+        paths.append(pts)
+    paths, _drawn = _reroute_until_clean(kept, pos, paths, drawn)
+    return paths, _drawn
+
+
+def _reroute_until_clean(
+    kept: list[dict[str, Any]],
+    pos: dict[str, tuple[float, float, float, float]],
+    paths: list[list[tuple[float, float]]],
+    drawn: list[dict[str, Any]],
+    *,
+    max_rounds: int = 12,
+) -> tuple[list[list[tuple[float, float]]], list[dict[str, Any]]]:
+    """布完再逐条重选折线：只接受总交叉数下降的重选（顺序无关的局部修复）。"""
+    boxes = _class_boxes(pos)
+    vchans = class_channels(pos, axis="x")
+    hchans = class_channels(pos, axis="y")
+    fans = _edge_fans(kept)
+    by_pair = {(str(a.get("from")), str(a.get("to"))): idx for idx, a in enumerate(kept)}
+    best = _paths_conflicts(paths)
+    for _round in range(max_rounds):
+        if best == 0:
+            break
+        improved = False
+        for i, a in enumerate(drawn):
+            frm, to = str(a.get("from")), str(a.get("to"))
+            fan_i = by_pair.get((frm, to), i)
+            f1, f2 = fans[fan_i] if fan_i < len(fans) else (0.0, 0.0)
+            placed = [p for k, p in enumerate(paths) if k != i]
+            pts = grid_route(
+                frm, to, pos, boxes, vchans, hchans, fan1=f1, fan2=f2, placed=placed
+            )
+            if not pts or len(pts) < 2:
+                continue
+            if pts == paths[i]:
+                continue
+            trial = list(paths)
+            trial[i] = pts
+            got = _paths_conflicts(trial)
+            if got < best:
+                paths, best, improved = trial, got, True
+        if not improved:
+            break
+    return paths, drawn
+
+
+def _pos_from_rows(
+    rows: list[list[str | None]],
+    sizes: dict[str, tuple[float, float]],
+) -> dict[str, tuple[float, float, float, float]]:
+    """行槽位 → 规整坐标（列对齐、行内左起）。
+
+    行/列间距刻意大于 `_cells_from_pos` 的聚类阈值，保证「吸附→再吸附」稳定，
+    刷新后框不会再飘一次（幂等）。
+    """
+    names = [t for row in rows for t in row if t]
+    if not names:
+        return {}
+    ncols = max((len(r) for r in rows), default=1)
+    col_w = [0.0] * ncols
+    for row in rows:
+        for c, tid in enumerate(row):
+            if tid:
+                col_w[c] = max(col_w[c], sizes.get(tid, (200.0, 120.0))[0])
+    mean_w = sum(col_w) / max(1, sum(1 for w in col_w if w)) or 200.0
+    gap_x = max(_CLASS_CELL_GAP_X, mean_w * 0.55)
+    col_x: list[float] = []
+    x = _PAD
+    for c in range(ncols):
+        col_x.append(x)
+        x += (col_w[c] or mean_w) + gap_x
+
+    row_h = [max((sizes.get(t, (200.0, 120.0))[1] for t in row if t), default=0.0) for row in rows]
+    mean_h = sum(h for h in row_h if h) / max(1, sum(1 for h in row_h if h)) or 120.0
+    gap_y = max(_CLASS_CELL_GAP_Y, mean_h * 0.55)
+    y = _PAD
+    out: dict[str, tuple[float, float, float, float]] = {}
+    for r, row in enumerate(rows):
+        for c, tid in enumerate(row):
+            if not tid:
+                continue
+            w, h = sizes.get(tid, (200.0, 120.0))
+            out[tid] = (col_x[c] + ((col_w[c] or mean_w) - w) / 2.0, y + (row_h[r] - h) / 2.0, w, h)
+        y += row_h[r] + gap_y
+    return out
+
+
+def snap_layout_to_slots(
+    pos: dict[str, tuple[float, float, float, float]],
+    kept: list[dict[str, Any]],
+    *,
+    max_rounds: int = 40,
+) -> tuple[dict[str, tuple[float, float, float, float]], list[list[tuple[float, float]]], list[dict[str, Any]], int]:
+    """手拖 → 换序吸附 → 零交叉。返回 (新坐标, 折线, 画出的联系, 剩余交叉数)。
+
+    拖动只表达「换行/换列/换序」：把拖出来的行列关系读成一个顺序，几何仍由
+    栅格算法算（等宽框、标准槽距、蛇形行序），因此观感与自动排版一致。
+    仍有交叉时按顺序做局部交换，只接受交叉数下降的交换。
+    """
+    sizes = {tid: (w, h) for tid, (_x, _y, w, h) in pos.items()}
+    names = list(pos)
+    cells, _col_w, _row_h = _cells_from_pos(pos)
+    flat = [tid for tid in sorted(cells, key=lambda t: (cells[t][0], cells[t][1]))]
+    edge_pairs = [
+        (str(a.get("from")), str(a.get("to"))) for a in kept if isinstance(a, dict)
+    ]
+
+    def rows_of(seq: list[str], ncols: int) -> list[list[str | None]]:
+        n = len(seq)
+        nrows = int(math.ceil(n / float(ncols)))
+        base, extra = divmod(n, nrows)
+        out: list[list[str | None]] = []
+        idx = 0
+        for r in range(nrows):
+            k = base + (1 if r < extra else 0)
+            out.append(list(seq[idx:idx + k]))
+            idx += k
+        return out
+
+    def pick_cols(seq: list[str]) -> int:
+        best, best_cost = max(2, int(math.ceil(math.sqrt(len(seq))))), None
+        for c in range(2, len(seq) + 1):
+            p = _pos_from_rows(rows_of(seq, c), sizes)
+            if not p:
+                continue
+            w = max(x + ww for x, _y, ww, _hh in p.values())
+            h = max(y + hh for _x, y, _ww, hh in p.values())
+            cost = abs(math.log((w / max(h, 1.0)) / 1.35))
+            if best_cost is None or cost < best_cost:
+                best, best_cost = c, cost
+        return best
+
+    ncols = pick_cols(flat)
+
+    def evaluate(seq: list[str], ncols_: int):
+        p = _pos_from_rows(rows_of(seq, ncols_), sizes)
+        pt, drawn2 = _route_all(kept, p)
+        return p, pt, drawn2, _paths_conflicts(pt)
+
+    best_pos, paths, drawn, best_x = evaluate(flat, ncols)
+    if best_x == 0:
+        return best_pos, paths, drawn, best_x
+    rounds = 0
+    while best_x > 0 and rounds < max_rounds:
+        rounds += 1
+        improved = False
+        for a, b in _conflict_pairs(paths, drawn):
+            fa, ta = str(a.get("from")), str(a.get("to"))
+            fb, tb = str(b.get("from")), str(b.get("to"))
+            for t1, t2 in ((fa, fb), (fa, tb), (ta, fb), (ta, tb)):
+                if t1 == t2 or t1 not in flat or t2 not in flat:
+                    continue
+                trial = list(flat)
+                i1, i2 = trial.index(t1), trial.index(t2)
+                trial[i1], trial[i2] = trial[i2], trial[i1]
+                cand_pos, cand_paths, cand_drawn, cand_x = evaluate(trial, ncols)
+                if cand_x < best_x:
+                    flat, best_pos, paths, drawn, best_x = trial, cand_pos, cand_paths, cand_drawn, cand_x
+                    improved = True
+                    break
+            if improved:
+                break
+    if best_x > 0:
+        # 拖出来的顺序画不干净：退回自动顺序（实测各域自动排布均可零交叉）
+        auto_pos = _grid_layout_classes(names, sizes, edge_pairs)
+        auto_paths, auto_drawn = _route_all(kept, auto_pos)
+        auto_x = _paths_conflicts(auto_paths)
+        if auto_x < best_x:
+            best_pos, paths, drawn, best_x = auto_pos, auto_paths, auto_drawn, auto_x
+    if best_x > 0:
+        try:
+            elk = _elk_variant(kept, sizes)
+        except Exception:
+            elk = None
+        if elk:
+            e_pos, e_paths, e_drawn = elk
+            e_x = _paths_conflicts(e_paths)
+            if e_x < best_x:
+                best_pos, paths, drawn, best_x = e_pos, e_paths, e_drawn, e_x
+    return best_pos, paths, drawn, best_x
+
+
+def _conflict_pairs(
+    paths: list[list[tuple[float, float]]], drawn: list[dict[str, Any]]
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    out: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for i in range(len(paths)):
+        for j in range(i + 1, len(paths)):
+            if _paths_conflict(paths[i], paths[j]):
+                out.append((drawn[i], drawn[j]))
+    return out
+
+
+def _grid_variant(
+    kept: list[dict[str, Any]],
+    names: list[str],
+    sizes: dict[str, tuple[float, float]],
+    edge_pairs: list[tuple[str, str]],
+) -> tuple[
+    dict[str, tuple[float, float, float, float]],
+    list[list[tuple[float, float]]],
+    list[dict[str, Any]],
+]:
+    pos = _grid_layout_classes(names, sizes, edge_pairs)
+    paths, drawn = _route_all(kept, pos)
+    return pos, paths, drawn
+
+
+def _elk_variant(
+    kept: list[dict[str, Any]],
+    sizes: dict[str, tuple[float, float]],
+) -> tuple[
+    dict[str, tuple[float, float, float, float]],
+    list[list[tuple[float, float]]],
+    list[dict[str, Any]],
+] | None:
+    """稠密图兜底：ELK 分层摆框 + ELK 自带折线（原零交叉路径）。"""
+    nodes = [{"id": nm, "width": w, "height": h} for nm, (w, h) in sizes.items()]
+    idxs: list[int] = []
+    edges = []
+    for i, a in enumerate(kept):
+        frm, to = str(a.get("from")), str(a.get("to"))
+        if frm in sizes and to in sizes and frm != to:
+            idxs.append(i)
+            edges.append({"id": f"e{i}", "sources": [frm], "targets": [to]})
+    try:
+        res = layout_graph(nodes, edges)
+    except ElkLayoutError:
+        return None
+    raw = res.get("positions") or {}
+    pos = {
+        str(k): (float(v[0]), float(v[1]), float(v[2]), float(v[3]))
+        for k, v in raw.items()
+        if k in sizes
+    }
+    if not pos:
+        return None
+    edge_paths = res.get("edge_paths") or {}
+    paths: list[list[tuple[float, float]]] = []
+    drawn: list[dict[str, Any]] = []
+    for i in idxs:
+        a = kept[i]
+        frm, to = str(a.get("from")), str(a.get("to"))
+        pts = edge_paths.get(f"e{i}")
+        if not pts or len(pts) < 2:
+            pts = _simple_ortho_path(frm, to, pos)
+        if not pts or len(pts) < 2:
+            continue
+        drawn.append(a)
+        paths.append([(float(x), float(y)) for x, y in pts])
+    return pos, paths, drawn
+
+
+def _merge_parallel_assocs(
+    all_a: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], int]:
+    """同一对类、同一种关系的多条外键只画一根线（样例类图不画重合线）。"""
+    seen: set[tuple[str, str, str]] = set()
+    kept: list[dict[str, Any]] = []
+    merged = 0
+    for a in all_a:
+        frm, to = str(a.get("from") or ""), str(a.get("to") or "")
+        kind = str(a.get("kind") or "association")
+        key = (frm, to, kind)
+        if key in seen:
+            merged += 1
+            continue
+        seen.add(key)
+        kept.append(a)
+    return kept, merged
+
+
+def _edge_fans(assocs: list[dict[str, Any]]) -> list[tuple[float, float]]:
+    """同一类上的多条连线在出/入点做平行错位，避免几条线叠成一条。"""
+    ends: dict[str, list[tuple[int, int]]] = {}  # class -> [(edge_idx, end 0/1)]
+    for idx, a in enumerate(assocs):
+        frm, to = str(a.get("from") or ""), str(a.get("to") or "")
+        if frm:
+            ends.setdefault(frm, []).append((idx, 0))
+        if to:
+            ends.setdefault(to, []).append((idx, 1))
+    fans: list[list[float]] = [[0.0, 0.0] for _ in assocs]
+    for _nm, items in ends.items():
+        n = len(items)
+        if n < 2:
+            continue
+        for k, (idx, end) in enumerate(items):
+            fans[idx][end] = (k - (n - 1) / 2.0) * 18.0
+    return [(f[0], f[1]) for f in fans]
 
 
 def _apply_manual_zero_cross(model: dict[str, Any], *, max_rounds: int = 0) -> None:
@@ -477,19 +1106,16 @@ def _apply_manual_zero_cross(model: dict[str, Any], *, max_rounds: int = 0) -> N
         return
     model["associations_all"] = all_a
     use_pos = dict(pos)  # 钉死：不 pad 平移，避免拖完整体挪位
-    paths: list[list[tuple[float, float]]] = []
-    drawn: list[dict[str, Any]] = []
-    for a in all_a:
-        pts = _simple_ortho_path(str(a.get("from")), str(a.get("to")), use_pos)
-        if not pts:
-            continue
-        drawn.append(a)
-        paths.append(pts)
+    all_a, merged = _merge_parallel_assocs(all_a)
+    # 手拖 → 槽位吸附 → 零交叉：拖动只表达"换行/换列"，坐标由生成器算
+    use_pos, paths, drawn, left = snap_layout_to_slots(use_pos, all_a, max_rounds=40)
+    model["associations_all"] = all_a
     model["associations"] = drawn
     model["associations_omitted"] = []
     model["_assoc_paths"] = paths
-    model["zero_crossing"] = False
+    model["zero_crossing"] = left == 0
     model["assoc_mode"] = "manual"
+    model["layout_zero_cross_left"] = left
     model["tree_parents"] = {
         str(k): str(v) for k, v in (model.get("tree_parents") or {}).items()
     }
@@ -509,8 +1135,9 @@ def _apply_manual_zero_cross(model: dict[str, Any], *, max_rounds: int = 0) -> N
         ev["assoc_drawn"] = len(drawn)
         ev["assoc_omitted"] = 0
         ev["assoc_total"] = len(all_a)
-        ev["zero_crossing"] = False
+        ev["zero_crossing"] = left == 0
         ev["layout_algo"] = "manual"
+        ev["layout_zero_cross_left"] = left
         ev.pop("layout_nudged", None)
     _refresh_assoc_note(model)
 
@@ -1070,11 +1697,30 @@ def _seg_overlap_1d(a0: float, a1: float, b0: float, b1: float, eps: float = 0.5
     return hi_a - eps > lo_b and hi_b - eps > lo_a
 
 
+def _seg_proper_cross(
+    p: tuple[float, float],
+    q: tuple[float, float],
+    r: tuple[float, float],
+    s: tuple[float, float],
+) -> bool:
+    """任意两线段真相交（端点相接、共线重叠都不算）。"""
+    def o(a: tuple[float, float], b: tuple[float, float], c: tuple[float, float]) -> float:
+        return (b[1] - a[1]) * (c[0] - b[0]) - (b[0] - a[0]) * (c[1] - b[1])
+
+    d1 = o(p, q, r)
+    d2 = o(p, q, s)
+    d3 = o(r, s, p)
+    d4 = o(r, s, q)
+    if d1 == 0 or d2 == 0 or d3 == 0 or d4 == 0:
+        return False
+    return (d1 > 0) != (d2 > 0) and (d3 > 0) != (d4 > 0)
+
+
 def _paths_conflict(
     a: list[tuple[float, float]],
     b: list[tuple[float, float]],
 ) -> bool:
-    """两折线是否开交叉（水平×竖直）。
+    """两折线是否开交叉（水平×竖直，以及斜线段）。
 
     同槽共线重叠允许（共用外框总线 / T 接），否则稠密星型图会系统性少画边。
     """
@@ -1087,6 +1733,18 @@ def _paths_conflict(
             elif si[0] == "V" and sj[0] == "H":
                 if _hv_proper_cross((sj[1], sj[2], sj[3]), (si[1], si[3], si[4])):
                     return True
+    # 只要有一段是斜线（直连候选），就要按任意两条线段真相交判定：
+    # 否则"斜线穿过去"会被判成没交叉，拖完照样看得见交叉。
+    for i in range(len(a) - 1):
+        p, q = a[i], a[i + 1]
+        diag_i = abs(p[0] - q[0]) >= 0.5 and abs(p[1] - q[1]) >= 0.5
+        for j in range(len(b) - 1):
+            r, s = b[j], b[j + 1]
+            diag_j = abs(r[0] - s[0]) >= 0.5 and abs(r[1] - s[1]) >= 0.5
+            if not (diag_i or diag_j):
+                continue
+            if _seg_proper_cross(p, q, r, s):
+                return True
     return False
 
 

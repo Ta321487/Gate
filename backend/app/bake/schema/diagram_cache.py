@@ -18,7 +18,10 @@ logger = logging.getLogger("app.bake.diagram_cache")
 
 _CACHE_DIR = Path("islands") / "diagram_cache"
 # 5：modules 指纹含 overrides/module_labels；废旧缓存
-_CACHE_VER = 5
+# 6：活动图标签几何重写（是/否 贴菱形、条件贴入射处、回边折点按目标泳道）→ 旧 SVG 作废
+# 7：论文图统一宋体 + 图内去标题 + 活动图节点/泳道自适应宽 + 泳道名改「控制器」→ 旧 SVG 作废
+# 8：序列图消息改材料词源（entities.verbs/states → 五相位；缺词出中性骨架）→ 旧 SVG 作废
+_CACHE_VER = 20  # ER 1/n 标签最后统一落位（避开全部菱形/实体框/其他标签）
 
 # 各类图参与指纹的相对路径（缺文件记 0）
 _SOURCE_RELS: dict[str, tuple[str, ...]] = {
@@ -234,3 +237,8 @@ def get_or_build(
         logger.warning("diagram cache write failed kind=%s: %s", kind, e)
     log_timing(kind, cache="miss", timing=timing, params=params)
     return model
+
+
+
+
+

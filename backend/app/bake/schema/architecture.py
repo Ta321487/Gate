@@ -1,9 +1,9 @@
 """论文「系统逻辑架构图」：B/S 分层，画法对齐常见开题图 4.x。
 
 真源：domain.schema.json 的交付角色（与用例图 actors 同口径）。
-框内固定：界面 → Vue → SpringBoot → MySQL；界面↔Vue 旁标 HTTPS / 发起请求。
+框内固定：页面 → Vue → SpringBoot → MySQL；页面↔Vue 旁标 HTTPS / 发送请求。
 样式：白底黑框直角矩形、浅蓝双箭（上下各一支），不加圆角/阴影/色块。
-箭数：角色→界面、界面→Vue 按角色列多路；Vue→SpringBoot、SpringBoot→MySQL 仅居中一对。
+箭数：角色→页面、页面→Vue 按角色列多路；Vue→SpringBoot、SpringBoot→MySQL 仅居中一对。
 """
 
 from __future__ import annotations
@@ -14,6 +14,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from app.bake.schema.diagram_style import FONT_CN
+from app.bake.schema.diagram_style import FONT_TECH as _STYLE_FONT_TECH
 from app.bake.schema.usecases import list_usecase_actors
 
 # —— 画布几何（论文插图比例）——
@@ -27,9 +29,10 @@ _LAYER_H = 42.0
 _ARROW_GAP = 58.0  # 层间留给双箭 + 文案的高度
 _ARROW_PAIR_DX = 10.0  # 下箭 / 上箭水平错开
 _STROKE = 1.2
-_ARROW_COLOR = "#5B9BD5"
-_FONT = "Microsoft YaHei, SimSun, serif"
-_FONT_TECH = "Times New Roman, SimSun, serif"
+_ARROW_COLOR = "#000000"  # 对齐样例：黑色细线箭头，非蓝色
+_LAYER_W_SCALE = (0.92, 0.99, 0.50, 0.78)  # 样例：页面/Vue 宽、Spring Boot 窄、MySQL 中宽
+_FONT = FONT_CN
+_FONT_TECH = _STYLE_FONT_TECH
 
 
 def _esc(s: str) -> str:
@@ -108,16 +111,16 @@ def architecture_model(
         "figure_title": fig_title,
         "roles": roles,
         "layers": [
-            {"id": "ui", "label": "界面", "bold": False},
+            {"id": "ui", "label": "页面", "bold": False},
             {"id": "vue", "label": "Vue", "bold": True},
-            {"id": "boot", "label": "SpringBoot", "bold": True},
+            {"id": "boot", "label": "Spring Boot", "bold": True},
             {"id": "db", "label": "MySQL", "bold": True},
         ],
         "protocol_label": "HTTPS",
-        "action_label": "发起请求",
+        "action_label": "发送请求",
         "description": (
             f"本系统采用 B/S 架构，面向{ '、'.join(r['label'] for r in roles) }等角色；"
-            "角色经界面发起 HTTPS 请求，前端 Vue 与后端 SpringBoot 交互，数据持久化于 MySQL。"
+            "角色经页面发起 HTTPS 请求，前端 Vue 与后端 SpringBoot 交互，数据持久化于 MySQL。"
         ),
         "source_note": "角色取自交付门户/岗位；技术栈为工厂默认 B/S（Vue + Spring Boot + MySQL）。",
         "style": {
@@ -126,9 +129,9 @@ def architecture_model(
             "arrow": _ARROW_COLOR,
             "rules_zh": [
                 "白底黑框直角矩形，无圆角无阴影",
-                "角色→界面、界面→Vue：按角色列多路双箭",
+                "角色→页面、页面→Vue：按角色列多路双箭",
                 "Vue→SpringBoot、SpringBoot→MySQL：居中一对双箭",
-                "仅界面↔Vue 旁标 HTTPS（下行侧）/ 发起请求（上行侧）",
+                "仅页面↔Vue 旁标 HTTPS（下行侧）/ 发送请求（上行侧）",
             ],
         },
     }
@@ -190,7 +193,7 @@ def _bi_arrows(cx: float, y0: float, y1: float) -> str:
 
 
 def _protocol_labels(cx: float, mid_y: float, protocol: str, action: str) -> str:
-    """HTTPS 在箭对左侧，发起请求在右侧（对齐示例图）。"""
+    """HTTPS 在箭对左侧，发送请求在右侧（对齐示例图）。"""
     lx = cx - _ARROW_PAIR_DX - 8
     rx = cx + _ARROW_PAIR_DX + 8
     return (
@@ -205,7 +208,7 @@ def _protocol_labels(cx: float, mid_y: float, protocol: str, action: str) -> str
 
 def render_architecture_svg(model: dict[str, Any] | None) -> str:
     if not model or not isinstance(model.get("roles"), list) or not model["roles"]:
-        body = '<text x="24" y="64" fill="#000" font-family="Microsoft YaHei, SimSun, serif">暂无架构数据</text>'
+        body = f'<text x="24" y="64" fill="#000" font-family="{_FONT}">暂无架构数据</text>'
         return (
             '<?xml version="1.0" encoding="UTF-8"?>'
             f'<svg xmlns="http://www.w3.org/2000/svg" width="320" height="100" viewBox="0 0 320 100">'
@@ -225,21 +228,21 @@ def render_architecture_svg(model: dict[str, Any] | None) -> str:
                 layer_labels.append((lab, bool(layer.get("bold"))))
     if len(layer_labels) < 4:
         layer_labels = [
-            ("界面", False),
+            ("页面", False),
             ("Vue", True),
-            ("SpringBoot", True),
+            ("Spring Boot", True),
             ("MySQL", True),
         ]
 
     protocol = str(model.get("protocol_label") or "HTTPS").strip() or "HTTPS"
-    action = str(model.get("action_label") or "发起请求").strip() or "发起请求"
+    action = str(model.get("action_label") or "发送请求").strip() or "发送请求"
 
     role_ws = [_role_box_w(str(r.get("label") or "")) for r in roles]
     # 等宽列：取最大角色框宽，视觉更整齐（贴近示例三等宽）
     col_w = max(role_ws)
     content_w = n * col_w + (n - 1) * _ROLE_GAP
     layer_w = content_w
-    # 左右留白：HTTPS / 发起请求 标在箭对两侧
+    # 左右留白：HTTPS / 发送请求 标在箭对两侧
     left_extra = 64.0
     right_extra = 64.0
     total_w = content_w + 2 * _PAD_X + left_extra + right_extra
@@ -256,22 +259,25 @@ def render_architecture_svg(model: dict[str, Any] | None) -> str:
     role_y = y
     for i, r in enumerate(roles):
         rx = origin_x + i * (col_w + _ROLE_GAP)
-        parts.append(_box(rx, role_y, col_w, _ROLE_H, str(r["label"]), bold=False))
+        parts.append(_box(rx, role_y, col_w, _ROLE_H, str(r["label"]), bold=True))  # 样例：角色名加粗、技术层名常规
     y = role_y + _ROLE_H
 
-    # 角色 → 界面
+    # 角色 → 页面
     arrow_top = y + 4
     arrow_bot = y + _ARROW_GAP - 4
     for cx in role_cx:
         parts.append(_bi_arrows(cx, arrow_top, arrow_bot))
     y += _ARROW_GAP
 
-    # 逐层：界面 / Vue / SpringBoot / MySQL
-    # 画法对齐示例图：界面↔Vue 按角色列多路双箭+HTTPS/发起请求；
+    # 逐层：页面 / Vue / SpringBoot / MySQL
+    # 画法对齐示例图：页面↔Vue 按角色列多路双箭+HTTPS/发送请求；
     # Vue↔SpringBoot、SpringBoot↔MySQL 仅居中一对双箭。
     layer_cx = layer_x + layer_w / 2
     for li, (lab, bold) in enumerate(layer_labels):
-        parts.append(_box(layer_x, y, layer_w, _LAYER_H, lab, bold=bold))
+        # 样例：层名常规字重；四层宽度不等（页面/Vue 宽、Spring Boot 窄、MySQL 中宽）
+        lw = layer_w * _LAYER_W_SCALE[li % len(_LAYER_W_SCALE)]
+        lx = layer_x + (layer_w - lw) / 2
+        parts.append(_box(lx, y, lw, _LAYER_H, lab, bold=False))
         layer_bottom = y + _LAYER_H
         if li >= len(layer_labels) - 1:
             y = layer_bottom

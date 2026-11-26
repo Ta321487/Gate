@@ -203,5 +203,5 @@ def test_architecture_mermaid_roles_and_layers():
     text = architecture_model_to_mermaid(model)
     assert "flowchart TB" in text
     assert "买家" in text
-    assert "SpringBoot" in text
+    assert "Spring Boot" in text
     assert "MySQL" in text

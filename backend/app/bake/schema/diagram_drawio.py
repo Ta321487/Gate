@@ -516,14 +516,14 @@ def usecase_model_to_drawio(model: dict[str, Any] | None) -> str:
 
 
 def architecture_model_to_drawio(model: dict[str, Any] | None) -> str:
-    """逻辑架构图：角色 → 界面 → Vue → SpringBoot → MySQL，可拖。"""
+    """逻辑架构图：角色 → 页面 → Vue → SpringBoot → MySQL，可拖。"""
     model = model if isinstance(model, dict) else {}
     roles = [r for r in (model.get("roles") or []) if isinstance(r, dict) and r.get("id")]
     if not roles:
         roles = [{"id": "user", "label": "用户"}]
     cells: list[str] = []
     layer_ids = [
-        ("ui", "界面"),
+        ("ui", "页面"),
         ("vue", "Vue"),
         ("spring", "SpringBoot"),
         ("mysql", "MySQL"),
@@ -562,7 +562,7 @@ def architecture_model_to_drawio(model: dict[str, Any] | None) -> str:
             mx_vertex(cid, lab, x=layer_x, y=y, w=layer_w, h=layer_h, style=_ENT_STYLE)
         )
         if j > 0:
-            edge_lab = "HTTPS / 发起请求" if j == 1 else ""
+            edge_lab = "HTTPS / 发送请求" if j == 1 else ""
             cells.append(
                 mx_edge(
                     stable_cell_id("arche", f"{layer_ids[j - 1][0]}_{lid}"),

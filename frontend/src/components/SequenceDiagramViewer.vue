@@ -198,7 +198,8 @@ async function copyWorkflow() {
     return
   }
   try {
-    await navigator.clipboard.writeText(plain)
+    const { copyMaterialText } = await import('../utils/zhCopy')
+    await copyMaterialText(plain)
     message.success('已复制工作流程（可贴论文）')
   } catch {
     message.error('复制失败')

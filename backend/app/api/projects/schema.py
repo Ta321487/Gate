@@ -1181,16 +1181,40 @@ async def put_classes_layout(
     if not body.layout:
         raise HTTPException(400, "layout 为空")
     saved = save_class_layout_patch(
-        ws, body.layout, display_mode=body.display_mode
+        ws, body.layout, display_mode=body.display_mode, manual=True
     )
+    # 拖动只表达「换行/换列/换序」：立刻按槽位吸附+重布线，落盘规整坐标，
+    # 保证刷新前后一致、且线线交叉为 0（吸附是幂等的，不会越刷越飘）。
+    zero_left = None
+    try:
+        from app.bake.schema.class_model import load_class_model
+
+        model = load_class_model(ws, display_mode=body.display_mode)
+        if isinstance(model, dict) and model.get("layout"):
+            zero_left = model.get("layout_zero_cross_left")
+            saved = save_class_layout_patch(
+                ws,
+                model["layout"],
+                display_mode=body.display_mode,
+                manual=True,
+            )
+    except Exception as e:  # noqa: BLE001
+        # 吸附失败时仍保留用户拖拽落盘，刷新时再走 GET 吸附；勿静默当成功零交叉
+        logger.warning("class layout snap-after-save failed project=%s: %s", project_id, e)
+        zero_left = None
     invalidate_diagram_cache(ws, "classes")
     return {
         "ok": True,
         "reset": False,
         "count": len(saved.get("layout") or {}),
-        # 挪框精炼在 GET 重载时做；本接口仅落盘
+        # 槽位吸附 + 重布线已在本接口内完成（幂等）；失败时 layout_zero_cross_left=null
         "layout_nudged": False,
-        "message": "类图布局已保存；请重拉模型与 SVG 以按新坐标零交叉重选折线",
+        "layout_zero_cross_left": zero_left,
+        "message": (
+            "类图布局已按槽位吸附并重布线；重拉 SVG 即与保存结果一致"
+            if zero_left is not None
+            else "类图布局已保存；吸附重布线未完成，请重拉模型与 SVG"
+        ),
     }
 
 

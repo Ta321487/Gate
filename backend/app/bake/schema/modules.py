@@ -2,6 +2,7 @@
 
 默认「按身份」：按交付 roles 分枝、menus 出叶子；开题「{身份}功能模块划分为…」
 只辅助身份框名与叶子中文命名，**未交付的开题模块一律丢掉**（禁止图上有、包里无）。
+丢掉项写入 ``delivery_gap``（对内弱提醒 / 施工清单，**不红** label_gate、不挡导出）。
 无开题枚举时回落 menus（界面小字提示，字不进 SVG）。
 「按业务」：menus 按业务家族归类（对照用）。
 细节开关：【】（）内子项默认不进图；展开后挂在一级模块下。
@@ -11,9 +12,12 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any
+
+from app.bake.schema.diagram_style import FONT_CN
 
 _MODULE_LABELS_REL = Path("islands") / "module_labels.json"
 
@@ -32,6 +36,7 @@ DEFAULT_MODULE_LAYOUT = "identity"
 _SCHEMA_LEAF_NOTE = "以下模块名由交付菜单推断，非开题原文，仅供参考"
 _ALIGNED_LEAF_NOTE = "已按交付菜单过滤开题枚举；未交付模块不进图"
 _MATERIAL_WEAK_NOTE = "模块图枚举解析偏弱，部分命名已用菜单兜底（交付菜单仍为真源）"
+_DELIVERY_GAP_NOTE = "开题对账：有未进图项（弱提醒，不挡导出；见图上方施工清单）"
 
 # 材料枚举：{身份}功能模块划分为：… / {身份}功能模块划分：… / 分为|包括|包含…
 # 冒号可缺：任务书常写「划分为登录注册模块、…」无「：」
@@ -1363,14 +1368,20 @@ def _align_material_modules_to_menus_with_stats(
     side: str,
     menus: list[Any],
     role_lab: str = "",
-) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """同 :func:`_align_material_modules_to_menus`，并返回材料对齐覆盖统计。"""
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """同 :func:`_align_material_modules_to_menus`，并返回材料对齐覆盖统计。
+
+    stats 含 ``dropped``（开题有、菜单对不上）/ ``padded``（菜单有、开题未点名）标签列表，
+    供 ``delivery_gap`` 施工清单；不决定图上是否假画未交付模块。
+    """
     menu_items = _side_menu_items(menus)
     covered: set[str] = set()
     out: list[dict[str, Any]] = []
     eligible = 0
     kept = 0
     details_pool: list[str] = []
+    dropped_labs: list[str] = []
+    padded_labs: list[str] = []
 
     for mod in material_mods:
         if not isinstance(mod, dict):
@@ -1378,7 +1389,7 @@ def _align_material_modules_to_menus_with_stats(
         lab = str(mod.get("label") or "").strip()
         if not lab:
             continue
-        # 散文/泄漏段头：绝不当认证、不对齐进图
+        # 散文/泄漏段头：绝不当认证、不对齐进图（也不进施工清单）
         if _is_leaked_section_module_label(lab) or _is_prose_module_label(lab):
             continue
         details = [str(d).strip() for d in (mod.get("details") or []) if str(d).strip()]
@@ -1392,6 +1403,7 @@ def _align_material_modules_to_menus_with_stats(
         # 只按一级模块名对齐交付；细节里的词不得决定「是否保留」一级模块（防幽灵）
         keys = _menu_keys_for_module_text(lab, menu_items)
         if not keys:
+            dropped_labs.append(lab)
             continue
         covered.update(keys)
         out.append({"label": lab, "details": details})
@@ -1421,9 +1433,79 @@ def _align_material_modules_to_menus_with_stats(
             continue
         covered.add(key)
         menu_pad += 1
-        out.append({"label": _format_menu_module_label(menu_lab), "details": []})
+        pad_lab = _format_menu_module_label(menu_lab)
+        padded_labs.append(pad_lab)
+        out.append({"label": pad_lab, "details": []})
     polished = _polish_identity_modules(out, role_lab=role_lab, menu_items=menu_items)
-    return polished, {"eligible": eligible, "kept": kept, "menu_pad": menu_pad}
+    return polished, {
+        "eligible": eligible,
+        "kept": kept,
+        "menu_pad": menu_pad,
+        "dropped": dropped_labs,
+        "padded": padded_labs,
+    }
+
+
+def _empty_align_stats() -> dict[str, Any]:
+    return {
+        "eligible": 0,
+        "kept": 0,
+        "menu_pad": 0,
+        "dropped": [],
+        "padded": [],
+    }
+
+
+def _gap_rows_from_stats(
+    stats: dict[str, Any],
+    *,
+    branch: str,
+    side: str,
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    br = (branch or "").strip()
+    dropped = [
+        {"kind": "dropped", "branch": br, "side": side, "label": str(lab).strip()}
+        for lab in (stats.get("dropped") or [])
+        if str(lab).strip()
+    ]
+    padded = [
+        {"kind": "padded", "branch": br, "side": side, "label": str(lab).strip()}
+        for lab in (stats.get("padded") or [])
+        if str(lab).strip()
+    ]
+    return dropped, padded
+
+
+def _attach_delivery_gap(
+    model: dict[str, Any],
+    *,
+    dropped: list[dict[str, str]],
+    padded: list[dict[str, str]],
+) -> dict[str, Any]:
+    """开题 ∩ 交付差账：弱提醒挂 model，不红 label_gate、不挡导出。"""
+    dropped_rows = list(dropped or [])
+    padded_rows = list(padded or [])
+    has_drop = bool(dropped_rows)
+    model["delivery_gap"] = {
+        "severity": "warn" if has_drop else "ok",
+        "blocks_export": False,
+        "dropped": dropped_rows,
+        "padded": padded_rows,
+        "dropped_count": len(dropped_rows),
+        "padded_count": len(padded_rows),
+        "note": (
+            "开题点名但未挂上交付菜单的模块不进图；当作施工清单补匹配/能力后重 bake。"
+            "弱提醒，不挡导出。"
+            if has_drop
+            else "开题枚举与交付菜单对齐，无未进图项。"
+        ),
+    }
+    if has_drop:
+        prev = str(model.get("leaf_source_note") or "").strip()
+        note = _DELIVERY_GAP_NOTE
+        if _DELIVERY_GAP_NOTE not in prev:
+            model["leaf_source_note"] = f"{prev}；{note}" if prev else note
+    return model
 
 
 def _proposal_looks_like_identity_enum(text: str) -> bool:
@@ -1521,37 +1603,42 @@ def _staff_identity_section(
     *,
     material_sec: dict[str, Any] | None = None,
     proposal_text: str = "",
-) -> dict[str, Any] | None:
-    """已交付岗位 → 身份枝；有材料段则用开题命名并对齐 menus，否则回落岗位 menus。"""
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """已交付岗位 → 身份枝；有材料段则用开题命名并对齐 menus，否则回落岗位 menus。
+
+    返回 ``(section|None, align_stats)``；无材料对齐时 stats 为空。
+    """
+    empty = _empty_align_stats()
     post_lab = str(post.get("label") or post.get("id") or "").strip()
     if not post_lab:
-        return None
+        return None, empty
     staff_menus = _menus_for_thesis_modules(
         _staff_menu_items(schema, post), proposal_text=proposal_text
     )
     if not staff_menus:
-        return None
+        return None, empty
     branch_lab = (
         str(material_sec.get("label") or post_lab).strip() or post_lab
         if material_sec
         else post_lab
     )
     if material_sec:
-        return {
-            "label": branch_lab,
-            "modules": _align_material_modules_to_menus(
-                list(material_sec.get("modules") or []),
-                side="admin",
-                menus=staff_menus,
-                role_lab=branch_lab,
+        mods, stats = _align_material_modules_to_menus_with_stats(
+            list(material_sec.get("modules") or []),
+            side="admin",
+            menus=staff_menus,
+            role_lab=branch_lab,
+        )
+        return {"label": branch_lab, "modules": mods}, stats
+    return (
+        {
+            "label": post_lab,
+            "modules": _menu_as_identity_modules(
+                staff_menus, side="admin", role_lab=post_lab
             ),
-        }
-    return {
-        "label": post_lab,
-        "modules": _menu_as_identity_modules(
-            staff_menus, side="admin", role_lab=post_lab
-        ),
-    }
+        },
+        empty,
+    )
 
 
 def _model_by_identity_from_schema(
@@ -1585,7 +1672,9 @@ def _model_by_identity_from_schema(
             }
         )
     for post in _delivered_staff_posts(schema):
-        sec = _staff_identity_section(schema, post, proposal_text=proposal_text)
+        sec, _stats = _staff_identity_section(
+            schema, post, proposal_text=proposal_text
+        )
         if sec:
             sections.append(sec)
     if admin_menus:
@@ -1651,6 +1740,8 @@ def _model_by_identity(
     used: set[int] = set()
     aligned: list[dict[str, Any]] = []
     weak_cover = False
+    gap_dropped: list[dict[str, str]] = []
+    gap_padded: list[dict[str, str]] = []
 
     if has_user:
         role_lab = _identity_label_from_slot(roles, "user")
@@ -1667,6 +1758,11 @@ def _model_by_identity(
             )
             if stats["eligible"] >= 4 and stats["kept"] * 2 < stats["eligible"]:
                 weak_cover = True
+            drows, prows = _gap_rows_from_stats(
+                stats, branch=branch_lab, side="user"
+            )
+            gap_dropped.extend(drows)
+            gap_padded.extend(prows)
             aligned.append({"label": branch_lab, "modules": mods})
         else:
             weak_cover = True
@@ -1688,10 +1784,16 @@ def _model_by_identity(
         mat = _pick_material_section(
             sections, slot="staff", role_lab=post_lab, used=used
         )
-        sec = _staff_identity_section(
+        sec, stats = _staff_identity_section(
             schema, post, material_sec=mat, proposal_text=proposal_text
         )
         if sec:
+            branch_lab = str(sec.get("label") or post_lab).strip() or post_lab
+            drows, prows = _gap_rows_from_stats(
+                stats, branch=branch_lab, side="staff"
+            )
+            gap_dropped.extend(drows)
+            gap_padded.extend(prows)
             aligned.append(sec)
 
     if admin_menus:
@@ -1709,6 +1811,11 @@ def _model_by_identity(
             )
             if stats["eligible"] >= 4 and stats["kept"] * 2 < stats["eligible"]:
                 weak_cover = True
+            drows, prows = _gap_rows_from_stats(
+                stats, branch=branch_lab, side="admin"
+            )
+            gap_dropped.extend(drows)
+            gap_padded.extend(prows)
             aligned.append({"label": branch_lab, "modules": mods})
         else:
             weak_cover = True
@@ -1747,7 +1854,8 @@ def _model_by_identity(
         leaf_source="materials",
     )
     model["capabilities"] = list(schema.get("capabilities") or [])
-    return _attach_material_parse_warnings(model, parse_warnings)
+    model = _attach_material_parse_warnings(model, parse_warnings)
+    return _attach_delivery_gap(model, dropped=gap_dropped, padded=gap_padded)
 
 
 def _model_by_biz(schema: dict[str, Any], *, title: str) -> dict[str, Any]:
@@ -2167,7 +2275,18 @@ def _child_rows(kids: list[dict]) -> list[list[dict]]:
     if not kids:
         return []
     per = _MAX_KIDS_PER_ROW
-    return [kids[i : i + per] for i in range(0, len(kids), per)]
+    if len(kids) <= per:
+        return [kids]
+    # 多行均分，末行不落单（9 个 → 5+4，而不是 8+1 掉下一行）
+    rows = int(math.ceil(len(kids) / per))
+    base, extra = divmod(len(kids), rows)
+    out: list[list[dict]] = []
+    idx = 0
+    for r in range(rows):
+        k = base + (1 if r < extra else 0)
+        out.append(kids[idx : idx + k])
+        idx += k
+    return out
 
 
 def _subtree_width(node: dict) -> float:
@@ -2257,10 +2376,20 @@ def _vtext(label: str, cx: float, y0: float, h: float) -> str:
     for i, ch in enumerate(chars):
         parts.append(
             f'<text x="{_f(cx)}" y="{_f(start + i * step)}" text-anchor="middle" '
-            f'font-size="12" font-family="Microsoft YaHei, SimSun, serif" '
+            f'font-size="12" font-family="{FONT_CN}" '
             f'fill="#000">{_esc(ch)}</text>'
         )
     return "".join(parts)
+
+
+def _presentation_tree(node: dict, depth: int = 0) -> dict[str, Any]:
+    """出图姿态：只有根节点横排，二/三级一律竖排窄框（对齐样例模块图）。"""
+    out = dict(node)
+    if depth >= 1:
+        out["orient"] = "v"
+    kids = [c for c in (node.get("children") or []) if isinstance(c, dict)]
+    out["children"] = [_presentation_tree(c, depth + 1) for c in kids]
+    return out
 
 
 def render_module_svg(model: dict[str, Any] | None) -> str:
@@ -2273,7 +2402,7 @@ def render_module_svg(model: dict[str, Any] | None) -> str:
             layout=layout_tag,
         )
 
-    root = model["root"]
+    root = _presentation_tree(model["root"])
     positions: dict[str, dict] = {}
     tree_w = _subtree_width(root)
     _layout(root, tree_w / 2 + _PAD, _PAD, positions)
@@ -2293,7 +2422,11 @@ def render_module_svg(model: dict[str, Any] | None) -> str:
             continue
         x1, y1 = pa["cx"], pa["y"] + pa["h"]
         x2, y2 = pb["cx"], pb["y"]
-        mid_y = (y1 + y2) / 2
+        # 分线紧贴父框下方 16px：横段落在「父框底 → 子框顶」的空档里，
+        # 不会穿过任何同级子框（原先取中点，长文案竖框会把中点吃进框内）
+        mid_y = y1 + 16
+        if mid_y > y2 - 1:
+            mid_y = (y1 + y2) / 2
         edge_parts.append(
             f'<path class="mod-edge" d="M {_f(x1)} {_f(y1)} V {_f(mid_y)} H {_f(x2)} V {_f(y2)}" '
             f'fill="none" stroke="#000" stroke-width="1"/>'
@@ -2308,7 +2441,7 @@ def render_module_svg(model: dict[str, Any] | None) -> str:
         else:
             text = (
                 f'<text x="{_f(p["cx"])}" y="{_f(p["cy"] + 4)}" text-anchor="middle" '
-                f'font-size="12" font-family="Microsoft YaHei, SimSun, serif" '
+                f'font-size="12" font-family="{FONT_CN}" '
                 f'fill="#000">{_esc(p["label"])}</text>'
             )
         node_parts.append(
