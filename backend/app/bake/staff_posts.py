@@ -703,6 +703,15 @@ def _pick_label_from_proposal(
 
 # 已挂岗位的显示名：开题写到的称呼原样替换目录默认（禁光杆「导师」等开题套话）
 _POST_LABEL_ALIASES: dict[str, tuple[str, ...]] = {
+    # 多端票务/入驻：材料「主办方商家后台」优先于皮默认「主办方」或电商「商家」
+    "shop_merchant": (
+        "主办方商家",
+        "主办方",
+        "入驻商家",
+        "商家运营",
+        "商家",
+        "商户",
+    ),
     "intern_tutor": (
         "企业导师",
         "带教导师",
@@ -1375,6 +1384,87 @@ def _restore_crm_pending_when_account_mgr(
     schema["menus"] = menus
 
 
+def apply_material_identity_role_labels(
+    schema: dict[str, Any],
+    proposal_text: str = "",
+) -> dict[str, Any]:
+    """材料「{身份}功能模块划分为…」段头 → 覆盖 roles / staff_posts 显示名。
+
+    皮默认（观众/主办方/商家）不得盖掉材料已写清的称呼；无身份段则不动。
+    """
+    raw = (proposal_text or "").strip()
+    if not raw or not isinstance(schema, dict):
+        return schema
+    from app.bake.schema.modules import (
+        _pick_material_section,
+        parse_identity_modules,
+    )
+
+    sections = parse_identity_modules(raw, schema=schema)
+    if not sections:
+        return schema
+    roles = dict(schema.get("roles") or {})
+    used: set[int] = set()
+
+    def _set_slot(slot: str, lab: str) -> None:
+        lab = (lab or "").strip()
+        if not lab:
+            return
+        cur = roles.get(slot) if isinstance(roles.get(slot), dict) else None
+        if not cur:
+            return
+        # 保留工厂「（总管）」后缀习惯，材料名本身不含时再拼
+        prev = str(cur.get("label") or "").strip()
+        if "（总管）" in prev and "总管" not in lab:
+            lab = f"{lab}（总管）"
+        roles[slot] = {**cur, "label": lab[:24]}
+
+    user_prev = str((roles.get("user") or {}).get("label") or "").strip()
+    user_sec = _pick_material_section(
+        sections, slot="user", role_lab=user_prev or "用户", used=used
+    )
+    if user_sec:
+        _set_slot("user", str(user_sec.get("label") or ""))
+
+    posts = [
+        dict(p)
+        for p in (roles.get("staff_posts") or [])
+        if isinstance(p, dict) and p.get("id")
+    ]
+    clerks = [p for p in posts if p.get("kind") == "clerk"]
+    if clerks:
+        staff_prev = str(clerks[0].get("label") or "").strip()
+        staff_sec = _pick_material_section(
+            sections,
+            slot="staff",
+            role_lab=staff_prev or "经办员",
+            used=used,
+        )
+        if staff_sec:
+            lab = str(staff_sec.get("label") or "").strip()[:24]
+            if lab:
+                clerks[0]["label"] = lab
+                # 同步 posts 列表里同一对象
+                for p in posts:
+                    if p.get("id") == clerks[0].get("id"):
+                        p["label"] = lab
+                        break
+                sub = roles.get("subadmin") if isinstance(roles.get("subadmin"), dict) else None
+                if sub:
+                    roles["subadmin"] = {**sub, "label": lab}
+        roles["staff_posts"] = posts
+
+    admin_prev = str((roles.get("admin") or {}).get("label") or "").strip()
+    admin_sec = _pick_material_section(
+        sections, slot="admin", role_lab=admin_prev or "管理员", used=used
+    )
+    if admin_sec:
+        _set_slot("admin", str(admin_sec.get("label") or ""))
+
+    schema["roles"] = roles
+    return schema
+
+
 def attach_staff_posts(
     schema: dict[str, Any],
     domain: str,
@@ -1535,6 +1625,8 @@ def attach_staff_posts(
     }
     _prune_empty_clerks(schema)
     _ensure_category_entity(schema)
+    # 材料身份段最后盖：用户/主办方商家/平台管理员等跟开题走
+    apply_material_identity_role_labels(schema, proposal_text)
     return schema
 
 

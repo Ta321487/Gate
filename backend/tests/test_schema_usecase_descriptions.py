@@ -13,9 +13,17 @@ from app.bake.schema.usecase_descriptions import (
     select_usecase_descriptions,
     usecase_description_model,
 )
+from app.services import usecase_flows as uf
+from app.services.asset_seeds import load_seed_json
 
 
 class UsecaseDescriptionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        load_seed_json.cache_clear()
+        uf.invalidate_cache()
+        uf.bootstrap_from_seed()
+
     def _schema(self, stem: str) -> dict:
         path = Path(__file__).resolve().parents[0] / "golden" / "schema" / f"{stem}.json"
         return json.loads(path.read_text(encoding="utf-8"))
@@ -39,6 +47,10 @@ class UsecaseDescriptionTests(unittest.TestCase):
         self.assertNotIn("电子病历", md)
         self.assertNotIn("医保", md)
         self.assertNotIn("自习室", md)
+        # 表号贴汉字：表3.1 / 见表3.1所示，禁止「表 3.1」
+        self.assertRegex(md, r"表\d+\.\d+")
+        self.assertNotRegex(md, r"表 \d")
+        self.assertNotRegex(md, r"见表 \d")
         for c in model["cases"]:
             self.assertTrue(c["flow"])
             self.assertTrue(c["actor"])
@@ -191,6 +203,72 @@ class UsecaseDescriptionTests(unittest.TestCase):
         picked = select_usecase_descriptions(cands, count=3)
         keys = {f"{c['side']}::{c['menu_key']}" for c in picked}
         self.assertIn("admin::blind_pools", keys)
+
+    def test_cinema_performance_forks_seat_not_shop_cart(self) -> None:
+        """演艺 performance ≠ 影院 cinema；选座须入选且禁商品/发货腔。"""
+        base = {
+            "domain": "DOM-CINEMA",
+            "cinemaFace": "performance",
+            "labels": {
+                "appName": "潮汐演艺票务",
+                "cinemaFace": "performance",
+                "seatOrgNoun": "主办方",
+            },
+            "roles": {
+                "user": {"label": "用户"},
+                "admin": {"label": "管理员"},
+                "staff_posts": [
+                    {
+                        "id": "shop_merchant",
+                        "label": "商家",
+                        "packs": ["merchant_ops"],
+                    }
+                ],
+            },
+            "menus": {
+                "user": [
+                    {"key": "seat_shows", "label": "演出选座"},
+                    {"key": "cart", "label": "购物车"},
+                    {"key": "my_orders", "label": "我的票务订单"},
+                ],
+                "admin": [
+                    {"key": "archive", "label": "场次管理"},
+                    {"key": "orders", "label": "订单管理"},
+                ],
+            },
+            "entities": {"archive": {"label": "场次"}},
+            "capabilities": ["org_users"],
+        }
+        prop = "用户选座购票；主办方维护演出场次与出票核销。"
+        model = usecase_description_model(base, proposal_text=prop, count=4)
+        kinds = [c["kind"] for c in model["cases"]]
+        self.assertIn("seat_shows", kinds)
+        self.assertIn("auth_login", kinds)
+        blob = model["markdown"]
+        self.assertIn("选座购票", blob)
+        self.assertIn("演出场次", blob)
+        self.assertNotIn("确认、发货", blob)
+        self.assertNotIn("将商品加入", blob)
+        self.assertIn("无物流发货", blob)
+        # 材料已写「用户」则跟材料，不再强收成「观众」
+        actors = {c["actor"] for c in model["cases"]}
+        self.assertIn("用户", actors)
+        self.assertNotIn("观众", actors)
+        # 场次/订单应能进 4 席（压过购物车）
+        self.assertTrue(
+            "archive_admin" in kinds or "orders" in kinds,
+            kinds,
+        )
+
+        cinema = dict(base)
+        cinema["cinemaFace"] = "cinema"
+        cinema["labels"] = {**base["labels"], "cinemaFace": "cinema"}
+        m2 = usecase_description_model(cinema, proposal_text=prop, count=4)
+        seat = next(c for c in m2["cases"] if c["kind"] == "seat_shows")
+        self.assertIn("放映场次", seat["summary"])
+        self.assertNotIn("演出场次", seat["summary"])
+        perf = next(c for c in model["cases"] if c["kind"] == "seat_shows")
+        self.assertIn("演出场次", perf["summary"])
 
     def test_claim_proof_and_make_notes_on_main_path(self) -> None:
         schema = {

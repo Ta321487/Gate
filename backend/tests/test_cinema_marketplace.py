@@ -147,15 +147,36 @@ class CinemaMarketplaceSchemaTests(unittest.TestCase):
             resolve_shell_nav_style("DOM-CINEMA", "潮汐", text),
             "storefront",
         )
-        posts = __import__(
-            "app.bake.staff_posts", fromlist=["staff_posts_for_domain"]
-        ).staff_posts_for_domain("DOM-CINEMA", title="潮汐", proposal_text=text)
+        from app.bake.staff_posts import attach_staff_posts, staff_posts_for_domain
+        from app.bake.schema.usecases import list_usecase_actors
+
+        posts = staff_posts_for_domain(
+            "DOM-CINEMA", title="潮汐", proposal_text=text
+        )
+        # 材料点名「主办方商家」→ 岗名跟材料（不再停在皮默认「主办方」）
         self.assertTrue(
             any(
-                p.get("id") == "shop_merchant" and p.get("label") == "主办方"
+                p.get("id") == "shop_merchant" and p.get("label") == "主办方商家"
                 for p in posts
-            )
+            ),
+            posts,
         )
+        # 完整身份段：用户 / 主办方商家 / 平台管理员
+        full = (
+            "用户功能模块划分为：登录注册模块、选座购票模块、订单模块。"
+            "主办方商家后台功能模块划分为：演出场次管理模块、订单核销模块。"
+            "平台管理员后台功能模块划分为：用户管理模块、主办方商家管理模块、演出审核管理模块。"
+        )
+        attached = attach_staff_posts(
+            _cinema_schema("潮汐演艺票务销售网站", full),
+            "DOM-CINEMA",
+            proposal_text=full,
+            title="潮汐演艺票务销售网站",
+        )
+        actors = {a["label"] for a in list_usecase_actors(attached)}
+        self.assertIn("用户", actors)
+        self.assertIn("主办方商家", actors)
+        self.assertTrue(any("平台管理员" in lab for lab in actors), actors)
         from app.bake.profile_fields import profile_fields_for
 
         fields = profile_fields_for("DOM-CINEMA", title="潮汐", proposal_text=text)
