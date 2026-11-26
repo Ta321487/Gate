@@ -59,6 +59,14 @@ backend/_dbg_*.py
 # local tempfile leftovers (tempfile falls back to cwd on Windows)
 backend/tmp*/
 backend/tmp*
+backend/clsman_*/
+backend/gf_islands_*/
+backend/seq_thicken_*/
+backend/pytest-of-*/
+frontend/.tmpbuild/
+
+# local one-off audit dumps
+data/_audit*
 
 # 终稿吸收本机探针 PDF（不进仓；夹具用 tests 内嵌片段）
 data/thesis_absorb/
