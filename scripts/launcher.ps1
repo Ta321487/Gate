@@ -1,4 +1,4 @@
-# Gate console launcher
+﻿# Gate console launcher
 # Entry: scripts\launcher.bat [action]
 # Save as UTF-8 with BOM (Chinese + Windows PowerShell 5.1)
 #

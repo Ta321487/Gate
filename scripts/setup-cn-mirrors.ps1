@@ -1,4 +1,4 @@
-# 国内镜像一键配置（Windows，用户级）
+﻿# 国内镜像一键配置（Windows，用户级）
 # 用法：powershell -ExecutionPolicy Bypass -File scripts\setup-cn-mirrors.ps1
 
 $ErrorActionPreference = 'Stop'

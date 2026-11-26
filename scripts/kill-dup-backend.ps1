@@ -1,4 +1,4 @@
-# Detect duplicate uvicorn backends for this repo.
+﻿# Detect duplicate uvicorn backends for this repo.
 # Keep listening process tree (venv parent + child); with -All kill every match.
 # Called by kill-dup-backend.bat
 

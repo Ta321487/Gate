@@ -12,7 +12,8 @@ Windows 启动与运维脚本。**约定：bat 只做入口，ps1 做逻辑。**
 | `stop-backend.bat` | 停止全部 uvicorn 后端 |
 | `stop-frontend.bat` | 停止 `:5300` 监听进程 |
 | `kill-dup-backend.bat` | 清理重复 uvicorn（默认保留最新；`/all` 全杀） |
-| `verify-bats.bat` | 检查 bat 是否误存为 UTF-8 BOM / 含中文 |
+| `verify-scripts.bat` | **编码门禁**：`.bat` 纯 ASCII 无 BOM、`.ps1` 带 UTF-8 BOM，并用 5.1 解析器验语法；`-Fix` 自动补/去 BOM |
+| `verify-bats.bat` | 旧入口别名（等价 `verify-scripts.bat`，只保留兼容） |
 | `setup-cn-mirrors.ps1` | 国内镜像一键配置（pip / npm / Maven / Docker，**用户级**） |
 | `start-aoci-ui.vbs` | **推荐** 启动本仓库 AOCI 面板（无窗口） |
 | `stop-aoci-ui.vbs` | 停止本仓库已登记的 AOCI 面板 |
@@ -61,11 +62,16 @@ scripts\launcher.bat stop
 
 **不要把中文写进 `.bat`。** cmd 默认 GBK；若 bat 带 UTF-8 BOM，会出现 `错缀echo`、`f not exist` 等乱执行。
 
-改完 bat 可跑：
+**为什么 `.ps1` 必须带 BOM。** Windows PowerShell 5.1（`launcher.bat` 调的就是它）把无 BOM 的 UTF-8 当 GBK 解码；中文字符串末尾的字节可能把 `"` 当成双字节的尾字节吞掉，字符串从此不闭合，随后整段 C# 被当 PowerShell 语句解析，报一串 `缺少 using 指令` / `意外的属性 DllImport`。PowerShell 7 无 BOM 也能读，所以问题只在双击 `.bat` 走 5.1 时才暴露——`launcher.ps1` 就这样崩过一次（2026-11-23 批量重写丢了 BOM）。
+
+改完 `.bat` 或 `.ps1` 都跑一遍门禁：
 
 ```bat
-scripts\verify-bats.bat
+scripts\verify-scripts.bat          :: 检查（含 5.1 语法解析）
+scripts\verify-scripts.bat -Fix     :: 能自动修的修掉：.bat 去 BOM / .ps1 补 BOM
 ```
+
+`scripts\verify-bats.bat` 是旧别名，行为完全一样。控制台菜单 `V` 调的也是这条门禁。
 
 ## Windows Terminal 标签页
 

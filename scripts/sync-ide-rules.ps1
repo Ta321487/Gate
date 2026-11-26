@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # 以 .cursor/rules 为权威源，把规则同步到 .trae/rules（.mdc -> .md，正文原样）。
 # 规则只在 .cursor/rules 改，改完跑本脚本；不要在 .trae/rules 手改，否则会漂移。
 $ErrorActionPreference = 'Stop'

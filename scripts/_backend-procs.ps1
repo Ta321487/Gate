@@ -1,4 +1,4 @@
-# Shared backend process discovery + light venv checks + owned-PID start
+﻿# Shared backend process discovery + light venv checks + owned-PID start
 # Used by launcher.ps1 / kill-dup-backend.ps1 / start-backend.ps1 (dot-source only)
 
 $script:GfBackendPort = 8000

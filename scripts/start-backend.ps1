@@ -1,4 +1,4 @@
-# Start Gate backend with owned PID (venv). Called by start-backend.bat / launcher.
+﻿# Start Gate backend with owned PID (venv). Called by start-backend.bat / launcher.
 # Save as UTF-8 with BOM for Windows PowerShell 5.1
 
 param(
