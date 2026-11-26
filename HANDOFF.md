@@ -28,13 +28,128 @@
 | 优先 | 项 | 口令 / 入口 | 现状 |
 |------|----|-------------|------|
 | 1 | **词表待补消缺** | `做词表建议稿` | **已齐**（建议字段+一键填+草稿；`test_zh_lexicon` 14） |
-| 2 | **资产台落地** | parked **q**；真源 [`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md) | **波次 A+B+C+D 已齐**（含 #11 论文图题 · 2026-11-23）；无余口令 |
+| 2 | **资产台落地** | parked **q**；真源 [`docs/factory-asset-catalogs.md`](./docs/factory-asset-catalogs.md) | A～D+#14 已齐；**波次 F·68 域加厚已齐**；余 #13；口令 `做功能名台` |
 | 3 | **D1 论文图几何** | parked **m**；模块/序列/活动厂内排版仍债 | 导出/rubric 已齐 ≠ 初开可读 |
 | 4 | **旧题 canary** | `test_audit_group_canaries` ACTIVITY/CLUB | **已修**（2026-11-19）：题名裸「社团」不再改 CLUB |
 | 5 | **AOCI 收尾** | 本批新路径（含 `status_copy` / `dict_values` / 侧栏页 / 词表建议等）→ scope acknowledge → `aoci_maintain` | 推送后做；MCP 挂则停手重启 |
 
 **本批提交主题**（2026-11-16 拆推）：文案口径 → 资产台册 → 词表+Stripe+主题色 → 论文图材料 → 等待态 I2 → 手调/对账 UX → 本交接。轨迹以 `git log` 为准。  
 **勿提交**：根目录学生 `.docx`、`er-*.drawio` 草稿、`backend/` 下短随机名临时文件。
+
+### 本会话（2026-11-26）· 用例端名跟材料 ✅
+
+- **站队**：**修工厂**（材料写了用户/主办方商家/平台管理员就别皮盖成观众/商家）。
+- **已齐**：`apply_material_identity_role_labels`（身份段盖 roles）；`shop_merchant` 别名优先「主办方商家」；用例描述 `_cinema_role_polish` 不再把「用户→观众」。
+- **测**：`test_cinema_marketplace` + `test_schema_usecase_descriptions` 对口绿（70 含邻测）。
+- **用法**：该题重匹配 / 重 bake 后用例图三端应跟开题身份段；未提交。
+
+### 本会话（2026-11-26）· 论文表校模板三线+轻网格 ✅
+
+- **站队**：**修工厂**（论文材料导出默认样式，不碰学生包业务 UI）。
+- **已齐**：共用 `thesis_table_html.py` / `thesisTableHtml.js`；物理设计 HTML、用例描述/测例复制 Word、工厂预览均顶/表头下/底粗线 + 行间·竖向细线；禁 `border="1"`。
+- **测**：`test_thesis_table_html` + `test_schema_thesis_export` 对口绿。
+- **用法**：刷新前后端 → 各表材料「复制」贴 Word 看线型。
+- **未提交**：本批；要提交再说。
+
+### 本会话（2026-11-26）· Redis 软双显（防假宣称） ✅
+
+- **站队**：**修工厂**（未做 Session bake；只防老师抓「材料写了 Redis、包里没有」）。
+- **已齐**：`UNDELIVERED_STACK_HINTS` 点名 Redis → 匹配黄条；`SOFT_OVERREACH` → 「本期不做」；匹配提示禁 README/论文假宣称。ASCII 软超壳另扫正文承诺域（技术路线也能命中）。
+- **测**：`test_stack_scan` + `test_form_first_residual` 对口绿。
+- **parked s**：软双显已齐；全量 `addons.redis` 仍见 [`docs/redis-delivery.md`](./docs/redis-delivery.md)。
+- **未提交**：本批；要提交再说。
+
+### 本会话（2026-11-26）· 可贴材料换行 + 数字字母贴边（全域） ✅
+
+- **站队**：**修工厂**。
+- **已齐**：`<p>` 换行（禁软回车）；`zh_copy.squeeze_*` 收口——库表论文稿 / 用例描述 / 测例 / 用例说明段 / 图题 / 序列工作流程；前端 `writeMaterialClipboard` 覆盖复制 Word 出口。
+- **测**：`test_zh_copy` + `test_schema_usecase_descriptions` 对口绿。
+- **用法**：刷新前后端 → 各材料「复制/下载」再贴。
+- **未提交**：与本批一并；要提交再说。
+
+### 本会话（2026-11-26）· 波次 F3 字典/菜单具名 ✅
+
+- **站队**：**修工厂**（资产台加厚，**不烤 68 包**）。
+- **已齐**：单据域 `ticket_priority` 具名；`DOM-CARRENT`/`DOM-HOTEL` `refund_type`；菜单 always_on×68 具名；`_domain_rows` 具名盖 `*`（不再整表替换）；两侧栏「扫 68 域」。
+- **测**：`test_dict_values` + `test_menu_matrix` **19 绿**。
+- **用法**：重启后端 → 字典台/菜单矩阵「导入」→「扫 68 域」应零待补。
+- **余**：#13 功能名台另令；波次 F 已齐。
+- **未提交**：本批；要提交再说。
+
+### 本会话（2026-11-26）· 波次 F2 状态话术具名 ✅
+
+- **站队**：**修工厂**（资产台加厚，**不烤 68 包**）。
+- **已齐**：有 order/ticket/reservation 的域全具名（专名口吻 + 缺码从 `*` 抄齐）；`status_copy.catalog_domain_gaps`；侧栏「扫 68 域」。无状态机内容域不记缺口。
+- **测**：`test_status_copy` **11 绿**。
+- **用法**：重启后端 → 状态话术「导入初始话术」→「扫 68 域」应零待补。
+- **余**：F3 字典/菜单矩阵；#13 另令。
+- **未提交**：本批；要提交再说。
+
+### 本会话（2026-11-26）· 波次 F·68 域加厚首刀 ✅
+
+- **站队**：**修工厂**（资产台加厚，**不烤 68 包**）。
+- **已齐**：测试账号种子 68×三端具名（昵称跟域角色）+ `catalog_domain_gaps` + 侧栏「扫 68 域」；动作词补 `DOM-SHOP` order；`diagram_verbs.catalog_domain_gaps`。
+- **测**：`test_demo_accounts` / `test_diagram_verbs` 对口绿。
+- **用法**：重启后端 → 测试账号「导入种子」→「扫 68 域」应零待补。
+- **余**：F2 状态话术具名再厚、F3 字典/菜单矩阵；#13 另令。
+- **未提交**：本批；要提交再说。
+
+### 本会话（2026-11-26）· 资产台 UX 统一（待补 `-` / 顶栏）✅
+
+- **站队**：**修工厂**（全台共享，不单擦用例流程页）。
+- **已齐**：`gapStatDisplay`——未检查显示 `-`，检查后才 `0/n`；词表进门不再预扫出 416；`AssetDeskActions` 统一检查/导入/登记；用例流程文案与占位符去演艺专域腔。
+- **未提交**：与 #14 同批；要提交再说。
+
+### 本会话（2026-11-26）· #14 用例描述流程台五段齐 ✅
+
+- **站队**：**修工厂**（清双真源；68 域菜单全收）。
+- **已齐**：`factory_usecase_flow` + 种子 + 启动迁入；`_flow_spec` 只读台；侧栏「用例流程」；域专菜单 8 kind 不再落 `open`；`catalog_domain_gaps` 扫 68 域。
+- **测**：`test_usecase_flows` + `test_schema_usecase_descriptions` **17 绿**。
+- **用法**：重启后端后侧栏导入种子；点「扫 68 域」应零待补。
+- **未提交**：本批；要提交再说。
+
+### 本会话（2026-11-26）· 用例描述演艺/影院分叉 + 潮汐勾选 ✅
+
+- **站队**：**修工厂**（潮汐探针）+ 本包 Overrides 锁 4 条。
+- **为何没分叉**：`seat_shows` 落成 `open`（优先级 20）被购物车挤掉；`cart`/`orders` 模板写死「商品/发货」，**不读 `cinemaFace`**。壳/词表已分 performance≠cinema，用例描述表未接。
+- **已齐**：`usecase_descriptions` 认 `seat_shows`；按 `cinemaFace` 分叉选座/购物车/订单/评价文案与角色皮；潮汐 Overrides 勾选登录+选座+场次+订单核销。
+- **测**：`test_schema_usecase_descriptions` **10 绿**。
+- **用法**：重启后端后打开用例描述表；应见观众选座 / 主办方场次·核销，无「确认、发货」。
+- **未提交**：本批；要提交再说。
+
+### 本会话（2026-11-26）· 模块图开题差账弱提醒（施工清单）✅
+
+- **站队**：**修工厂**（开题已定死只能补交付；图仍不画假功能）。
+- **已齐**：`modules.py` 对齐时收集 `delivery_gap.dropped` / `padded`；图弹层 + 材料卡 `banner warn` +  pill「开题差账」；**不挡导出**。
+- **测**：`test_schema_modules` 含 `test_delivery_gap_lists_dropped_opening_modules`（全文件绿）。
+- **用法**：打开功能模块图（必要时「重新加载」刷缓存）看未进图清单 → 补匹配/能力 → 重 bake。
+- **未提交**：本批；要提交再说。
+
+### 本会话（2026-11-26）· 用例图材料路径重名 + 潮汐 Overrides ✅
+
+- **站队**：**修工厂**（潮汐仅探针）+ 本包 Overrides 角色短签缓解。
+- **红因**：材料路径早退未 `_dedupe_level1`；支付一级并名「管理购物车/订单」却画两圈；裸「用户模块」收成「查看用户」。
+- **已齐**：材料路径补 dedupe；用户侧裸用户→个人资料；一级重名 + 用户侧禁「查看用户」闸；潮汐 Overrides 角色短签（观众/平台管理员/主办方）并 force 刷缓存。
+- **测**：`test_schema_usecases` **15 绿**（含潮汐型开题回归）。
+- **用法**：刷新用例图页；后端若未热重载，重启后再重拉以免旧进程写坏缓存。
+- **追加**：微调 Tab「参与者」只拉 `actor=user` → 只显示 1 个；`OverridesTab.loadUsecaseRows` 已改按 `actors` 全量拉。刷新微调页应见 3 行参与者。
+- **追加**：论文图拖条默认被 `.diagram-chrome{flex:1}` 撑出大空白；改为按内容增高 + `useDiagramFrameResize` ResizeObserver/延时贴条。刷新用例图弹层，拖条应在「复制描述」下方一点。
+- **未提交**：本批；要提交再说。
+
+### 本会话（2026-11-26）· features 近义去重 + #13 立项 ✅
+
+- **站队**：**修工厂**（潮汐清单双条仅探针）。
+- **已齐**：`feature_names.py` 折叠 5 组近义；order_extras / trade_thicken / message_template / follow_thicken 接线；`test_feature_names` 绿。
+- **立项**：资产台 **#13 功能名台**（波次 E）；口令 `做功能名台` / `做资产台 #13`——有空再做五段台，今天不迁库。
+- **未提交**：本批 + 工作区其它债；要提交拆主题。
+
+### 本会话（2026-11-25）· 论文图动词接线收口（豆包未完）✅
+
+- **站队**：**修工厂**（补启动迁入 + 传参/空缓存回退；不改几何大算法）。
+- **已齐**：`main.py` 挂 `diagram_verbs.migrate_seed_if_empty` / bootstrap；`_rows_or_seed` 空缓存回退种子（对齐 titles）；`material_phases`/`flow_gap` 正确吃 `menu_key`+`menu_label`；序列拼句与 gaps 扫描对齐；关键路径吞异常改 warning 日志。
+- **测**：`test_diagram_verbs` + `test_schema_sequence` + `test_schema_activity` **57 绿**。
+- **未提交**：豆包整包图几何/verbs 仍在工作区；`backend/` 下大量临时目录**禁止**进库。提交时拆主题。
+- **余**：用例描述 `_flow_spec` → **#14 已齐**；ER「关联」兜底待定；要提交再说。
 
 ### 本会话（2026-11-23）· 潮汐质检红 + 诊断编排 D0 ✅
 
@@ -354,7 +469,7 @@
 
 | 面 | 定稿 |
 |---|---|
-| 头图 | 布局 `PortalCarousel` = 管理端广告位（+ 预置 `portalBanners`） |
+| 头图 | 布局 `PortalCarousel` = 管理端广告位为真源；bake 预置写入 `sys_banner`；库空才垫 `portalBanners` |
 | 分类 | `/api/categories` 管理端定；纯文字条；含「全部」>8 单行横滑 |
 | 场次 | 按分类分栏；栏内按 `soldCount` 排；切换叫「场次 / 周视图」 |
 | 导航 | 场次列表→详情→选座（影院皮仍可列表直达座位图） |

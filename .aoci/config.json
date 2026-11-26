@@ -44,7 +44,7 @@
     "version": "managed-scope-policy/v2",
     "profile": "production",
     "observe_change_policy": "review_required",
-    "approval_mode": "inherit",
+    "approval_mode": "review",
     "approval_thresholds": {
       "entry_removal_count": 25,
       "entry_removal_percent": 25
@@ -59,6 +59,17 @@
         "source": "user",
         "created_by": "cursor",
         "order": 10,
+        "enabled": true
+      },
+      {
+        "rule_id": "exclude-acceptance-png",
+        "action": "exclude",
+        "pattern": "docs/acceptance/*.png",
+        "pattern_kind": "glob",
+        "reason": "acceptance screenshots, not code cognition",
+        "source": "user",
+        "created_by": "cursor",
+        "order": 20,
         "enabled": true
       }
     ]
