@@ -39,7 +39,7 @@
 
 - **ECharts**：基线常驻，无需开关。
 - **Spring Security**：`addons.spring_security`；开题点名推荐开；开=真有 starter + SecurityConfig；关=不写 Security 技术名。
-- **Redis（规划）**：拟 `addons.redis`；交齐=Spring Session 落 Redis；**全域横切**（不绑 `DOM-*`）。落点见 [`redis-delivery.md`](./redis-delivery.md)；**未落地前**开题点名 → 强提示/双显，禁止静默冒充已集成。
+- **Redis（规划）**：拟 `addons.redis`；交齐=Spring Session 落 Redis；**全域横切**（不绑 `DOM-*`）。落点见 [`redis-delivery.md`](./redis-delivery.md)；**未落地前**开题/任务书点名 → `stack_scan` 警告 + 软超壳进「本期不做」双显，禁止 ZIP/README/论文冒充已集成。
 - 无生成路径不许开开关。
 
 ## 开题写了别的技术

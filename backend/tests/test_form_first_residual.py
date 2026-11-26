@@ -178,6 +178,35 @@ class FormFirstResidualTests(unittest.TestCase):
         # 智能排课走 soft 双显，不进 reject 信号
         self.assertNotIn("智能排课", decision.get("out_of_mvp_signals") or [])
 
+    def test_redis_tech_stack_soft_dual_not_reject(self) -> None:
+        """任务书技术栈写 Redis → 本期不做双显，不 reject（addons.redis 未落地）。"""
+        body = (
+            "三、主要功能\n"
+            "1. 演出场次与选座购票\n"
+            "2. 订单查询与退票\n"
+            "六、技术路线\n"
+            "后端 Spring Boot + MySQL + Redis，前端 Vue3。\n"
+        )
+        soft = scan_soft_out_of_mvp(body)
+        self.assertTrue(any(str(s).startswith("Redis") for s in soft))
+        self.assertNotIn("Redis", scan_out_of_scope(body))
+        oos = compose_out_of_mvp("DOM-CINEMA", body, scanned_signals=[])
+        self.assertTrue(any(str(x).startswith("Redis") for x in oos))
+        decision = resolve_accept(
+            ["archive", "ticket_flow", "quota", "org_users"],
+            body,
+            has_baseline_runtime=True,
+            domain="DOM-CINEMA",
+            archetypes=["ARCH-CRUD"],
+        )
+        self.assertEqual(decision["accept"], "full")
+        self.assertFalse(
+            any(
+                "Redis" in str(s)
+                for s in (decision.get("out_of_mvp_signals") or [])
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

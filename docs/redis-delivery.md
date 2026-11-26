@@ -1,9 +1,10 @@
 # 学生包 Redis 接入落点（规划册）
 
-> **状态**：规划 · **未落地** · **未开工**。  
+> **状态**：规划 · **Session bake 未落地**；**软双显已齐**（材料点名 → 匹配警告 + 本期不做，禁假宣称）。  
 > **范围**：技术栈开关接到学生 ZIP；子面注入只走**基线横切登记表**，不按域临场改业务。  
 > **对标**：`addons.spring_security`（扫词 → 匹配确认 → overlay → README/论文同字）。  
-> **姊妹册**：[`tech-stack-delivery.md`](./tech-stack-delivery.md)
+> **姊妹册**：[`tech-stack-delivery.md`](./tech-stack-delivery.md)  
+> **未落地防守**：`stack_scan.UNDELIVERED_STACK_HINTS`（Redis）+ `capabilities.SOFT_OVERREACH`；全量开关/叠层仍按本册开工。
 
 本册是**毕设可交齐**的 Redis 栈交付。架构评审意见已吸收处见 **§4**；未采纳处写明原因。
 

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal  # Any：normalize_* 入参
 
 from app.bake.scene_scan import copy_scan_text, scan_has
@@ -47,11 +48,16 @@ UNSUPPORTED_HINTS = (
     ("UniApp", "uni-app"),
 )
 # 规划内未落地 / 不能静默冒充已对齐（JPA 已可 bake，勿再列入）
+# Redis：addons.redis 未落地 → 强提示双显；禁止 ZIP/README 假宣称已集成
 UNDELIVERED_STACK_HINTS = (
     ("Thymeleaf", "Thymeleaf（SSR 未落地，实包仍为 Vue 分离）"),
     ("AdminLTE", "AdminLTE（SSR 未落地，实包仍为 Vue 分离）"),
     ("服务端渲染", "服务端渲染（SSR 未落地，实包仍为 Vue 分离）"),
     ("SSR", "SSR（未落地，实包仍为 Vue 分离）"),
+    (
+        "Redis",
+        "Redis（材料写了·本包未接 Session/缓存；禁止 README/论文假宣称已集成）",
+    ),
 )
 
 PERSISTENCE_MODES = frozenset({"jdbc", "mybatis", "jpa"})
@@ -141,7 +147,13 @@ def scan_stack(title: str, proposal_text: str = "") -> dict[str, Any]:
                 hits.append(label)
 
     for needle, tip in UNDELIVERED_STACK_HINTS:
-        if needle in text:
+        # ASCII 技术名忽略大小写（Redis/redis）；中文针仍精确子串
+        found = (
+            bool(re.search(re.escape(needle), text, re.I))
+            if needle.isascii()
+            else needle in text
+        )
+        if found:
             warnings.append(f"开题点名「{needle}」：{tip}")
             if needle not in hits:
                 hits.append(needle)

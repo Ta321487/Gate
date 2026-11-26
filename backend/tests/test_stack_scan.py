@@ -77,6 +77,16 @@ class TestStackScan(unittest.TestCase):
         self.assertTrue(any("AdminLTE" in w for w in r["warnings"]))
         self.assertEqual(r["spine"], "spa")  # 未落地仍落 spa，但不得静默
 
+    def test_undelivered_redis_warns(self) -> None:
+        """材料点名 Redis → 未落地强提示；不冒充已接。"""
+        r = scan_stack(
+            "潮汐演艺购票系统",
+            "技术路线：Spring Boot、MySQL、redis 缓存会话，前端 Vue3。",
+        )
+        self.assertTrue(any("Redis" in w for w in r["warnings"]))
+        self.assertTrue(any("未接" in w or "假宣称" in w for w in r["warnings"]))
+        self.assertIn("Redis", r["hits"])
+
     def test_jpa_named(self) -> None:
         r = scan_stack("商城系统", "持久层采用 Spring Data JPA / Hibernate。")
         self.assertEqual(r["persistence"], "jpa")
