@@ -1252,19 +1252,31 @@ def match_text(text: str, filename: str = "") -> MatchResult:
         recon_notes=recon_notes,
     )
     hits = list(dict.fromkeys(arch_hits_all + dom_hits + recon_notes))
-    # 选课域：开题写排课引擎 → 接题诚实双显（不 reject，见 SOFT_OVERREACH）
-    if dom == "DOM-COURSE":
-        from app.bake.capabilities import scan_soft_out_of_mvp
+    # 软超壳接题提示（不 reject，见 SOFT_OVERREACH）
+    from app.bake.capabilities import scan_soft_out_of_mvp
 
-        soft = scan_soft_out_of_mvp(scored)
-        if "智能排课" in soft or any(
-            k in (scored or "") for k in ("智能排课", "自动排课", "排课引擎", "排课系统", "教务排课")
-        ):
-            tip = (
-                "提示：开题拟选排课引擎 · 实包为选课占名额与冲突检测（无自动排课），接题须双显。"
-            )
-            if tip not in hits:
-                hits.append(tip)
+    soft = scan_soft_out_of_mvp(text)
+    if dom == "DOM-COURSE" and (
+        "智能排课" in soft
+        or any(
+            k in (scored or "")
+            for k in ("智能排课", "自动排课", "排课引擎", "排课系统", "教务排课")
+        )
+    ):
+        tip = (
+            "提示：开题拟选排课引擎 · 实包为选课占名额与冲突检测（无自动排课），接题须双显。"
+        )
+        if tip not in hits:
+            hits.append(tip)
+    if any(str(s).startswith("Redis") for s in soft) or re.search(
+        r"(?i)\bredis\b", text or ""
+    ):
+        tip = (
+            "提示：材料点名 Redis · 本包未接 Spring Session/缓存；"
+            "接题双显「材料写了 / 实包未接」，禁止 README/论文假宣称已集成。"
+        )
+        if tip not in hits:
+            hits.append(tip)
     warnings = match_warnings_from_hits(hits)
     return MatchResult(
         title=title,

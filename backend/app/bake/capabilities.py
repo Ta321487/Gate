@@ -535,12 +535,14 @@ _OVERREACH_NEED_COMPANION: dict[str, tuple[str, ...]] = {
 }
 
 # 软超壳：写入本期不做 / 接题双显，但不触发 accept=reject（排课引擎等）
+# Redis：addons.redis 未落地前，材料点名 → 本期不做双显，禁止 ZIP/README 冒充已接
 SOFT_OVERREACH_SIGNALS: list[tuple[str, str]] = [
     ("智能排课", "智能排课"),
     ("自动排课", "智能排课"),
     ("排课引擎", "智能排课"),
     ("排课系统", "智能排课"),
     ("教务排课", "智能排课"),
+    ("Redis", "Redis（材料写了·本包未接）"),
 ]
 
 
@@ -646,11 +648,27 @@ def scan_out_of_scope(text: str) -> list[str]:
 
 
 def scan_soft_out_of_mvp(text: str) -> list[str]:
-    """软超壳：进本期不做与接题双显，不 reject。口径同 scan_out_of_scope。"""
+    """软超壳：进本期不做与接题双显，不 reject。
+
+    业务软超壳（排课等）口径同 scan_out_of_scope（题名+功能段）。
+    ASCII 技术栈软超壳（Redis）：任务书常写在技术路线/开发环境，另扫正文承诺域。
+    """
     focus = _commitment_focus_for_scope(text)
-    if not focus.strip():
-        return []
-    return _scan_signals(focus, SOFT_OVERREACH_SIGNALS, ignore_contrast=True)
+    hits = (
+        _scan_signals(focus, SOFT_OVERREACH_SIGNALS, ignore_contrast=True)
+        if focus.strip()
+        else []
+    )
+    stack_soft = [(kw, lab) for kw, lab in SOFT_OVERREACH_SIGNALS if kw.isascii()]
+    if stack_soft:
+        body = proposal_body_scope(text)
+        if body.strip():
+            for label in _scan_signals(
+                body, stack_soft, ignore_contrast=True
+            ):
+                if label not in hits:
+                    hits.append(label)
+    return hits
 
 
 def _scan_oa_triple(text: str) -> list[str]:
