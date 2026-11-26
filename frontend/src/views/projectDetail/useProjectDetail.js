@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, message, confirm } from '../../api'
 import { renderMarkdown } from '../../mdRender'
+import { squeezeCjkAlnumSpaces, writeMaterialClipboard } from '../../utils/zhCopy'
 import { softThemeSwatch } from '../../softThemeSwatches.js'
 import { useDefensePpt } from '../../ppt/useDefensePpt.js'
 import {
@@ -1285,9 +1286,11 @@ function parseMysqlType(raw) {
  */
 function tableCopyText(t) {
   if (!t) return ''
-  const title = t.label && t.label !== t.name
-    ? `表 ${t.label}（${t.name}）`
-    : `表 ${t.name}`
+  const title = squeezeCjkAlnumSpaces(
+    t.label && t.label !== t.name
+      ? `表${t.label}（${t.name}）`
+      : `表${t.name}`,
+  )
   const paren = typeParenMode.value
   const rows = paren
     ? [['字段名', '中文名', '数据类型', '外键']]
@@ -1302,7 +1305,7 @@ function tableCopyText(t) {
     }
   }
   const body = rows.map((cols) => cols.join('\t')).join('\n')
-  return `${title}\n\n${body}`
+  return squeezeCjkAlnumSpaces(`${title}\n\n${body}`)
 }
 
 async function fetchThesisDbExport() {
@@ -1348,19 +1351,10 @@ const thesisDbExportPreviewHtml = computed(() => {
 })
 
 async function writeThesisClipboard(html, text) {
-  const plain = String(text || '').trim()
-  const rich = String(html || '').trim()
-  if (!plain && !rich) throw new Error('empty')
-  if (rich && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
-    await navigator.clipboard.write([
-      new ClipboardItem({
-        'text/html': new Blob([rich], { type: 'text/html' }),
-        'text/plain': new Blob([plain || rich], { type: 'text/plain' }),
-      }),
-    ])
-    return
-  }
-  await navigator.clipboard.writeText(plain || rich)
+  await writeMaterialClipboard({
+    html: String(html || '').trim(),
+    text: String(text || '').trim(),
+  })
 }
 
 /** 预览弹窗：一次拉同源稿，逻辑/物理/全文切换，复制与下载共用同一份 */
@@ -2142,6 +2136,19 @@ const modulesLabelRed = computed(() => {
 const modulesLabelFindings = computed(() => {
   const raw = modulesMeta.value?.label_gate?.findings
   return Array.isArray(raw) ? raw : []
+})
+/** 开题有、交付无：弱提醒施工清单（不挡导出） */
+const modulesDeliveryGapWarn = computed(() => {
+  const g = modulesMeta.value?.delivery_gap
+  if (!g || typeof g !== 'object') return false
+  if (g.severity === 'warn') return true
+  return Array.isArray(g.dropped) && g.dropped.length > 0
+})
+const modulesDeliveryGapCount = computed(() => {
+  const g = modulesMeta.value?.delivery_gap
+  if (!g) return 0
+  if (typeof g.dropped_count === 'number') return g.dropped_count
+  return Array.isArray(g.dropped) ? g.dropped.length : 0
 })
 
 const modDrawioUrl = computed(() => {
@@ -3539,6 +3546,8 @@ onUnmounted(() => {
     modulesLabelPending,
     modulesLabelRed,
     modulesLabelFindings,
+    modulesDeliveryGapWarn,
+    modulesDeliveryGapCount,
     ensureModulesMeta,
     narrativeDualText,
     normalizeStepStatus,

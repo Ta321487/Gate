@@ -511,6 +511,69 @@ a { color: var(--teal); text-decoration: none; }
 .surface-toolbar .page-desc { margin-bottom: 0; }
 .surface-page .page-title { margin-bottom: 4px; }
 
+/* 资产台 Stripe 共用（console-product-surface §3.5）：禁止各页再抄一份表壳 */
+.asset-desk-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 380px);
+}
+.surface-page .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.surface-page .data-table th,
+.surface-page .data-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line, var(--line-soft));
+  vertical-align: middle;
+  color: var(--ink-2, var(--ink));
+}
+.surface-page .data-table th {
+  color: var(--muted);
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+.surface-page .data-table tr.is-editing {
+  background: color-mix(in srgb, var(--teal-soft, #2a9d8f) 22%, transparent);
+}
+.surface-page .data-table td .row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.surface-page .pager-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.asset-desk-filter-row {
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+.surface-page .panel-quiet .panel-hd {
+  align-items: flex-start;
+}
+.asset-desk-drawer-form .n-form-item {
+  margin-bottom: 10px;
+}
+.surface-page .bad {
+  color: var(--error, var(--red, #c00));
+}
+.asset-desk-warn {
+  margin: -4px 0 10px;
+  color: var(--warning, #b45309);
+  line-height: 1.4;
+}
+
 /* 详情壳：阶段轨下一块主内容面 */
 .surface-detail .proj-title {
   font-size: 20px;
@@ -1272,9 +1335,13 @@ button.filter-pill.on {
   font-family: inherit !important;
   font-size: inherit !important;
 }
+/* 预览：校模板三线+轻网格（复制 Word 仍走后端内联粗/细线） */
 .thesis-db-paper table {
   width: 100%;
   border-collapse: collapse;
+  border: none !important;
+  border-top: 2px solid var(--ink, #0f172a) !important;
+  border-bottom: 2px solid var(--ink, #0f172a) !important;
   margin: 0 0 14px;
   background: var(--surface, #fff) !important;
   color: inherit !important;
@@ -1283,23 +1350,29 @@ button.filter-pill.on {
 }
 .thesis-db-frame.is-dark .thesis-db-paper table {
   background: transparent !important;
+  border-top-color: #e8eef2 !important;
+  border-bottom-color: #e8eef2 !important;
 }
 .thesis-db-paper th,
 .thesis-db-paper td {
-  border: 1px solid var(--line, #cbd5e1) !important;
+  border: 1px solid var(--ink, #0f172a) !important;
   padding: 6px 8px;
-  text-align: left;
-  vertical-align: top;
+  text-align: center;
+  vertical-align: middle;
   background: transparent !important;
   color: inherit !important;
   font-family: inherit !important;
   font-weight: normal !important;
 }
 .thesis-db-paper th {
-  background: color-mix(in srgb, var(--ink, #0f172a) 6%, var(--surface, #fff)) !important;
+  border-top-width: 2px !important;
+  border-bottom-width: 2px !important;
   font-weight: 600 !important;
   text-align: center;
   white-space: nowrap;
+}
+.thesis-db-paper tr:last-child td {
+  border-bottom-width: 2px !important;
 }
 /* 逻辑设计：主键横线、外键波浪线（MD 内嵌 HTML，不用组合字符） */
 .thesis-db-paper u.thesis-pk,
@@ -1319,12 +1392,10 @@ button.filter-pill.on {
   font-weight: 600;
   color: inherit;
 }
-.thesis-db-frame.is-dark .thesis-db-paper th {
-  background: color-mix(in srgb, #fff 8%, transparent) !important;
-  border-color: #334155 !important;
-}
+.thesis-db-frame.is-dark .thesis-db-paper th,
 .thesis-db-frame.is-dark .thesis-db-paper td {
-  border-color: #334155 !important;
+  border-color: #94a3b8 !important;
+  background: transparent !important;
 }
 .thesis-db-fallback {
   margin: 0;
@@ -2331,8 +2402,9 @@ button.filter-pill.on {
 .diagram-viewer-shell.is-resizing {
   user-select: none;
 }
+/* 按文案内容增高，禁止 flex 撑出「复制描述」与拖条之间的大块空白 */
 .diagram-chrome {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 1.5em;
   overflow: auto;
 }
