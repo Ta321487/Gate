@@ -888,7 +888,7 @@
 | 订单备注（用户下单留言给商家） | `remark` + labels.orderRemarkLabel / orderRemarkHint；Cart 下单写库、MyOrders / OrdersAdmin 展示 | **域默认** SHOP / FOOD |
 | 收货地址「默认地址」一键 | AddressStore.isDefault + labels.defaultAddressLabel / defaultAddressHint；Addresses 设默认、Cart 优先选用 | **域默认** SHOP / FOOD |
 | 口味备注（少辣/多冰）快捷选项 | `taste_note` + entities.order.tasteNoteChips；labels.tasteNoteLabel / tasteNotePlaceholder / tasteNoteHint；Cart chips 写库 | **域默认** FOOD |
-| 订单超时未付自动取消 | 复用 orderTimeoutMinutes + labels.orderTimeoutHint；三域默认 30 分钟（marketplace/demoPay 已有则保留）；DemoScheduleJobs | **域默认** SHOP / FOOD / CINEMA |
+| 订单超时自动取消 | 复用 orderTimeoutMinutes + labels.orderTimeoutHint；三域默认 30 分钟（marketplace/demoPay 已有则保留）；DemoScheduleJobs；features 规范名（旧称「未付自动取消」已折叠） | **域默认** SHOP / FOOD / CINEMA |
 | 取票码展示（订单号派生） | OrderStore.ensurePickupCode + labels.pickupCodeLabel / pickupCodeHint；SeatStore 下单签发；MyOrders 出示 / OrdersAdmin 列 | **域默认** CINEMA |
 | 购物车全选 / 失效商品清理 | OrderStore.clearInvalidCart + labels.cartSelectAllLabel / cartClearInvalidLabel / cartInvalidHint；Cart 勾选列与清理按钮；placeOrder 只结算勾选 itemIds | **域默认** SHOP / FOOD |
 | 购物车失效自动勾掉 | cartAutoUncheck + Cart.vue syncSelection；失效行禁勾选，下单跳过 invalid | **域默认** SHOP / FOOD |
@@ -954,7 +954,7 @@
 | 优惠券过期站内信提醒 | CouponStore.expireSweep + MessageStore；DemoScheduleJobs | 挂 `coupon` 时 |
 | 拼团进度条（已参团/待成团） | GroupBuyStore.progressForOrder → order.groupBuy；MyOrders el-progress | 挂 `group_buy` 时 |
 | 拼团失败自动退款说明 | labels.groupBuyFailRefundHint；失败态真读 | 挂 `group_buy` 时 |
-| 限时购倒计时展示 | labels.flashCountdownLabel / Ended；ArchiveBrowse 真读 | 挂 `flash_price` 时 |
+| 限时购（含倒计时 UI） | labels.flashCountdownLabel / Ended；ArchiveBrowse 真读；features 只挂「限时购」一条 | 挂 `flash_price` 时 |
 | 盲盒中赏记录页 | BlindBoxStore.listMyDraws + /api/blind-boxes/draws；MyBlindDraws | 挂 `blind_box` 时 |
 | 积分明细流水页 | PointsLedger + /api/loyalty/ledger；菜单 points_ledger | 挂 `points` 时 |
 | 积分商城兑换运费说明 | labels.pointsFreightHint；Cart / 流水页真读 | 挂 `points` 时（SHOP） |

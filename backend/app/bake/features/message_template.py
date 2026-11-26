@@ -81,11 +81,16 @@ def apply_message_template_to_spec(
 
         gate = dict(spec.get("gate") or {})
         spec["gate"] = merge_message_template_gate(gate, caps)
-        features = list(spec.get("features") or [])
-        names = {f.get("name") for f in features if isinstance(f, dict)}
-        if "消息模板" not in names:
-            features.append({"name": "消息模板", "status": "module"})
-        spec["features"] = features
+        from app.bake.features.feature_names import (
+            MESSAGE_TEMPLATE_FEATURE,
+            ensure_feature,
+        )
+
+        spec["features"] = ensure_feature(
+            list(spec.get("features") or []),
+            MESSAGE_TEMPLATE_FEATURE,
+            status="module",
+        )
     spec["schema"] = schema
     return spec
 

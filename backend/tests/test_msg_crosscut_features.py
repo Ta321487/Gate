@@ -14,6 +14,10 @@ from app.bake.features.msg_crosscut import (
     NOTICE_CROSSCUT_COLUMNS,
     apply_msg_crosscut_to_spec,
 )
+from app.bake.portal_banners import (
+    inject_portal_banner_seeds,
+    render_sys_banner_seed_sql,
+)
 from app.bake.features.proposal_caps import HUB_BYPASS_MODULES
 
 REPO = Path(__file__).resolve().parents[2]
@@ -205,6 +209,45 @@ class MsgCrosscutFeatureTests(unittest.TestCase):
             REPO / "skeletons/baseline/frontend/src/components/PortalCarousel.vue"
         ).read_text(encoding="utf-8")
         self.assertIn("/api/banners", carousel)
+        # 库有广告位则不再垫 portalBanners（禁止管理端 1 条、主页 N 张）
+        self.assertIn("if (fromApi.length)", carousel)
+        self.assertNotIn("[...fromApi, ...baked]", carousel)
+        home = (
+            REPO / "skeletons/baseline/frontend/src/views/user/PortalHome.setup.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("if (fromApi.length)", home)
+        self.assertNotIn("[...fromApi, ...baked]", home)
+
+    def test_portal_banner_seeds_replace_welcome_insert(self) -> None:
+        sql = domain_sql("DOM-LIBRARY", "thesis_banner_seed", title="图书借阅管理系统")
+        self.assertIn("INSERT INTO sys_banner", sql)
+        self.assertIn("欢迎使用", sql)
+        slides = [
+            {
+                "src": "/portal-banners/1.jpg",
+                "title": "欢迎使用",
+                "lead": "检索图书并申请借阅。",
+            },
+            {
+                "src": "/portal-banners/2.jpg",
+                "title": "通知",
+                "lead": "查看公告与办理进度。",
+            },
+        ]
+        out = inject_portal_banner_seeds(sql, slides)
+        self.assertEqual(out.lower().count("insert into sys_banner"), 2)
+        self.assertIn("/portal-banners/1.jpg", out)
+        self.assertIn("/portal-banners/2.jpg", out)
+        # 空图欢迎条已被替换，不得残留无图欢迎种子
+        self.assertNotIn(
+            "SELECT 'home', '欢迎使用', '系统已就绪，可开始浏览业务入口。', ''",
+            out,
+        )
+
+    def test_portal_banner_seed_fallback_when_empty(self) -> None:
+        seed = render_sys_banner_seed_sql([])
+        self.assertIn("欢迎使用", seed)
+        self.assertIn("INSERT INTO sys_banner", seed)
 
 
 if __name__ == "__main__":

@@ -456,7 +456,11 @@ def _nail_order_timeout(spec: dict[str, Any], schema: dict[str, Any], thicken: d
             f"待确认订单超过 {minutes} 分钟将自动取消",
         )
     thicken["orderTimeoutNail"] = True
-    _add_feature(spec, "订单超时未付自动取消")
+    from app.bake.features.feature_names import ensure_order_timeout_feature
+
+    spec["features"] = ensure_order_timeout_feature(
+        list(spec.get("features") or []), status="flow"
+    )
     from app.bake.gate_contracts import merge_order_extras_gate
 
     gate = dict(spec.get("gate") or {})
@@ -638,8 +642,16 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
                 "未收到货可选仅退款；已收货退回请选退货退款；换货请选换货或仅换货。",
             )
             thicken["refundExchange"] = True
-            _add_feature(spec, "售后换货")
-            _add_feature(spec, "仅换货不退款")
+            from app.bake.features.feature_names import (
+                REFUND_EXCHANGE_FEATURE,
+                ensure_feature,
+            )
+
+            spec["features"] = ensure_feature(
+                list(spec.get("features") or []),
+                REFUND_EXCHANGE_FEATURE,
+                status="flow",
+            )
         else:
             labels.setdefault(
                 "refundTypeHint",
@@ -1048,8 +1060,16 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
             labels.setdefault("stockNotifyDoneLabel", "已登记到货提醒")
             labels.setdefault("stockNotifyAgainLabel", "再次订阅到货")
             thicken["stockNotify"] = True
-            _add_feature(spec, "缺货到货通知")
-            _add_feature(spec, "商品到货订阅")
+            from app.bake.features.feature_names import (
+                STOCK_NOTIFY_FEATURE,
+                ensure_feature,
+            )
+
+            spec["features"] = ensure_feature(
+                list(spec.get("features") or []),
+                STOCK_NOTIFY_FEATURE,
+                status="flow",
+            )
 
         if _PRESALE_RE.search(body):
             labels.setdefault("presaleNoteLabel", "预售说明")
@@ -1143,7 +1163,14 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
         labels.setdefault("flashCountdownLabel", "距结束")
         labels.setdefault("flashCountdownEnded", "已结束")
         thicken["flashCountdown"] = True
-        _add_feature(spec, "限时购倒计时展示")
+        # 倒计时只钉 UI；features 归并到「限时购」，不再另挂一条
+        from app.bake.features.feature_names import FLASH_PRICE_FEATURE, ensure_feature
+
+        spec["features"] = ensure_feature(
+            list(spec.get("features") or []),
+            FLASH_PRICE_FEATURE,
+            status="flow",
+        )
 
     if "blind_box" in caps_set and domain == "DOM-SHOP":
         labels.setdefault("blindDrawsPageTitle", "中赏记录")
@@ -1253,6 +1280,9 @@ def apply_trade_thicken_to_spec(spec: dict[str, Any], proposal_text: str = "") -
     ents["archive"] = archive
     ents["order"] = order_ent
     schema["tradeThicken"] = thicken
+    from app.bake.features.feature_names import collapse_feature_aliases
+
+    spec["features"] = collapse_feature_aliases(list(spec.get("features") or []))
     return spec
 
 

@@ -439,7 +439,13 @@ def _force_message_template(spec: dict[str, Any]) -> None:
     spec["gate"] = merge_message_template_gate(
         dict(spec.get("gate") or {}), list(spec.get("capabilities") or [])
     )
-    _add_feature(spec, "站内消息模板")
+    from app.bake.features.feature_names import MESSAGE_TEMPLATE_FEATURE, ensure_feature
+
+    spec["features"] = ensure_feature(
+        list(spec.get("features") or []),
+        MESSAGE_TEMPLATE_FEATURE,
+        status="flow",
+    )
 
 
 def _force_code_qr(spec: dict[str, Any]) -> None:

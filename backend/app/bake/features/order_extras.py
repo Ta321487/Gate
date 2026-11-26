@@ -12,6 +12,17 @@ import re
 from typing import Any
 
 from app.bake.proposal_lexicon import keyword_mentioned, pattern_mentioned
+from app.bake.features.feature_names import (
+    FLASH_PRICE_FEATURE,
+    ORDER_TIMEOUT_FEATURE,
+    ORDER_TIMEOUT_FEATURE_ALIASES,
+    collapse_feature_aliases,
+    collapse_order_timeout_features,
+    ensure_feature,
+    ensure_order_timeout_feature,
+    feature_names,
+    has_order_timeout_feature,
+)
 
 ORDER_REVIEW_CAP = "order_review"
 FLASH_PRICE_CAP = "flash_price"
@@ -264,14 +275,15 @@ def apply_order_extras_to_spec(spec: dict[str, Any], proposal_text: str = "") ->
         gate = dict(spec.get("gate") or {})
         spec["gate"] = merge_order_extras_gate(gate, caps, timeout_minutes=timeout)
         features = list(spec.get("features") or [])
-        names = {f.get("name") for f in features if isinstance(f, dict)}
+        names = feature_names(features)
         if ORDER_REVIEW_CAP in caps and "订单评价" not in names:
             features.append({"name": "订单评价", "status": "module"})
-        if timeout > 0 and "订单超时自动取消" not in names:
-            features.append({"name": "订单超时自动取消", "status": "module"})
-        if FLASH_PRICE_CAP in caps and "限时购" not in names:
-            features.append({"name": "限时购", "status": "module"})
-        spec["features"] = features
+        if timeout > 0:
+            features = ensure_order_timeout_feature(features, status="module")
+        if FLASH_PRICE_CAP in caps:
+            features = ensure_feature(features, FLASH_PRICE_FEATURE, status="module")
+        # 近义别名一律折叠掉（限时购倒计时 / 超时旧名等）
+        spec["features"] = collapse_feature_aliases(features)
     spec["schema"] = schema
     return spec
 

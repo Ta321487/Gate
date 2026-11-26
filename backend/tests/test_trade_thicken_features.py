@@ -106,6 +106,32 @@ class TradeThickenFeatureTests(unittest.TestCase):
         self.assertIn("pickupCodeHint", labels)
         self.assertGreaterEqual(int(schema.get("orderTimeoutMinutes") or 0), 1)
 
+    def test_timeout_feature_not_duplicated_with_order_extras(self) -> None:
+        """order_extras + trade_thicken 不得各挂一条超时关单（潮汐探针曾双条）。"""
+        from app.bake.features.order_extras import (
+            ORDER_TIMEOUT_FEATURE,
+            ORDER_TIMEOUT_FEATURE_ALIASES,
+        )
+
+        out = attach_accept(
+            {
+                "domain": "DOM-CINEMA",
+                "title": "潮汐演艺票务销售网站的设计与实现",
+                "capabilities": list(DOMAIN_CAPABILITIES["DOM-CINEMA"]),
+                "features": [],
+                "archetype": "ARCH-TRADE",
+                "schema": {"demoPay": True, "shopMarketplace": True},
+            },
+            "可视化选座购票、购物车、支付与电子票、订单超时自动取消。",
+        )
+        timeout_names = [
+            f.get("name")
+            for f in (out.get("features") or [])
+            if isinstance(f, dict) and f.get("name") in ORDER_TIMEOUT_FEATURE_ALIASES
+        ]
+        self.assertEqual(timeout_names, [ORDER_TIMEOUT_FEATURE])
+        self.assertGreaterEqual(int((out.get("schema") or {}).get("orderTimeoutMinutes") or 0), 1)
+
     def test_approve_domain_untouched(self) -> None:
         out = _spec("DOM-CERT", "校园证明开具管理系统", "")
         schema = out.get("schema") or {}

@@ -142,7 +142,7 @@
 | 订单备注（用户下单留言给商家） | `remark` + `labels.orderRemarkLabel` 等 | **域默认** SHOP/FOOD |
 | 收货地址「默认地址」一键 | `AddressStore` / Addresses 双端 | **域默认** SHOP/FOOD |
 | 口味备注快捷选项 | `taste_note` + 快捷 chips | **域默认** FOOD（SHOP 可选） |
-| 订单超时未付自动取消 | 复用 `order_extras.order_timeout_minutes` + 定时任务 | 扫词或 marketplace/demoPay 既有逻辑；三域门禁钉读 |
+| 订单超时自动取消 | 复用 `order_extras.order_timeout_minutes` + 定时任务；features 规范名（旧「未付」别名折叠） | 扫词或 marketplace/demoPay 既有逻辑；三域门禁钉读 |
 | 取票码展示 | `pickup_code` 订单展示 | **域默认** CINEMA |
 
 **硬约束**：不新建第二套超时；不改支付商户边界。**已齐**（2026-10-06）。
@@ -296,7 +296,7 @@
 |----------|----------|
 | coupon | 核销码（订单展示）、领取中心页、过期站内信 |
 | group_buy | 拼团进度条、失败自动退款说明 |
-| flash_price | 限时购倒计时展示 |
+| flash_price | 限时购（倒计时 UI 钉 labels；features 不另挂） |
 | blind_box | 盲盒中赏记录页 |
 | points | 积分明细流水页、兑换运费说明、影院积分兑票说明 |
 | member_tier | 影院会员价说明（会员日见 T-08） |

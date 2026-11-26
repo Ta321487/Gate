@@ -9,7 +9,11 @@ from app.bake.engine import count_create_tables, domain_sql
 from app.bake.features.loyalty import apply_loyalty_to_spec
 from app.bake.features.order_extras import (
     ORDER_REVIEW_CAP,
+    ORDER_TIMEOUT_FEATURE,
+    ORDER_TIMEOUT_FEATURE_ALIASES,
     apply_order_extras_to_spec,
+    collapse_order_timeout_features,
+    ensure_order_timeout_feature,
     order_timeout_minutes,
     scan_order_review,
     scan_order_timeout,
@@ -87,6 +91,26 @@ class OrderExtrasTests(unittest.TestCase):
         user = (schema.get("menus") or {}).get("user") or []
         self.assertTrue(any(m.get("key") == "coupons" for m in user))
         self.assertTrue(any(m.get("key") == "order_reviews" for m in user))
+        timeout_names = [
+            f.get("name")
+            for f in (out.get("features") or [])
+            if isinstance(f, dict) and f.get("name") in ORDER_TIMEOUT_FEATURE_ALIASES
+        ]
+        self.assertEqual(timeout_names, [ORDER_TIMEOUT_FEATURE])
+
+    def test_collapse_timeout_feature_aliases(self) -> None:
+        raw = [
+            {"name": "订单超时自动取消", "status": "module"},
+            {"name": "订单超时未付自动取消", "status": "flow"},
+            {"name": "购物车", "status": "module"},
+        ]
+        out = collapse_order_timeout_features(raw)
+        names = [f.get("name") for f in out if isinstance(f, dict)]
+        self.assertEqual(names.count(ORDER_TIMEOUT_FEATURE), 1)
+        self.assertNotIn("订单超时未付自动取消", names)
+        self.assertIn("购物车", names)
+        ensured = ensure_order_timeout_feature([], status="module")
+        self.assertEqual(ensured, [{"name": ORDER_TIMEOUT_FEATURE, "status": "module"}])
 
     def test_sql_injects_coupon_and_review(self) -> None:
         base = domain_sql("DOM-SHOP", "thesis_shop")
