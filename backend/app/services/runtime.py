@@ -591,6 +591,19 @@ def _link_node_modules(cache_nm: Path, fe: Path) -> None:
         dest.symlink_to(cache_nm, target_is_directory=True)
 
 
+def _npm_install_env(*, npm_cache: Path) -> dict[str, str]:
+    """npm install 用工厂自管 cache，避开用户 AppData\\Local\\npm-cache 的 Windows EPERM。"""
+    env = os.environ.copy()
+    npm_cache.mkdir(parents=True, exist_ok=True)
+    # npm 认 npm_config_*；同时写 cache 兼容旧 CLI
+    env["npm_config_cache"] = str(npm_cache)
+    env["npm_config_logs_dir"] = str(npm_cache / "_logs")
+    env["npm_config_color"] = "false"
+    env["NO_COLOR"] = "1"
+    env["FORCE_COLOR"] = "0"
+    return env
+
+
 def prepare_frontend_deps(fe: Path, npm: str, log_f: TextIO) -> None:
     """
     确保 frontend 依赖可用。
@@ -608,6 +621,7 @@ def prepare_frontend_deps(fe: Path, npm: str, log_f: TextIO) -> None:
 
     settings = get_settings()
     cache = settings.cache_dir / "baseline-frontend"
+    npm_cache = settings.cache_dir / "npm-cache"
     cache.mkdir(parents=True, exist_ok=True)
     cache_pkg = cache / "package.json"
     pkg_text = pkg.read_text(encoding="utf-8")
@@ -617,6 +631,7 @@ def prepare_frontend_deps(fe: Path, npm: str, log_f: TextIO) -> None:
     )
     if cache_stale:
         log_f.write("warming shared frontend cache (npm install once) …\n")
+        log_f.write(f"npm cache: {npm_cache}\n")
         log_f.flush()
         cache_pkg.write_text(pkg_text, encoding="utf-8")
         lock = fe / "package-lock.json"
@@ -626,6 +641,7 @@ def prepare_frontend_deps(fe: Path, npm: str, log_f: TextIO) -> None:
         r = subprocess.run(
             [npm, "install"],
             cwd=str(cache),
+            env=_npm_install_env(npm_cache=npm_cache),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -635,7 +651,10 @@ def prepare_frontend_deps(fe: Path, npm: str, log_f: TextIO) -> None:
             tail = (r.stderr or r.stdout or "")[-2000:]
             log_f.write(f"npm install FAILED in cache\n{tail}\n")
             log_f.flush()
-            raise RuntimeError("共享前端依赖安装失败，见 frontend.log")
+            # 细节已写在同一份前端启动日志里；勿再说「见 frontend.log」造成套娃
+            raise RuntimeError(
+                "共享前端依赖安装失败（上方 npm 报错；常见于本机缓存被占用/杀软拦截）"
+            )
         log_f.write("shared cache ready\n")
         log_f.flush()
     else:

@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from app.services.runtime import _log_has_be_fatal, backend_status, frontend_deps_ok
+from app.services.runtime import (
+    _log_has_be_fatal,
+    _npm_install_env,
+    backend_status,
+    frontend_deps_ok,
+    prepare_frontend_deps,
+)
 
 
 def test_log_has_be_fatal_compilation_error_quiet_maven():
@@ -66,3 +73,44 @@ def test_frontend_deps_ok_requires_package_json_deps(tmp_path: Path):
     echarts.parent.mkdir(parents=True, exist_ok=True)
     echarts.write_text("{}", encoding="utf-8")
     assert frontend_deps_ok(tmp_path)
+
+
+def test_npm_install_env_uses_factory_cache(tmp_path: Path):
+    """共享装依赖须把 npm cache 收到工厂目录，避开用户 AppData EPERM。"""
+    npm_cache = tmp_path / "npm-cache"
+    env = _npm_install_env(npm_cache=npm_cache)
+    assert env["npm_config_cache"] == str(npm_cache)
+    assert env["npm_config_logs_dir"] == str(npm_cache / "_logs")
+    assert npm_cache.is_dir()
+
+
+def test_prepare_frontend_deps_passes_factory_npm_cache(tmp_path: Path):
+    """npm install 调用须带工厂 npm-cache env；失败文案不得再套娃「见 frontend.log」。"""
+    fe = tmp_path / "fe"
+    fe.mkdir()
+    (fe / "package.json").write_text(
+        json.dumps({"dependencies": {"vue": "3"}, "devDependencies": {"vite": "6"}}),
+        encoding="utf-8",
+    )
+    settings = MagicMock()
+    settings.cache_dir = tmp_path / "cache"
+    log_f = io.StringIO()
+    fake = MagicMock(returncode=1, stderr="EPERM open cacache", stdout="")
+
+    with (
+        patch("app.services.runtime.get_settings", return_value=settings),
+        patch("app.services.runtime.frontend_deps_ok", return_value=False),
+        patch("app.services.runtime.subprocess.run", return_value=fake) as run,
+    ):
+        try:
+            prepare_frontend_deps(fe, "npm", log_f)
+            raised = None
+        except RuntimeError as e:
+            raised = e
+
+    assert raised is not None
+    assert "见 frontend.log" not in str(raised)
+    assert "共享前端依赖安装失败" in str(raised)
+    env = run.call_args.kwargs["env"]
+    assert env["npm_config_cache"] == str(settings.cache_dir / "npm-cache")
+    assert "npm cache:" in log_f.getvalue()

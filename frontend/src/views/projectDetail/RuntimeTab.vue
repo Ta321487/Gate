@@ -68,7 +68,7 @@
             >{{ runtimeCanStop(rt.backend_status) ? '停止' : '启动' }}</n-button>
           </div>
           <n-collapse :default-expanded-names="[]" class="mt-8">
-            <n-collapse-item title="后端日志（排障）" name="be-log">
+            <n-collapse-item title="后端日志（排障）· backend.log" name="be-log">
               <pre class="log-box">{{ runtimeLogView(rt.backend_status, rt.backend_log_tail) }}</pre>
             </n-collapse-item>
           </n-collapse>
@@ -90,7 +90,7 @@
             >{{ runtimeCanStop(rt.frontend_status) ? '停止' : '启动' }}</n-button>
           </div>
           <n-collapse :default-expanded-names="[]" class="mt-8">
-            <n-collapse-item title="前端日志（排障）" name="fe-log">
+            <n-collapse-item title="前端日志（排障）· frontend.log" name="fe-log">
               <pre class="log-box">{{ runtimeLogView(rt.frontend_status, rt.frontend_log_tail) }}</pre>
             </n-collapse-item>
           </n-collapse>

@@ -5,6 +5,7 @@
         <n-button-group size="small">
           <n-button v-for="s in logSides" :key="s.id" :type="logSide===s.id?'primary':'default'" @click="loadLog(s.id)">{{ s.label }}</n-button>
         </n-button-group>
+        <span v-if="activeLogFile" class="small muted mono">当前即 {{ activeLogFile }}</span>
         <n-select
           v-if="showLogRunPicker"
           v-model:value="logRunSel"
@@ -28,6 +29,7 @@
 </template>
 
 <script setup>
+import { computed, unref } from 'vue'
 import ContentLoading from '../../components/ContentLoading.vue'
 import { logLineClass } from './jobLogRuns'
 import { bindPd } from './bindPd'
@@ -66,6 +68,13 @@ const {
   themeOptions, toggleApi, toggleTable, toggleUnlock, typeParenMode, typefaceOptions, undoDelivery, undoDeliveryLabel,
   unlocked, viewActive, viewEpoch, warningText, zipFileName, zipLockHint,
 } = bindPd()
+
+const activeLogFile = computed(() => {
+  // bindPd 给出的是 Ref；脚本里必须 unref（模板会自动解包）
+  const sides = unref(logSides)
+  const side = unref(logSide)
+  return (Array.isArray(sides) ? sides : []).find((s) => s.id === side)?.file || ''
+})
 </script>
 
 <style scoped>
