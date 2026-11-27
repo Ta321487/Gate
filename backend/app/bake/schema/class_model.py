@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import copy
-import html
 import json
 import re
 from pathlib import Path
@@ -24,6 +23,8 @@ from app.bake.schema.class_code import (
     merge_oo_relations_into_model,
     scan_java_oo_relations,
 )
+from app.bake.schema.diagram_style import FONT_CN, FONT_MONO
+from app.bake.schema.diagram_svg_util import fmt1, read_json_dict, svg_esc
 from app.bake.schema.er_labels import (
     _col_zh,
     _labels_from_domain_schema,
@@ -31,9 +32,16 @@ from app.bake.schema.er_labels import (
     apply_er_label_patch,
     load_er_label_patch,
 )
-from app.bake.schema.diagram_style import FONT_CN, FONT_MONO
 from app.bake.schema.er_model import infer_relations, parse_schema_sql
 from app.bake.schema.er_zh import _COMMON_COL_ZH, _INFRA_TABLE_ZH
+
+_esc = svg_esc
+_f = fmt1
+
+
+def _read_json(path):
+    return read_json_dict(path)
+
 
 _FONT = FONT_CN
 _FONT_CODE = FONT_MONO
@@ -73,22 +81,7 @@ _SQL_TYPE_JAVA: tuple[tuple[re.Pattern[str], str], ...] = (
 )
 
 
-def _esc(s: str) -> str:
-    return html.escape(str(s or ""), quote=True)
 
-
-def _f(v: float) -> str:
-    return f"{v:.1f}"
-
-
-def _read_json(path: Path) -> dict[str, Any] | None:
-    if not path.is_file():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-    return data if isinstance(data, dict) else None
 
 
 def sql_type_to_java(sql_type: str) -> str:

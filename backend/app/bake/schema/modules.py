@@ -18,16 +18,22 @@ from pathlib import Path
 from typing import Any
 
 from app.bake.schema.diagram_style import FONT_CN
+from app.bake.schema.diagram_svg_util import fmt1, read_json_dict, svg_esc, text_w_cjk
+from app.bake.schema.shell_menus import THESIS_DIAGRAM_SHELL_KEYS as _THESIS_SHELL_MENU_KEYS
+
+_esc = svg_esc
+_f = fmt1
+_text_w = text_w_cjk
+
+
+def _read_json(path):
+    return read_json_dict(path, missing={}) or {}
+
 
 _MODULE_LABELS_REL = Path("islands") / "module_labels.json"
 
 # home / dashboard = 门户首页与管理端落地页，不是论文功能模块叶子
 _SKIP_MENU_KEYS = frozenset({"home", "dashboard"})
-
-# 运维/壳菜单：实包装得有，论文模块图默认不进；开题点名（广告位/定时/在线用户）才留
-_THESIS_SHELL_MENU_KEYS = frozenset(
-    {"banners", "schedule_jobs", "scheduled_tasks", "online_sessions"}
-)
 
 # identity=按登录身份（默认）；biz=按业务；side 兼容旧参 → identity
 MODULE_LAYOUTS = ("identity", "biz")
@@ -195,21 +201,6 @@ _BIZ_CORES: dict[str, tuple[str, ...]] = {
 _LABEL_NOISE = ("我的", "管理", "浏览", "待办", "办理", "时段", "催办", "字典")
 
 
-def _esc(s: str) -> str:
-    return (
-        (s or "")
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
-
-
-def _text_w(s: str, px: float = 12.0) -> float:
-    w = 0.0
-    for ch in s or "":
-        w += px if ord(ch) > 127 else px * 0.55
-    return w
 
 
 def looks_latin(text: str) -> bool:
@@ -218,15 +209,6 @@ def looks_latin(text: str) -> bool:
 
     return _er_looks_latin(text)
 
-
-def _read_json(path: Path) -> dict[str, Any]:
-    if not path.is_file():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
 
 
 def module_labels_path(workspace: Path) -> Path:
@@ -2462,9 +2444,6 @@ def render_module_svg(model: dict[str, Any] | None) -> str:
     )
     return _svg_wrap(W, H, inner, layout=layout_tag)
 
-
-def _f(n: float) -> str:
-    return f"{n:.1f}"
 
 
 def _svg_wrap(w: int, h: int, inner: str, *, layout: str = "") -> str:

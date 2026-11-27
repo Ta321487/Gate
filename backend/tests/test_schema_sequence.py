@@ -520,6 +520,80 @@ class SequenceDiagramTests(unittest.TestCase):
         self.assertNotRegex(blob, r"[A-Za-z]{2,}")
         self.assertIn("逾期罚款", blob)
 
+    def test_dm_sequence_prefers_send_over_delete(self) -> None:
+        """私信控制器同时有 send/delete 时，主路径不得画成「删除私信」却返回发送成功。"""
+        import tempfile
+        from pathlib import Path
+
+        from app.bake.schema.sequence import build_diagram_messages
+
+        ctrl = """
+package com.demo.controller;
+import org.springframework.web.bind.annotation.*;
+@RestController
+@RequestMapping("/api/dm")
+public class DmController {
+  @GetMapping("/conversations")
+  public Object conversations() { return null; }
+  @PostMapping("/messages")
+  public Object send(@RequestBody Object body) { return null; }
+  @DeleteMapping("/conversations")
+  public Object deleteConversation(@RequestParam String peer) { return null; }
+}
+"""
+        vue = """
+<template>
+  <div>
+    <el-button type="danger" @click="remove">删除会话</el-button>
+    <el-button type="primary" @click="send">发送</el-button>
+  </div>
+</template>
+"""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            java = root / "backend/src/main/java/com/demo/controller"
+            java.mkdir(parents=True)
+            (java / "DmController.java").write_text(ctrl, encoding="utf-8")
+            views = root / "frontend/src/views/user"
+            views.mkdir(parents=True)
+            (views / "Dm.vue").write_text(vue, encoding="utf-8")
+            case = {
+                "id": "admin::dm::dm",
+                "side": "admin",
+                "menu_key": "dm",
+                "kind": "dm",
+                "label": "客服",
+                "actor": "商家",
+            }
+            schema = {
+                "domain": "DOM-SHOP",
+                "roles": {"admin": {"label": "商家"}, "user": {"label": "买家"}},
+                "entities": {},
+            }
+            msgs, _phases = build_diagram_messages(case, schema, root)
+        texts = [str(m.get("text") or "") for m in msgs]
+        blob = " / ".join(texts)
+        self.assertTrue(any("发送" in t for t in texts), msg=blob)
+        page_to_ctrl = [
+            m
+            for m in msgs
+            if m.get("from") == "page" and m.get("to") == "controller" and m.get("phase") == "biz"
+        ]
+        write_reqs = [
+            m
+            for m in page_to_ctrl
+            if any(x in str(m.get("text") or "") for x in ("发送", "删除", "保存", "提交"))
+        ]
+        self.assertTrue(write_reqs, msg=blob)
+        self.assertTrue(
+            any("发送" in str(m.get("text") or "") for m in write_reqs),
+            msg=blob,
+        )
+        self.assertFalse(
+            any("删除" in str(m.get("text") or "") for m in write_reqs),
+            msg=blob,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from app.bake.schema.diagram_style import FONT_CN
+from app.bake.schema.diagram_svg_util import read_json_dict, svg_esc
 from app.bake.schema.modules import (
     _SKIP_MENU_KEYS,
     _biz_id_for_item,
@@ -38,6 +39,13 @@ from app.bake.schema.usecase_style import (
     style_public_view,
 )
 from app.bake.staff_posts import PACK_ADMIN_MENUS, PACK_WORK_PAGES
+
+_esc = svg_esc
+
+
+def _read_json(path):
+    return read_json_dict(path, missing={}) or {}
+
 
 # 几何/数量默认取自当前客户样式（断言与布局以此为准）
 _STYLE = resolve_usecase_style()
@@ -223,28 +231,8 @@ _BIZ_L1_TEMPLATE: dict[str, str] = {
 }
 
 
-def _esc(s: str) -> str:
-    return (
-        (s or "")
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
-
-
 def _new_id(prefix: str = "id") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
-
-
-def _read_json(path: Path) -> dict[str, Any]:
-    if not path.is_file():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
 
 
 def ensure_verb_prefix(label: str, *, default_verb: str = "进行") -> str:

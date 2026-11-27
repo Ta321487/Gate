@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from app.bake.schema.diagram_style import FONT_CN
+from app.bake.schema.diagram_svg_util import fmt1, svg_esc
 from app.bake.schema.sequence import (
     BROWSE_SEQUENCE_KINDS,
     SEQUENCE_COUNT,
@@ -28,6 +29,9 @@ from app.bake.schema.sequence import (
     parse_selection_ids,
 )
 
+_esc = svg_esc
+_f = fmt1
+
 ACTIVITY_COUNT = SEQUENCE_COUNT
 
 _SWIMLANES = (
@@ -40,12 +44,6 @@ _FONT = FONT_CN
 _STROKE = 1.2
 
 
-def _esc(s: str) -> str:
-    return html.escape(str(s or ""), quote=True)
-
-
-def _f(v: float) -> str:
-    return f"{v:.1f}"
 
 
 def _clean_text(text: str) -> str:

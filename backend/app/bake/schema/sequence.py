@@ -8,18 +8,26 @@
 
 from __future__ import annotations
 
-import html
-import json
 import logging
 import re
 from pathlib import Path
 from typing import Any
 
 from app.bake.schema.diagram_style import FONT_CN
+from app.bake.schema.diagram_svg_util import fmt1, read_json_dict, svg_esc
+from app.bake.schema.shell_menus import SHELL_OPEN_MENU_KEYS as _SEQUENCE_DEMOTE_OPEN_MENUS
 from app.bake.schema.testcases import _entity_label, _role_label
 from app.bake.schema.usecase_descriptions import (
     build_usecase_description_candidates,
 )
+
+_esc = svg_esc
+_f = fmt1
+
+
+def _read_json(path):
+    return read_json_dict(path)
+
 
 logger = logging.getLogger("app.bake.schema.sequence")
 
@@ -64,23 +72,6 @@ _SEQUENCE_CORE_BOOST: dict[str, int] = {
     "dm": 10,
     "category": 8,
 }
-# kind=open 的壳菜单才 demote；业务主入口（家路径）不因 open 被挤掉
-_SEQUENCE_DEMOTE_OPEN_MENUS: frozenset[str] = frozenset(
-    {
-        "users",
-        "profile",
-        "messages",
-        "banners",
-        "online_sessions",
-        "schedule_jobs",
-        "site_stat",
-        "content",
-        "addresses",
-        "lookup",
-        "guestbook",
-    }
-)
-
 _PARTICIPANTS = ("actor", "page", "controller", "db")
 _PARTICIPANT_LABELS = {
     "page": "页面",
@@ -103,6 +94,8 @@ _METHOD_VERB_ZH: dict[str, str] = {
     "insert": "保存",
     "update": "更新",
     "edit": "更新",
+    "send": "发送",
+    "reply": "回复",
     "delete": "删除",
     "remove": "删除",
     "approve": "审核通过",
@@ -156,22 +149,7 @@ _SKIP_METHODS = {
 }
 
 
-def _esc(s: str) -> str:
-    return html.escape(str(s or ""), quote=True)
 
-
-def _f(v: float) -> str:
-    return f"{v:.1f}"
-
-
-def _read_json(path: Path) -> dict[str, Any] | None:
-    if not path.is_file():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-    return data if isinstance(data, dict) else None
 
 
 def _short_role(label: str, *, side: str) -> str:
@@ -502,6 +480,7 @@ _SHORT_ACTION_BTNS = frozenset(
         "导出清单",
         "复制清单",
         "取消收藏",
+        "发送",
     }
 )
 
@@ -1084,6 +1063,41 @@ def _build_login_phase(
     return msgs
 
 
+_WRITE_OP_MARKERS = (
+    "保存",
+    "新增",
+    "更新",
+    "删除",
+    "提交",
+    "审核",
+    "驳回",
+    "确认",
+    "发货",
+    "发送",
+    "回复",
+    "save",
+    "create",
+    "add",
+    "update",
+    "delete",
+    "remove",
+    "submit",
+    "approve",
+    "send",
+    "reply",
+)
+_DELETE_OP_MARKERS = ("删除", "delete", "remove")
+
+
+def _op_blob(op: dict[str, str]) -> str:
+    return f"{op.get('verb') or ''} {op.get('method') or ''} {op.get('summary') or ''}".lower()
+
+
+def _is_delete_op(op: dict[str, str]) -> bool:
+    blob = _op_blob(op)
+    return any(x in blob for x in _DELETE_OP_MARKERS)
+
+
 def _classify_ops(ops: list[dict[str, str]]) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     reads: list[dict[str, str]] = []
     writes: list[dict[str, str]] = []
@@ -1092,8 +1106,7 @@ def _classify_ops(ops: list[dict[str, str]]) -> tuple[list[dict[str, str]], list
         meth = (op.get("method") or "").lower()
         summary = (op.get("summary") or "")
         is_write = any(
-            x in verb or x in meth or x in summary
-            for x in ("保存", "新增", "更新", "删除", "提交", "审核", "驳回", "确认", "发货", "save", "create", "add", "update", "delete", "submit", "approve")
+            x in verb or x in meth or x in summary for x in _WRITE_OP_MARKERS
         )
         is_read = any(
             x in verb or x in meth or x in summary
@@ -1106,6 +1119,13 @@ def _classify_ops(ops: list[dict[str, str]]) -> tuple[list[dict[str, str]], list
         else:
             reads.append(op)
     return reads, writes
+
+
+def _ordered_write_ops(writes: list[dict[str, str]]) -> list[dict[str, str]]:
+    """主路径写操作优先：有发送/保存时不先吃删除会话。"""
+    primary = [op for op in writes if not _is_delete_op(op)]
+    deletes = [op for op in writes if _is_delete_op(op)]
+    return primary + deletes
 
 
 def _pick_vue_btn(
@@ -1252,6 +1272,8 @@ def _build_business_phase(
             prefer_select = ("核对", "改数量", "选择商品", "填写", "编辑")
         elif kind == "my_orders":
             prefer_select = ("选择已发货", "选择订单", "选择", "核对")
+        elif kind == "dm":
+            prefer_select = ("新建", "选择会话", "选择", "填写")
         elif "review" in kind:
             prefer_select = ("填写评价", "选择", "填写", "编辑")
         pick = _pick_vue_btn(
@@ -1316,6 +1338,8 @@ def _build_business_phase(
             "order" in kind and "review" not in kind
         ):
             prefer_submit = ("发货", "配送", "保存", "提交", "确认")
+        elif kind == "dm":
+            prefer_submit = ("发送", "发送私信", "保存", "提交", "确认")
         submit_btn = _pick_vue_btn(
             vue_btns,
             menu_label=menu_label,
@@ -1384,7 +1408,7 @@ def _build_business_phase(
 
         write_op = None
         submit = ""
-        for op in writes:
+        for op in _ordered_write_ops(writes):
             t = _op_text(op, entity=entity, menu_label=menu_label)
             if t and not _is_container_template_phrase(
                 t, stem=stem, menu_label=menu_label
@@ -1397,6 +1421,27 @@ def _build_business_phase(
         else:
             submit = kind_fb["submit"]
             sub_src = "schema_label"
+        # 页面已点「发送」时，控制器消息勿落成「删除私信」一类旁路
+        if (
+            submit_btn
+            and any(x in submit_btn for x in ("发送", "回复"))
+            and any(x in submit for x in ("删除",))
+        ):
+            alt = next(
+                (
+                    _op_text(op, entity=entity, menu_label=menu_label)
+                    for op in _ordered_write_ops(writes)
+                    if not _is_delete_op(op)
+                    and _op_text(op, entity=entity, menu_label=menu_label)
+                ),
+                "",
+            )
+            if alt:
+                submit = alt
+                sub_src = "controller"
+            elif kind_fb.get("submit"):
+                submit = kind_fb["submit"]
+                sub_src = "schema_label"
         seq += 1
         msgs.append(_msg(seq=seq, frm="page", to="controller", direction="request", text=submit, phase=phase, text_source=sub_src))
 

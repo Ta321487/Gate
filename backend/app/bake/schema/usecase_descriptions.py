@@ -11,11 +11,11 @@
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from typing import Any
 
+from app.bake.schema.diagram_svg_util import read_json_dict
 from app.bake.schema.modules import (
     _SKIP_MENU_KEYS,
     _archive_biz_label,
@@ -90,14 +90,8 @@ def _fmt(tpl: str, ctx: dict[str, str]) -> str:
     return out
 
 
-def _read_json(path: Path) -> dict[str, Any]:
-    if not path.is_file():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
+def _read_json(path):
+    return read_json_dict(path, missing={}) or {}
 
 
 def normalize_desc_count(n: int | str | None) -> int:

@@ -8,15 +8,22 @@
 
 from __future__ import annotations
 
-import html
-import json
 import re
 from pathlib import Path
 from typing import Any
 
 from app.bake.schema.diagram_style import FONT_CN
 from app.bake.schema.diagram_style import FONT_TECH as _STYLE_FONT_TECH
+from app.bake.schema.diagram_svg_util import fmt1, read_json_dict, svg_esc
 from app.bake.schema.usecases import list_usecase_actors
+
+_esc = svg_esc
+_f = fmt1
+
+
+def _read_json(path):
+    return read_json_dict(path)
+
 
 # —— 画布几何（论文插图比例）——
 _PAD_X = 48.0
@@ -35,12 +42,6 @@ _FONT = FONT_CN
 _FONT_TECH = _STYLE_FONT_TECH
 
 
-def _esc(s: str) -> str:
-    return html.escape(str(s or ""), quote=True)
-
-
-def _f(v: float) -> str:
-    return f"{v:.1f}"
 
 
 def _role_box_w(label: str) -> float:
@@ -50,15 +51,6 @@ def _role_box_w(label: str) -> float:
     w = 28.0 + n * 14.0
     return max(_ROLE_W_MIN, min(_ROLE_W_MAX, w))
 
-
-def _read_json(path: Path) -> dict[str, Any] | None:
-    if not path.is_file():
-        return None
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-    return data if isinstance(data, dict) else None
 
 
 def architecture_roles(schema: dict[str, Any]) -> list[dict[str, str]]:

@@ -9,7 +9,11 @@ from collections import defaultdict
 from itertools import permutations
 
 from app.bake.schema.diagram_style import FONT_CN, FONT_TECH
+from app.bake.schema.diagram_svg_util import svg_esc, text_w_cjk
 from app.bake.schema.layout_elk import ElkLayoutError, layout_graph
+
+_esc = svg_esc
+_text_w = text_w_cjk
 
 ENTITY_HH = 22
 ATTR_RH = 14
@@ -25,23 +29,6 @@ _HUB_TRY_LIMIT = 3
 _PERM_N_MAX = 7
 _OUTER_NEST_GAP = 56.0
 _ELK_PAD = 56.0
-
-
-def _esc(s: str) -> str:
-    return (
-        s.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
-
-
-def _text_w(s: str, px: float = 12.0) -> float:
-    """粗估中西文混排宽度。"""
-    w = 0.0
-    for ch in s:
-        w += px if ord(ch) > 127 else px * 0.55
-    return w
 
 
 def _entity_hw(label: str) -> float:
@@ -1897,19 +1884,6 @@ def _svg_wrap(w: int, h: int, inner: str, *, vx: float = 0.0, vy: float = 0.0) -
         f'<rect class="er-paper" x="{vx:.1f}" y="{vy:.1f}" width="{w}" height="{h}" fill="#fff"/>\n'
         f"{inner}\n</svg>\n"
     )
-
-
-def _svg_wrap(w: int, h: int, inner: str, *, vx: float = 0.0, vy: float = 0.0) -> str:
-    return (
-        f'<?xml version="1.0" encoding="UTF-8"?>\n'
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
-        f'viewBox="{vx:.1f} {vy:.1f} {w} {h}">\n'
-        f'<rect class="er-paper" x="{vx:.1f}" y="{vy:.1f}" width="{w}" height="{h}" fill="#fff"/>\n'
-        f"{inner}\n</svg>\n"
-    )
-
-
-
 
 
 
