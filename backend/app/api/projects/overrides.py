@@ -7,7 +7,11 @@ from pathlib import Path
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.projects.common import _workspace_or_400, router
+from fastapi import APIRouter
+
+from app.api.projects.common import _workspace_or_400
+
+router = APIRouter(tags=["手调"])
 from app.bake.overrides import (
     OverridesValidationError,
     apply_overrides_to_workspace,

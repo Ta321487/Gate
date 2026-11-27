@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.system_router import router
+router = APIRouter(tags=["错误码中文"])
 from app.core.database import get_db
 from app.services import error_copy as ec
 

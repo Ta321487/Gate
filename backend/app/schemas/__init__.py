@@ -45,6 +45,29 @@ class ProjectSummary(BaseModel):
     created_at: Optional[datetime] = Field(default=None, description="创建时间")
 
 
+class ProjectPollOut(BaseModel):
+    """详情轮询轻量投影（P1）：只读库态，禁止扫盘哈希与大 JSON。"""
+
+    model_config = ConfigDict(from_attributes=True, title="项目轮询")
+
+    id: str = Field(description="项目 ID")
+    title: str = Field(description="标题")
+    status: str = Field(description="状态")
+    backend_running: bool = Field(description="后端预览是否在跑")
+    frontend_running: bool = Field(description="前端预览是否在跑")
+    backend_port: int = Field(description="后端端口")
+    frontend_port: int = Field(description="前端端口")
+    zip_ready: bool = Field(description="库内机器质检标志")
+    download_blocked_reason: Optional[str] = Field(
+        default=None, description="不可下载原因；verify_stale=False 口径"
+    )
+    delivery_mark: str = Field(default="none", description="人工履约标记")
+    match_confirmed: bool = Field(default=False, description="匹配是否已确认")
+    match_locked: bool = Field(default=False, description="匹配是否锁定")
+    workspace_path: Optional[str] = Field(default=None, description="工作区路径")
+    updated_at: Optional[datetime] = Field(default=None, description="更新时间")
+
+
 class ProjectDetail(ProjectSummary):
     model_config = ConfigDict(from_attributes=True, title="项目详情")
 

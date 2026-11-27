@@ -44,13 +44,16 @@ from app.services import runtime as rt
 from app.services.jobs import start_job
 from app.services.student_db import drop_student_database
 
+from fastapi import APIRouter
+
 from app.api.projects.common import (
     MAX_UPLOAD_MATERIALS,
     _detail,
     _workspace_or_400,
     logger,
-    router,
 )
+
+router = APIRouter(tags=["质检交付"])
 
 @router.get("/{project_id}/proposal-diff", response_model=ProposalDiffOut, summary="生成前 · 开题措辞核对")
 async def get_proposal_diff(project_id: str, db: AsyncSession = Depends(get_db)):

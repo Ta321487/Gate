@@ -7,22 +7,22 @@
 from __future__ import annotations
 
 import json
-import threading
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.asset_desk_cache import AssetRowsCache, norm_text
+
 SOURCES = frozenset({"migrated", "scan", "manual"})
 BAKE_SOURCES = frozenset({"migrated", "scan", "manual"})
 
-_lock = threading.RLock()
-_rows_cache: list[dict[str, Any]] | None = None
+_cache = AssetRowsCache()
 
 
 def _norm(s: str | None) -> str:
-    return (s or "").strip()
+    return norm_text(s)
 
 
 def _needles_val(raw: Any) -> list[str]:
@@ -57,9 +57,7 @@ def row_to_dict(row: Any) -> dict[str, Any]:
 
 
 def invalidate_cache() -> None:
-    global _rows_cache
-    with _lock:
-        _rows_cache = None
+    _cache.invalidate()
 
 
 def _seed_payload() -> list[dict[str, Any]]:
@@ -69,22 +67,17 @@ def _seed_payload() -> list[dict[str, Any]]:
 
 
 def bootstrap_from_seed() -> None:
-    rows = _seed_payload()
-    with _lock:
-        global _rows_cache
-        _rows_cache = rows
+    _cache.set(_seed_payload())
 
 
 async def load_all_rows(db: AsyncSession) -> list[dict[str, Any]]:
-    global _rows_cache
     from app.models import FactoryCapCard
 
     result = await db.execute(
         select(FactoryCapCard).order_by(FactoryCapCard.sort, FactoryCapCard.id)
     )
     rows = [row_to_dict(r) for r in result.scalars().all()]
-    with _lock:
-        _rows_cache = rows
+    _cache.set(rows)
     return list(rows)
 
 
@@ -123,10 +116,7 @@ async def migrate_seed_if_empty(db: AsyncSession) -> dict[str, int]:
 
 
 def _rows_or_seed(rows: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
-    data = rows
-    if data is None:
-        with _lock:
-            data = list(_rows_cache) if _rows_cache is not None else None
+    data = rows if rows is not None else _cache.get()
     if not data:
         return _seed_payload()
     return list(data)

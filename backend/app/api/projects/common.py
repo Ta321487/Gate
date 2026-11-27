@@ -45,7 +45,7 @@ from app.services.jobs import start_job
 from app.services.student_db import drop_student_database
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/projects", tags=["项目"])
+router = APIRouter(prefix="/api/projects")  # tags 由子模块挂
 
 # 与前端 uploadMaterials.MAX_UPLOAD_MATERIALS 保持一致（按展开后材料份数）
 MAX_UPLOAD_MATERIALS = 8

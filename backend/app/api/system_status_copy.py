@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.system_router import router
+router = APIRouter(tags=["状态话术"])
 from app.core.database import get_db
 from app.services import status_copy as sc
 
@@ -27,6 +27,7 @@ class StatusCopyUpsert(BaseModel):
 @router.get("/system/status-copy/meta", summary="状态话术·域/机选项")
 async def status_copy_meta(db: AsyncSession = Depends(get_db)):
     from app.bake.catalog import DOMAINS
+    from app.services.asset_desk_cache import domain_options_star_first
 
     rows = await sc.load_all_rows(db)
     machines = sorted({r["machine_id"] for r in rows if r.get("machine_id")})
@@ -34,16 +35,9 @@ async def status_copy_meta(db: AsyncSession = Depends(get_db)):
         if m not in machines:
             machines.append(m)
     machines = sorted(set(machines))
-    domains = [
-        {"id": "*", "name": "跨域壳默认"},
-        *[
-            {"id": k, "name": (DOMAINS.get(k) or {}).get("label") or k}
-            for k in DOMAINS
-        ],
-    ]
     return {
         "ok": True,
-        "domains": domains,
+        "domains": domain_options_star_first(DOMAINS),
         "machines": machines,
         "machine_options": [
             {
@@ -64,20 +58,20 @@ async def list_status_copy(
     q: Optional[str] = Query(None, description="status 或中文模糊"),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.services.asset_desk_cache import filter_rows
+
     rows = await sc.load_all_rows(db)
+    equals: dict[str, str] = {}
     if domain_id is not None:
-        rows = [r for r in rows if r["domain_id"] == domain_id]
+        equals["domain_id"] = domain_id
     if machine_id:
-        rows = [r for r in rows if r["machine_id"] == machine_id]
-    if q:
-        qq = q.strip().lower()
-        rows = [
-            r
-            for r in rows
-            if qq in (r["status_code"] or "").lower()
-            or qq in (r["label_zh"] or "")
-            or qq in (r["action_zh"] or "")
-        ]
+        equals["machine_id"] = machine_id
+    rows = filter_rows(
+        rows,
+        q=q,
+        equals=equals,
+        q_fields=("status_code", "label_zh", "action_zh"),
+    )
     return {"ok": True, "total": len(rows), "items": rows}
 
 

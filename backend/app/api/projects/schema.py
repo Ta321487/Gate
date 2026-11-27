@@ -44,13 +44,16 @@ from app.services import runtime as rt
 from app.services.jobs import start_job
 from app.services.student_db import drop_student_database
 
+from fastapi import APIRouter
+
 from app.api.projects.common import (
     MAX_UPLOAD_MATERIALS,
     _detail,
     _workspace_or_400,
     logger,
-    router,
 )
+
+router = APIRouter(tags=["论文材料"])
 
 
 def _ensure_diagram_export_ok(model: dict | None) -> None:

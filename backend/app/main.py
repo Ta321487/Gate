@@ -119,6 +119,40 @@ async def lifespan(_app: FastAPI):
         await stop_runtime_reconcile()
 
 
+# Swagger 分组顺序；tags 真挂在各 APIRouter 上（禁止 OpenAPI 事后改写）
+_OPENAPI_TAGS = [
+    {"name": "健康", "description": "服务存活探测"},
+    {"name": "项目", "description": "列表/上传/匹配/生成/下载"},
+    {"name": "论文材料", "description": "库表、论文图、学生端 API"},
+    {"name": "质检交付", "description": "门禁、复审、清洗、重打包"},
+    {"name": "预览运行", "description": "启停预览与日志"},
+    {"name": "手调", "description": "论文材料手调覆盖"},
+    {"name": "答辩PPT", "description": "答辩演示文稿"},
+    {"name": "任务", "description": "异步生成任务队列"},
+    {"name": "终稿吸收", "description": "终稿入库与抽取"},
+    {"name": "词表", "description": "中文词表维护"},
+    {"name": "状态话术", "description": "状态文案"},
+    {"name": "字典台", "description": "字典值"},
+    {"name": "实体动作词", "description": "图中实体动作词"},
+    {"name": "论文图题", "description": "论文图标题"},
+    {"name": "用例流程", "description": "用例流程"},
+    {"name": "演示剧本", "description": "演示剧本"},
+    {"name": "测试账号", "description": "演示账号"},
+    {"name": "开关建议", "description": "能力开关建议"},
+    {"name": "能力说明", "description": "能力卡片文案"},
+    {"name": "错误码中文", "description": "错误码中文"},
+    {"name": "控件语义", "description": "表单控件提示"},
+    {"name": "菜单矩阵", "description": "菜单矩阵"},
+    {"name": "规则参数", "description": "规则参数"},
+    {"name": "表关系叙事", "description": "E-R 边文案"},
+    {"name": "DeepSeek", "description": "大模型配置、余额与用量"},
+    {"name": "Gemini", "description": "Gemini 配置"},
+    {"name": "LLM", "description": "用量与调用审计"},
+    {"name": "Unsplash", "description": "配图配置"},
+    {"name": "工具", "description": "测试开题等工具"},
+    {"name": "系统", "description": "本机环境、端口池与领域目录"},
+]
+
 app = FastAPI(
     title="毕设港",
     description=(
@@ -130,13 +164,7 @@ app = FastAPI(
     lifespan=lifespan,
     # 默认 redoc@next CDN 已 404，改用自定义 /redoc
     redoc_url=None,
-    openapi_tags=[
-        {"name": "健康", "description": "服务存活探测"},
-        {"name": "项目", "description": "开题上传、匹配、生成、产物对照与预览运行"},
-        {"name": "任务", "description": "异步生成任务队列"},
-        {"name": "DeepSeek", "description": "大模型配置、余额与用量"},
-        {"name": "系统", "description": "本机环境、端口池与领域目录"},
-    ],
+    openapi_tags=_OPENAPI_TAGS,
 )
 app.add_middleware(
     CORSMiddleware,

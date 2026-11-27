@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.system_router import router
+router = APIRouter(tags=["字典台"])
 from app.core.database import get_db
 from app.services import dict_values as dv
 
@@ -27,6 +27,7 @@ class DictValueUpsert(BaseModel):
 @router.get("/system/dict-values/meta", summary="字典台·域/键选项")
 async def dict_values_meta(db: AsyncSession = Depends(get_db)):
     from app.bake.catalog import DOMAINS
+    from app.services.asset_desk_cache import domain_options_star_first
 
     rows = await dv.load_all_rows(db)
     keys = sorted({r["dict_key"] for r in rows if r.get("dict_key")})
@@ -35,17 +36,10 @@ async def dict_values_meta(db: AsyncSession = Depends(get_db)):
             if k not in keys:
                 keys.append(k)
     keys = sorted(set(keys))
-    domains = [
-        {"id": "*", "name": "跨域壳默认"},
-        *[
-            {"id": k, "name": (DOMAINS.get(k) or {}).get("label") or k}
-            for k in DOMAINS
-        ],
-    ]
     skins = sorted({r.get("skin_id") for r in rows if r.get("skin_id")})
     return {
         "ok": True,
-        "domains": domains,
+        "domains": domain_options_star_first(DOMAINS),
         "dict_keys": keys,
         "skins": skins,
         "repair_domains": sorted(dv.REPAIR_DOMAINS),
@@ -59,20 +53,20 @@ async def list_dict_values(
     q: Optional[str] = Query(None, description="code 或中文模糊"),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.services.asset_desk_cache import filter_rows
+
     rows = await dv.load_all_rows(db)
+    equals: dict[str, str] = {}
     if domain_id is not None:
-        rows = [r for r in rows if r["domain_id"] == domain_id]
+        equals["domain_id"] = domain_id
     if dict_key:
-        rows = [r for r in rows if r["dict_key"] == dict_key]
-    if q:
-        qq = q.strip().lower()
-        rows = [
-            r
-            for r in rows
-            if qq in (r["value_code"] or "").lower()
-            or qq in (r["label_zh"] or "")
-            or qq in (r["dict_key"] or "").lower()
-        ]
+        equals["dict_key"] = dict_key
+    rows = filter_rows(
+        rows,
+        q=q,
+        equals=equals,
+        q_fields=("value_code", "label_zh", "dict_key"),
+    )
     return {"ok": True, "total": len(rows), "items": rows}
 
 

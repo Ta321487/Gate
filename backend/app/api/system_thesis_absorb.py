@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.system_router import router
 from app.core.database import get_db
 from app.services import thesis_absorb as ta
 from app.services.thesis_absorb_extract import EXTRACTOR_VERSION
 from app.services.thesis_absorb_figures import figure_libs_ready
+
+router = APIRouter(tags=["终稿吸收"])
 
 
 class ThesisAbsorbPatch(BaseModel):
@@ -35,7 +36,9 @@ async def _resolve_id(db: AsyncSession, record_key: str) -> int:
 
 
 @router.get("/system/thesis-absorb/meta", summary="终稿吸收·元信息")
-async def thesis_absorb_meta():
+async def thesis_absorb_meta(db: AsyncSession = Depends(get_db)):
+    # 续跑只在列表/元信息；禁止挂到详情轮询上（否则每 2s 扫库）
+    await ta.kick_stale_extracts(db)
     return {
         "ok": True,
         "extractor_version": EXTRACTOR_VERSION,
@@ -51,7 +54,8 @@ async def thesis_absorb_meta():
         "copy": {
             "title": "终稿吸收",
             "desc": "从终稿抽出要点，对照能力补齐",
-            "success": "已抽取，请先标覆盖，再复制给助手",
+            "success": "已接收，抽取中",
+            "queued": "重抽中",
         },
     }
 
@@ -62,14 +66,22 @@ async def list_thesis_absorb(
     coverage: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
+    await ta.kick_stale_extracts(db)
     items = await ta.list_records(db, q=q, coverage=coverage)
     return {"ok": True, "total": len(items), "items": items}
 
 
 @router.get("/system/thesis-absorb/{record_key}", summary="终稿吸收详情")
-async def get_thesis_absorb(record_key: str, db: AsyncSession = Depends(get_db)):
+async def get_thesis_absorb(
+    record_key: str,
+    poll: bool = Query(False, description="轮询态：只读状态，不 kick、不加重叠/喂稿"),
+    db: AsyncSession = Depends(get_db),
+):
+    # 全表 kick 禁止挂轮询；本条 extracting 无任务时才续跑 / 超时落失败
     rid = await _resolve_id(db, record_key)
-    item = await ta.get_record(db, rid)
+    if poll:
+        await ta.ensure_extract_alive(db, rid)
+    item = await ta.get_record(db, rid, light=poll)
     if not item:
         raise HTTPException(status_code=404, detail="未找到")
     return {"ok": True, "item": item}
@@ -94,7 +106,8 @@ async def upload_thesis_absorb(
     return {
         "ok": True,
         "item": item,
-        "message": "已抽取，请先标覆盖，再复制给助手",
+        "message": "已接收，抽取中",
+        "extract_queued": True,
     }
 
 
@@ -105,7 +118,12 @@ async def reextract_thesis_absorb(record_key: str, db: AsyncSession = Depends(ge
         item = await ta.reextract(db, rid)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"ok": True, "item": item}
+    return {
+        "ok": True,
+        "item": item,
+        "message": "重抽中",
+        "extract_queued": True,
+    }
 
 
 @router.patch("/system/thesis-absorb/{record_key}", summary="更新覆盖/结构/状态")
