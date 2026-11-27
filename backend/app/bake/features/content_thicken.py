@@ -37,6 +37,11 @@ C-09：扫尾对照地图「本组待补」清零。
 
 from __future__ import annotations
 
+from app.bake.features.thicken_common import (
+    ensure_archive_field as _ensure_archive_field,
+    live_schema as _live_schema,
+)
+
 import re
 from collections.abc import Callable
 from typing import Any
@@ -247,13 +252,6 @@ _REPORT_HANDLE_DAYS_DEFAULT = 3
 _COMMENT_FOLD_AFTER_DEFAULT = 3
 
 
-def _live_schema(spec: dict[str, Any]) -> dict[str, Any]:
-    schema = spec.get("schema")
-    if not isinstance(schema, dict):
-        schema = {}
-        spec["schema"] = schema
-    return schema
-
 
 def _add_feature(spec: dict[str, Any], name: str) -> None:
     feats = spec.get("features")
@@ -263,19 +261,6 @@ def _add_feature(spec: dict[str, Any], name: str) -> None:
     if name not in feats:
         feats.append(name)
 
-
-def _ensure_archive_field(archive: dict[str, Any], field: dict[str, Any]) -> None:
-    fields = archive.get("fields")
-    if not isinstance(fields, list):
-        fields = []
-        archive["fields"] = fields
-    key = str(field.get("key") or "")
-    if not key:
-        return
-    for f in fields:
-        if isinstance(f, dict) and f.get("key") == key:
-            return
-    fields.append(field)
 
 
 def _valid_ident(name: str | None) -> bool:

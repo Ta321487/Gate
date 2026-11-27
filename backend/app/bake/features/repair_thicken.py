@@ -13,6 +13,11 @@
 
 from __future__ import annotations
 
+from app.bake.features.thicken_common import (
+    add_feature as _add_feature,
+    live_schema as _live_schema,
+)
+
 from collections.abc import Callable
 from typing import Any
 
@@ -72,20 +77,6 @@ def scan_skill_tag(text: str) -> bool:
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _SKILL_TERMS)
 
 
-def _live_schema(spec: dict[str, Any]) -> dict[str, Any]:
-    schema = spec.get("schema")
-    if not isinstance(schema, dict):
-        schema = {}
-        spec["schema"] = schema
-    return schema
-
-
-def _add_feature(spec: dict[str, Any], name: str, status: str = "flow") -> None:
-    features = list(spec.get("features") or [])
-    names = {f.get("name") for f in features if isinstance(f, dict)}
-    if name not in names:
-        features.append({"name": name, "status": status})
-        spec["features"] = features
 
 
 def _ensure_user_menu(schema: dict[str, Any], key: str, label: str) -> None:

@@ -12,6 +12,12 @@
 
 from __future__ import annotations
 
+from app.bake.features.thicken_common import (
+    add_feature as _add_feature,
+    ensure_archive_field as _ensure_archive_field,
+    live_schema as _live_schema,
+)
+
 from collections.abc import Callable
 from typing import Any
 
@@ -313,37 +319,6 @@ def scan_listing_conflict(text: str) -> bool:
 
 def scan_record_url(text: str) -> bool:
     return any(keyword_mentioned(text or "", kw, ignore_contrast=True) for kw in _RECORD_URL_TERMS)
-
-
-def _live_schema(spec: dict[str, Any]) -> dict[str, Any]:
-    """原地取 schema，禁止浅拷贝后再写回（否则会冲掉 _force_* 挂上的顶层键）。"""
-    schema = spec.get("schema")
-    if not isinstance(schema, dict):
-        schema = {}
-        spec["schema"] = schema
-    return schema
-
-
-def _ensure_archive_field(archive: dict[str, Any], field: dict[str, Any]) -> None:
-    fields = archive.get("fields")
-    if not isinstance(fields, list):
-        fields = []
-        archive["fields"] = fields
-    key = str(field.get("key") or "")
-    if not key:
-        return
-    for f in fields:
-        if isinstance(f, dict) and f.get("key") == key:
-            return
-    fields.append(field)
-
-
-def _add_feature(spec: dict[str, Any], name: str, status: str = "flow") -> None:
-    features = list(spec.get("features") or [])
-    names = {f.get("name") for f in features if isinstance(f, dict)}
-    if name not in names:
-        features.append({"name": name, "status": status})
-        spec["features"] = features
 
 
 def _ensure_cap(spec: dict[str, Any], cap: str) -> None:
