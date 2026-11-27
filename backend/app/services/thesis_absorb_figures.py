@@ -316,17 +316,28 @@ def _get_ocr_fn() -> Callable[[bytes], str] | None:
     return _ocr_fn_cache
 
 
+# 结构图 OCR 墙钟预算：常见大 PDF 90s 易早退；封顶仍远低于「挂死几十分钟」
+OCR_SCAN_BUDGET_S = 180.0
+
+
 def _scan_pdf_images_and_ocr(
     path: Path, *, max_pages: int = 80, want_ocr: bool = True
-) -> tuple[int, list[str]]:
-    """一次打开：先定位结构页再计数/OCR，禁止全本逐页扫嵌图。"""
+) -> tuple[int, list[str], bool]:
+    """一次打开：先定位结构页再计数/OCR，禁止全本逐页扫嵌图。
+
+    返回 (嵌图数, 标签, 是否因预算早退)。超时不抛错，文字主抽可继续。
+    """
+    import time
+
     try:
         doc = _open_pdf(path)
     except Exception:
-        return 0, []
+        return 0, [], False
     image_count = 0
     out: list[str] = []
     seen: set[str] = set()
+    timed_out = False
+    t0 = time.monotonic()
     try:
         targets = _find_structure_pages(doc, max_pages=max_pages)
         # 只计结构页嵌图；无锚点则抽查前 12 页（展示用，不触发 OCR）
@@ -337,15 +348,18 @@ def _scan_pdf_images_and_ocr(
             except Exception:
                 continue
         if not want_ocr or not targets:
-            return image_count, []
+            return image_count, [], False
         ocr_fn = _get_ocr_fn()
         if ocr_fn is None:
-            return image_count, []
+            return image_count, [], False
         try:
             import pymupdf as fitz
         except ImportError:
             import fitz  # type: ignore
         for i in targets:
+            if time.monotonic() - t0 >= OCR_SCAN_BUDGET_S:
+                timed_out = True
+                break
             page = doc[i]
             blobs: list[bytes] = []
             try:
@@ -367,6 +381,9 @@ def _scan_pdf_images_and_ocr(
                 except Exception:
                     continue
             for raw in blobs[:4]:
+                if time.monotonic() - t0 >= OCR_SCAN_BUDGET_S:
+                    timed_out = True
+                    break
                 try:
                     text = ocr_fn(raw)
                 except Exception:
@@ -375,16 +392,18 @@ def _scan_pdf_images_and_ocr(
                     if lab not in seen:
                         seen.add(lab)
                         out.append(lab)
-            if len(out) >= 48:
+            if timed_out or len(out) >= 48:
                 break
     finally:
         doc.close()
-    return image_count, out[:48]
+    return image_count, out[:48], timed_out
 
 
 def try_ocr_structure_labels(path: Path, *, max_pages: int = 80) -> list[str]:
     """层2b：只 OCR「功能结构/用例图」所在页的嵌图与页渲，抽模块标签。"""
-    _, labels = _scan_pdf_images_and_ocr(path, max_pages=max_pages, want_ocr=True)
+    _, labels, _timed = _scan_pdf_images_and_ocr(
+        path, max_pages=max_pages, want_ocr=True
+    )
     return labels
 
 
@@ -439,7 +458,9 @@ def extract_pdf_figure_side(path: Path | str, text: str = "") -> dict[str, Any]:
                 seen_t.add(lab)
                 table_labels.append(lab)
     # 一次打开：嵌图计数 + 仅结构页 OCR（无题注页则早退，不瞎扫全文）
-    image_count, ocr_labels = _scan_pdf_images_and_ocr(p, want_ocr=True)
+    image_count, ocr_labels, ocr_timed_out = _scan_pdf_images_and_ocr(
+        p, want_ocr=True
+    )
 
     # 结构图标签 = OCR；表标签另列
     structure_labels = list(ocr_labels)
@@ -456,6 +477,10 @@ def extract_pdf_figure_side(path: Path | str, text: str = "") -> dict[str, Any]:
 
     has_fig = bool(struct_caps or table_labels or structure_labels)
     warnings: list[str] = []
+    if ocr_timed_out:
+        warnings.append(
+            f"结构图 OCR 超过 {int(OCR_SCAN_BUDGET_S)} 秒已早退，文字终稿照常可用"
+        )
     if struct_caps and not structure_labels:
         if not ocr_libs_ready():
             warnings.append(

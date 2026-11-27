@@ -23,6 +23,10 @@ from app.services.proposal import (
     _SECTION,
     _BULLET,
 )
+from app.services.thesis_absorb_tech import (
+    build_tech_stack_corpus,
+    extract_tech_stack_lines,
+)
 
 # v20：按 docs/thesis-absorb.md §3 重写分桶与采矿优先级（禁止再叠旧启发式）
 # v21：各端「其中包含」全量按形态回收（首项可不带管理/模块）；不写死业务名
@@ -50,7 +54,14 @@ from app.services.proposal import (
 # v46：无英文物理题注（表4.n 中文表）用 t_表号；中文列名+en+是/否；禁「数¶据库」假实体
 # v47：总体设计功能清单形态——划分为…即 / 涵盖… / 主要功能： / 「及」拆项 / 掐「共N个模块」残片
 # v48：文中技术栈——只采正文点名（相关技术/摘要/绪论等），禁止默认栈脑补
-EXTRACTOR_VERSION = "48"
+# v49：按章节只认真章题（第x章/标题词独占）；叙述句、图注、测试结果图名不得冒充章
+# v50：按章节摘句清目录点线/页眉「…目录」/测试步骤叙述
+# v51：按章节展示只留「第x章」+图注；文献引用/章结构串场摘句丢掉
+# v52：短摘录禁 raw[:2000]；优先中文摘要/设计句+功能短名；纯英文粘连墙置空
+# v53：短摘录/背景拼到句末；禁半截首行；硬上限落在句号
+# v54：按章节摘句掐可行性散文/图题/半截起句/实现走读；只留功能·模块线索
+# v55：少人工——实体壳/RBAC 功能降权、摘录拒设计蓝图串、覆盖主候选排序（换题同形）
+EXTRACTOR_VERSION = "55"
 
 THIN_FEATURE_THRESHOLD = 3
 
@@ -159,233 +170,28 @@ _BUCKET_RULES: list[tuple[str, re.Pattern[str]]] = [
 ]
 
 # 技术选型章标题（discard 桶内过滤；勿把致谢/参考文献当栈源）
-_TECH_HEADING_RE = re.compile(
-    r"(?:相关技术|技术综述|开发工具|技术及环境|框架介绍|开发环境|关键技术|"
-    r"技术选型|关键工具|运行环境|系统环境|关键语言|数据库技术|关键平台|"
-    r"(?:Flask|Django|Spring|Vue|MySQL|Redis|MyBatis|Node).{0,16}(?:简介|介绍|概述))"
-)
 
 # 只认正文点名；更具体的针在前。标签为展示名。
-_TECH_STACK_TERMS: list[tuple[tuple[str, ...], str]] = [
-    (("Spring Boot", "SpringBoot", "spring-boot"), "Spring Boot"),
-    (("Spring Cloud", "SpringCloud"), "Spring Cloud"),
-    (("Spring Security", "SpringSecurity"), "Spring Security"),
-    (("Spring Data JPA", "spring-data-jpa", "SpringDataJPA"), "Spring Data JPA"),
-    (("Spring MVC", "SpringMVC"), "Spring MVC"),
-    (("Spring",), "Spring"),
-    (("JdbcTemplate", "Spring JDBC", "spring-jdbc"), "JdbcTemplate"),
-    (("MyBatis-Plus", "MyBatis Plus", "mybatis-plus", "MybatisPlus"), "MyBatis-Plus"),
-    (("MyBatis", "mybatis"), "MyBatis"),
-    (("Hibernate",), "Hibernate"),
-    (("JPA",), "JPA"),
-    (("Element Plus", "ElementPlus", "element-plus"), "Element Plus"),
-    (("Element UI", "ElementUI", "element-ui"), "Element UI"),
-    (("Ant Design Vue", "Ant Design of Vue", "ant-design-vue"), "Ant Design Vue"),
-    (("Vue 3", "Vue3", "vue3", "Vue.js 3"), "Vue 3"),
-    (("Vue 2", "Vue2", "vue2"), "Vue 2"),
-    (("Vue.js", "VueJS"), "Vue"),
-    (("Vue",), "Vue"),
-    (("React", "React.js", "ReactJS"), "React"),
-    (("Angular",), "Angular"),
-    (("Bootstrap",), "Bootstrap"),
-    (("jQuery", "JQuery"), "jQuery"),
-    (("Axios",), "Axios"),
-    (("ECharts", "echarts"), "ECharts"),
-    (("Node.js", "NodeJS", "Node js"), "Node.js"),
-    (("Express", "Express.js"), "Express"),
-    (("Django",), "Django"),
-    (("Flask",), "Flask"),
-    (("FastAPI",), "FastAPI"),
-    (("MySQL", "mysql"), "MySQL"),
-    (("MariaDB",), "MariaDB"),
-    (("PostgreSQL", "Postgres"), "PostgreSQL"),
-    (("SQL Server", "SQLServer", "SqlServer"), "SQL Server"),
-    (("Oracle",), "Oracle"),
-    (("MongoDB", "Mongo DB"), "MongoDB"),
-    (("Redis",), "Redis"),
-    (("Maven",), "Maven"),
-    (("Gradle",), "Gradle"),
-    (("Tomcat",), "Tomcat"),
-    (("Nginx", "NGINX"), "Nginx"),
-    (("Docker",), "Docker"),
-    (("微信小程序",), "微信小程序"),
-    (("uni-app", "UniApp", "uniapp"), "uni-app"),
-    (("Flutter",), "Flutter"),
-    (("Android",), "Android"),
-    ((".NET", "ASP.NET", "AspNet"), ".NET"),
-    (("Java",), "Java"),
-    (("TypeScript", "Typescript"), "TypeScript"),
-    (("JavaScript", "Javascript"), "JavaScript"),
-    (("Python",), "Python"),
-]
 
 # 更具体项已出现时，去掉泛称，避免 Spring Boot + Spring 双挂
-_TECH_STACK_SUBSUMED: dict[str, tuple[str, ...]] = {
-    "Spring": (
-        "Spring Boot",
-        "Spring Cloud",
-        "Spring MVC",
-        "Spring Security",
-        "Spring Data JPA",
-    ),
-    "Vue": ("Vue 3", "Vue 2"),
-    "MyBatis": ("MyBatis-Plus",),
-    "JPA": ("Spring Data JPA",),
-    "Hibernate": ("Spring Data JPA",),
-    "JavaScript": ("TypeScript",),
-}
 
 
-def _find_tech_needle_pos(hay: str, hay_lower: str, needle: str) -> int:
-    if not needle:
-        return -1
-    i = hay.find(needle)
-    if i >= 0:
-        return i
-    if needle.isascii():
-        return hay_lower.find(needle.lower())
-    return -1
 
 
-_TECH_NEG_BEFORE = re.compile(
-    r"(?:不采用|不使用|不用|并非|没有使用|未使用|拒绝使用).{0,10}$"
-)
 
 
-def _tech_needle_ok(hay: str, pos: int, needle: str) -> bool:
-    """短英词要求左右非 ASCII 字母数字，避免 Java⊂JavaScript、Vue⊂Vuex。"""
-    if not needle.isascii() or len(needle) > 4:
-        return True
-    before = hay[pos - 1] if pos > 0 else " "
-    after_i = pos + len(needle)
-    after = hay[after_i] if after_i < len(hay) else " "
-    if before.isascii() and before.isalnum():
-        return False
-    if after.isascii() and after.isalnum():
-        return False
-    return True
 
 
-def _tech_negated_at(hay: str, pos: int) -> bool:
-    """「不用 JdbcTemplate」等否定点名不进栈。"""
-    window = hay[max(0, pos - 18) : pos]
-    return bool(_TECH_NEG_BEFORE.search(window))
 
 
-def _repair_tech_soft_wraps(text: str) -> str:
-    """拼回 PDF 把 Vue/Spring Boot 等拆到两行的软折行。"""
-    t = text or ""
-    reps = (
-        (r"Vue\s*[\r\n]+\s*([23３２])", r"Vue \1"),
-        (r"Spring\s*[\r\n]+\s*Boot", "Spring Boot"),
-        (r"Spring\s*[\r\n]+\s*Cloud", "Spring Cloud"),
-        (r"Spring\s*[\r\n]+\s*MVC", "Spring MVC"),
-        (r"Spring\s*[\r\n]+\s*Security", "Spring Security"),
-        (r"Element\s*[\r\n]+\s*Plus", "Element Plus"),
-        (r"Element\s*[\r\n]+\s*UI", "Element UI"),
-        (r"MyBatis\s*[\r\n]+\s*Plus", "MyBatis-Plus"),
-        (r"Node\s*[\r\n]+\s*\.?js", "Node.js"),
-        (r"Spring\s*Boot", "Spring Boot"),  # SpringBoot 粘连已由针覆盖；此处收空白
-    )
-    for pat, repl in reps[:-1]:
-        t = re.sub(pat, repl, t, flags=re.I)
-    return t
 
 
-def extract_tech_stack_lines(text: str, *, limit: int = 24) -> list[str]:
-    """从正文采技术点名；未点名则空，禁止默认栈。"""
-    raw = _repair_tech_soft_wraps(text or "")
-    if not raw.strip():
-        return []
-    hay_lower = raw.lower()
-    hits: list[tuple[int, str]] = []
-    seen: set[str] = set()
-    for needles, label in _TECH_STACK_TERMS:
-        if label in seen:
-            continue
-        best = -1
-        for n in needles:
-            pos = _find_tech_needle_pos(raw, hay_lower, n)
-            if pos < 0 or not _tech_needle_ok(raw, pos, n):
-                continue
-            if _tech_negated_at(raw, pos):
-                continue
-            if best < 0 or pos < best:
-                best = pos
-        if best < 0:
-            continue
-        seen.add(label)
-        hits.append((best, label))
-    hits.sort(key=lambda x: x[0])
-    labels = [lab for _p, lab in hits]
-    present = set(labels)
-    out: list[str] = []
-    for lab in labels:
-        parents = _TECH_STACK_SUBSUMED.get(lab) or ()
-        if any(p in present for p in parents):
-            continue
-        out.append(lab)
-        if len(out) >= limit:
-            break
-    return out
 
 
-_STACK_CLAIM_RE = re.compile(
-    r"(?:本系统|本文|本课题|本研究|本项目).{0,48}"
-    r"(?:采用|使用|基于|选用|以.{0,12}为|搭建|结合)"
-)
-_STACK_SURVEY_LINE_RE = re.compile(
-    r"(?:主流|常见|流行|还有|或者是|例如|比如|对比|不同于|"
-    r"传统(?:的)?系统|现有(?:的)?系统|其他(?:的)?系统|"
-    r"可以选择|也可采用|也可以使用|分别是|包括 Vue、React)"
-)
 
 
-def _tech_section_lines(
-    buckets: dict[str, list[tuple[str, list[str]]]],
-) -> list[str]:
-    parts: list[str] = []
-    for heading, lines in buckets.get("discard") or []:
-        h = str(heading or "")
-        if not _TECH_HEADING_RE.search(h):
-            continue
-        parts.append(h)
-        for ln in lines:
-            s = str(ln or "").strip()
-            if not s or _STACK_SURVEY_LINE_RE.search(s):
-                continue
-            parts.append(s)
-    return parts
 
 
-def build_tech_stack_corpus(
-    *,
-    buckets: dict[str, list[tuple[str, list[str]]]],
-    abstract_lines: list[str],
-    intro_lines: list[str],
-    full_text: str,
-) -> str:
-    """优先「本系统采用」类陈述；陈述过少再补相关技术章非综述行。"""
-    claim_parts: list[str] = []
-    body = strip_non_dev_sections(full_text or "")
-    for ln in body.splitlines():
-        s = ln.strip()
-        if s and _STACK_CLAIM_RE.search(s):
-            claim_parts.append(s)
-    for x in abstract_lines or []:
-        s = str(x).strip()
-        if s and s not in claim_parts:
-            claim_parts.append(s)
-    claim_blob = "\n".join(claim_parts).strip()
-    # 陈述已能点名 ≥2 项技术 → 不再并入相关技术调研章
-    if len(extract_tech_stack_lines(claim_blob, limit=8)) >= 2:
-        return claim_blob
-    parts = list(claim_parts)
-    parts.extend(_tech_section_lines(buckets))
-    blob = "\n".join(parts).strip()
-    if len(blob) >= 12:
-        return blob
-    return "\n".join(x for x in (intro_lines or []) if str(x).strip())
 
 
 _OTHER_HAS = re.compile(
@@ -476,8 +282,26 @@ _ENTITY_SKIP = frozenset(
         "密码",
     }
 )
-# 库表元词：抽到「数据表/字段表」也不当业务实体
-_ENTITY_META = frozenset({"数据", "数据库", "字段", "主键", "外键", "系统"})
+# 库表元词：抽到「数据表/字段表」也不当业务实体（含裸「信息」）
+_ENTITY_META = frozenset(
+    {
+        "数据",
+        "数据库",
+        "字段",
+        "主键",
+        "外键",
+        "系统",
+        "信息",
+        "菜单",
+        "配置",
+        "配置文件",
+        "日志",
+        "系统日志",
+        "字典",
+        "权限",
+        "角色",
+    }
+)
 # 导航/壳页名，不是库表
 _ENTITY_NAV = frozenset(
     {"关于我们", "个人中心", "首页", "系统首页", "登录页", "欢迎页", "帮助中心"}
@@ -496,6 +320,32 @@ _FEATURE_SHELL = frozenset(
         "数据管理",
         # 导航壳：正文多写「系统首页/首页展示」；裸「首页管理」常是胡编
         "首页管理",
+    }
+)
+# 设计采矿可保留（证清单齐），三栏草稿丢掉——答辩主路径不靠这些
+_FEATURE_DRAFT_DROP = frozenset(
+    {
+        "个人中心管理",
+        "个人设置管理",
+        "角色管理",
+        "权限管理",
+        "日志管理",
+        "菜单管理",
+        "字典管理",
+        "系统设置管理",
+        "配置管理",
+    }
+)
+# 可保留但不进主路径前列（内容挂件等）
+_FEATURE_DEMOTE = frozenset(
+    {
+        "轮播图管理",
+        "公告管理",
+        "通知管理",
+        "消息管理",
+        "收藏管理",
+        "我的收藏管理",
+        *_FEATURE_DRAFT_DROP,
     }
 )
 # 匹配「××管理」时不得吃进「××管理员」岗名（管理(?!员)）
@@ -552,10 +402,53 @@ _SECTION_TOC_NOISE = re.compile(
     r"国内外?研究现状|课题研究的目的"
     r")"
 )
+# 目录行 / 跑马页眉页脚（学院名+目录、第x章…页码）
+_TOC_OR_RUNNING = re.compile(
+    r"(?:"
+    r"届本科毕业设计|届本科毕业论文|"
+    r"(?:毕业设计|毕业论文).{0,12}目录|"
+    r"^[^\n]{0,24}目录\s*$|"
+    r"第\s*[一二三四五六七八九十百零〇\d]+\s*章[^\n]{0,48}"
+    r"(?:[\.·．…‥]{2,}\s*\d+|\s+\d{1,3})\s*$"
+    r")"
+)
+# 测试步骤/弹窗预期句：按章节摘句不要
+_SEC_TEST_STEP = re.compile(
+    r"(?:"
+    r"测试输入|与预期结果|预期结果|实际结果|测试步骤|"
+    r"请填写此字段|提交成功|修改成功|评价提交|"
+    r"显示[「\"“]|输入[「\"“]|浏览器环境|兼容性测试|"
+    r"测试用例|结果如图|如图\s*\d|不同浏览器"
+    r")"
+)
+# 图题 / 「如图所示」走读串进按章节
+_SEC_FIG_CAPTION = re.compile(
+    r"(?:"
+    r"^图\s*[0-9０-９.．\-—﹣一二三四五六七八九十]+|"
+    r"如图|如下图|所示|"
+    r"页面图|成功页面|架构图|功能模块图|结构图|用例图"
+    r")"
+)
+# 可行性/意义散文、实现走读、技术吹嘘——不是功能线索
+_SEC_PROSE_JUNK = re.compile(
+    r"(?:"
+    r"可行|人力成本|财务开支|用户体验|前端渲染|动态交互|"
+    r"预定途径|管理平台|提高.{0,6}效率|外出游玩|消费者|"
+    r"进入系统首先|需要输入|上一步注册|登录的页面|登录成功|"
+    r"系统前端$|房间页面$|管理员端功能设计$|系统结构设计$|"
+    r"Vue\s*技术|实现了页面|流畅的用户|"
+    r"^在进行|^进行(?!管理)"
+    r")"
+)
+# PDF 折行半截起句：「程中，…」「则使用 Vue…」「后才可以…」
+_SEC_HALF_START = re.compile(
+    r"^[，、；;的了和与及为以把被从向对给到而或且是有不还就都很更最务程则提后也]"
+)
 _ROMAN_PAGE = re.compile(r"^[ⅣⅢⅡⅠivxlcdmIVXLCDM]+$")
 _BARE_SEC_NUM = re.compile(r"^\d{1,2}(?:\.\d{1,2}){0,3}\.?$")
 _USEFUL_SEC = re.compile(
-    r"(?:管理|模块|登录|注册|订单|支付|审核|入库|出库|商城|预约|借阅|查询|统计)"
+    r"(?:管理|模块|登录|注册|订单|支付|审核|入库|出库|商城|预约|借阅|查询|统计|"
+    r"包含|负责|续订|续住|预定|预订|评论|评价|房型|客房)"
 )
 _BARE_ENUM = re.compile(
     r"^(?:"
@@ -592,7 +485,10 @@ def collapse_pdf_glyph_spaces(text: str) -> str:
 
 
 def _peel_heading_body(cand: str) -> tuple[str, str]:
-    """粘连行：章/节标题留给 heading，其后正文进 body。"""
+    """粘连行：章/节标题留给 heading，其后正文进 body。
+
+    未剥出真标题时返回 ("","")，禁止把整行正文冒充 head（否则叙述句拦不住）。
+    """
     s = (cand or "").strip()
     if not s:
         return "", ""
@@ -607,7 +503,7 @@ def _peel_heading_body(cand: str) -> tuple[str, str]:
         rest = (m2.group(2) or "").strip()
         if rest:
             return head, rest
-    return s, ""
+    return "", ""
 
 
 def clean_heading_candidate(ln: str) -> str:
@@ -615,6 +511,53 @@ def clean_heading_candidate(ln: str) -> str:
     s = _TOC_DOT_LEADERS.sub("", s).strip()
     s = collapse_pdf_glyph_spaces(s)
     return s
+
+
+_CAPTIONISH_HEAD = re.compile(
+    r"(?:"
+    r"结果图|截图|界面图|效果图|用例图$"
+    r"|测试用例\s*\d*\s*结果"
+    r"|如图|如表|所示"
+    r")"
+)
+_TITLE_LINE_ONLY = re.compile(
+    rf"^(?:第\s*[一二三四五六七八九十百零〇\d]+\s*[章节部分])?"
+    rf"(?:{_TITLE_KW})"
+    rf"(?:[：:\s].*)?$"
+)
+_NUMBERED_TITLE_LINE = re.compile(
+    rf"^\d+(?:\.\d+){{0,3}}\s*(?:{_TITLE_KW})\s*$"
+)
+
+
+def _is_section_title_candidate(cand: str) -> bool:
+    """可晋升为分桶章题：第x章/节、独占标题词；禁止叙述句与图注伪章。"""
+    s = clean_heading_candidate(cand)
+    if not s or len(s) > 48:
+        return False
+    if re.search(r"[。；;！？]", s):
+        return False
+    if re.match(r"^[图表]\s*[0-9０-９一二三四五六七八九十]", s):
+        return False
+    if _CAPTIONISH_HEAD.search(s):
+        return False
+    # 半截逗号句（功能需求，但…）不当章题
+    if "，" in s or "、" in s:
+        return False
+    if _is_heading_line(s):
+        return True
+    if len(s) <= 28 and _TITLE_LINE_ONLY.match(s):
+        return True
+    if len(s) <= 28 and _NUMBERED_TITLE_LINE.match(s):
+        return True
+    # 摘要/绪论/相关技术等短标题（无数字、无标点），避免正文夹词冒充
+    if (
+        len(s) <= 20
+        and _classify_heading(s) != "other"
+        and not re.search(r"[0-9０-９]", s)
+    ):
+        return True
+    return False
 
 
 def normalize_thesis_text(text: str) -> str:
@@ -745,10 +688,10 @@ def split_buckets(text: str) -> dict[str, list[tuple[str, list[str]]]]:
         cand = clean_heading_candidate(ln)
         if not cand:
             continue
-        if re.search(r"届本科毕业设计|届本科毕业论文", cand) and len(cand) <= 40:
+        if re.search(r"届本科毕业设计|届本科毕业论文", cand) and len(cand) <= 48:
             continue
-        # 纯目录点线行丢弃
-        if _TOC_DOT_LEADERS.search(ln) and len(cand) <= 40:
+        # 纯目录点线行 / 目录页码 / 页眉「…目录」丢弃
+        if _is_toc_or_running_header(cand) or _is_toc_or_running_header(ln):
             continue
         # 图/表题注不当章题
         if re.match(r"^[图表]\s*[0-9０-９一二三四五六七八九十]", cand):
@@ -760,23 +703,22 @@ def split_buckets(text: str) -> dict[str, list[tuple[str, list[str]]]]:
         if rest and rest[:1] in "，、。；：":
             head, rest = "", ""
         cls_head = _classify_heading(head) if head else "other"
-        cls_cand = _classify_heading(cand)
-        cls = cls_head if cls_head != "other" else cls_cand
+        title_cand = head if head else cand
+        cls = cls_head if cls_head != "other" else _classify_heading(title_cand)
         long_glued = bool(
-            rest
+            head
+            and rest
             and cls in ("design", "req", "impl", "intro", "test", "abstract")
         )
-        # 叙述句里夹关键词不当章题
-        narrative = ("、" in cand or "，" in cand or "。" in cand) and not head
-        if _is_heading_line(cand) or _is_heading_line(head) or (
-            cls != "other"
-            and not _BULLET.match(cand)
-            and (len(cand) <= 28 or long_glued)
-            and not narrative
+        # 只认真章题 / 独占标题词；正文夹「用例图」「测试用例」不得冒充章
+        if (
+            _is_section_title_candidate(cand)
+            or (head and _is_section_title_candidate(head))
+            or long_glued
         ):
             flush()
             cur_heading = head or cand
-            cur_bucket = cls
+            cur_bucket = cls if cls != "other" else _classify_heading(cur_heading)
             if rest:
                 cur_body.append(rest)
             continue
@@ -1101,7 +1043,7 @@ def _feat_rank(s: str) -> int:
 
 
 def finalize_feature_lines(items: list[str], *, limit: int = 16) -> list[str]:
-    """清洗 + 同词干去重（厂商模块/厂商管理只留管理）。"""
+    """清洗 + 同词干去重（厂商模块/厂商管理只留管理）；业务主路径在前、壳/挂件后置。"""
     best: dict[str, str] = {}
     order: list[str] = []
     for raw in items or []:
@@ -1116,14 +1058,98 @@ def finalize_feature_lines(items: list[str], *, limit: int = 16) -> list[str]:
             continue
         if _feat_rank(cleaned) > _feat_rank(prev):
             best[stem] = cleaned
-    out = [best[s] for s in order if s in best]
-    return out[:limit]
+    primary: list[str] = []
+    demoted: list[str] = []
+    for s in order:
+        lab = best.get(s)
+        if not lab:
+            continue
+        if lab in _FEATURE_DEMOTE:
+            demoted.append(lab)
+        else:
+            primary.append(lab)
+    return (primary + demoted)[:limit]
+
+
+def finalize_draft_entities(items: list[str] | None, *, limit: int = 24) -> list[str]:
+    """三栏实体再洗：掐元词/壳表名；有表证的导航真表（关于我们）保留。"""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in items or []:
+        if not isinstance(raw, str):
+            continue
+        ent = _normalize_table_title_to_entity(raw, table_evidence=True)
+        from_caption = bool(ent)
+        if not ent:
+            bare = re.sub(r"\s+", "", raw.strip())
+            ent = _finalize_entity_stem(bare, table_evidence=False)
+        if not ent or ent in seen:
+            continue
+        if ent in _ENTITY_META:
+            continue
+        if not from_caption and ent in _ENTITY_NAV:
+            continue
+        seen.add(ent)
+        out.append(ent)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def finalize_draft_features(items: list[str] | None, *, limit: int = 32) -> list[str]:
+    """三栏功能：业务主路径在前；RBAC/个人中心壳不进草稿（设计采矿仍可留）。"""
+    feats = finalize_feature_lines(list(items or []), limit=max(limit * 2, 32))
+    return [f for f in feats if f not in _FEATURE_DRAFT_DROP][:limit]
+
+
+def clean_thesis_title(text: str) -> str:
+    """封面题名：去「论文题目：」、兼容区怪字；不改业务语义。"""
+    import unicodedata
+
+    s = unicodedata.normalize("NFKC", (text or "").strip())
+    s = re.sub(r"^(?:论文题目|题目|题名)\s*[：:]\s*", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s[:120]
+
+
+def _is_toc_or_running_header(s: str) -> bool:
+    """目录点线行、学院页眉页脚「…目录」、第x章…页码。"""
+    t = (s or "").strip()
+    if not t:
+        return False
+    if _TOC_DOT_LEADERS.search(t):
+        return True
+    if _TOC_OR_RUNNING.search(t):
+        return True
+    return False
+
+
+_SEC_CITE_OR_META = re.compile(
+    r"(?:"
+    r"\[[JDMC]\]\.|"  # 参考文献著录
+    r"电脑与信息技术|知网|万方|"
+    r"第\s*[一二三四五六七八九十\d]+\s*章为|"  # 「第4章为系统设计…」结构串
+    r"^(?:分析|概述|小结|本章小结)\s*$"
+    r")"
+)
 
 
 def clean_section_line(s: str) -> str | None:
     t = _BULLET.sub("", (s or "").strip())
     t = re.sub(r"\s+", " ", t).strip()
     if not t or _ROMAN_PAGE.fullmatch(t) or _BARE_SEC_NUM.fullmatch(t):
+        return None
+    if _is_toc_or_running_header(t):
+        return None
+    if _SEC_TEST_STEP.search(t):
+        return None
+    if _SEC_CITE_OR_META.search(t):
+        return None
+    if _SEC_FIG_CAPTION.search(t):
+        return None
+    if _SEC_PROSE_JUNK.search(t):
+        return None
+    if _SEC_HALF_START.match(t):
         return None
     if re.search(
         r"(?:可行性|用例图|序列图|时序图|类图|活动图|流程图|研究背景|研究现状|"
@@ -1135,6 +1161,17 @@ def clean_section_line(s: str) -> str | None:
         return None
     t = _LEADING_FEAT_NUM.sub("", t).strip()
     if not t or len(t) < 2 or len(t) > 40:
+        return None
+    # 按章节只留功能/模块线索；散文残句即使短也丢
+    if not _USEFUL_SEC.search(t):
+        return None
+    # 题名残片「青竹小轩酒店管理」：过长专名+管理且无模块/包含
+    m_title = re.fullmatch(r"([\u4e00-\u9fff]{5,14})(?:系统)?管理", t)
+    if m_title and not re.search(
+        r"(?:用户|订单|评论|评价|预定|预订|续订|续住|房型|客房|房间|"
+        r"入住|新闻|公告|分类|信息|厂商|材料|借阅|预约|报修)",
+        m_title.group(1),
+    ):
         return None
     return t
 
@@ -1171,6 +1208,10 @@ def finalize_sections(
     limit: int = 8,
     skip_intro: bool = True,
 ) -> list[dict[str, Any]]:
+    """按章节展示：只留「第x章…」与「图注与结构标签」。
+
+    分桶采矿仍可切「数据库设计」等短标题；进 UI 的 sections 不再并列冒充章。
+    """
     out: list[dict[str, Any]] = []
     for s in sections or []:
         if not isinstance(s, dict):
@@ -1180,34 +1221,248 @@ def finalize_sections(
             continue
         if skip_intro and _section_is_introish(heading):
             continue
+        # 按章节展示：叙述句 / 图注伪章 / 目录页码行一律丢掉
+        if re.search(r"[。；;！？]", heading):
+            continue
+        if _CAPTIONISH_HEAD.search(heading):
+            continue
+        if "，" in heading or "、" in heading:
+            continue
+        if _is_toc_or_running_header(heading):
+            continue
+        is_chapter = bool(_CHAPTER_HEAD.match(heading))
+        is_figure_pack = heading == "图注与结构标签"
+        # 裸「需求分析/系统设计/系统测试」等短标题不进展示（易与真章重复、掺文献）
+        if not is_chapter and not is_figure_pack:
+            continue
         lines = finalize_section_lines(
             s.get("lines") if isinstance(s.get("lines"), list) else [],
             limit=8,
         )
         if not lines:
             continue
-        if not any(_USEFUL_SEC.search(x) for x in lines) and not _USEFUL_SEC.search(
-            heading
-        ):
-            if not re.search(r"(?:实现|需求|功能|管理|模块|图注)", heading):
-                continue
         out.append({"heading": heading, "lines": lines})
         if len(out) >= limit:
             break
     return out
 
 
+_BG_MAX = 240
+_EXCERPT_MAX = 480
+_GLUED_LATIN_RUN = re.compile(r"[A-Za-z]{18,}")
+_CAMEL_GLUE = re.compile(r"[a-z][A-Z]")
+_SENT_END_CHARS = "。！？.!?"
+
+
+def _is_noise_bg_line(t: str) -> bool:
+    if not t or len(t) < 12:
+        return True
+    if _BARE_SEC_NUM.match(t) or _SECTION_TOC_NOISE.search(t):
+        return True
+    if re.match(r"^\d+(\.\d+)+\s*\S{0,24}$", t):
+        return True
+    if re.match(r"^第.+[章节]", t):
+        return True
+    return False
+
+
+def _is_sentence_complete(text: str) -> bool:
+    t = (text or "").strip()
+    return bool(t) and t[-1] in _SENT_END_CHARS
+
+
+def looks_half_cut(text: str) -> bool:
+    """无句末标点的半截摘（如「……酒店预定的服」）。"""
+    t = (text or "").strip()
+    if not t or _is_sentence_complete(t):
+        return False
+    return _mostly_cjk(t)
+
+
+# 兼容旧名
+_looks_half_cut = looks_half_cut
+
+
+def _clip_at_sentence(text: str, max_len: int) -> str:
+    t = re.sub(r"\s+", " ", (text or "").strip())
+    if not t:
+        return ""
+    if len(t) <= max_len:
+        return t
+    window = t[:max_len]
+    best = -1
+    for i, ch in enumerate(window):
+        if ch in "。！？":
+            best = i
+    if best >= 12:
+        return window[: best + 1]
+    best = -1
+    for i, ch in enumerate(window):
+        if ch in "，；;":
+            best = i
+    if best >= 12:
+        return window[: best + 1].rstrip("，；;") + "。"
+    return window.rstrip("，、；; ") + "。"
+
+
 def clean_background(text: str) -> str:
     t = re.sub(r"\s+", " ", (text or "").strip())
-    if not t or len(t) < 12:
+    if _is_noise_bg_line(t):
         return ""
-    if _BARE_SEC_NUM.match(t) or _SECTION_TOC_NOISE.search(t):
+    return _clip_at_sentence(t, _BG_MAX)
+
+
+def _cjk_ratio(text: str) -> float:
+    t = text or ""
+    if not t:
+        return 0.0
+    cjk = sum(1 for ch in t if "\u4e00" <= ch <= "\u9fff")
+    return cjk / max(len(t), 1)
+
+
+def _mostly_cjk(text: str, *, min_ratio: float = 0.25) -> bool:
+    return _cjk_ratio(text) >= min_ratio
+
+
+# 设计章蓝图/模块枚举串进短摘录（换题同形）
+_EXCERPT_BLUEPRINT = re.compile(
+    r"(?:"
+    r"模块划分|提供蓝图|主要对系统架构|为系统的实现提供|"
+    r"逻辑设计、安全性|全流程管理。本模块|"
+    r"第\s*[一二三四五六七八九十\d]+\s*章"
+    r")"
+)
+
+
+def excerpt_looks_junk(text: str) -> bool:
+    """英文粘连墙 / 设计蓝图串场 / 模块枚举墙，不当短摘录。"""
+    t = (text or "").strip()
+    if not t:
+        return True
+    if _GLUED_LATIN_RUN.search(t):
+        return True
+    if _CAMEL_GLUE.search(t) and _cjk_ratio(t) < 0.2:
+        return True
+    if len(t) > 100 and _cjk_ratio(t) < 0.12:
+        return True
+    if _EXCERPT_BLUEPRINT.search(t):
+        return True
+    # 「××管理」堆砌 ≥3 且无背景词 → 模块清单误当摘录
+    if t.count("管理") >= 3 and not re.search(r"(?:背景|需求|问题|现状|日益)", t):
+        return True
+    return False
+
+
+def _join_cjk_piece(buf: str, piece: str) -> str:
+    """中文折行拼接：汉字邻接不加空格。"""
+    p = re.sub(r"\s+", " ", (piece or "").strip())
+    if not p:
+        return buf
+    if not buf:
+        return p
+    if (
+        "\u4e00" <= buf[-1] <= "\u9fff"
+        and "\u4e00" <= p[0] <= "\u9fff"
+    ):
+        return buf + p
+    return (buf + " " + p).strip()
+
+
+def gather_cjk_abstract(
+    lines: list[str] | None,
+    *,
+    max_len: int = _EXCERPT_MAX,
+    min_len: int = 12,
+) -> str:
+    """把摘要折行拼成完整句；禁止只取半截首行。"""
+    buf = ""
+    for ln in lines or []:
+        piece = re.sub(r"\s+", " ", str(ln or "").strip())
+        if not piece:
+            continue
+        if not buf:
+            if _is_noise_bg_line(piece):
+                continue
+            if excerpt_looks_junk(piece) and not _mostly_cjk(piece):
+                continue
+        else:
+            # 续行允许短片（如「务。」）接上「……的服」
+            if excerpt_looks_junk(piece) and not _mostly_cjk(piece):
+                break
+        trial = _join_cjk_piece(buf, piece)
+        if not _mostly_cjk(trial) or excerpt_looks_junk(trial):
+            if buf:
+                break
+            continue
+        buf = trial
+        if _is_sentence_complete(buf) and len(buf) >= min_len:
+            break
+        if len(buf) >= max_len:
+            break
+    if not buf or len(buf) < min_len:
         return ""
-    if re.match(r"^\d+(\.\d+)+\s*\S{0,24}$", t):
+    if excerpt_looks_junk(buf):
         return ""
-    if re.match(r"^第.+[章节]", t):
-        return ""
-    return t[:240]
+    return _clip_at_sentence(buf, max_len)
+
+
+def build_thesis_excerpt(
+    *,
+    background: str = "",
+    abstract_lines: list[str] | None = None,
+    design_lines: list[str] | None = None,
+    feature_lines: list[str] | None = None,
+) -> str:
+    """终稿短摘录：可读中文完整句；禁止整章 raw、英文粘连墙、半截首行。"""
+    gathered = gather_cjk_abstract(abstract_lines, max_len=_EXCERPT_MAX)
+    bg = clean_background(background or "")
+    # 完整句背景优先；半截背景让位给拼好的摘要
+    if (
+        bg
+        and _mostly_cjk(bg)
+        and not excerpt_looks_junk(bg)
+        and _is_sentence_complete(bg)
+    ):
+        return _clip_at_sentence(bg, _EXCERPT_MAX)
+    if gathered and not looks_half_cut(gathered):
+        return gathered
+    if bg and _mostly_cjk(bg) and not excerpt_looks_junk(bg) and not looks_half_cut(bg):
+        return _clip_at_sentence(bg, _EXCERPT_MAX)
+
+    parts: list[str] = []
+    for ln in design_lines or []:
+        cand = clean_background(str(ln or ""))
+        if (
+            not cand
+            or len(cand) < 12
+            or not _mostly_cjk(cand)
+            or excerpt_looks_junk(cand)
+        ):
+            continue
+        parts.append(cand)
+        if sum(len(p) for p in parts) >= 160:
+            break
+
+    feats = [
+        str(f).strip()
+        for f in (feature_lines or [])
+        if isinstance(f, str) and str(f).strip() and _mostly_cjk(str(f))
+    ][:10]
+    if parts:
+        chunks: list[str] = []
+        for p in parts:
+            chunks.append(p if _is_sentence_complete(p) else f"{p.rstrip('，、；;')}。")
+        body = "".join(chunks)
+        if feats:
+            body = body.rstrip("。") + "。主要功能包括：" + "、".join(feats) + "。"
+        return _clip_at_sentence(body, _EXCERPT_MAX)
+    if feats:
+        return _clip_at_sentence(
+            "本系统主要功能包括：" + "、".join(feats) + "。",
+            _EXCERPT_MAX,
+        )
+    # 实在只有半截摘要：仍不交半截，交空（UI「暂无」）
+    return ""
 
 
 def _is_role_partition_module(label: str, roles: set[str]) -> bool:
@@ -1419,8 +1674,8 @@ def suggest_drafts_from_proposal(proposal: dict[str, Any] | None) -> dict[str, l
             _add_entity(lab)
     return {
         "draft_roles": roles[:8],
-        "draft_entities": entities[:24],
-        "draft_features": biz_feats[:32],
+        "draft_entities": finalize_draft_entities(entities, limit=24),
+        "draft_features": finalize_draft_features(biz_feats, limit=32),
     }
 
 
@@ -1479,7 +1734,7 @@ def fallback_drafts_no_llm(proposal: dict[str, Any] | None) -> dict[str, list[st
             entities.append(ent)
     return {
         "draft_roles": contract_roles_from_proposal(prop),
-        "draft_entities": entities[:24],
+        "draft_entities": finalize_draft_entities(entities, limit=24),
         "draft_features": [],
     }
 
@@ -1606,8 +1861,8 @@ def normalize_llm_drafts(
 
     return {
         "draft_roles": _clean_list(roles, limit=8),
-        "draft_entities": merged_ents,
-        "draft_features": feats_out,
+        "draft_entities": finalize_draft_entities(merged_ents, limit=24),
+        "draft_features": finalize_draft_features(feats_out, limit=32),
     }
 
 
@@ -2261,20 +2516,41 @@ def extract_thesis_proposal(text: str) -> dict[str, Any]:
     # 开题 summarize 的 out_scope 易把测试折行/正文误收成碎片；终稿吸收不用
     base["out_scope_lines"] = out_scope[:12]
 
-    # P5 摘要优先作 background
-    abs_bg = ""
-    for ln in abstract_lines:
-        cand = clean_background(ln)
-        if len(cand) >= 12:
-            abs_bg = cand
-            break
-    base["background"] = abs_bg or clean_background(str(base.get("background") or ""))
+    # P5 摘要拼完整句作 background（禁半截首行；纯英文粘连不当背景）
+    abs_bg = gather_cjk_abstract(abstract_lines, max_len=_EXCERPT_MAX)
+    if abs_bg:
+        # 背景取首句；首句略超 240 也保住句号，勿砍成「……的服」
+        for i, ch in enumerate(abs_bg):
+            if ch in "。！？" and i + 1 >= 12:
+                abs_bg = abs_bg[: i + 1]
+                break
+        else:
+            abs_bg = "" if _looks_half_cut(abs_bg) else _clip_at_sentence(abs_bg, _BG_MAX)
+        if len(abs_bg) > _EXCERPT_MAX:
+            abs_bg = _clip_at_sentence(abs_bg, _EXCERPT_MAX)
+    fallback_bg = clean_background(str(base.get("background") or ""))
+    if fallback_bg and (
+        not _mostly_cjk(fallback_bg)
+        or excerpt_looks_junk(fallback_bg)
+        or _looks_half_cut(fallback_bg)
+    ):
+        fallback_bg = ""
+    base["background"] = abs_bg or fallback_bg
 
     if feature_lines:
         base["feature_lines"] = feature_lines
     else:
         # 缺 P1 → 弱抽；禁止用实现章顶替
         base["feature_lines"] = []
+
+    # 短摘录：禁 summarize 的 raw[:2000]；可读中文短结构
+    base["excerpt"] = build_thesis_excerpt(
+        background=str(base.get("background") or ""),
+        abstract_lines=abstract_lines,
+        design_lines=list(bucket_lines.get("design") or []),
+        feature_lines=list(base.get("feature_lines") or []),
+    )
+    base["title"] = clean_thesis_title(str(base.get("title") or ""))
 
     base["module_hints"] = module_hints[:12]
     # P1 库表实体线索（设计桶正文）；图侧 table_labels 另合，不在此掐功能词干

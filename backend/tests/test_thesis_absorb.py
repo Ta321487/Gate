@@ -10,9 +10,13 @@ from app.services.thesis_absorb_extract import (
     apply_table_module_cross_check,
     build_feed_markdown,
     build_opening_draft,
+    build_thesis_excerpt,
     content_sha256,
+    excerpt_looks_junk,
     extract_tech_stack_lines,
     extract_thesis_proposal,
+    gather_cjk_abstract,
+    looks_half_cut,
     table_module_cross_warnings,
 )
 
@@ -65,6 +69,182 @@ CONTRAST = """
 class ThesisAbsorbExtractTests(unittest.TestCase):
     def test_extractor_version_set(self) -> None:
         self.assertTrue(EXTRACTOR_VERSION)
+
+    def test_excerpt_prefers_chinese_not_raw_dump(self) -> None:
+        """短摘录可读中文；禁止整篇 raw 硬截与英文粘连墙。"""
+        r = extract_thesis_proposal(SAMPLE)
+        ex = r["proposal"].get("excerpt") or ""
+        self.assertTrue(ex, "应有中文短摘")
+        self.assertLessEqual(len(ex), 480)
+        self.assertFalse(excerpt_looks_junk(ex), ex)
+        self.assertIn("借阅", ex)
+        # 不得把整篇粘连原文塞进 excerpt
+        self.assertNotIn("第六章 系统测试", ex)
+
+    def test_english_glued_abstract_not_excerpt(self) -> None:
+        """英文 Abstract 粘词（roomcollection）不得进短摘录；有设计中文则用中文。"""
+        text = """
+Abstract
+The hotel system mainly provides users with the function of booking hotels.
+User identities include registration, login, room viewing, room reservation,
+order viewing, check-out, room renewal, roomcollection, commentPosting,
+newsviewing, andinformationmodification. The administrator identity includes
+room information management, check-in management, renewal management.
+
+摘要
+酒店预订系统面向住客与管理员，提供客房浏览与预订等业务。
+
+第一章 绪论
+本文主要工作包括客房预订模块、续住管理模块、评价管理模块。
+
+第四章 系统设计
+管理端包含客房信息管理、入住管理、续住管理、评价管理、用户管理。
+用户端包含客房浏览、客房预订、订单查看、续住申请。
+
+第五章 系统实现
+客房预订模块负责下单与支付。
+"""
+        r = extract_thesis_proposal(text)
+        ex = r["proposal"].get("excerpt") or ""
+        self.assertTrue(ex)
+        self.assertFalse(excerpt_looks_junk(ex), ex)
+        self.assertNotIn("roomcollection", ex)
+        self.assertNotIn("commentPosting", ex)
+        self.assertNotIn("andinformationmodification", ex)
+        self.assertRegex(ex, r"[\u4e00-\u9fff]")
+
+    def test_finalize_drops_shell_entities_and_rbac_features(self) -> None:
+        """换题同形：壳实体/RBAC 功能不得进三栏主路径，减少人手删噪。"""
+        from app.services.thesis_absorb_extract import (
+            finalize_draft_entities,
+            finalize_draft_features,
+            finalize_feature_lines,
+            normalize_llm_drafts,
+            clean_thesis_title,
+        )
+
+        ents = finalize_draft_entities(
+            ["订单", "菜单", "配置文件", "系统日志", "信息", "权限", "角色", "用户"]
+        )
+        self.assertIn("订单", ents)
+        self.assertIn("用户", ents)
+        for bad in ("菜单", "配置文件", "系统日志", "信息", "权限", "角色"):
+            self.assertNotIn(bad, ents, ents)
+
+        # 设计采矿可留个人中心（后置）；三栏草稿丢掉 RBAC/端壳
+        mined = finalize_feature_lines(
+            [
+                "个人中心管理",
+                "借阅管理",
+                "读者管理",
+                "轮播图管理",
+            ]
+        )
+        self.assertIn("借阅管理", mined)
+        self.assertIn("个人中心管理", mined)
+        self.assertGreater(mined.index("个人中心管理"), mined.index("借阅管理"))
+
+        feats = finalize_draft_features(
+            [
+                "个人中心管理",
+                "角色管理",
+                "权限管理",
+                "日志管理",
+                "借阅管理",
+                "读者管理",
+                "轮播图管理",
+            ]
+        )
+        self.assertIn("借阅管理", feats)
+        self.assertIn("读者管理", feats)
+        for bad in ("个人中心管理", "角色管理", "权限管理", "日志管理"):
+            self.assertNotIn(bad, feats, feats)
+        if "轮播图管理" in feats:
+            self.assertGreater(feats.index("轮播图管理"), feats.index("借阅管理"))
+
+        norm = normalize_llm_drafts(
+            ["管理员", "读者"],
+            ["菜单", "系统日志", "图书"],
+            ["个人中心管理", "借阅管理", "图书管理"],
+            entity_hints=["图书表", "读者表"],
+            table_captions=["表4.1 图书表"],
+        )
+        self.assertIn("图书", norm["draft_entities"])
+        self.assertNotIn("菜单", norm["draft_entities"])
+        self.assertIn("借阅管理", norm["draft_features"])
+        self.assertNotIn("个人中心管理", norm["draft_features"])
+        self.assertEqual(clean_thesis_title("论文题目：某某系统的设计与实现"), "某某系统的设计与实现")
+
+    def test_excerpt_rejects_design_blueprint_dump(self) -> None:
+        from app.services.thesis_absorb_extract import (
+            build_thesis_excerpt,
+            excerpt_looks_junk,
+        )
+
+        dump = (
+            "主要对系统架构、模块划分、数据库逻辑设计、安全性、可扩展性等进行说明，"
+            "为系统的实现提供蓝图。更新和分类管理，在业务支撑上可以实现积分奖品和兑换。"
+        )
+        self.assertTrue(excerpt_looks_junk(dump))
+        ex = build_thesis_excerpt(
+            background=dump,
+            abstract_lines=[dump],
+            design_lines=[],
+            feature_lines=["预约管理", "积分管理"],
+        )
+        self.assertFalse(excerpt_looks_junk(ex), ex)
+        self.assertNotIn("提供蓝图", ex)
+
+    def test_build_thesis_excerpt_empty_when_only_english_junk(self) -> None:
+        junk = (
+            "The hotel system mainly provides users with the function of booking hotels. "
+            "roomcollection commentPosting newsviewing andinformationmodification"
+        )
+        self.assertTrue(excerpt_looks_junk(junk))
+        self.assertEqual(
+            build_thesis_excerpt(
+                background=junk,
+                abstract_lines=[junk],
+                design_lines=[],
+                feature_lines=[],
+            ),
+            "",
+        )
+
+    def test_excerpt_joins_half_cut_abstract_lines(self) -> None:
+        """摘要折行半截（……的服 / 务。……）必须拼成完整句，禁止首行半截出栏。"""
+        half = "青竹小轩酒店管理系统旨在为外出游玩的旅行人员提供高效便捷的酒店预定的服"
+        self.assertTrue(looks_half_cut(half))
+        joined = gather_cjk_abstract(
+            [
+                half,
+                "务。用户可以注册登录、浏览客房并完成预订。",
+            ]
+        )
+        self.assertFalse(looks_half_cut(joined), joined)
+        self.assertIn("服务", joined)
+        self.assertTrue(joined.endswith("。"), joined)
+
+        text = f"""
+摘要
+{half}
+务。用户可以注册登录、浏览客房并完成预订。
+
+第一章 绪论
+本文主要工作包括客房预订模块、续住管理模块。
+
+第四章 系统设计
+管理端包含客房信息管理、入住管理、续住管理。
+"""
+        r = extract_thesis_proposal(text)
+        ex = r["proposal"].get("excerpt") or ""
+        self.assertTrue(ex, "应有完整短摘")
+        self.assertFalse(looks_half_cut(ex), ex)
+        self.assertNotEqual(ex, half)
+        self.assertIn("服务", ex)
+        bg = r["proposal"].get("background") or ""
+        if bg:
+            self.assertFalse(looks_half_cut(bg), bg)
 
     def test_buckets_pull_features(self) -> None:
         r = extract_thesis_proposal(SAMPLE)
@@ -708,6 +888,140 @@ class ThesisAbsorbExtractTests(unittest.TestCase):
         self.assertEqual(clean_background("1.2 课题研究的目的及意义"), "")
         self.assertTrue(len(clean_background("材料销售数字化需求日益增长，需要一套业务系统。")) > 10)
 
+    def test_section_lines_drop_toc_and_test_steps(self) -> None:
+        """按章节摘句：目录点线/页眉目录/测试步骤叙述必须清掉。"""
+        from app.services.thesis_absorb_extract import (
+            clean_section_line,
+            finalize_sections,
+        )
+
+        for bad in (
+            "第3章 需求分析 ................. 5",
+            "第5章 网站实现 ............. 27",
+            "大连科技学院 2026届本科毕业设计（论文） 目录",
+            "测试输入查询信息。输入「这个蛋糕很好吃」。",
+            "显示「评价提交成功」，与预期结果相同。",
+            "请填写此字段，与预期结果相同。",
+            "在不同浏览器环境下进行了兼容性测试。",
+            "[J].电脑与信息技术,2024,32(01):95-97",
+            "第4章为系统设计，第5章为系统实现。",
+            "分析",
+            # 可行性散文 / 半截起句 / 图题 / 实现走读 / 题名残片
+            "程中，开发最大的财务开支就是人力成本，所以经济上是可行的。",
+            "所以在技术上可行。",
+            "青竹小轩酒店管理系统的研究为消费者提供了更加便捷的酒店预定途径，也为酒店",
+            "则使用 Vue 技术，实现了页面的动态交互和流畅的用户体验。",
+            "图 4.1 系统架构图",
+            "图 4.2 用户功能模块图",
+            "系统结构设计",
+            "管理员端功能设计",
+            "用户进入系统首先要进行的操作就是注册，登录的页面是在用户完成上一步注册之",
+            "图 5.1 登录页面图",
+            "图 5.2 登录成功页面图",
+            "系统前端",
+            "房间页面",
+            "在进行酒店客房管理",
+            "青竹小轩酒店管理",
+        ):
+            self.assertIsNone(clean_section_line(bad), bad)
+
+        for good in (
+            "预定管理",
+            "续订管理",
+            "评论管理",
+            "用户管理",
+            "房型管理",
+            "管理端包含客房信息管理与入住管理",
+        ):
+            self.assertIsNotNone(clean_section_line(good), good)
+
+        self.assertIsNotNone(clean_section_line("管理端包含订单管理与用户管理"))
+        secs = finalize_sections(
+            [
+                {
+                    "heading": "系统设计",  # 裸短标题不得进按章节
+                    "lines": ["[J].电脑与信息技术,2024,32(01):95-97"],
+                },
+                {
+                    "heading": "第6章系统测试",
+                    "lines": [
+                        "测试输入查询信息。",
+                        "显示「评价提交成功」，与预期结果相同。",
+                        "第3章 需求分析 ................. 5",
+                        "大连科技学院 2026届本科毕业设计（论文） 目录",
+                        "购物车管理模块负责加购与结算。",
+                    ],
+                },
+            ]
+        )
+        self.assertEqual(len(secs), 1)
+        self.assertIn("第6章", secs[0]["heading"])
+        blob = " ".join(secs[0]["lines"])
+        self.assertIn("购物车管理", blob)
+        self.assertNotIn("评价提交", blob)
+        self.assertNotIn("目录", blob)
+        self.assertNotIn("..........", blob)
+        self.assertNotIn("电脑与信息技术", blob)
+
+    def test_chapter_sections_reject_prose_and_captions(self) -> None:
+        """按章节：只认真章题；叙述句/图注/测试结果图名不得冒充章。"""
+        from app.services.thesis_absorb_extract import (
+            extract_thesis_proposal,
+            split_buckets,
+        )
+
+        sample = (
+            "第3章需求分析\n"
+            "汽车销售行业发展迅速，汽车销售平台具有广阔的市场前景。\n"
+            "行为模式。用户用例图，如图3.2所示。\n"
+            "功能需求，但系统仍需完善。\n"
+            "管理端包含用户管理与订单管理。\n"
+            "第4章网站总体设计\n"
+            "本网站采用B/S架构，使用MySQL数据库。\n"
+            "数据库设计\n"
+            "表4.1 用户表 含用户管理与订单管理。\n"
+            "购物车管理模块负责加购。\n"
+            "第6章系统测试\n"
+            "用户功能评价测试用例1结果图\n"
+            "如图6.1所示。\n"
+            "购物车测试用例2结果图\n"
+            "如图6.4所示。\n"
+        )
+        heads = []
+        for _bucket, items in split_buckets(sample).items():
+            for h, _lines in items:
+                if h:
+                    heads.append(h)
+        self.assertIn("第3章需求分析", heads)
+        self.assertIn("第4章网站总体设计", heads)
+        self.assertIn("第6章系统测试", heads)
+        self.assertIn("数据库设计", heads)
+        for bad in (
+            "行为模式。用户用例图，如图3.2所示。",
+            "功能需求，但系统仍需完善。",
+            "用户功能评价测试用例1结果图",
+            "购物车测试用例2结果图",
+        ):
+            self.assertNotIn(bad, heads)
+
+        secs = extract_thesis_proposal(sample)["proposal"].get("sections") or []
+        sec_heads = [str(s.get("heading") or "") for s in secs]
+        self.assertTrue(any("第3章" in h for h in sec_heads), sec_heads)
+        self.assertTrue(any("第4章" in h for h in sec_heads), sec_heads)
+        # 展示只留第x章；「数据库设计」可分桶但不得进按章节
+        self.assertFalse(any(h == "数据库设计" for h in sec_heads), sec_heads)
+        # 第6章桶仍切开；摘句若只剩测试图注则不进「按章节」展示
+        blob = " ".join(
+            " ".join(s.get("lines") or []) for s in secs if isinstance(s, dict)
+        )
+        self.assertNotIn("结果图", blob)
+        self.assertNotIn("如图6", blob)
+        for h in sec_heads:
+            self.assertTrue(h.startswith("第") or h == "图注与结构标签", h)
+            self.assertNotIn("。", h)
+            self.assertNotIn("结果图", h)
+            self.assertNotIn("如图", h)
+
     def test_title_not_stolen_from_toc_heading(self) -> None:
         text = (
             "冠清绿能环保材料销售系统的设计与实现\n"
@@ -765,13 +1079,23 @@ class ThesisAbsorbUiContract(unittest.TestCase):
             self.assertNotIn(bad, vue)
         self.assertIn("终稿吸收", vue)
         self.assertIn("复制给助手", vue)
-        self.assertIn("不会当成正式订单", vue)
+        self.assertIn("非正式建项", vue)
         # 六区同屏（禁止仅用三 Tab 代替）
-        for label in ("基本信息", "抽出的要点", "覆盖情况", "补齐建议", "给助手", "试一下"):
+        for label in ("记录概要", "抽出的要点", "覆盖情况", "补齐建议", "给助手", "试一下"):
             self.assertIn(label, vue)
         self.assertIn("短摘录", vue)
         self.assertIn("ta-feat-pill", vue)
         self.assertIn("function coverageClass", vue)
+        self.assertIn("现厂速查", vue)
+        self.assertIn("ta-coverage-hints", vue)
+        self.assertIn("coverage_hints", vue)
+        self.assertIn("不算出包匹配", vue)
+        # 搜无 ≠ 库空：禁止搜不到也催「拖入上方上传区」
+        self.assertIn("listEmptyCopy", vue)
+        self.assertIn("没有搜到终稿", vue)
+        self.assertIn("换关键词或清空搜索", vue)
+        self.assertIn("还没有终稿", vue)
+        self.assertIn("拖入上方上传区", vue)
         self.assertIn("n-data-table", vue)
         self.assertIn("surface-detail", vue)
         self.assertIn("proj-head", vue)
@@ -784,7 +1108,7 @@ class ThesisAbsorbUiContract(unittest.TestCase):
         self.assertIn("machineUnlocked", vue)
         self.assertIn(':disabled="!machineUnlocked"', vue)
         self.assertIn("needs_reextract", vue)
-        self.assertIn("建议按现行规则重新抽取", vue)
+        self.assertIn("抽取规则已更新", vue)
         self.assertIn("反推成开题", vue)
         self.assertIn("spec-preview", vue)
         self.assertIn("含图注", vue)
@@ -822,6 +1146,7 @@ class ThesisAbsorbUiContract(unittest.TestCase):
         help_src = (root / "frontend/src/views/Help.vue").read_text(encoding="utf-8")
         self.assertIn("anchor: '终稿吸收'", help_src)
         self.assertIn("同材同果", help_src)
+        self.assertIn("现厂速查", help_src)
         self.assertIn("/thesis-absorb", help_src)
 
     def test_api_registered(self) -> None:
@@ -833,14 +1158,171 @@ class ThesisAbsorbUiContract(unittest.TestCase):
         api_js = (root / "frontend/src/api.js").read_text(encoding="utf-8")
         self.assertIn("thesisAbsorbUpload", api_js)
 
+    def test_async_extract_and_product_copy(self) -> None:
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2]
+        svc = (root / "backend/app/services/thesis_absorb.py").read_text(encoding="utf-8")
+        self.assertIn("schedule_absorb_extract", svc)
+        self.assertIn("kick_stale_extracts", svc)
+        self.assertIn("_KICK_STALE_MIN_INTERVAL_S", svc)
+        self.assertIn("_apply_llm_drafts_to_row", svc)
+        self.assertIn("ensure_extract_alive", svc)
+        self.assertIn("EXTRACT_STALE_S", svc)
+        self.assertIn("EXTRACT_SYNC_TIMEOUT_S", svc)
+        self.assertIn("_job_text_only", svc)
+        api = (root / "backend/app/api/system_thesis_absorb.py").read_text(encoding="utf-8")
+        self.assertIn("已接收，抽取中", api)
+        self.assertNotIn("可离开本页", api)
+        # 详情轮询禁止 kick；light/poll 减负
+        self.assertIn("poll: bool", api)
+        get_block = api.split("async def get_thesis_absorb", 1)[1].split(
+            "async def upload_thesis_absorb", 1
+        )[0]
+        self.assertNotIn("kick_stale_extracts", get_block)
+        self.assertIn("ensure_extract_alive", get_block)
+        vue = (root / "frontend/src/views/ThesisAbsorb.vue").read_text(encoding="utf-8")
+        self.assertIn("pollAbsorbExtract", vue)
+        self.assertIn("hydrateExtractingJobs", vue)
+        self.assertNotIn("可离开本页", vue)
+        self.assertIn("poll: true", vue)
+        # 抽取未完：上传条「打开」仅 done；列表操作列不给进详情
+        self.assertIn("job.status === 'done' && job.recordId", vue)
+        self.assertIn("if (row.status === 'extracting')", vue)
+        self.assertIn("job.status !== 'done'", vue)
+        # 续传计时锚服务端时刻，禁止回来清零
+        self.assertIn("absorbExtractStartedAtMs", vue)
+        self.assertIn("keepStartedAt", vue)
+        api_js = (root / "frontend/src/api.js").read_text(encoding="utf-8")
+        self.assertIn("opts.poll", api_js)
+
 
 class ThesisAbsorbOverlapHelper(unittest.TestCase):
-    def test_overlap_score(self) -> None:
+    def test_overlap_noise_from_shell_menus_keys(self) -> None:
+        """相近剔噪挂 shell_menus key，禁止 absorb 再抄平行中文表。"""
+        from pathlib import Path
+
+        from app.bake.schema.shell_menus import (
+            SHELL_OPEN_MENU_KEYS,
+            near_dup_shell_feature_labels,
+        )
+        from app.services import thesis_absorb as ta
+
+        labels = near_dup_shell_feature_labels()
+        self.assertIn("用户管理", labels)
+        self.assertIn("公告管理", labels)
+        self.assertIn("轮播图管理", labels)
+        self.assertIn("留言管理", labels)
+        self.assertIn("users", SHELL_OPEN_MENU_KEYS)
+        src = Path(ta.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("_OVERLAP_NOISE", src)
+        self.assertIn("near_dup_shell_feature_labels", src)
+
+    def test_overlap_score_strips_shell_from_count(self) -> None:
         from app.services.thesis_absorb import _overlap_score
 
         n, inter = _overlap_score(["借阅模块", "读者模块"], ["借阅模块", "罚款模块"])
         self.assertEqual(n, 1)
         self.assertEqual(inter, ["借阅模块"])
+        # 壳进展示交集，但不计入剔壳后的 n
+        n2, inter2 = _overlap_score(
+            ["用户管理", "公告管理", "社团活动管理"],
+            ["用户管理", "公告管理", "轮播图管理"],
+        )
+        self.assertEqual(n2, 0)
+        self.assertEqual(inter2, ["公告管理", "用户管理"])
+
+    def test_near_duplicate_shell_only_not_flagged(self) -> None:
+        from app.services.thesis_absorb import _near_duplicate_features
+
+        ok, n, _ = _near_duplicate_features(
+            ["用户管理", "公告管理", "轮播图管理", "个人信息管理"],
+            ["用户管理", "公告管理", "轮播图管理", "个人中心"],
+        )
+        self.assertFalse(ok)
+        self.assertEqual(n, 0)
+
+    def test_near_duplicate_few_shared_business_not_flagged(self) -> None:
+        from app.services.thesis_absorb import _near_duplicate_features
+
+        a = [
+            "社团活动管理",
+            "成员管理",
+            "经费管理",
+            "场地预约管理",
+            "活动报名管理",
+            "社团公告管理",
+            "考核管理",
+            "请假管理",
+            "用户管理",
+        ]
+        b = [
+            "社团活动管理",
+            "成员管理",
+            "物资借用管理",
+            "招新管理",
+            "积分管理",
+            "印章管理",
+            "会议室管理",
+            "值班管理",
+            "公告管理",
+        ]
+        ok, n, _ = _near_duplicate_features(a, b)
+        self.assertFalse(ok)
+        self.assertEqual(n, 2)
+
+    def test_near_duplicate_almost_full_coverage_flagged(self) -> None:
+        from app.services.thesis_absorb import _near_duplicate_features
+
+        short = [
+            "社团活动管理",
+            "成员管理",
+            "经费管理",
+            "场地预约管理",
+            "用户管理",
+        ]
+        long = [
+            "社团活动管理",
+            "成员管理",
+            "经费管理",
+            "场地预约管理",
+            "活动报名管理",
+            "考核管理",
+            "公告管理",
+        ]
+        ok, n, inter = _near_duplicate_features(short, long)
+        self.assertTrue(ok)
+        self.assertEqual(n, 4)  # 剔壳后短侧 4 条全中
+        self.assertIn("社团活动管理", inter)
+        self.assertIn("经费管理", inter)
+        # 壳只在一侧：不进交集行，也不挡出条
+        self.assertNotIn("用户管理", inter)
+
+    def test_vue_overlaps_hint_not_blocking(self) -> None:
+        """相近只提示：disabled 不读 overlaps / detailOverlaps。"""
+        from pathlib import Path
+
+        vue = (Path(__file__).resolve().parents[2] / "frontend/src/views/ThesisAbsorb.vue").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("ta-alert info", vue)
+        self.assertIn(".ta-alert.info", vue)
+        for line in vue.splitlines():
+            if ":disabled" not in line and "disabled=" not in line:
+                continue
+            self.assertNotIn("overlap", line.lower())
+
+    def test_extract_wall_age_naive_local(self) -> None:
+        """naive 库时不得当 UTC，否则东八区年龄会被算成 0。"""
+        from datetime import datetime, timedelta
+        from types import SimpleNamespace
+
+        from app.services.thesis_absorb import _extract_wall_age_s
+
+        past = datetime.now() - timedelta(minutes=47)
+        age = _extract_wall_age_s(SimpleNamespace(updated_at=past, created_at=None))
+        self.assertGreater(age, 40 * 60)
+        self.assertLess(age, 55 * 60)
 
 
 class ThesisAbsorbRoleNoise(unittest.TestCase):
@@ -1764,6 +2246,146 @@ class ThesisAbsorbDesignPriority(unittest.TestCase):
         self.assertIn("用户", out["draft_roles"])
         self.assertIn("用户", out["draft_entities"])
         self.assertTrue(any("Key" in w or "大模型" in w for w in out["warnings"]))
+
+
+class ThesisAbsorbCoverageHints(unittest.TestCase):
+    """现厂速查：同材同果 + 弱证禁假绿。"""
+
+    def test_library_features_hint_library(self) -> None:
+        from app.services.thesis_absorb import coverage_domain_hints
+
+        prop = {
+            "feature_lines": [
+                "图书管理",
+                "借阅管理",
+                "归还管理",
+                "续借管理",
+                "读者管理",
+            ],
+            "role_hints": ["读者", "馆员"],
+        }
+        a = coverage_domain_hints(prop)
+        b = coverage_domain_hints(prop)
+        self.assertEqual(a, b)
+        self.assertTrue(a)
+        self.assertEqual(a[0]["domain_id"], "DOM-LIBRARY")
+        self.assertGreaterEqual(int(a[0]["score"]), 2)
+        self.assertTrue(a[0].get("primary"))
+        self.assertTrue(a[0].get("caps"))
+        self.assertTrue(a[0].get("flows") or a[0].get("hits"))
+        # 主候选领先：弱尾不得与主候选同分并列刷屏
+        if len(a) > 1:
+            self.assertGreaterEqual(int(a[0]["score"]), int(a[1]["score"]))
+
+    def test_weak_equal_hints_keep_best_hit_only(self) -> None:
+        """弱证 score=1：只留命中最厚的，少人工从一堆同分里挑。"""
+        from app.services.thesis_absorb import coverage_domain_hints
+
+        prop = {
+            "feature_lines": ["商品管理", "库存管理", "论坛管理", "物流管理"],
+            "role_hints": ["用户", "管理员"],
+        }
+        hints = coverage_domain_hints(prop, top_n=6)
+        self.assertTrue(hints)
+        self.assertTrue(hints[0].get("primary"))
+        # 不得把一长串 score=1 全摊开（收窄后应明显少于全目录）
+        self.assertLessEqual(len(hints), 4)
+
+    def test_gate_weak_covered_to_unknown(self) -> None:
+        from app.services.thesis_absorb import gate_coverage_by_hints
+
+        self.assertEqual(gate_coverage_by_hints("covered", []), "unknown")
+        self.assertEqual(
+            gate_coverage_by_hints(
+                "covered",
+                [{"domain_id": "DOM-GENERIC", "score": 1}],
+            ),
+            "unknown",
+        )
+        self.assertEqual(
+            gate_coverage_by_hints(
+                "covered",
+                [{"domain_id": "DOM-LIBRARY", "score": 3}],
+            ),
+            "covered",
+        )
+        self.assertEqual(
+            gate_coverage_by_hints(
+                "skin_gap",
+                [],
+            ),
+            "skin_gap",
+        )
+
+    def test_hints_brief_empty_forbids_covered_wording(self) -> None:
+        from app.services.thesis_absorb import coverage_hints_brief
+
+        brief = coverage_hints_brief([])
+        self.assertIn("unknown", brief)
+        self.assertIn("禁止 covered", brief)
+
+    def test_llm_agent_gates_weak_covered(self) -> None:
+        import asyncio
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, patch
+
+        from app.llm.agents_thesis_absorb import run_thesis_absorb_drafts_agent
+
+        rt = SimpleNamespace(
+            stage_on=lambda _s: True,
+            configured=True,
+            monthly_token_budget=1_000_000,
+        )
+        db = AsyncMock()
+        fake = SimpleNamespace(
+            ok=True,
+            data={
+                "roles": ["用户"],
+                "entities": ["用户"],
+                "features": ["某某管理"],
+                "coverage": "covered",
+                "coverage_note": "瞎标",
+                "notes": "",
+            },
+            tokens=10,
+            prompt_tokens=5,
+            completion_tokens=5,
+            reasoning_tokens=0,
+            model="",
+            provider="",
+            error="",
+        )
+
+        async def _run():
+            with (
+                patch(
+                    "app.llm.agents_thesis_absorb.monthly_tokens_used",
+                    AsyncMock(return_value=0),
+                ),
+                patch(
+                    "app.llm.agents_thesis_absorb.chat",
+                    AsyncMock(return_value=fake),
+                ),
+                patch(
+                    "app.llm.agents_thesis_absorb.record_call",
+                    AsyncMock(),
+                ),
+                patch(
+                    "app.llm.agents_thesis_absorb.append_deepseek_log",
+                    lambda *_a, **_k: None,
+                ),
+            ):
+                return await run_thesis_absorb_drafts_agent(
+                    db,
+                    rt,
+                    text="第3章 需求分析\n角色包括用户。\n第4章 系统设计\n管理端包含某某管理。\n",
+                    proposal={"title": "无关题名", "feature_lines": [], "entity_hints": ["用户"]},
+                    record_id=99,
+                )
+
+        out = asyncio.run(_run())
+        self.assertTrue(out["used_llm"])
+        self.assertEqual(out["coverage"], "unknown")
 
 
 if __name__ == "__main__":

@@ -6,7 +6,6 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bake.catalog import catalog_brief_for_match
 from app.llm.client import (
     append_deepseek_log,
     chat,
@@ -16,6 +15,11 @@ from app.llm.client import (
 )
 from app.llm.runtime import LlmRuntime
 from app.llm.temperature import temperature_for
+from app.services.thesis_absorb import (
+    coverage_domain_hints,
+    coverage_hints_brief,
+    gate_coverage_by_hints,
+)
 from app.services.thesis_absorb_extract import (
     _impl_confirm_labels,
     build_absorb_evidence,
@@ -26,7 +30,7 @@ from app.services.thesis_absorb_extract import (
 )
 
 STAGE = "thesis_absorb_drafts"
-PROMPT_ID = "ta-drafts-v6"
+PROMPT_ID = "ta-drafts-v8"
 _PID = "gf-thesis-absorb"
 
 _SYSTEM = (
@@ -49,18 +53,23 @@ _SYSTEM = (
     "- roles：业务角色/端岗名（用户、管理员、厂商、经销商…）。读【P2】；【P1】「××端」可补。"
     "「系统管理员/后台管理员」→「管理员」。\n"
     "- entities：库表业务短名（去「表」字）。主矿【P1-库表】与表题注；"
-    "题注有的必须进（含关于我们/投诉纠纷/系统简介等真表）；无题注不发明过程词。\n"
+    "题注有的必须进（含关于我们/投诉纠纷/系统简介等真表）；无题注不发明过程词；"
+    "禁止菜单/配置文件/系统日志/字典/权限/角色/裸「信息」等壳表名。\n"
     "- features：菜单/模块短名，**稳形态「××管理」**（或材料里等价的模块入口名）。"
+    "**业务主路径在前**（借阅/订单/报修/预约等）；挂件后置。"
     "读【P1】设计 + 用【P3】/【P4】确认实义；有实现菜单时用具体入口名。"
-    "禁止空壳：系统管理、首页管理、基础管理、功能管理、模块管理、业务管理、信息管理、数据管理；"
+    "禁止空壳：系统管理、首页管理、基础管理、功能管理、模块管理、业务管理、信息管理、数据管理、"
+    "个人中心管理、个人设置管理、角色管理、权限管理、日志管理、菜单管理、字典管理、配置管理；"
     "禁止步骤句、测试项、目录/可行性；禁止 UML「用户类/管理员类」当功能。\n"
     "\n"
-    "覆盖预选（对照「现厂能力简报」，不是出包匹配）：\n"
-    "- covered：现厂主流程壳已能盖住论文主路径。\n"
+    "覆盖预选（对照「现厂覆盖候选」，不是出包匹配；同材同果优先）：\n"
+    "- 只根据下方候选短表判断；禁止臆造未列出的域。\n"
+    "- 优先采信标了【主候选】且分≥2 的一条；多条弱同分 → 勿 covered。\n"
+    "- covered：主候选明确且主流程壳已能盖住论文主路径；候选空或过弱禁止 covered。\n"
     "- skin_gap：壳大致有，差行业词/种子/眉标/分类轴。\n"
     "- domain_gap：主流程盖不住或缺必备能力。\n"
     "- unknown：证据不足或吃不准——宁可 unknown，禁止硬标 covered。\n"
-    "- coverage_note：≤40 字。\n"
+    "- coverage_note：≤40 字，写清主路径像哪条、缺哪截（勿堆域 ID）。\n"
     "\n"
     "章节温度：【P1-模块】【P3】【P4】一起定 features；【P1-库表】定 entities；【P2】定 roles；"
     "未提供的等级不得脑补。\n"
@@ -103,7 +112,7 @@ def _user_payload(evidence: dict[str, Any], catalog: str) -> str:
         f"{_trim(str(p1t.get('text') or '（无）'), 3000)}\n\n"
         f"【P3·实现测试·仅佐证】\n{_trim(str(p3.get('text') or '（无）'), 1500)}\n\n"
         f"【P4·图标签·可选】\n{_trim(str(p4.get('text') or '（无）'), 800)}\n\n"
-        f"【现厂能力简报·仅供覆盖预选】\n{_trim(catalog, 2500)}\n\n"
+        f"【现厂覆盖候选·仅供覆盖预选·同材同果】\n{catalog}\n\n"
         "请按 System 规则输出 JSON。"
     )
 
@@ -166,7 +175,9 @@ async def run_thesis_absorb_drafts_agent(
         append_deepseek_log(pid, f"{STAGE} skip · monthly budget")
         return _fail("llm_budget")
 
-    catalog = catalog_brief_for_match()
+    prop0 = proposal if isinstance(proposal, dict) else {}
+    cov_hints = coverage_domain_hints(prop0)
+    catalog = coverage_hints_brief(cov_hints)
     user1 = _user_payload(evidence, catalog)
     messages = [
         {"role": "system", "content": _SYSTEM},
@@ -275,6 +286,8 @@ async def run_thesis_absorb_drafts_agent(
     cov = str(data.get("coverage") or "unknown").strip()
     if cov not in {"unknown", "covered", "skin_gap", "domain_gap"}:
         cov = "unknown"
+    # 弱证禁假绿：无/弱候选时 covered → unknown（确定性闸，同材同果）
+    cov = gate_coverage_by_hints(cov, cov_hints)
     note = str(data.get("coverage_note") or "").strip()[:80]
     warns = list(base_warns)
     extra = str(data.get("notes") or "").strip()

@@ -5,7 +5,7 @@
       <div>
         <h1 class="page-title">终稿吸收</h1>
         <p class="page-desc">
-          上传论文终稿，抽出需求与实现要点；对照现有能力标缺口，再复制给助手补齐。
+          从终稿抽出需求与实现要点，标缺口后交给助手。
         </p>
       </div>
     </div>
@@ -25,53 +25,44 @@
       />
       <div class="dropzone-icon">↑</div>
       <div class="dropzone-title">拖入终稿，或点击选择</div>
-      <div class="dropzone-hint">支持 PDF / Word / TXT · 每次一份</div>
+      <div class="dropzone-hint">PDF / Word / TXT · 单份上传</div>
     </div>
 
-    <div v-if="uploadJobList.length" class="panel mb-16">
-      <div class="panel-hd">
-        <h3>上传任务</h3>
-        <span class="small muted">{{ uploadQueueHint }}</span>
-      </div>
-      <div class="panel-bd stack" style="gap:14px">
-        <div v-for="job in uploadJobList" :key="job.id" class="upload-job">
-          <div class="row" style="justify-content:space-between;margin-bottom:6px;gap:8px">
-            <div style="min-width:0">
-              <div style="font-weight:600;line-height:1.35">{{ job.name }}</div>
-              <div class="small muted">1 份终稿 · {{ jobPhaseLabel(job) }}</div>
-            </div>
-            <div class="row" style="gap:6px;flex-shrink:0">
-              <n-button
-                v-if="job.status === 'done' && job.recordId"
-                size="tiny"
-                @click="openDetail(job.recordId)"
-              >打开</n-button>
-              <n-button
-                v-if="job.status === 'done' || job.status === 'error'"
-                text
-                size="tiny"
-                @click="dismissJob(job.id)"
-              >移除</n-button>
-            </div>
-          </div>
-          <!-- 有真 % 才定长条；上传无事件 / 抽取中 → 与 LongOpWait 同款走动条 -->
-          <div
-            v-if="job.status === 'uploading' && Number(job.pct) > 0"
-            class="progress"
-          ><i :style="{ width: job.pct + '%' }" /></div>
-          <div
-            v-else-if="job.status === 'uploading' || job.status === 'extracting'"
-            class="sub-progress"
-            aria-hidden="true"
-          ><i /></div>
-          <div
-            v-else
-            class="progress"
-          ><i :style="{ width: '100%', background: jobBarColor(job) }" /></div>
-          <div v-if="job.error" class="small warn" style="margin-top:6px">{{ job.error }}</div>
-        </div>
-      </div>
-    </div>
+    <UploadJobPanel
+      :jobs="uploadJobList"
+      :hint="uploadQueueHint"
+      :meta-fn="absorbJobMeta"
+    >
+      <template #actions="{ job }">
+        <n-button
+          v-if="job.status === 'done' && job.recordId"
+          size="tiny"
+          @click="openDoneJob(job)"
+        >打开</n-button>
+        <n-button
+          v-if="job.status === 'done' || job.status === 'error'"
+          text
+          size="tiny"
+          @click="dismissJob(job.id)"
+        >移除</n-button>
+      </template>
+      <template #progress="{ job }">
+        <!-- 有真 % 才定长条；上传无事件 / 抽取中 → 与 LongOpWait 同款走动条 -->
+        <div
+          v-if="job.status === 'uploading' && Number(job.pct) > 0"
+          class="progress"
+        ><i :style="{ width: job.pct + '%' }" /></div>
+        <div
+          v-else-if="job.status === 'uploading' || job.status === 'extracting'"
+          class="sub-progress"
+          aria-hidden="true"
+        ><i /></div>
+        <div
+          v-else
+          class="progress"
+        ><i :style="{ width: '100%', background: jobBarColor(job) }" /></div>
+      </template>
+    </UploadJobPanel>
 
     <PageSkeleton v-if="!booted" variant="dashboard" :rows="4" />
     <template v-else>
@@ -156,12 +147,8 @@
           />
         </div>
         <div v-if="!filteredItems.length" class="empty-hint">
-          <div class="empty-title">{{ itemList.length ? '没有符合条件的终稿' : '还没有终稿' }}</div>
-          <div class="empty-desc">
-            {{ itemList.length
-              ? '换个筛选，或清空搜索后再看。'
-              : '把终稿拖到上方即可开始。' }}
-          </div>
+          <div class="empty-title">{{ listEmptyCopy.title }}</div>
+          <div class="empty-desc">{{ listEmptyCopy.desc }}</div>
         </div>
         <template v-else>
           <n-data-table
@@ -173,7 +160,7 @@
             :loading="loading"
           />
           <div class="small muted mt-12" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
-            <span>共 {{ filteredItems.length }} 条 · 点「打开」看详情</span>
+            <span>{{ filteredItems.length }} 条</span>
             <n-pagination
               v-model:page="page"
               v-model:page-size="pageSize"
@@ -220,14 +207,16 @@
         </div>
         <div class="proj-actions">
           <n-button size="small" :loading="detailLoading" @click="loadDetail">刷新</n-button>
-          <n-button size="small" :loading="reextracting" @click="doReextract">重新抽取</n-button>
-          <n-button
-            size="small"
-            type="primary"
-            :disabled="detail.thin_features && !forceFeed"
-            :loading="feedBusy === (detail.public_id || detail.id)"
-            @click="copyFeed(detail.public_id || detail.id)"
-          >复制给助手</n-button>
+          <template v-if="detail.status !== 'extracting'">
+            <n-button size="small" :loading="reextracting" @click="doReextract">重新抽取</n-button>
+            <n-button
+              size="small"
+              type="primary"
+              :disabled="detail.thin_features && !forceFeed"
+              :loading="feedBusy === (detail.public_id || detail.id)"
+              @click="copyFeed(detail.public_id || detail.id)"
+            >复制给助手</n-button>
+          </template>
           <n-button type="error" secondary size="small" @click="doDelete">删除</n-button>
         </div>
       </div>
@@ -245,15 +234,15 @@
           </div>
           <n-button size="small" quaternary @click="openDetail(ov.id)">去看看</n-button>
         </div>
-        <div class="small muted">相近终稿都会保留，不会自动合并。</div>
+        <div class="small muted">相近记录各自保留</div>
       </div>
 
       <div v-if="detail.needs_reextract" class="ta-alert mb-12">
         <div class="row" style="justify-content:space-between;gap:12px;align-items:flex-start">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;margin-bottom:4px">建议按现行规则重新抽取</div>
+            <div style="font-weight:600;margin-bottom:4px">抽取规则已更新</div>
             <div class="small muted">
-              当前仍是上次入库结果，打开详情不会自动重跑。
+              当前仍是上次结果 · 需重新抽取。
               <span v-if="(detail.reextract_reasons || []).length">
                 {{ (detail.reextract_reasons || []).join('；') }}
               </span>
@@ -268,7 +257,19 @@
         </div>
       </div>
 
-      <div class="detail-stage-body">
+      <!-- 长抽取 ≠ 短加载：用 LongOpWait（与启停/验收同款），禁止 ContentLoading 冒充 -->
+      <div v-if="detail.status === 'extracting'" class="panel panel-quiet mb-12">
+        <div class="panel-bd">
+          <LongOpWait
+            title="正在抽取"
+            :started-at="detailExtractStartedAt"
+            :phases="extractWaitPhases"
+            :phase-seconds="[40, 120, 140]"
+            hint="读文与扫图后由模型整理要点"
+          />
+        </div>
+      </div>
+      <div v-else class="detail-stage-body">
         <div class="panel panel-quiet mb-12">
           <div class="panel-hd"><h3>记录概要</h3></div>
           <div class="panel-bd">
@@ -457,6 +458,43 @@
             </p>
             <p v-else class="small muted mt-8" style="margin-bottom:0">
               未跑大模型或吃不准时停在待判断；有预选可直接复制，拿不准就改一项。
+            </p>
+            <div
+              v-if="(detail.coverage_hints || []).length"
+              class="ta-coverage-hints mt-12"
+            >
+              <div class="ta-coverage-hints-hd">现厂速查</div>
+              <p class="small muted" style="margin:4px 0 8px">
+                对照用：同一份功能清单多次应一致；覆盖结论需人工确认，不算出包匹配。
+              </p>
+              <ul class="ta-coverage-hints-list">
+                <li
+                  v-for="h in detail.coverage_hints"
+                  :key="h.domain_id"
+                  class="ta-coverage-hint-item"
+                >
+                  <div class="ta-coverage-hint-title">
+                    <strong>{{ h.label || h.domain_id }}</strong>
+                    <span class="muted">{{ h.domain_id }} · 分 {{ h.score }}</span>
+                  </div>
+                  <div v-if="(h.hits || []).length" class="small">
+                    命中：{{ (h.hits || []).join('、') }}
+                  </div>
+                  <div v-if="(h.flows || []).length" class="small muted">
+                    流程：{{ (h.flows || []).join('；') }}
+                  </div>
+                  <div v-if="(h.caps || []).length" class="small muted">
+                    默认能力：{{ (h.caps || []).join('、') }}
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <p
+              v-else
+              class="small muted mt-12"
+              style="margin-bottom:0"
+            >
+              现厂速查：当前功能清单暂无稳定挂靠候选，覆盖请人工确认。
             </p>
             <n-input
               class="mt-12"
@@ -692,7 +730,7 @@
               </n-button>
             </div>
             <div class="panel-bd">
-              <p class="small muted" style="margin:0 0 8px">用抽出的要点写成开题草稿（不含原题名），方便核对。</p>
+              <p class="small muted" style="margin:0 0 8px">开题草稿（不含原题名）</p>
               <pre class="spec-preview ta-pair-pre">{{ detail.opening_draft }}</pre>
             </div>
           </div>
@@ -704,7 +742,7 @@
             <n-collapse :key="`k2-${detail.coverage}`" :default-expanded-names="knife2Open ? ['k2'] : []">
               <n-collapse-item title="拿到「项目」页试匹配" name="k2">
                 <p class="small muted" style="margin-top:0">
-                  只是验收抽取是否靠谱，不会当成正式订单。下载草稿后，到「项目」页自行上传即可。
+                  下载开题草稿到项目页试匹配（非正式建项）。
                 </p>
                 <n-button size="small" type="primary" secondary @click="confirmTrial">
                   下载并打开项目页
@@ -740,9 +778,27 @@ import { useRoute, useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
 import { api, message, confirm } from '../api'
 import { debounce, filterChipOn } from '../opsShared'
+import {
+  cancelUploadJobAutoDismiss,
+  scheduleUploadJobAutoDismiss,
+} from '../utils/uploadJobDismiss'
+import {
+  absorbUploadJobPhaseLabel,
+  uploadJobBarColor,
+} from '../utils/uploadJobUi'
+import { copyMaterialText } from '../utils/zhCopy'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import UploadJobPanel from '../components/UploadJobPanel.vue'
 import ContentLoading from '../components/ContentLoading.vue'
+import LongOpWait from '../components/LongOpWait.vue'
 import CodePreview from '../components/CodePreview.vue'
+
+/** 详情页长抽取阶段（与后台读文→扫图→LLM 对齐，秒数仅推进高亮） */
+const extractWaitPhases = [
+  { key: 'read', label: '读文' },
+  { key: 'fig', label: '扫图' },
+  { key: 'llm', label: '整理要点' },
+]
 
 const route = useRoute()
 const router = useRouter()
@@ -766,15 +822,17 @@ let uploadSeq = 0
 const uploadJobList = computed(() => (Array.isArray(uploadJobs.value) ? uploadJobs.value : []))
 const itemList = computed(() => (Array.isArray(items.value) ? items.value : []))
 
+/** 仅字节上传中挡选文件；后台抽取不挡再传下一份 */
 const uploadBusy = computed(() =>
-  uploadJobList.value.some((j) => j.status === 'uploading' || j.status === 'extracting'),
+  uploadJobList.value.some((j) => j.status === 'uploading'),
 )
 
 const uploadQueueHint = computed(() => {
   const n = uploadJobList.value.length
   if (!n) return ''
-  if (uploadBusy.value) return '进行中 · 走动条表示仍在处理'
-  return `共 ${n} 条`
+  if (uploadJobList.value.some((j) => j.status === 'extracting')) return '抽取中'
+  if (uploadBusy.value) return '上传中'
+  return `${n} 条`
 })
 
 const filters = [
@@ -793,6 +851,23 @@ const detailId = computed(() => {
 })
 const detail = ref(null)
 const detailLoading = ref(false)
+/** 详情长抽取计时：优先本页上传任务 startedAt，否则用记录时间戳（刷新可续） */
+const detailExtractStartedAt = computed(() => {
+  const d = detail.value
+  if (!d || d.status !== 'extracting') return 0
+  const pid = String(d.public_id || '')
+  const rid = d.id != null ? String(d.id) : ''
+  const job = uploadJobList.value.find((j) => {
+    if (j.status !== 'extracting') return false
+    const jr = j.recordId != null ? String(j.recordId) : ''
+    return (pid && jr === pid) || (rid && jr === rid)
+  })
+  if (job && Number(job.startedAt) > 0) return Number(job.startedAt)
+  const iso = d.updated_at || d.created_at
+  if (!iso) return 0
+  const t = Date.parse(iso)
+  return Number.isFinite(t) ? t : 0
+})
 const reextracting = ref(false)
 const saving = ref(false)
 const feedBusy = ref(null)
@@ -814,15 +889,30 @@ const draftEdit = ref(null)
 const forceFeed = ref(false)
 
 const unknownCount = computed(() => itemList.value.filter((r) => r.coverage === 'unknown').length)
-const thinCount = computed(() => itemList.value.filter((r) => r.thin_features).length)
+const thinCount = computed(() =>
+  itemList.value.filter((r) => r.thin_features && r.status !== 'extracting').length,
+)
 const coveredCount = computed(() => itemList.value.filter((r) => r.coverage === 'covered').length)
 
 const filteredItems = computed(() => {
   const list = itemList.value
   const mode = filterMode.value
   if (mode === 'all') return list
-  if (mode === 'thin') return list.filter((r) => r.thin_features)
+  if (mode === 'thin') return list.filter((r) => r.thin_features && r.status !== 'extracting')
   return list.filter((r) => r.coverage === mode)
+})
+
+/** 搜无 / 筛无 / 库空：三套空态，禁止搜不到也催上传 */
+const listEmptyCopy = computed(() => {
+  const hasQ = Boolean(String(q.value || '').trim())
+  const filtered = filterMode.value !== 'all'
+  if (hasQ) {
+    return { title: '没有搜到终稿', desc: '换关键词或清空搜索' }
+  }
+  if (filtered) {
+    return { title: '没有符合条件的终稿', desc: '换筛选看看' }
+  }
+  return { title: '还没有终稿', desc: '拖入上方上传区' }
 })
 
 const pagedItems = computed(() => {
@@ -964,7 +1054,7 @@ const listColumns = computed(() => [
       const titleKids = [
         h('span', maskTitles.value ? '••••••••' : displayTitle(row)),
       ]
-      if (row.thin_features) {
+      if (row.thin_features && row.status !== 'extracting') {
         titleKids.push(h('span', { class: 'pill pill-amber', style: 'margin-left:6px' }, '要点偏少'))
       }
       return h('div', { style: 'min-width:200px' }, [
@@ -1015,6 +1105,9 @@ const listColumns = computed(() => [
     key: 'actions',
     width: 168,
     render(row) {
+      if (row.status === 'extracting') {
+        return h('span', { class: 'small muted' }, '抽取中')
+      }
       return h('div', { class: 'row', style: 'gap:4px;flex-wrap:wrap' }, [
         h(
           NButton,
@@ -1156,7 +1249,7 @@ function refillDraftsFromExtract() {
   draftFeatures.value = Array.isArray(d.draft_features) ? [...d.draft_features] : []
   draftEdit.value = null
   saveDrafts()
-  message.success('已恢复为当前抽取结果；要重抽请点「重新抽取」')
+  message.success('已恢复为当前抽取')
 }
 
 function statusLabel(v) {
@@ -1223,6 +1316,7 @@ async function reload() {
     })
     items.value = Array.isArray(res?.items) ? res.items : []
     page.value = 1
+    hydrateExtractingJobs(items.value)
   } catch {
     items.value = Array.isArray(items.value) ? items.value : []
   } finally {
@@ -1241,29 +1335,11 @@ const onSearch = debounce(() => {
   reload()
 }, 280)
 
-function formatWaitSec(sec) {
-  const s = Math.max(0, Number(sec) || 0)
-  if (s < 60) return `${s} 秒`
-  return `${Math.floor(s / 60)} 分 ${s % 60} 秒`
+function absorbJobMeta(job) {
+  return `1 份终稿 · ${absorbUploadJobPhaseLabel(job)}`
 }
 
-function jobPhaseLabel(job) {
-  if (job.status === 'uploading') {
-    return job.pct > 0 ? `上传中 ${job.pct}%` : '上传中'
-  }
-  if (job.status === 'extracting') {
-    return `正在抽取要点 · 已等待 ${formatWaitSec(job.elapsedSec)}`
-  }
-  if (job.status === 'done') return '已抽取'
-  if (job.status === 'error') return '抽取失败'
-  return ''
-}
-
-function jobBarColor(job) {
-  if (job.status === 'error') return 'var(--danger, #c45c5c)'
-  if (job.status === 'done') return 'var(--green)'
-  return ''
-}
+const jobBarColor = uploadJobBarColor
 
 /** 从列表取任务代理，避免改 plain 对象导致进度条不刷新 */
 function findUploadJob(id) {
@@ -1280,15 +1356,128 @@ function clearJobTimers(job) {
     clearTimeout(job.fallbackTick)
     job.fallbackTick = null
   }
+  if (job?.pollTick) {
+    clearTimeout(job.pollTick)
+    job.pollTick = null
+  }
 }
 
-function startExtractWait(jobOrId) {
+function absorbExtractStartedAtMs(item) {
+  const iso = item?.updated_at || item?.created_at
+  if (!iso) return Date.now()
+  const t = Date.parse(iso)
+  return Number.isFinite(t) ? t : Date.now()
+}
+
+function trackExtractingJob(item) {
+  if (!item || item.status !== 'extracting') return
+  const recordId = item.public_id || item.id
+  if (!recordId) return
+  const fromMs = absorbExtractStartedAtMs(item)
+  const existing = uploadJobList.value.find(
+    (j) => String(j.recordId) === String(recordId) || String(j.recordId) === String(item.id),
+  )
+  if (existing) {
+    // 续盯：沿用服务端开始时刻，禁止把已跑时长清零
+    startExtractWait(existing.id, { fromMs, keepStartedAt: true })
+    pollAbsorbExtract(existing.id)
+    return
+  }
+  const jobId = `ta-poll-${recordId}`
+  const name = (Array.isArray(item.source_files) && item.source_files[0]) || '终稿'
+  const elapsedSec = Math.max(0, Math.floor((Date.now() - fromMs) / 1000))
+  uploadJobs.value = [
+    ...uploadJobList.value,
+    {
+      id: jobId,
+      name,
+      status: 'uploading',
+      pct: 0,
+      elapsedSec,
+      startedAt: fromMs,
+      recordId,
+      error: '',
+      tick: null,
+      fallbackTick: null,
+      pollTick: null,
+    },
+  ]
+  startExtractWait(jobId, { fromMs })
+  pollAbsorbExtract(jobId)
+}
+
+function hydrateExtractingJobs(list) {
+  const rows = Array.isArray(list) ? list : []
+  for (const item of rows) {
+    if (item?.status === 'extracting') trackExtractingJob(item)
+  }
+}
+
+async function pollAbsorbExtract(jobId) {
+  const job = findUploadJob(jobId)
+  if (!job?.recordId) return
+  if (job.pollTick) {
+    clearTimeout(job.pollTick)
+    job.pollTick = null
+  }
+  try {
+    const res = await api.thesisAbsorbGet(job.recordId, { poll: true })
+    const item = res?.item
+    if (!item) return
+    if (item.status === 'extracting') {
+      job.pollTick = setTimeout(() => pollAbsorbExtract(jobId), 2500)
+      return
+    }
+    clearJobTimers(job)
+    const failed = Array.isArray(item.warnings)
+      && item.warnings.some((w) => String(w).startsWith('extract_fail:'))
+    if (failed && item.status === 'review' && !(item.feature_line_count > 0)) {
+      job.status = 'error'
+      job.pct = 100
+      job.error = '抽取失败'
+      await reload()
+      return
+    }
+    job.status = 'done'
+    job.pct = 100
+    message.success('已抽取')
+    try {
+      await reload()
+    } catch {
+      /* ignore */
+    }
+    if (!detailId.value) {
+      dismissJob(job.id)
+      openDetail(job.recordId)
+    } else {
+      scheduleUploadJobAutoDismiss(job, dismissJob)
+      if (String(detailId.value) === String(job.recordId)
+        || String(detail.value?.id) === String(item.id)) {
+        detail.value = item
+        syncEditors()
+      }
+    }
+  } catch {
+    const cur = findUploadJob(jobId)
+    if (!cur || cur.status !== 'extracting') return
+    cur.pollTick = setTimeout(() => pollAbsorbExtract(jobId), 3000)
+  }
+}
+
+function startExtractWait(jobOrId, opts = {}) {
   const id = typeof jobOrId === 'string' ? jobOrId : jobOrId?.id
   const job = findUploadJob(id)
-  if (!job || job.status === 'extracting') return
+  if (!job) return
+  const fromMs = Number(opts.fromMs)
+  const keep = Boolean(opts.keepStartedAt)
+  if (Number.isFinite(fromMs) && fromMs > 0) {
+    // 续传 / hydrate：锚服务端进入抽取的时刻
+    if (!keep || !job.startedAt || fromMs < job.startedAt) job.startedAt = fromMs
+  } else if (job.status !== 'extracting' || !job.startedAt) {
+    job.startedAt = Date.now()
+  }
   job.status = 'extracting'
-  job.startedAt = Date.now()
-  job.elapsedSec = 0
+  job.elapsedSec = Math.max(0, Math.floor((Date.now() - job.startedAt) / 1000))
   if (job.tick) clearInterval(job.tick)
   job.tick = setInterval(() => {
     const cur = findUploadJob(job.id)
@@ -1299,15 +1488,22 @@ function startExtractWait(jobOrId) {
       }
       return
     }
-    cur.elapsedSec = Math.floor((Date.now() - cur.startedAt) / 1000)
+    cur.elapsedSec = Math.max(0, Math.floor((Date.now() - cur.startedAt) / 1000))
   }, 1000)
 }
 
 function dismissJob(id) {
   const job = findUploadJob(id)
+  cancelUploadJobAutoDismiss(job)
   clearJobTimers(job)
   const list = Array.isArray(uploadJobs.value) ? uploadJobs.value : []
   uploadJobs.value = list.filter((j) => j.id !== id)
+}
+
+function openDoneJob(job) {
+  if (!job?.recordId || job.status !== 'done') return
+  dismissJob(job.id)
+  openDetail(job.recordId)
 }
 
 async function uploadOne(file) {
@@ -1352,17 +1548,44 @@ async function uploadOne(file) {
     })
     const job = findUploadJob(jobId)
     if (!job) return
+    if (job.fallbackTick) {
+      clearTimeout(job.fallbackTick)
+      job.fallbackTick = null
+    }
+    job.recordId = res?.item?.public_id || res?.item?.id || null
+    const st = res?.item?.status
+    if (st === 'extracting' || res?.extract_queued) {
+      startExtractWait(jobId)
+      message.success(res?.message || '已接收，抽取中')
+      // 抽取中不立刻全表 reload（会 kick+叠轮询）；本条先塞进列表，抽完再 reload
+      const row = res?.item
+      if (row?.id || row?.public_id) {
+        const list = Array.isArray(items.value) ? items.value : []
+        const hit = list.some(
+          (x) =>
+            (row.id != null && x.id === row.id)
+            || (row.public_id && x.public_id === row.public_id),
+        )
+        if (!hit) items.value = [row, ...list]
+      }
+      pollAbsorbExtract(jobId)
+      return
+    }
     clearJobTimers(job)
     job.status = 'done'
     job.pct = 100
-    job.recordId = res?.item?.id || null
-    message.success(res?.message || '已抽取，请先标覆盖，再复制给助手')
+    message.success(res?.message || '已抽取')
     try {
       await reload()
     } catch {
-      /* 列表刷新失败不挡进详情 */
+      /* ignore */
     }
-    if (job.recordId) openDetail(job.recordId)
+    if (job.recordId) {
+      dismissJob(job.id)
+      openDetail(job.recordId)
+    } else {
+      scheduleUploadJobAutoDismiss(job, dismissJob)
+    }
   } catch (e) {
     const job = findUploadJob(jobId)
     if (!job) return
@@ -1373,7 +1596,7 @@ async function uploadOne(file) {
     job.error =
       (typeof detail === 'string' && detail)
       || e?.message
-      || '上传或抽取失败'
+      || '上传失败'
   }
 }
 
@@ -1389,6 +1612,10 @@ function onDrop(ev) {
 }
 
 function openDetail(idOrRow) {
+  if (idOrRow && typeof idOrRow === 'object' && idOrRow.status === 'extracting') {
+    message.info('抽取中')
+    return
+  }
   let key = idOrRow
   if (idOrRow && typeof idOrRow === 'object') {
     key = idOrRow.public_id || idOrRow.id
@@ -1403,7 +1630,42 @@ function closeDetail() {
   router.push('/thesis-absorb')
 }
 
+let detailExtractTick = null
+
+function clearDetailExtractPoll() {
+  if (detailExtractTick) {
+    clearTimeout(detailExtractTick)
+    detailExtractTick = null
+  }
+}
+
+function scheduleDetailExtractPoll() {
+  clearDetailExtractPoll()
+  if (!detailId.value || detail.value?.status !== 'extracting') return
+  detailExtractTick = setTimeout(async () => {
+    detailExtractTick = null
+    if (!detailId.value) return
+    try {
+      const res = await api.thesisAbsorbGet(detailId.value, { poll: true })
+      const item = res?.item
+      if (!item) return
+      detail.value = item
+      if (item.status === 'extracting') {
+        scheduleDetailExtractPoll()
+        return
+      }
+      // 抽完再拉完整详情（重叠/喂稿）
+      await loadDetail()
+      message.success('已抽取')
+      await reload()
+    } catch {
+      scheduleDetailExtractPoll()
+    }
+  }, 2000)
+}
+
 async function loadDetail() {
+  clearDetailExtractPoll()
   if (!detailId.value) {
     detail.value = null
     return
@@ -1415,6 +1677,7 @@ async function loadDetail() {
     const res = await api.thesisAbsorbGet(detailId.value)
     detail.value = res?.item || null
     syncEditors()
+    if (detail.value?.status === 'extracting') scheduleDetailExtractPoll()
   } catch {
     detail.value = null
   } finally {
@@ -1469,20 +1732,19 @@ async function doReextract() {
     const res = await api.thesisAbsorbReextract(detailId.value)
     detail.value = res.item
     syncEditors()
-    if (res.item?.same_material_stable) message.info('与上次结果一致')
-    else if (res.item?.extractor_bumped) message.warning('抽取规则有更新，结果可能和上次不一样')
-    else message.success('已重新抽取')
-  } catch (e) {
-    const code = e?.code
-    const msg = String(e?.message || '')
-    if (code === 'ECONNABORTED' || /timeout/i.test(msg)) {
-      message.error('重新抽取超时。大论文可再点一次；已有图侧标签时会跳过 OCR、只重跑文字与模型。')
-    } else {
-      const detail = e?.response?.data?.detail
-      message.error(
-        (typeof detail === 'string' && detail) || msg || '重新抽取失败',
-      )
+    if (res.item?.status === 'extracting' || res?.extract_queued) {
+      message.success(res?.message || '重抽中')
+      trackExtractingJob(res.item)
+      return
     }
+    if (res.item?.same_material_stable) message.info('与上次一致')
+    else if (res.item?.extractor_bumped) message.warning('抽取规则已更新')
+    else message.success('已重抽')
+  } catch (e) {
+    const detail = e?.response?.data?.detail
+    message.error(
+      (typeof detail === 'string' && detail) || e?.message || '重抽失败',
+    )
   } finally {
     reextracting.value = false
   }
@@ -1546,7 +1808,7 @@ async function saveDrafts() {
 
 async function copyText(text) {
   try {
-    await navigator.clipboard.writeText(text || '')
+    await copyMaterialText(text || '')
     message.success('已复制')
   } catch {
     message.error('复制失败')
@@ -1558,12 +1820,14 @@ async function copyFeed(id) {
   try {
     const res = await api.thesisAbsorbFeed(id)
     const md = res.feed_markdown || res.item?.feed_markdown || ''
-    await navigator.clipboard.writeText(md)
+    await copyMaterialText(md)
     message.success('已复制给助手')
     if (detailId.value === id) {
       detail.value = res.item
       syncEditors()
     }
+  } catch {
+    message.error('复制失败')
   } finally {
     feedBusy.value = null
   }
@@ -1578,7 +1842,7 @@ async function markPatched() {
 
 async function confirmTrial() {
   const ok = await confirm(
-    '会下载开题草稿，并打开「项目」页。这只是验收抽取是否靠谱，不会当成正式订单。',
+    '下载开题草稿并打开项目页（非正式建项）。',
     {
       title: '试匹配',
       positiveText: '下载并打开项目页',
@@ -1625,7 +1889,11 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('pointerdown', onDraftPointerDown, true)
   document.removeEventListener('keydown', onDraftDocKeydown)
-  for (const j of uploadJobList.value) clearJobTimers(j)
+  clearDetailExtractPoll()
+  for (const j of uploadJobList.value) {
+    cancelUploadJobAutoDismiss(j)
+    clearJobTimers(j)
+  }
 })
 </script>
 
@@ -1641,6 +1909,11 @@ onUnmounted(() => {
   border-radius: var(--radius, 6px);
   font-size: 13px;
   color: var(--ink);
+}
+/* 相近记录：只提示不挡；中性信息态，勿跟 warn 黄条混 */
+.ta-alert.info {
+  background: var(--panel-quiet-bg, rgba(120, 130, 145, 0.1));
+  border-color: var(--line, rgba(120, 130, 145, 0.28));
 }
 .ta-id-grid {
   display: grid;
@@ -1698,6 +1971,31 @@ onUnmounted(() => {
 }
 .ta-locked .ta-feat-pill {
   cursor: default;
+}
+.ta-coverage-hints-hd {
+  font-size: 13px;
+  font-weight: 600;
+}
+.ta-coverage-hints-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ta-coverage-hint-item {
+  padding: 8px 10px;
+  border: 1px solid var(--panel-border, rgba(0, 0, 0, 0.06));
+  border-radius: 6px;
+  background: var(--panel-quiet-bg, rgba(0, 0, 0, 0.02));
+}
+.ta-coverage-hint-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 2px;
 }
 .ta-feed-grid {
   align-items: start;

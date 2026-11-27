@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-import shutil
+import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -23,10 +24,16 @@ from app.services.thesis_absorb_extract import (
     apply_table_module_cross_check,
     build_feed_markdown,
     build_opening_draft,
+    build_thesis_excerpt,
     clean_background,
+    clean_thesis_title,
     content_sha256,
+    excerpt_looks_junk,
     extract_thesis_proposal,
+    looks_half_cut,
     fallback_drafts_no_llm,
+    finalize_draft_entities,
+    finalize_draft_features,
     finalize_feature_lines,
     finalize_sections,
 )
@@ -38,10 +45,139 @@ from app.services.thesis_absorb_figures import (
 )
 from app.services.thesis_absorb_schema import extract_draft_schema
 
+logger = logging.getLogger("gf.thesis_absorb")
+
+# 后台抽取任务：离开页面不中断；进程内去重，重启后由 kick_stale_extracts 续跑
+_extract_tasks: dict[int, asyncio.Task] = {}
+_extract_started_mono: dict[int, float] = {}
+# 列表/元信息续跑节流，避免与轮询叠成扫库风暴
+_kick_stale_mono: float = 0.0
+_KICK_STALE_MIN_INTERVAL_S = 15.0
+# 同步读文/OCR 上限；整单墙钟超时（含 LLM）→ 落 review，禁止挂死数十分钟
+# 须大于 OCR 预算 + 读文/表，否则外层 wait_for 先砍掉扫图
+EXTRACT_SYNC_TIMEOUT_S = 300.0
+EXTRACT_STALE_S = 600.0
+
 COVERAGE_VALUES = frozenset({"unknown", "covered", "skin_gap", "domain_gap"})
 STATUS_VALUES = frozenset(
     {"extracting", "review", "stored", "fed", "covered", "patched"}
 )
+# 最高挂靠分低于此 → 机器不得留下 covered（同材同果：弱证不假绿）
+MIN_COVERED_HINT_SCORE = 2
+COVERAGE_HINTS_TOP_N = 6
+
+
+def coverage_domain_hints(
+    proposal: dict[str, Any] | None,
+    *,
+    draft_roles: list[str] | None = None,
+    top_n: int = COVERAGE_HINTS_TOP_N,
+) -> list[dict[str, Any]]:
+    """功能清单 → 现厂挂靠候选（确定性，同材同果）。
+
+    复用目录关键词打分；不写库、不算出包 hits。文本用 feature_lines + 角色，不用题名/届次。
+    """
+    from app.bake.capabilities import CAPABILITIES
+    from app.bake.catalog import _catalog_scores
+    from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
+
+    prop = proposal if isinstance(proposal, dict) else {}
+    parts: list[str] = []
+    for key in ("feature_lines", "role_hints", "roles"):
+        for x in list(prop.get(key) or []):
+            if isinstance(x, str) and x.strip():
+                parts.append(x.strip())
+    for x in list(draft_roles or []):
+        if isinstance(x, str) and x.strip():
+            parts.append(x.strip())
+    text = "\n".join(parts)
+    if not text.strip():
+        return []
+
+    scored = _catalog_scores(text, DOMAINS)
+    scored.sort(
+        key=lambda t: (-t[1], -len(t[2]), -sum(len(h) for h in t[2]), t[0]),
+    )
+    positive = [(k, s, h) for k, s, h in scored if s > 0]
+    if not positive:
+        return []
+    top_score = int(positive[0][1])
+    top_hit_n = len(positive[0][2] or [])
+    # 主候选领先：丢掉明显弱尾；同分只留命中数并列的前几
+    narrowed: list[tuple[str, int, list]] = []
+    for key, score, hits in positive:
+        sc = int(score)
+        hn = len(hits or [])
+        if top_score >= 2 and sc < top_score - 1:
+            continue
+        if top_score == 1 and (sc < 1 or hn < top_hit_n):
+            continue
+        narrowed.append((key, sc, list(hits or [])))
+        if len(narrowed) >= max(1, int(top_n)):
+            break
+
+    out: list[dict[str, Any]] = []
+    for i, (key, score, hits) in enumerate(narrowed):
+        meta = DOMAINS.get(key) or {}
+        cap_labels: list[str] = []
+        for cid in list(DOMAIN_CAPABILITIES.get(key) or []):
+            lab = (CAPABILITIES.get(cid) or {}).get("label") or cid
+            s = str(lab).strip()
+            if s and s not in cap_labels:
+                cap_labels.append(s)
+        out.append(
+            {
+                "domain_id": key,
+                "label": str(meta.get("label") or key),
+                "score": int(score),
+                "hits": [str(h) for h in hits if h],
+                "flows": [str(f) for f in list(meta.get("flows") or [])[:2] if f],
+                "caps": cap_labels[:12],
+                "primary": i == 0,
+            }
+        )
+    return out
+
+
+def coverage_hints_brief(hints: list[dict[str, Any]] | None) -> str:
+    """给 LLM 的短简报（主候选置顶；弱并列勿当 covered）。"""
+    rows = [h for h in (hints or []) if isinstance(h, dict)]
+    if not rows:
+        return "（无稳定挂靠候选：覆盖请标 unknown，禁止 covered）"
+    lines: list[str] = []
+    for h in rows:
+        hits = "、".join(str(x) for x in (h.get("hits") or []) if x) or "—"
+        flows = "；".join(str(x) for x in (h.get("flows") or []) if x) or "—"
+        caps = "、".join(str(x) for x in (h.get("caps") or []) if x) or "—"
+        tag = "【主候选】" if h.get("primary") else "【次】"
+        lines.append(
+            f"- {tag}{h.get('domain_id')}（{h.get('label')}）分:{h.get('score')} "
+            f"命中:{hits} 流程:{flows} 默认能力:{caps}"
+        )
+    lines.append(
+        "采信规则：优先【主候选】；仅主候选分≥2 才可考虑 covered；"
+        "多条同分弱证 → skin_gap/domain_gap/unknown，禁止 covered。"
+    )
+    return "\n".join(lines)
+
+
+def gate_coverage_by_hints(
+    coverage: str,
+    hints: list[dict[str, Any]] | None,
+    *,
+    min_score: int = MIN_COVERED_HINT_SCORE,
+) -> str:
+    """弱证禁假绿：无候选或最高分过弱时 covered → unknown。"""
+    cov = str(coverage or "").strip()
+    if cov not in COVERAGE_VALUES:
+        return "unknown"
+    if cov != "covered":
+        return cov
+    rows = [h for h in (hints or []) if isinstance(h, dict)]
+    top = int(rows[0].get("score") or 0) if rows else 0
+    if not rows or top < int(min_score):
+        return "unknown"
+    return "covered"
 
 
 def _absorb_dir() -> Path:
@@ -134,7 +270,22 @@ def _normalize_proposal(proposal: Any) -> dict[str, Any]:
                 }
             )
     p["sections"] = finalize_sections(raw_secs, limit=8, skip_intro=True)
-    p["background"] = clean_background(str(p.get("background") or ""))
+    p["title"] = clean_thesis_title(str(p.get("title") or ""))
+    bg = clean_background(str(p.get("background") or ""))
+    if bg and excerpt_looks_junk(bg):
+        bg = ""
+    p["background"] = bg
+    ex = str(p.get("excerpt") or "").strip()
+    if excerpt_looks_junk(ex) or looks_half_cut(ex):
+        rebuilt = build_thesis_excerpt(
+            background=bg,
+            feature_lines=list(p.get("feature_lines") or []),
+        )
+        p["excerpt"] = rebuilt or (
+            "" if (looks_half_cut(ex) or excerpt_looks_junk(ex)) else re.sub(r"\s+", " ", ex)[:480]
+        )
+    else:
+        p["excerpt"] = re.sub(r"\s+", " ", ex)[:480]
     for key in (
         "module_hints",
         "role_hints",
@@ -191,6 +342,19 @@ def _clean_draft_list(raw: Any) -> list[str]:
     return out
 
 
+def _wash_resolved_drafts(
+    roles: list[str],
+    entities: list[str],
+    features: list[str],
+) -> dict[str, list[str]]:
+    """打开详情再洗三栏：壳实体/RBAC 功能降权，少人工删噪。"""
+    return {
+        "draft_roles": roles[:8],
+        "draft_entities": finalize_draft_entities(entities, limit=24),
+        "draft_features": finalize_draft_features(features, limit=32),
+    }
+
+
 def _entities_look_like_feature_stems(
     entities: list[str], features: list[str]
 ) -> bool:
@@ -224,12 +388,16 @@ def _resolved_drafts(row: Any, proposal: dict[str, Any]) -> dict[str, list[str]]
     if entities and _entities_look_like_feature_stems(entities, features or prop_feats):
         entities = list(fb.get("draft_entities") or [])
     if roles or entities or features:
-        return {
-            "draft_roles": roles,
-            "draft_entities": entities or list(fb.get("draft_entities") or []),
-            "draft_features": features,
-        }
-    return fb
+        return _wash_resolved_drafts(
+            roles,
+            entities or list(fb.get("draft_entities") or []),
+            features,
+        )
+    return _wash_resolved_drafts(
+        list(fb.get("draft_roles") or []),
+        list(fb.get("draft_entities") or []),
+        list(fb.get("draft_features") or []),
+    )
 
 
 def _row_to_dict(
@@ -289,11 +457,57 @@ def _row_to_dict(
     }
 
 
+def _overlap_noise_labels() -> frozenset[str]:
+    """壳文案真源：bake.schema.shell_menus（按菜单 key 展开），禁止本文件手写平行表。"""
+    from app.bake.schema.shell_menus import near_dup_shell_feature_labels
+
+    return near_dup_shell_feature_labels()
+
+
+def _feature_label_set(lines: list[str]) -> set[str]:
+    return {str(x).strip() for x in (lines or []) if x and str(x).strip()}
+
+
+def _distinct_feature_set(labels: set[str]) -> set[str]:
+    noise = _overlap_noise_labels()
+    return {x for x in labels if x not in noise}
+
+
 def _overlap_score(a: list[str], b: list[str]) -> tuple[int, list[str]]:
-    na = {x.strip() for x in a if x and x.strip()}
-    nb = {x.strip() for x in b if x and x.strip()}
-    inter = sorted(na & nb)
-    return len(inter), inter
+    """剔壳后的交集长度 + 全文交集行（展示可含壳）。
+
+    出条与否见 ``_near_duplicate_features``；本函数只算交。
+    """
+    na = _feature_label_set(a)
+    nb = _feature_label_set(b)
+    full_inter = sorted(na & nb)
+    distinct_n = len(_distinct_feature_set(na) & _distinct_feature_set(nb))
+    return distinct_n, full_inter
+
+
+def _near_duplicate_features(
+    a: list[str],
+    b: list[str],
+    *,
+    min_distinct: int = 3,
+    min_coverage: float = 0.8,
+) -> tuple[bool, int, list[str]]:
+    """两边剔壳后，较短侧几乎被对方盖住才算「几乎整份相近」。"""
+    na = _feature_label_set(a)
+    nb = _feature_label_set(b)
+    da = _distinct_feature_set(na)
+    db = _distinct_feature_set(nb)
+    full_inter = sorted(na & nb)
+    if not da or not db:
+        return False, 0, full_inter
+    inter_d = da & db
+    n = len(inter_d)
+    if n < min_distinct:
+        return False, n, full_inter
+    ratio = n / float(min(len(da), len(db)))
+    if ratio < min_coverage:
+        return False, n, full_inter
+    return True, n, full_inter
 
 
 async def list_records(
@@ -323,7 +537,14 @@ async def list_records(
         for r in rows:
             await db.refresh(r)
     fig_ready, fig_hint = figure_libs_ready()
-    items = [_row_to_dict(r, fig_ready=fig_ready, fig_hint=fig_hint) for r in rows]
+    items = []
+    for r in rows:
+        it = _row_to_dict(r, fig_ready=fig_ready, fig_hint=fig_hint)
+        if str(r.status or "") == "extracting":
+            it["thin_features"] = False
+            it["ok_to_feed"] = False
+            it["extract_warning"] = None
+        items.append(it)
     if coverage:
         items = [i for i in items if i["coverage"] == coverage]
     if q:
@@ -348,14 +569,36 @@ def _ver_int(ver: Any) -> int:
         return 0
 
 
-async def get_record(db: AsyncSession, record_id: int) -> dict[str, Any] | None:
-    """打开详情只读库，禁止在 GET 里整抽 / 调 LLM（产品：先出上次结果）。"""
+async def get_record(
+    db: AsyncSession,
+    record_id: int,
+    *,
+    light: bool = False,
+) -> dict[str, Any] | None:
+    """打开详情只读库，禁止在 GET 里整抽 / 调 LLM（产品：先出上次结果）。
+
+    light=True：轮询专用——只回库内字段与状态，跳过重叠扫描 / 喂稿 / 开题草稿。
+    """
     from app.models import FactoryThesisAbsorb
 
     row = await db.get(FactoryThesisAbsorb, record_id)
     if not row:
         return None
     await ensure_row_public_id(db, row)
+    # 抽取进行中：草稿必空，完整诊断无意义且拖轮询；禁止误标「要点偏少」
+    if light or str(row.status or "") == "extracting":
+        item = _row_to_dict(row)
+        item["thin_features"] = False
+        item["ok_to_feed"] = False
+        item["extract_warning"] = None
+        item["overlaps"] = []
+        item["feed_markdown"] = ""
+        item["opening_draft"] = ""
+        item["extractor_outdated"] = False
+        item["needs_reextract"] = False
+        item["current_extractor_version"] = EXTRACTOR_VERSION
+        item["reextract_reasons"] = []
+        return item
     empty_drafts = (
         not _clean_draft_list(row.draft_roles)
         and not _clean_draft_list(row.draft_entities)
@@ -403,6 +646,11 @@ async def get_record(db: AsyncSession, record_id: int) -> dict[str, Any] | None:
     if stem_entity_drafts:
         reasons.append("实体栏仍像功能词干")
     item["reextract_reasons"] = reasons
+    # 现厂速查：确定性短表，同材同果；不写库、不算出包 hits
+    item["coverage_hints"] = coverage_domain_hints(
+        prop,
+        draft_roles=item.get("draft_roles"),
+    )
     return item
 
 
@@ -411,26 +659,49 @@ async def find_overlaps(
     record_id: int,
     proposal: dict[str, Any],
     *,
-    min_overlap: int = 2,
+    min_overlap: int = 3,
+    min_coverage: float = 0.8,
 ) -> list[dict[str, Any]]:
+    """只提示几乎整份相近；不挡喂入/保存（调用方勿据此 disabled）。"""
     from app.models import FactoryThesisAbsorb
 
+    from sqlalchemy.orm import load_only
+
     feats = list((proposal or {}).get("feature_lines") or [])
-    if len(feats) < min_overlap:
+    # 剔壳后至少要有 min_overlap 条业务功能才可能达标
+    if len(_distinct_feature_set(_feature_label_set(feats))) < min_overlap:
         return []
-    stmt = select(FactoryThesisAbsorb).where(FactoryThesisAbsorb.id != record_id)
+    # 只拉重叠比对所需列，禁止 hydrate draft_schema_sql 等大字段（P5）
+    stmt = (
+        select(FactoryThesisAbsorb)
+        .where(FactoryThesisAbsorb.id != record_id)
+        .options(
+            load_only(
+                FactoryThesisAbsorb.id,
+                FactoryThesisAbsorb.proposal_json,
+                FactoryThesisAbsorb.source_files,
+            )
+        )
+        .limit(200)
+    )
     rows = (await db.execute(stmt)).scalars().all()
     out: list[dict[str, Any]] = []
     for r in rows:
-        other = list((r.proposal_json or {}).get("feature_lines") or [])
-        n, inter = _overlap_score(feats, other)
-        if n >= min_overlap:
+        prop_o = r.proposal_json if isinstance(r.proposal_json, dict) else {}
+        other = list(prop_o.get("feature_lines") or [])
+        ok, n, inter = _near_duplicate_features(
+            feats,
+            other,
+            min_distinct=min_overlap,
+            min_coverage=min_coverage,
+        )
+        if ok:
             out.append(
                 {
                     "id": r.id,
                     "overlap_count": n,
                     "overlap_lines": inter[:12],
-                    "title": (r.proposal_json or {}).get("title") or "",
+                    "title": prop_o.get("title") or "",
                     "source_files": r.source_files or [],
                 }
             )
@@ -609,27 +880,15 @@ def _apply_extract_data(row: Any, data: dict[str, Any]) -> None:
         row.coverage_note = str(data.get("coverage_note") or "")[:500]
 
 
-async def _enrich_with_llm_drafts(
-    db: AsyncSession,
+def _apply_llm_drafts_to_row(
     row: Any,
+    out: dict[str, Any],
     *,
-    text: str,
     proposal: dict[str, Any] | None = None,
 ) -> None:
-    """LLM 主抽三栏 + 覆盖预选；失败则保留弱抽并写入明白告警。"""
-    from app.llm.agents_thesis_absorb import run_thesis_absorb_drafts_agent
-    from app.llm.runtime import load_llm_runtime
-
+    """把 LLM 三栏结果写回 ORM 行（纯内存，调用方负责 commit）。"""
     prop = proposal if isinstance(proposal, dict) else (
         dict(row.proposal_json) if isinstance(row.proposal_json, dict) else {}
-    )
-    rt = await load_llm_runtime(db)
-    out = await run_thesis_absorb_drafts_agent(
-        db,
-        rt,
-        text=text,
-        proposal=prop,
-        record_id=getattr(row, "id", None),
     )
     row.draft_roles = list(out.get("draft_roles") or [])
     row.draft_entities = list(out.get("draft_entities") or [])
@@ -642,7 +901,6 @@ async def _enrich_with_llm_drafts(
         row.coverage_note = note[:500]
     # 功能主清单：LLM 跑过就整表替换（含空），禁止残留正则假清单
     pj = dict(row.proposal_json) if isinstance(row.proposal_json, dict) else {}
-    # 供详情页显示：本次是否用上模型
     pj["absorb_used_llm"] = bool(out.get("used_llm"))
     skip = str(out.get("skip_reason") or "").strip()
     if skip:
@@ -658,7 +916,6 @@ async def _enrich_with_llm_drafts(
         row.feature_line_count = 0
         row.proposal_json = pj
     llm_warns = [w for w in list(out.get("warnings") or []) if isinstance(w, str) and w]
-    # LLM 接管三栏后：丢掉基于旧正则清单的交叉假红（不写死业务碎词）
     _feat_cross = (
         "设计有实现无",
         "实现有设计",
@@ -679,15 +936,12 @@ async def _enrich_with_llm_drafts(
             if isinstance(w, str) and not any(p in w for p in _feat_cross)
         ]
     else:
-        # 无模型：功能清单被清空，保留同步路径已写的表↔模块告警
         base = [w for w in old if isinstance(w, str)]
     for w in llm_warns:
         if w not in base:
             base.append(w)
-    # LLM 已给出干净角色时，正文误抽端不得再挂假红
     if out.get("used_llm") and list(out.get("draft_roles") or []):
         base = [w for w in base if w != "角色与端不一致"]
-    # 有模型定稿三栏后再对账；无模型勿用空功能冲掉同步告警
     if out.get("used_llm"):
         meta = (
             row.schema_extract_meta
@@ -714,6 +968,31 @@ async def _enrich_with_llm_drafts(
         row.status = "covered"
     elif row.status in ("extracting",):
         row.status = "stored"
+
+
+async def _enrich_with_llm_drafts(
+    db: AsyncSession,
+    row: Any,
+    *,
+    text: str,
+    proposal: dict[str, Any] | None = None,
+) -> None:
+    """LLM 主抽三栏 + 覆盖预选；失败则保留弱抽并写入明白告警。"""
+    from app.llm.agents_thesis_absorb import run_thesis_absorb_drafts_agent
+    from app.llm.runtime import load_llm_runtime
+
+    prop = proposal if isinstance(proposal, dict) else (
+        dict(row.proposal_json) if isinstance(row.proposal_json, dict) else {}
+    )
+    rt = await load_llm_runtime(db)
+    out = await run_thesis_absorb_drafts_agent(
+        db,
+        rt,
+        text=text,
+        proposal=prop,
+        record_id=getattr(row, "id", None),
+    )
+    _apply_llm_drafts_to_row(row, out, proposal=prop)
 
 
 def _apply_extract_to_row(
@@ -762,12 +1041,249 @@ async def _reextract_row_async(row: Any, *, with_figures: bool = True) -> bool:
     return True
 
 
+def schedule_absorb_extract(record_id: int) -> None:
+    """文件已落盘后后台抽取；同 id 已在跑则不重复起。"""
+    import time
+
+    rid = int(record_id)
+    old = _extract_tasks.get(rid)
+    if old is not None and not old.done():
+        return
+    _extract_started_mono[rid] = time.monotonic()
+    task = asyncio.create_task(
+        run_absorb_extract(rid),
+        name=f"thesis-absorb-extract-{rid}",
+    )
+    _extract_tasks[rid] = task
+
+    def _done(t: asyncio.Task, *, jid: int = rid) -> None:
+        _extract_tasks.pop(jid, None)
+        _extract_started_mono.pop(jid, None)
+        try:
+            exc = t.exception()
+        except asyncio.CancelledError:
+            return
+        if exc is not None:
+            logger.exception("终稿吸收后台抽取异常 · #%s", jid, exc_info=exc)
+
+    task.add_done_callback(_done)
+
+
+def _extract_wall_age_s(row: Any) -> float:
+    """库内进入 extracting 后的墙钟秒数（用 updated_at；没有则 created_at）。
+
+    库内多为 naive 本地时：禁止当成 UTC，否则东八区会算出「未来」→ 年龄 0、永不超时。
+    """
+    ts = getattr(row, "updated_at", None) or getattr(row, "created_at", None)
+    if ts is None:
+        return 0.0
+    if getattr(ts, "tzinfo", None) is None:
+        return max(0.0, (datetime.now() - ts).total_seconds())
+    return max(0.0, (datetime.now(ts.tzinfo) - ts).total_seconds())
+
+
+async def _mark_extract_failed(db: AsyncSession, row: Any, reason: str) -> None:
+    warns = list(row.warnings_json) if isinstance(row.warnings_json, list) else []
+    msg = f"extract_fail:{reason}"[:420]
+    if msg not in warns:
+        warns.append(msg)
+    row.warnings_json = warns
+    row.status = "review"
+    await db.commit()
+
+
+async def ensure_extract_alive(db: AsyncSession, record_id: int) -> str:
+    """轮询入口：只处理本条。无任务则续跑；墙钟超时则取消并落失败。
+
+    返回：ok | restarted | timed_out | skip
+    """
+    import time
+
+    from app.models import FactoryThesisAbsorb
+
+    rid = int(record_id)
+    row = await db.get(FactoryThesisAbsorb, rid)
+    if not row or str(row.status or "") != "extracting":
+        return "skip"
+
+    age = _extract_wall_age_s(row)
+    old = _extract_tasks.get(rid)
+    running = old is not None and not old.done()
+    started = _extract_started_mono.get(rid)
+
+    if age >= EXTRACT_STALE_S or (
+        running and started is not None and (time.monotonic() - started) >= EXTRACT_STALE_S
+    ):
+        if running and old is not None:
+            old.cancel()
+        await _mark_extract_failed(db, row, "抽取超时（读文/扫图或模型过久）")
+        _extract_tasks.pop(rid, None)
+        _extract_started_mono.pop(rid, None)
+        return "timed_out"
+
+    if running:
+        return "ok"
+
+    schedule_absorb_extract(rid)
+    return "restarted"
+
+
+async def kick_stale_extracts(db: AsyncSession) -> int:
+    """列表/元信息入口：把库内仍标 extracting、进程里没在跑的续上。
+
+    有节流：轮询不得每拍都扫；超时单直接落失败。
+    """
+    import time
+
+    global _kick_stale_mono
+    now = time.monotonic()
+    if now - _kick_stale_mono < _KICK_STALE_MIN_INTERVAL_S:
+        return 0
+    _kick_stale_mono = now
+
+    from app.models import FactoryThesisAbsorb
+
+    rows = list(
+        (
+            await db.execute(
+                select(FactoryThesisAbsorb).where(
+                    FactoryThesisAbsorb.status == "extracting"
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    n = 0
+    for row in rows:
+        rid = int(row.id)
+        action = await ensure_extract_alive(db, rid)
+        if action in ("restarted", "timed_out"):
+            n += 1
+    return n
+
+
+async def run_absorb_extract(record_id: int) -> None:
+    """独立会话跑抽取 + LLM；失败写入告警并落 review，不丢源文件。
+
+    OCR/LLM 期间不占着 ORM 会话，避免与详情轮询抢库。
+    """
+    from app.core.database import SessionLocal
+    from app.models import FactoryThesisAbsorb
+
+    path: Path
+    prior_prop: dict[str, Any]
+    reuse_figures: bool
+    async with SessionLocal() as db:
+        row = await db.get(FactoryThesisAbsorb, int(record_id))
+        if not row:
+            return
+        path = Path(row.source_path or "")
+        if not path.is_file():
+            await _mark_extract_failed(db, row, "源文件不在")
+            return
+        prior_prop = (
+            dict(row.proposal_json) if isinstance(row.proposal_json, dict) else {}
+        )
+        prior_labels = [
+            x
+            for x in list(prior_prop.get("figure_labels") or [])
+            if isinstance(x, str) and str(x).strip()
+        ]
+        # 重抽且已有图侧标签：跳过 OCR；首抽 / 无标签仍扫图
+        reuse_figures = int(row.extract_round or 1) > 1 and (
+            bool(prior_labels) or bool(getattr(row, "has_figure_text", False))
+        )
+
+    try:
+
+        def _job() -> tuple[str, dict[str, Any]]:
+            raw = path.read_bytes()
+            text = read_proposal(path)
+            return text, _extract_bundle(
+                text,
+                raw_bytes=raw,
+                source_path=path,
+                with_figures=not reuse_figures,
+                prior_proposal=prior_prop if reuse_figures else None,
+                prior_has_figure=reuse_figures,
+            )
+
+        try:
+            text, data = await asyncio.wait_for(
+                asyncio.to_thread(_job),
+                timeout=EXTRACT_SYNC_TIMEOUT_S,
+            )
+        except asyncio.TimeoutError:
+            # 根因收口：扫图拖死时降级为纯文字，禁止整单挂死
+            if reuse_figures:
+                raise TimeoutError(
+                    f"读文/扫图超过 {int(EXTRACT_SYNC_TIMEOUT_S)} 秒"
+                ) from None
+
+            def _job_text_only() -> tuple[str, dict[str, Any]]:
+                raw = path.read_bytes()
+                text0 = read_proposal(path)
+                return text0, _extract_bundle(
+                    text0,
+                    raw_bytes=raw,
+                    source_path=path,
+                    with_figures=False,
+                    prior_proposal=None,
+                    prior_has_figure=False,
+                )
+
+            text, data = await asyncio.wait_for(
+                asyncio.to_thread(_job_text_only),
+                timeout=min(90.0, EXTRACT_SYNC_TIMEOUT_S),
+            )
+            warns = list(data.get("warnings_json") or [])
+            msg = "扫图超时，已按纯文字抽取"
+            if msg not in warns:
+                warns.append(msg)
+            data["warnings_json"] = warns
+        prop = (
+            data.get("proposal_json")
+            if isinstance(data.get("proposal_json"), dict)
+            else {}
+        )
+        # LLM 用短会话；审计行自带独立 Session，勿夹着 absorb 脏行等 2 分钟
+        from app.llm.agents_thesis_absorb import run_thesis_absorb_drafts_agent
+        from app.llm.runtime import load_llm_runtime
+
+        async with SessionLocal() as db:
+            rt = await load_llm_runtime(db)
+            llm_out = await run_thesis_absorb_drafts_agent(
+                db,
+                rt,
+                text=text,
+                proposal=prop,
+                record_id=int(record_id),
+            )
+        async with SessionLocal() as db:
+            row = await db.get(FactoryThesisAbsorb, int(record_id))
+            if not row:
+                return
+            _apply_extract_data(row, data)
+            _apply_llm_drafts_to_row(row, llm_out, proposal=prop)
+            await db.commit()
+    except Exception as exc:  # noqa: BLE001 — 后台任务须落库，不能静默丢
+        logger.exception("终稿吸收抽取失败 · #%s", record_id)
+        async with SessionLocal() as db:
+            row = await db.get(FactoryThesisAbsorb, int(record_id))
+            if not row:
+                return
+            msg = str(exc).strip() or exc.__class__.__name__
+            await _mark_extract_failed(db, row, msg[:400])
+
+
 async def create_from_upload(
     db: AsyncSession,
     *,
     filename: str,
     raw: bytes,
 ) -> dict[str, Any]:
+    """收文件立刻入库（status=extracting），抽取改后台——对齐开题「落盘可离开」。"""
     from app.models import FactoryThesisAbsorb
 
     safe_name = Path(filename or "thesis.txt").name
@@ -776,18 +1292,7 @@ async def create_from_upload(
         raise ValueError("仅支持 PDF / Word / TXT")
 
     digest = content_sha256(raw)
-    # 同哈希已有记录：仍新建一行？产品说默认同 id 迭代；新上传同内容可提示已有
-    # 新上传总是新行（另篇），重抽走 reextract
     dest_dir = _absorb_dir()
-    # 先占位 id：写临时再 rename
-    tmp = dest_dir / f"_tmp_{digest[:16]}{suffix}"
-    tmp.write_bytes(raw)
-
-    def _job() -> tuple[str, dict[str, Any]]:
-        text = read_proposal(tmp)
-        return text, _extract_bundle(text, raw_bytes=raw, source_path=tmp)
-
-    text, data = await asyncio.to_thread(_job)
     row = FactoryThesisAbsorb(
         public_id=await alloc_ta_public_id(db),
         role="thesis",
@@ -802,26 +1307,22 @@ async def create_from_upload(
         content_sha256=digest,
         extractor_version=EXTRACTOR_VERSION,
     )
-    _apply_extract_data(row, data)
     db.add(row)
     await db.commit()
     await db.refresh(row)
 
     final = dest_dir / f"{row.id}_{safe_name}"
-    shutil.move(str(tmp), str(final))
+    final.write_bytes(raw)
     row.source_path = str(final)
-    await _enrich_with_llm_drafts(
-        db,
-        row,
-        text=text,
-        proposal=data.get("proposal_json") if isinstance(data.get("proposal_json"), dict) else None,
-    )
     await db.commit()
     await db.refresh(row)
+
+    schedule_absorb_extract(int(row.id))
     return await get_record(db, row.id)  # type: ignore[return-value]
 
 
 async def reextract(db: AsyncSession, record_id: int) -> dict[str, Any]:
+    """标 extracting 后后台重抽；立即返回，前端轮询。"""
     from app.models import FactoryThesisAbsorb
 
     row = await db.get(FactoryThesisAbsorb, record_id)
@@ -830,60 +1331,23 @@ async def reextract(db: AsyncSession, record_id: int) -> dict[str, Any]:
     path = Path(row.source_path or "")
     if not path.is_file():
         raise ValueError("源文件不在，无法重抽")
+
     prev_sha = row.content_sha256
     prev_ver = row.extractor_version
-    prev_proposal = json.dumps(row.proposal_json or {}, ensure_ascii=False, sort_keys=True)
-    prior_prop = (
-        dict(row.proposal_json) if isinstance(row.proposal_json, dict) else {}
-    )
-    prior_labels = [
-        x
-        for x in list(prior_prop.get("figure_labels") or [])
-        if isinstance(x, str) and str(x).strip()
-    ]
-    # 已有结构图标签则沿用，避免大 PDF 再跑 OCR 把整请求拖死；无标签才扫图
-    reuse_figures = bool(prior_labels) or bool(getattr(row, "has_figure_text", False))
     row.extract_round = int(row.extract_round or 1) + 1
-    # 重抽：覆盖交模型再预选（一刻不当永久）
     row.coverage = "unknown"
-    if row.status in ("covered", "patched", "fed"):
-        row.status = "stored"
-
-    def _job() -> tuple[str, dict[str, Any]]:
-        raw = path.read_bytes()
-        text = read_proposal(path)
-        return text, _extract_bundle(
-            text,
-            raw_bytes=raw,
-            source_path=path,
-            with_figures=not reuse_figures,
-            prior_proposal=prior_prop if reuse_figures else None,
-            prior_has_figure=reuse_figures,
-        )
-
-    text, data = await asyncio.to_thread(_job)
-    _apply_extract_data(row, data)
-    await _enrich_with_llm_drafts(
-        db,
-        row,
-        text=text,
-        proposal=data.get("proposal_json") if isinstance(data.get("proposal_json"), dict) else None,
-    )
+    row.status = "extracting"
     await db.commit()
     await db.refresh(row)
-    item = await get_record(db, row.id)
-    assert item
-    # 同材同果自检信号（供 UI）——含草稿时同版本应稳定
-    same = (
-        row.content_sha256 == prev_sha
-        and row.extractor_version == prev_ver
-        and json.dumps(row.proposal_json or {}, ensure_ascii=False, sort_keys=True)
-        == prev_proposal
-    )
-    item["same_material_stable"] = same
-    item["extractor_bumped"] = row.extractor_version != prev_ver
-    item["figures_reused"] = reuse_figures
-    return item
+
+    schedule_absorb_extract(int(row.id))
+    out = await get_record(db, row.id)  # type: ignore[return-value]
+    out["same_material_stable"] = False
+    out["extractor_bumped"] = bool(prev_ver and prev_ver != EXTRACTOR_VERSION)
+    out["extract_queued"] = True
+    out["prev_content_sha256"] = prev_sha or ""
+    out["figures_reused"] = False
+    return out
 
 
 async def update_record(
