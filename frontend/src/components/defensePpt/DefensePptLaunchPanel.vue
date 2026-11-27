@@ -92,7 +92,7 @@
       </div>
       <div class="panel-bd">
         <p class="small muted" style="margin:0 0 12px">
-          请先完成工程生成并通过质量检查（与下载 ZIP 同一标准）。通过后可在此填写封面并生成答辩稿。
+          工程生成且质量检查通过后，可填封面并生成答辩稿（与下载 ZIP 同口径）。
         </p>
         <n-button type="primary" disabled>生成答辩 PPT</n-button>
       </div>

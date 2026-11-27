@@ -1,7 +1,7 @@
 /**
  * 交付就绪指示（产品化 P1 / A5 / A6）——纯投影，不另起下载判定。
  * canDownload 口径与 opsShared.projectIsDownloadable 一致。
- * 上手引导：recoveryHint 说清「你可以先…」还是「需要改程序…」（呈现层，不改门禁语义）。
+ * 就绪提示：recoveryHint 短述下一步（self / code），不改门禁语义。
  */
 
 /** @param {object|null|undefined} row */
@@ -93,9 +93,9 @@ export function buildDeliveryReadiness(p) {
     return pack({
       phase: 'match',
       title: '待匹配确认',
-      blockers: blockers.length ? blockers : [{ text: '请先确认匹配后再生成' }],
+      blockers: blockers.length ? blockers : [{ text: '待匹配确认' }],
       primary: { key: 'match', label: '去匹配确认', tone: 'info' },
-      recoveryHint: '先核对业务类型和用法，对得上开题再确认。',
+      recoveryHint: '核对业务类型与用法后确认。',
     })
   }
 
@@ -103,7 +103,7 @@ export function buildDeliveryReadiness(p) {
     return pack({
       phase: 'generating',
       title: '生成中',
-      blockers: blockers.length ? blockers : [{ text: reason || '请等待打包完成' }],
+      blockers: blockers.length ? blockers : [{ text: reason || '打包中' }],
       primary: { key: 'generate', label: '查看生成进度', tone: 'info' },
     })
   }
@@ -115,7 +115,7 @@ export function buildDeliveryReadiness(p) {
       blockers: blockers.length ? blockers : [{ text: reason || '生成未完成 · 暂不可下载' }],
       primary: { key: 'retry', label: '从失败步骤重试', tone: 'fail' },
       recoveryKind: 'self',
-      recoveryHint: '你可以先：从失败步骤重试。若同一失败反复出现，记下失败类型再改生成逻辑。',
+      recoveryHint: '从失败步骤重试；同错反复则改生成逻辑。',
     })
   }
 
@@ -159,7 +159,7 @@ export function buildDeliveryReadiness(p) {
       primary: { key: 'review', label: '去质检交付重打包', tone: 'warn' },
       downloadImpact,
       recoveryKind: 'self',
-      recoveryHint: '你可以先：验收通过后重打包。不要指望再点一次下载就好。',
+      recoveryHint: '验收通过后重打包。',
     })
   }
 
@@ -171,7 +171,7 @@ export function buildDeliveryReadiness(p) {
       primary: { key: 'review', label: '打开交付复审', tone: 'warn' },
       downloadImpact,
       recoveryKind: 'self',
-      recoveryHint: '你可以先：在质检工作台做验收或重打包。',
+      recoveryHint: '在质检交付验收或重打包。',
     })
   }
 
@@ -183,7 +183,7 @@ export function buildDeliveryReadiness(p) {
       primary: { key: 'scrub', label: '清洗文案', tone: 'warn' },
       downloadImpact,
       recoveryKind: 'self',
-      recoveryHint: '你可以先：清洗文案，再验收。',
+      recoveryHint: '清洗文案后验收。',
     })
   }
 
@@ -200,8 +200,8 @@ export function buildDeliveryReadiness(p) {
       downloadImpact,
       recoveryKind: layoutOrControls ? 'code' : 'self',
       recoveryHint: layoutOrControls
-        ? '需要改程序：记下失败类型，再改生成逻辑；不要假装再下载就能过。'
-        : '打开质检交付看诊断分层；能清洗或重打包就先做，反复同错再改生成逻辑。',
+        ? '需要改程序 · 记下失败类型后改生成逻辑'
+        : '打开质检交付 · 可清洗或重打包',
     })
   }
 

@@ -124,7 +124,7 @@
         <span>
           API
           <span :class="healthOk ? 'ok' : 'bad'">{{ healthOk ? '正常' : '异常' }}</span>
-          <span v-if="!healthOk" class="muted"> · 后端未通时请先跑 scripts\launcher.bat，菜单 N 可查缺什么</span>
+          <span v-if="!healthOk" class="muted"> · 后端未通 · launcher.bat（菜单 N 查环境）</span>
         </span>
         <span class="sep">·</span>
         <span>布局 <span :class="layoutGateOk === true ? 'ok' : layoutGateOk === false ? 'bad' : ''">{{ layoutGateLabel }}</span></span>
@@ -149,7 +149,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
-import { api, message } from '../api'
+import { api, message, toastApiError } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 
 const router = useRouter()
@@ -284,18 +284,38 @@ function todoTagClass(p) {
   return ''
 }
 
+async function loadGates() {
+  // 布局/控件闸扫基线，偶发数秒～数十秒；禁止挡首屏
+  const [lg, cg] = await Promise.all([
+    api.layoutGate().catch(() => null),
+    api.formControlsGate().catch(() => null),
+  ])
+  if (lg?.data) {
+    layoutGateOk.value = lg.data.ok === true
+    layoutGateSummary.value = lg.data.summary || lg.message || ''
+  } else {
+    layoutGateOk.value = null
+    layoutGateSummary.value = ''
+  }
+  if (cg?.data) {
+    controlsGateOk.value = cg.data.ok === true
+    controlsGateSummary.value = cg.data.summary || cg.message || ''
+  } else {
+    controlsGateOk.value = null
+    controlsGateSummary.value = ''
+  }
+}
+
 async function load() {
   loading.value = true
   try {
-    const [st, plist, jlist, fa, sys, health, lg, cg] = await Promise.all([
+    const [st, plist, jlist, fa, sys, health] = await Promise.all([
       api.stats().catch(() => ({})),
       api.listProjects().catch(() => []),
       api.listJobs().catch(() => []),
       api.failAnalysis({}).catch(() => null),
       api.system().catch(() => null),
       api.health().catch(() => null),
-      api.layoutGate().catch(() => null),
-      api.formControlsGate().catch(() => null),
     ])
     stats.value = st || {}
     projects.value = Array.isArray(plist) ? plist : []
@@ -303,26 +323,13 @@ async function load() {
     fail.value = fa
     system.value = sys
     healthOk.value = !!(health && (health.ok === true || health.status === 'ok'))
-    if (lg?.data) {
-      layoutGateOk.value = lg.data.ok === true
-      layoutGateSummary.value = lg.data.summary || lg.message || ''
-    } else {
-      layoutGateOk.value = null
-      layoutGateSummary.value = ''
-    }
-    if (cg?.data) {
-      controlsGateOk.value = cg.data.ok === true
-      controlsGateSummary.value = cg.data.summary || cg.message || ''
-    } else {
-      controlsGateOk.value = null
-      controlsGateSummary.value = ''
-    }
   } catch (e) {
-    message.error(e?.message || '开工台加载失败')
+    toastApiError(e, '开工台加载失败')
   } finally {
     loading.value = false
     booted.value = true
   }
+  loadGates()
 }
 
 onMounted(load)

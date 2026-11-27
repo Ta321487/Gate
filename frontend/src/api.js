@@ -6,13 +6,36 @@ const http = axios.create({ baseURL: '/api', timeout: 60000 })
 /** 扫盘 / 批量进程 / 大上传：禁止裸默认 60s */
 const HEAVY_OPTS = { timeout: 600000 }
 
+/** 从 axios 错误抽出可读文案（detail / message）。 */
+export function apiErrorMessage(err, fallback = '请求失败') {
+  const d = err?.response?.data?.detail
+  if (typeof d === 'string' && d.trim()) return d
+  if (d != null && typeof d === 'object') {
+    try {
+      return JSON.stringify(d)
+    } catch {
+      /* ignore */
+    }
+  }
+  return err?.message || fallback
+}
+
+/**
+ * 业务侧统一报错：拦截器已 toast 的非 silent 请求不再双弹；
+ * 仅 silent（页面自绘）时才弹。超时等自定义文案请直接 message.error。
+ */
+export function toastApiError(err, fallback = '请求失败') {
+  if (err?.config?.silent) {
+    message.error(apiErrorMessage(err, fallback))
+  }
+}
+
 http.interceptors.response.use(
   (res) => res.data,
   (err) => {
     // silent: 后台轮询等场景不弹全局错误（避免 reload 超时刷屏、卡死观感）
     if (!err.config?.silent) {
-      const msg = err.response?.data?.detail || err.message || '请求失败'
-      message.error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+      message.error(apiErrorMessage(err))
     }
     return Promise.reject(err)
   }
@@ -82,12 +105,15 @@ export const api = {
   getProject: (id, opts) => http.get(`/projects/${id}`, opts),
   getFillPlan: (id) => http.get(`/projects/${id}/fill-plan`),
   fillEventsUrl: (id) => `/api/projects/${id}/fill-events`,
-  getProjectPoll: (id) => http.get(`/projects/${id}`, POLL_OPTS),
+  /** 轻量轮询：只打 /poll，禁止全量详情扫盘（P1） */
+  getProjectPoll: (id) => http.get(`/projects/${id}/poll`, POLL_OPTS),
   patchMatch: (id, body) => http.patch(`/projects/${id}/match`, body),
   patchDelivery: (id, mark) => http.patch(`/projects/${id}/delivery`, { mark }),
+  // silent：页面 catch 里用 toastApiError / 复审中定制文案，避免与拦截器双弹
   generate: (id, { confirmDiff = false } = {}) =>
     http.post(`/projects/${id}/generate`, {}, {
       params: confirmDiff ? { confirm_diff: true } : {},
+      silent: true,
     }),
   deleteProject: (id, { keepDb = false } = {}) =>
     http.delete(`/projects/${id}`, { params: { keep_db: keepDb }, ...HEAVY_OPTS }),
@@ -454,7 +480,11 @@ export const api = {
   usecaseFlowsDelete: (id) => http.delete(`/system/usecase-flows/${id}`),
   thesisAbsorbMeta: () => http.get('/system/thesis-absorb/meta', { timeout: 30000 }),
   thesisAbsorbList: (params) => http.get('/system/thesis-absorb', { params, timeout: 30000 }),
-  thesisAbsorbGet: (id) => http.get(`/system/thesis-absorb/${id}`, { timeout: 60000 }),
+  thesisAbsorbGet: (id, opts = {}) =>
+    http.get(`/system/thesis-absorb/${id}`, {
+      timeout: opts.poll ? 15000 : 60000,
+      params: opts.poll ? { poll: true } : undefined,
+    }),
   thesisAbsorbUpload: (file, onProgress) => {
     const fd = new FormData()
     fd.append('file', file)

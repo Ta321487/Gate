@@ -1,7 +1,7 @@
 /** Project detail page logic — extracted from ProjectDetail.vue (behavior unchanged). */
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api, message, confirm } from '../../api'
+import { api, apiErrorMessage, message, confirm, toastApiError } from '../../api'
 import { renderMarkdown } from '../../mdRender'
 import { squeezeCjkAlnumSpaces, writeMaterialClipboard } from '../../utils/zhCopy'
 import { softThemeSwatch } from '../../softThemeSwatches.js'
@@ -935,7 +935,7 @@ const deleteBlocked = computed(() => {
   return false
 })
 const deleteBlockedReason = computed(() =>
-  deleteBlocked.value ? '项目运行中或正在生成，请先停止后再删除' : '',
+  deleteBlocked.value ? '运行中或生成中 · 停止后再删除' : '',
 )
 
 const statusLabel = computed(() =>
@@ -1011,8 +1011,7 @@ async function putErLabelPatch(body) {
     schema.value = res
     return res
   } catch (e) {
-    const detail = e?.response?.data?.detail
-    message.error((typeof detail === 'string' ? detail : '') || e?.message || '保存中文名失败')
+    toastApiError(e, '保存中文名失败')
     return null
   } finally {
     erLabelSaving.value = false
@@ -1483,8 +1482,13 @@ async function load({ syncTab = false, lite = false, id: idOpt } = {}) {
           && !!catalog.value.archetypes.length,
       })
     }
-    // 轮询用短超时静默接口：后端 reload 时不弹错、不卡 60s
-    p.value = lite ? await api.getProjectPoll(id) : await api.getProject(id)
+    // 轮询：/poll 轻量投影合并进现有详情，保留 spec/gates 等大字段（P1）
+    if (lite) {
+      const poll = await api.getProjectPoll(id)
+      p.value = { ...(p.value || {}), ...(poll || {}) }
+    } else {
+      p.value = await api.getProject(id)
+    }
     detailCrumb.value = p.value.title || ''
     pollSyncHint.value = ''
     pollFailStreak.value = 0
@@ -1683,7 +1687,7 @@ async function runThesisDiagramAudit() {
     if (data.ok === false) message.warning(summary)
     else message.success(summary)
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '论文图对账失败')
+    toastApiError(e, '论文图对账失败')
   } finally {
     thesisAuditBusy.value = false
   }
@@ -1700,7 +1704,7 @@ async function runApiSmoke() {
   } catch (err) {
     const d = smokeDetailFromAxios(err)
     if (d.need_runtime || err?.response?.status === 409) {
-      apiSmokeFactoryHint.value = d.message || '请先到运行页启动前后端预览'
+      apiSmokeFactoryHint.value = d.message || '到运行页启动前后端预览'
     } else {
       apiSmokeFactoryHint.value = d.message || '冒烟失败'
     }
@@ -1759,7 +1763,7 @@ async function scrubStudentCopy() {
       download_blocked_reason:
         data.download_blocked_reason
         || p.value.download_blocked_reason
-        || '工程已变更 · 请完成验收并重新重打包后再下载',
+        || '工程已变更 · 验收后重打包再下载',
     })
     const ok = !!data.copy_ok && data.semantic_ok !== false
     message.success(
@@ -2397,7 +2401,7 @@ async function onSeqApplySelection(ids) {
     await loadSequences(ids)
     await persistDiagramSelection('sequence', ids)
   } catch (e) {
-    message.error(e?.response?.data?.detail || '无法按所选功能生成序列图')
+    toastApiError(e, '无法按所选功能生成序列图')
   } finally {
     seqLoading.value = false
   }
@@ -2483,7 +2487,7 @@ async function onActApplySelection(ids) {
     await loadActivities(ids)
     await persistDiagramSelection('activity', ids)
   } catch (e) {
-    message.error(e?.response?.data?.detail || '无法按所选功能生成活动图')
+    toastApiError(e, '无法按所选功能生成活动图')
   } finally {
     actLoading.value = false
   }
@@ -2657,7 +2661,7 @@ async function openUsecases() {
     ucLayoutKey.value += 1
     showUsecases.value = true
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '无法加载用例图')
+    toastApiError(e, '无法加载用例图')
   } finally {
     ucLoading.value = false
   }
@@ -2671,7 +2675,7 @@ async function reloadUsecases() {
     ucSvgSource.value = svgFromPack(usecaseMeta.value)
     ucLayoutKey.value += 1
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '无法重新加载用例图')
+    toastApiError(e, '无法重新加载用例图')
   } finally {
     ucLoading.value = false
   }
@@ -2830,7 +2834,7 @@ async function toggleUnlock() {
     }
   } else {
     if (deviant.value) {
-      message.warning('已偏离推荐，请先恢复推荐再锁定')
+      message.warning('已偏离推荐 · 恢复推荐后再锁定')
       return
     }
     matchBusy.value = true
@@ -3019,11 +3023,11 @@ async function saveSoft() {
 async function confirmMatch() {
   if (matchBusy.value) return
   if (matchPath.value.needs_path_ack && !ackMainPath.value) {
-    message.warning('请先勾选「主路径已核对」，或解锁后选择入口')
+    message.warning('勾选「主路径已核对」，或解锁后选入口')
     return
   }
   if (needsDomainAck.value && !ackDomainReview.value) {
-    message.warning('匹配置信度偏低或为通用壳，请勾选「已人工核域」后再确认')
+    message.warning('置信度偏低或通用壳 · 勾选「已人工核域」后确认')
     return
   }
   if (deviant.value) {
@@ -3057,7 +3061,7 @@ async function startGenerate() {
       proposalDiff.value = await api.getProposalDiff(p.value.id)
       showPreGenerate.value = true
     } catch (e) {
-      message.error(e?.response?.data?.detail || e?.message || '加载开题措辞核对失败')
+      toastApiError(e, '加载开题措辞核对失败')
     } finally {
       preGenBusy.value = false
     }
@@ -3073,7 +3077,7 @@ async function confirmPreGenerate() {
     await runGenerateJob({ confirmDiff: true })
     showPreGenerate.value = false
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '启动生成失败')
+    toastApiError(e, '启动生成失败')
   } finally {
     preGenBusy.value = false
   }
@@ -3087,7 +3091,7 @@ async function runGenerateJob(opts = {}) {
   const reviewStatus = p.value?.delivery_review?.review?.status || ''
   if (reviewStatus === 'active' && !opts.skipReviewGuard) {
     const ok = await confirm(
-      '交付复审进行中会拦截重新生成。仅同步 ZIP 请到「质检交付」验收后重打包；须改工程重出包时，请先结束复审再生成。',
+      '复审中不可重生成 · 同步 ZIP 到质检交付重打包；改工程需结束复审后生成',
       {
         title: '复审进行中',
         type: 'warning',
@@ -3107,7 +3111,7 @@ async function runGenerateJob(opts = {}) {
       }
       message.success('已结束复审')
     } catch (e) {
-      message.error(e?.response?.data?.detail || e?.message || '结束复审失败')
+      toastApiError(e, '结束复审失败')
       return
     }
   }
@@ -3131,11 +3135,11 @@ async function runGenerateJob(opts = {}) {
     tab.value = 'generate'
     startPoll()
   } catch (e) {
-    const detail = e?.response?.data?.detail || e?.message || '启动生成失败'
+    const detail = apiErrorMessage(e, '启动生成失败')
     if (typeof detail === 'string' && detail.includes('交付复审进行中')) {
-      message.error('复审仍在进行中，请到「产物 → 交付复审」结束复审后再生成')
+      message.error('复审进行中 · 结束复审后再生成')
     } else {
-      message.error(detail)
+      toastApiError(e, '启动生成失败')
     }
     throw e
   } finally {
@@ -3234,7 +3238,7 @@ async function undoDelivery() {
 
 function onDelete() {
   if (deleteBlocked.value) {
-    message.warning(deleteBlockedReason.value || '请先停止运行后再删除')
+    message.warning(deleteBlockedReason.value || '停止运行后再删除')
     return
   }
   keepDb.value = false
@@ -3251,7 +3255,7 @@ async function confirmDelete() {
     router.push('/projects')
     return true
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '删除失败')
+    toastApiError(e, '删除失败')
     return false
   } finally {
     deleting.value = false

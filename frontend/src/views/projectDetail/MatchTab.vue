@@ -8,12 +8,12 @@
       <h4>{{ alreadyBaked ? '工程已生成' : '推荐匹配已给出' }}</h4>
       <p class="small muted">
         {{ alreadyBaked
-          ? '改骨架 / 领域 / 持久层须先解锁。改配色、布局等视觉选项请到「一键生成」。'
-          : '确认后请至「一键生成」调整视觉选项并启动生成。如需调整骨架、领域或持久层，请先解锁。' }}
+          ? '改骨架 / 领域 / 持久层需解锁；视觉选项在「一键生成」。'
+          : '确认后到「一键生成」；改骨架 / 领域 / 持久层需解锁。' }}
       </p>
     </div>
     <div v-if="preBakeRisks.length" class="banner warn">
-      <h4>生成前风险（请核清后再确认）</h4>
+      <h4>生成前风险</h4>
       <ul class="warn-list">
         <li v-for="(line, i) in preBakeRisks" :key="i">{{ line }}</li>
       </ul>
@@ -41,7 +41,7 @@
       class="material-weak-tip"
       type="warning"
       :bordered="false"
-      title="开题依据弱 · 请核清后再确认"
+      title="开题依据弱 · 核清后确认"
       style="margin:12px 0"
     >
       <p class="small" style="margin:0 0 6px">
@@ -216,7 +216,7 @@
           <n-collapse class="match-advanced mt-12" :default-expanded-names="[]">
             <n-collapse-item title="高级：技术栈与能力开关" name="stack">
               <p class="small muted" style="margin:0 0 10px">
-                默认跟推荐即可。持久层 / 鉴权 / AI 助手仅在解锁后调整；视觉表面请到「生成」页。
+                默认跟推荐。持久层 / 鉴权 / AI 解锁后可改；视觉在「生成」页。
               </p>
               <div class="field" :class="{ locked: !unlocked }">
                 <n-form-item label="持久层">
@@ -261,16 +261,16 @@
             }"
           >
             <template v-if="matchPath.needs_path_ack">
-              开题未写清「谁怎么用」：请解锁选择主路径入口，或确认时勾选「主路径已核对」。
+              开题未写清用法 · 解锁选入口，或勾选「主路径已核对」。
             </template>
             <template v-else-if="needsDomainAck">
-              匹配置信度偏低或为通用壳：请对照开题核清领域后再勾选「已人工核域」。
+              置信度偏低或通用壳 · 核清领域后勾选「已人工核域」。
             </template>
             <template v-else-if="deviant">
-              当前与系统推荐不一致，请确认后再生成。
+              已偏离推荐 · 确认后再生成。
             </template>
             <template v-else>
-              骨架 / 领域 / 身份入口 / 持久层 / 鉴权 / AI助手可调整。如无把握，建议恢复推荐。
+              可调骨架 / 领域 / 入口 / 持久层 / 鉴权 / AI；无把握则恢复推荐。
             </template>
           </div>
         </div>
@@ -453,7 +453,7 @@ const preBakeRisks = computed(() => {
     lines.push('当前选择已偏离系统推荐：确认后将按所选配置出包，请核对双显差异。')
   }
   if (needsDomainAck.value) {
-    lines.push('匹配置信度偏低或为通用壳：请勾选「已人工核域」后再确认。')
+    lines.push('置信度偏低或通用壳 · 勾选「已人工核域」后确认。')
   }
   return lines
 })

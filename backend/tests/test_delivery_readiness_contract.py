@@ -61,8 +61,9 @@ class DeliveryReadinessContractTest(unittest.TestCase):
     def test_recovery_hint_split_self_vs_code(self):
         src = FE_READY.read_text(encoding="utf-8")
         self.assertIn("recoveryHint", src)
-        self.assertIn("你可以先", src)
+        self.assertNotIn("你可以先", src)
         self.assertIn("需要改程序", src)
+        self.assertIn("从失败步骤重试", src)
         self.assertIn("label: '清洗文案'", src)
         bar = FE_BAR.read_text(encoding="utf-8")
         self.assertIn("ready.recoveryHint", bar)

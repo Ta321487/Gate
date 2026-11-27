@@ -109,7 +109,7 @@ export const PPT_PAGE_ROLES = [
 ]
 
 export const PPT_DIRTY_BANNER =
-  '工程已更新，答辩 PPT 业务内容可能与实包不一致。主题/版式可保留；请先「按工程更新业务页」再导出。'
+  '工程已更新 · 答辩业务页可能与实包不一致 · 按工程更新后再导出'
 
 export const EMPTY_COVER = () => ({
   school: '',

@@ -212,7 +212,7 @@
         </div>
         <div class="row mt-12">
           <n-button size="small" secondary :loading="saving" @click="save">保存阶段开关</n-button>
-          <span class="small muted">与上方「保存本页设置」同一接口；改完开关点此即可</span>
+          <span class="small muted">与「保存本页设置」同一接口</span>
         </div>
       </div>
     </div>
@@ -277,7 +277,7 @@
             </div>
             <div v-else class="empty-hint">
               <div class="empty-title">无匹配项目</div>
-              <div class="empty-desc">调整时间范围或项目 ID 后再刷新</div>
+              <div class="empty-desc">调整筛选后刷新</div>
             </div>
             <div v-if="usageTotal > 0" class="pager-row">
               <span class="small muted">共 {{ usageTotal }} 个项目</span>
@@ -329,7 +329,7 @@
             </div>
             <div v-else class="empty-hint">
               <div class="empty-title">暂无系统支持调用</div>
-              <div class="empty-desc">调整时间范围后再刷新</div>
+              <div class="empty-desc">调整筛选后刷新</div>
             </div>
           </n-tab-pane>
         </n-tabs>
@@ -385,7 +385,7 @@
         </div>
         <div v-else class="empty-hint">
           <div class="empty-title">无匹配调用</div>
-          <div class="empty-desc">调整筛选条件后再刷新</div>
+          <div class="empty-desc">调整筛选后刷新</div>
         </div>
         <div v-if="callsTotal > 0" class="pager-row">
           <span class="small muted">共 {{ callsTotal }} 条</span>
@@ -409,7 +409,7 @@
 <script setup>
 import { computed, h, onMounted, reactive, ref, watch } from 'vue'
 import { NButton } from 'naive-ui'
-import { api, message } from '../api'
+import { api, message, toastApiError } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import ContentLoading from '../components/ContentLoading.vue'
 import UsageCharts from '../components/UsageCharts.vue'
@@ -1253,7 +1253,7 @@ async function load() {
       loadProjectLifetimeTokens(),
     ])
   } catch (e) {
-    message.error(e?.message || '读取大模型配置失败（请确认已重启后端）')
+    toastApiError(e, '读取大模型配置失败（请确认已重启后端）')
   } finally {
     booted.value = true
   }

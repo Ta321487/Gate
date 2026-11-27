@@ -44,7 +44,7 @@
         <h4>已生成，但暂不可下载</h4>
         <p class="small muted"><strong>原因：</strong>{{ downloadBlockedReason || '质量检查未通过或交付包未就绪' }}</p>
         <p class="small muted mt-8"><strong>能否下载：</strong>暂不可下载 ZIP</p>
-        <p class="small muted mt-8">你可以先：到「质检交付」看未通过项，能清洗或重打包就先做。不要指望再点一次下载就好。</p>
+        <p class="small muted mt-8">到「质检交付」处理未通过项，或验收后重打包。</p>
         <div class="row mt-12">
           <n-button size="small" type="primary" @click="goArtifacts('thesis')">下一步：论文材料</n-button>
           <n-button size="small" secondary @click="goArtifacts('gates')">去质检交付</n-button>
@@ -55,7 +55,7 @@
         <h4>{{ failedBannerTitle }}</h4>
         <p class="small muted"><strong>原因：</strong>{{ currentJob?.error || '生成未完成' }}</p>
         <p class="small muted mt-8"><strong>能否下载：</strong>暂不可下载 ZIP</p>
-        <p class="small muted mt-8">你可以先：从失败步骤重试。若同一失败反复出现，记下失败类型再改生成逻辑。</p>
+        <p class="small muted mt-8">从失败步骤重试；同错反复则改生成逻辑。</p>
         <div class="row mt-12">
           <n-button type="primary" size="small" :loading="jobActing === 'retry'" @click="retryCurrent">下一步：从失败步骤重试</n-button>
           <n-button size="small" secondary @click="goArtifacts('gates')">查看质量检查</n-button>
@@ -425,7 +425,7 @@
           <div class="panel-bd">
             <div class="row-between">
               <div>
-                <div style="font-weight:600;margin-bottom:4px">{{ p.match_confirmed ? '匹配已确认 · 可以生成' : '请先完成匹配确认' }}</div>
+                <div style="font-weight:600;margin-bottom:4px">{{ p.match_confirmed ? '匹配已确认 · 可以生成' : '待匹配确认' }}</div>
                 <div class="small muted">以基线工程生成为主，AI 仅补业务配置；质量检查未通过前不可下载交付包</div>
                 <n-button
                   text
@@ -439,7 +439,7 @@
               </div>
               <span
                 class="btn-tip-wrap"
-                :title="p.match_confirmed ? '按匹配结果落地工程；AI 只填业务配置' : '请先完成匹配确认后再生成'"
+                :title="p.match_confirmed ? '按匹配结果落地工程；AI 只填业务配置' : '待匹配确认'"
               >
                 <n-button type="primary" size="large" :disabled="!p.match_confirmed" :loading="softApplying" @click="startGenerate">一键生成</n-button>
               </span>

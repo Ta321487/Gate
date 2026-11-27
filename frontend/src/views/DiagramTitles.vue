@@ -226,7 +226,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { api, message } from '../api'
+import { api, message, toastApiError } from '../api'
 import { gapStatDisplay } from '../utils/assetDesk'
 import { confirm } from '../ui'
 import PageSkeleton from '../components/PageSkeleton.vue'
@@ -359,7 +359,7 @@ async function reload() {
     const maxPage = Math.max(1, Math.ceil((total.value || 0) / pageSize.value) || 1)
     if (page.value > maxPage) page.value = maxPage
   } catch (e) {
-    message.error(e?.message || '加载失败')
+    toastApiError(e, '加载失败')
   }
 }
 
@@ -375,7 +375,7 @@ async function scanGaps() {
     if (gapCount.value) message.info(`待补 ${gapCount.value} 条`)
     else message.success('没有待补项')
   } catch (e) {
-    message.error(e?.message || '检查失败')
+    toastApiError(e, '检查失败')
   } finally {
     gapLoading.value = false
   }
@@ -391,7 +391,7 @@ async function migrate() {
     await reload()
     mainTab.value = 'entries'
   } catch (e) {
-    message.error(e?.message || '导入失败')
+    toastApiError(e, '导入失败')
   } finally {
     migrating.value = false
   }
@@ -448,7 +448,7 @@ async function save() {
       gapCount.value = gapRes.gap_count ?? gaps.value.length
     }
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '保存失败')
+    toastApiError(e, '保存失败')
   } finally {
     saving.value = false
   }
@@ -467,7 +467,7 @@ async function remove(row) {
     if (editingId.value === row.id) closeDrawer()
     await reload()
   } catch (e) {
-    message.error(e?.message || '删除失败')
+    toastApiError(e, '删除失败')
   } finally {
     deletingId.value = 0
   }
@@ -478,7 +478,7 @@ onMounted(async () => {
     await loadMeta()
     await reload()
   } catch (e) {
-    message.error(e?.message || '加载失败')
+    toastApiError(e, '加载失败')
   } finally {
     booted.value = true
   }

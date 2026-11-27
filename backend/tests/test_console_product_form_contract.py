@@ -47,6 +47,12 @@ class ConsoleProductFormContractTest(unittest.TestCase):
         src = (FE / "views" / "OpsHome.vue").read_text(encoding="utf-8")
         self.assertNotIn("ops-row-sub mono\">{{ p.fix_locus }}", src)
         self.assertIn("点开失败分析查看相关位置", src)
+        # 布局/控件闸不得挡首屏（曾与待办 Promise.all 同捆，进页像卡死）
+        self.assertIn("async function loadGates", src)
+        self.assertIn("loadGates()", src)
+        boot = src.split("async function load()", 1)[1].split("onMounted", 1)[0]
+        self.assertNotIn("layoutGate()", boot)
+        self.assertNotIn("formControlsGate()", boot)
 
     def test_config_pages_marked_non_fulfillment(self):
         for rel, needle in (
@@ -87,6 +93,57 @@ class ConsoleProductFormContractTest(unittest.TestCase):
                 self.assertNotIn(":class=\"{ on: filterMode === 'all' }\"", src)
                 self.assertNotIn("{ on: filter === f.id }", src)
                 self.assertNotIn("{ on: filterMode === f.id }", src)
+
+    def test_upload_jobs_auto_dismiss_on_success(self):
+        """上传任务成功自动收起；材料上传 + 终稿吸收同口径。"""
+        util = (FE / "utils" / "uploadJobDismiss.js").read_text(encoding="utf-8")
+        self.assertIn("scheduleUploadJobAutoDismiss", util)
+        self.assertIn("UPLOAD_JOB_AUTO_DISMISS_MS", util)
+        for rel in ("views/Projects.vue", "views/ThesisAbsorb.vue"):
+            src = (FE / rel).read_text(encoding="utf-8")
+            with self.subTest(view=rel):
+                self.assertIn("uploadJobDismiss", src)
+                self.assertIn("scheduleUploadJobAutoDismiss", src)
+                self.assertIn("cancelUploadJobAutoDismiss", src)
+
+    def test_upload_job_panel_shared(self):
+        """上传任务条壳 + 相位文案共用，禁止两页再各写一套进度 UI。"""
+        ui = (FE / "utils" / "uploadJobUi.js").read_text(encoding="utf-8")
+        self.assertIn("projectUploadJobPhaseLabel", ui)
+        self.assertIn("absorbUploadJobPhaseLabel", ui)
+        self.assertIn("uploadJobBarColor", ui)
+        panel = (FE / "components" / "UploadJobPanel.vue").read_text(encoding="utf-8")
+        self.assertIn("upload-job", panel)
+        for rel in ("views/Projects.vue", "views/ThesisAbsorb.vue"):
+            src = (FE / rel).read_text(encoding="utf-8")
+            with self.subTest(view=rel):
+                self.assertIn("UploadJobPanel", src)
+                self.assertIn("uploadJobUi", src)
+
+    def test_diagram_export_shared(self):
+        """七个论文图 Viewer 共用 diagramExport，禁止各写一套 copyPng/Mermaid。"""
+        util = (FE / "utils" / "diagramExport.js").read_text(encoding="utf-8")
+        for name in (
+            "copyPngFromSvgDom",
+            "copyMermaidUrl",
+            "downloadSvgText",
+            "downloadDrawioUrl",
+        ):
+            self.assertIn(name, util)
+        viewers = list((FE / "components").glob("*DiagramViewer.vue"))
+        self.assertGreaterEqual(len(viewers), 7)
+        for path in viewers:
+            src = path.read_text(encoding="utf-8")
+            with self.subTest(viewer=path.name):
+                self.assertIn("diagramExport", src)
+                self.assertNotIn("function triggerDownload(blob", src)
+
+    def test_toast_api_error_helper(self):
+        """接口错误：拦截器 toast；业务用 toastApiError 避免双弹。"""
+        api = (FE / "api.js").read_text(encoding="utf-8")
+        self.assertIn("export function toastApiError", api)
+        self.assertIn("export function apiErrorMessage", api)
+        self.assertIn("err?.config?.silent", api)
 
 
 if __name__ == "__main__":

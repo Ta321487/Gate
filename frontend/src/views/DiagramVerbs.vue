@@ -213,7 +213,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { api, message } from '../api'
+import { api, message, toastApiError } from '../api'
 import { gapStatDisplay } from '../utils/assetDesk'
 import AssetDeskActions from '../components/AssetDeskActions.vue'
 import { confirm } from '../ui'
@@ -365,7 +365,7 @@ async function save() {
     closeDrawer()
     await reload()
   } catch (e) {
-    message.error(e?.response?.data?.detail || '保存失败')
+    toastApiError(e, '保存失败')
   } finally {
     saving.value = false
   }

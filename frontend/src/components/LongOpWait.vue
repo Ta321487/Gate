@@ -110,7 +110,7 @@ const liveHint = computed(() => {
   if (props.hint) return props.hint
   const cur = props.phases[activeIndex.value]
   const name = cur?.label || '当前步骤'
-  return `仍在运行：${name}。可离开本页；回来后会自动对齐。超时请刷新对齐状态。`
+  return `${name}进行中`
 })
 </script>
 

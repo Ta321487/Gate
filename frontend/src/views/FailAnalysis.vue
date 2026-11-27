@@ -93,7 +93,7 @@
       <div v-if="!breakdownHasData" class="surface-tray fa-empty-breakdown mb-16">
         <div class="empty-hint fa-empty-compact">
           <div class="empty-title">暂无失败记录</div>
-          <div class="empty-desc">当前时间范围内没有出包失败；放宽筛选或扩大时间后再看分布</div>
+          <div class="empty-desc">当前范围无出包失败</div>
         </div>
       </div>
       <div v-else class="grid-2 mb-16 stage-grid">
@@ -205,7 +205,7 @@
 import { computed, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
-import { api, message } from '../api'
+import { api, message, toastApiError } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 
 const route = useRoute()
@@ -370,7 +370,7 @@ async function load({ resetPage = true } = {}) {
     samplesTotal.value = data.value?.samples_total ?? (data.value?.samples || []).length
     syncRouteQuery()
   } catch (e) {
-    message.error(e?.message || '加载失败')
+    toastApiError(e, '加载失败')
   } finally {
     loading.value = false
     booted.value = true
@@ -386,7 +386,7 @@ async function assist(row) {
     })
     message.success(`可能属于：${res.code} · ${res.label || ''}（仅供参考，未写入）`)
   } catch (e) {
-    message.error(e?.message || '暂时无法识别类型')
+    toastApiError(e, '暂时无法识别类型')
   } finally {
     assistBusy.value = { ...assistBusy.value, [row.job_id]: false }
   }
@@ -425,7 +425,7 @@ async function askDraft(row, { force = false } = {}) {
       if (res.cached) {
         message.info('已载入已保存的处理建议')
       } else {
-        message.warning('处理建议已生成，请核对后再操作')
+        message.warning('处理建议已生成')
       }
     } else if (draftFocusJobId.value == null) {
       message.info(`任务 #${jid} 的处理建议已就绪，可再次打开「处理建议」查看`)
@@ -435,7 +435,7 @@ async function askDraft(row, { force = false } = {}) {
     if (draftFocusJobId.value === jid) {
       draftCard.value = null
       draftFocusJobId.value = null
-      message.error(e?.message || '暂时无法生成建议')
+      toastApiError(e, '暂时无法生成建议')
     } else if (draftFocusJobId.value == null) {
       message.error(`任务 #${jid} 建议生成失败`)
     }

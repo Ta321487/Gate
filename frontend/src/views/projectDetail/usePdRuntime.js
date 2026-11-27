@@ -257,7 +257,7 @@ export function usePdRuntime({ p, tab, route, ctx }) {
 
   function openPreview() {
     if (rt.frontend_status !== 'healthy') {
-      message.warning('前端未就绪，请先启动并等待可访问')
+      message.warning('前端未就绪')
       return
     }
     const url = rt.preview_url || frontendAddr.value
@@ -265,7 +265,7 @@ export function usePdRuntime({ p, tab, route, ctx }) {
       window.open(url, '_blank')
       return
     }
-    message.warning('前端未就绪，请先启动并等待可访问')
+    message.warning('前端未就绪')
   }
 
   watch(

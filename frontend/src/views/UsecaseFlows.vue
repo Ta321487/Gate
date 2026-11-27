@@ -262,7 +262,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { api, message } from '../api'
+import { api, message, toastApiError } from '../api'
 import { gapStatDisplay } from '../utils/assetDesk'
 import { confirm } from '../ui'
 import PageSkeleton from '../components/PageSkeleton.vue'
@@ -324,7 +324,7 @@ const formHint = computed(() => {
       ? 'kind 与皮已锁定，可改模板与步骤。更换请删除后重新登记。'
       : '待补项标识已锁定，请补全模板后保存。'
   }
-  return '保留花括号即可；出论文表时自动替换。演艺/影院皮用 face 覆盖默认句，不必改 * 行。'
+    return '花括号出表时替换；演艺/影院皮用 face 覆盖默认句。'
 })
 
 function insertPlaceholder(token) {
@@ -412,7 +412,7 @@ async function reload() {
     const maxPage = Math.max(1, Math.ceil((total.value || 0) / pageSize.value) || 1)
     if (page.value > maxPage) page.value = maxPage
   } catch (e) {
-    message.error(e?.message || '加载失败')
+    toastApiError(e, '加载失败')
   }
 }
 
@@ -429,7 +429,7 @@ async function scanGaps(scanDomains) {
     if (gapCount.value) message.info(`待补 ${gapCount.value} 条`)
     else message.success(scanDomains ? '68 域菜单流程已齐' : '没有待补项')
   } catch (e) {
-    message.error(e?.message || '检查失败')
+    toastApiError(e, '检查失败')
   } finally {
     gapLoading.value = false
   }
@@ -446,7 +446,7 @@ async function migrate() {
     await reload()
     mainTab.value = 'entries'
   } catch (e) {
-    message.error(e?.message || '导入失败')
+    toastApiError(e, '导入失败')
   } finally {
     migrating.value = false
   }
@@ -525,7 +525,7 @@ async function save() {
       gapCount.value = gapRes.gap_count ?? gaps.value.length
     }
   } catch (e) {
-    message.error(e?.response?.data?.detail || e?.message || '保存失败')
+    toastApiError(e, '保存失败')
   } finally {
     saving.value = false
   }
@@ -544,7 +544,7 @@ async function remove(row) {
     if (editingId.value === row.id) closeDrawer()
     await reload()
   } catch (e) {
-    message.error(e?.message || '删除失败')
+    toastApiError(e, '删除失败')
   } finally {
     deletingId.value = 0
   }
@@ -555,7 +555,7 @@ onMounted(async () => {
     await loadMeta()
     await reload()
   } catch (e) {
-    message.error(e?.message || '加载失败')
+    toastApiError(e, '加载失败')
   } finally {
     booted.value = true
   }

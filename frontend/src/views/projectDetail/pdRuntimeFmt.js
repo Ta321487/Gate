@@ -22,7 +22,7 @@ const RUNTIME_WAIT_COPY = {
       { key: 'boot', label: '正在拉起后端与前端进程' },
       { key: 'ready', label: '等待前后端可访问' },
     ],
-    hint: '前后端启动中，状态会自动刷新；可停在本页，勿重复点启动。',
+    hint: '前后端启动中',
   },
   'all:stop': {
     title: '正在停止前后端…',
@@ -31,7 +31,7 @@ const RUNTIME_WAIT_COPY = {
       { key: 'boot', label: '正在停止后端与前端进程' },
       { key: 'ready', label: '等待前后端完全停止' },
     ],
-    hint: '前后端停止中，状态会自动刷新；可停在本页，勿重复点停止。',
+    hint: '前后端停止中',
   },
   'all:restart': {
     title: '正在重启前后端…',
@@ -40,7 +40,7 @@ const RUNTIME_WAIT_COPY = {
       { key: 'boot', label: '先停再起后端与前端' },
       { key: 'ready', label: '等待前后端再次可访问' },
     ],
-    hint: '前后端重启中，状态会自动刷新；可停在本页，勿重复点重启。',
+    hint: '前后端重启中',
   },
   'backend:start': {
     title: '正在启动后端…',
@@ -49,7 +49,7 @@ const RUNTIME_WAIT_COPY = {
       { key: 'boot', label: '正在拉起后端进程' },
       { key: 'ready', label: '等待后端可访问' },
     ],
-    hint: '后端启动中，状态会自动刷新；可停在本页，勿重复点启动。',
+    hint: '后端启动中',
   },
   'backend:stop': {
     title: '正在停止后端…',
@@ -58,7 +58,7 @@ const RUNTIME_WAIT_COPY = {
       { key: 'boot', label: '正在停止后端进程' },
       { key: 'ready', label: '等待后端完全停止' },
     ],
-    hint: '后端停止中，状态会自动刷新；可停在本页，勿重复点停止。',
+    hint: '后端停止中',
   },
   'frontend:start': {
     title: '正在启动前端…',
@@ -67,7 +67,7 @@ const RUNTIME_WAIT_COPY = {
       { key: 'boot', label: '正在拉起前端进程' },
       { key: 'ready', label: '等待前端可访问' },
     ],
-    hint: '前端启动中，状态会自动刷新；可停在本页，勿重复点启动。',
+    hint: '前端启动中',
   },
   'frontend:stop': {
     title: '正在停止前端…',
@@ -76,7 +76,7 @@ const RUNTIME_WAIT_COPY = {
       { key: 'boot', label: '正在停止前端进程' },
       { key: 'ready', label: '等待前端完全停止' },
     ],
-    hint: '前端停止中，状态会自动刷新；可停在本页，勿重复点停止。',
+    hint: '前端停止中',
   },
   mixed: {
     title: '运行态切换中…',
@@ -85,7 +85,7 @@ const RUNTIME_WAIT_COPY = {
       { key: 'boot', label: '正在切换前后端进程' },
       { key: 'ready', label: '等待运行态稳定' },
     ],
-    hint: '运行态切换中，状态会自动刷新；可停在本页，勿重复点击。',
+    hint: '运行态切换中',
   },
 }
 
@@ -152,7 +152,7 @@ export function runtimeLogView(st, tail) {
     return '—'
   }
   const startingHint =
-    '编译启动中，日志可能短暂无新输出；就绪后会自动变为「正常」，无需刷新页面。'
+    '编译启动中 · 就绪后状态变为正常'
   if (!tail || /^(后端|前端)?(启动|停止)中/.test(String(tail).trim())) {
     return st === 'starting' ? startingHint : '—'
   }

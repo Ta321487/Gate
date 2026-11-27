@@ -62,7 +62,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { api, message } from '../api'
+import { api, message, toastApiError } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 
 const cfg = reactive({
@@ -84,7 +84,7 @@ async function load() {
   try {
     Object.assign(cfg, await api.unsplash())
   } catch (e) {
-    message.error(e?.message || '读取 Unsplash 配置失败')
+    toastApiError(e, '读取 Unsplash 配置失败')
   } finally {
     loading.value = false
     booted.value = true

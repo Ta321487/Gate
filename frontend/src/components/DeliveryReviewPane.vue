@@ -409,7 +409,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { NAlert, NButton, NCheckbox, NCollapse, NCollapseItem, NDataTable, NEmpty, NInput, NModal } from 'naive-ui'
-import { api, message, confirm } from '../api'
+import { api, message, confirm, toastApiError } from '../api'
 import LongOpWait from './LongOpWait.vue'
 import { clearLongOp, markLongOp, peekLongOp } from '../utils/longOpSession'
 import { buildDeliveryDiagnosis, failAnalysisHref } from '../deliveryDiagnosis'
@@ -509,7 +509,7 @@ const longOpPhases = computed(() => longOpMeta.value?.phases || [])
 const longOpPhaseSeconds = computed(() => longOpMeta.value?.phaseSeconds || [])
 const longOpHint = computed(() => {
   if (recoverAlign.value && !busy.value && !props.scrubBusy) {
-    return '刷新后仍保留等待语义：点「立即对齐」或稍候自动对齐；勿重复连点验收。'
+    return '仍在等待 · 可点「立即对齐」'
   }
   return ''
 })
@@ -546,7 +546,7 @@ async function alignAfterRecover({ silent = false } = {}) {
     recoverKind.value = ''
     if (!silent) message.info('状态已对齐')
   } catch {
-    if (!silent) message.warning('对齐未完成 · 请稍后再试或硬刷新')
+      if (!silent) message.warning('对齐未完成 · 稍后重试或硬刷新')
   } finally {
     recoverBusy.value = false
   }
@@ -811,7 +811,7 @@ const diagnosis = computed(() =>
 const diagnosisNextHint = computed(() => {
   const a = diagnosis.value?.nextAction
   if (a === 'close-rebake') return '须改工程时走这条；仅同步 ZIP 请验收后重打包'
-  if (a === 'start') return '先进入复审收口；改工程后再结束复审并重新生成'
+  if (a === 'start') return '复审中 · 改工程需结束复审后重生成'
   if (a === 'repack') return '与上方「重打包」同一动作'
   if (a === 'verify') return '与上方「验收」同一动作'
   if (a === 'notes') return '打开下方偏差登记'
@@ -894,22 +894,22 @@ const tipHandoff = '导出运营交接材料，不进学生 ZIP'
 const repackTip = computed(() => {
   if (canRepack.value) return '验收通过后更新交付 ZIP，使与工程一致'
   if (props.disabled) return '工程重新生成中或尚无工作区，暂不可重打包'
-  if (busy.value) return '请等待当前操作完成'
+  if (busy.value) return '操作进行中'
   if (regressions.value.length) {
-    return '存在已通过清单回退，无法重打包；须重出包时请先结束复审再重新生成'
+    return '清单回退 · 无法重打包 · 结束复审后重生成'
   }
-  if (openNotes.value.length) return `仍有 ${openNotes.value.length} 条未结案偏差，请先结案后再重打包`
+  if (openNotes.value.length) return `未结案偏差 ${openNotes.value.length} 条 · 结案后重打包`
   if (blockingGates.value.length) {
     const labels = blockingGates.value
       .map((g) => (g && g.label) || '')
       .filter(Boolean)
       .slice(0, 3)
       .join('、')
-    return `质量门禁未过（${labels || '见上方提示'}）· 当场可修则处理后验收；须重跑生成请先结束复审`
+    return `质量门禁未过（${labels || '见提示'}）· 可修则处理后验收；重跑生成需结束复审`
   }
   const rounds = review.value.rounds || []
   const lastRound = rounds.length ? rounds[rounds.length - 1] : null
-  if (!lastRound?.round_pass) return '请先完成验收通过后再重打包'
+  if (!lastRound?.round_pass) return '验收通过后重打包'
   if (lastRound.monotonic_ok === false) return '验收单调性未通过，暂不可重打包'
   return '暂不可重打包'
 })
@@ -970,9 +970,8 @@ async function onStart() {
     message.success('已进入交付复审')
     wroteOk = true
   } catch (e) {
-    message.error(
-      isTimeoutErr(e) ? timeoutAlignMsg('进入复审') : e?.response?.data?.detail || e?.message || '进入复审失败',
-    )
+    if (isTimeoutErr(e)) message.error(timeoutAlignMsg('进入复审'))
+    else toastApiError(e, '进入复审失败')
   } finally {
     busy.value = ''
   }
@@ -1040,7 +1039,7 @@ async function onVerify() {
       recoverAlign.value = true
       message.error('验收超时 · 服务端可能已成功或仍在跑，请刷新对齐状态')
     } else {
-      message.error(e?.response?.data?.detail || e?.message || '验收失败')
+      toastApiError(e, '验收失败')
     }
   } finally {
     busy.value = ''
@@ -1075,7 +1074,7 @@ async function onRepack() {
       recoverAlign.value = true
       message.error(timeoutAlignMsg('重打包'))
     } else {
-      message.error(e?.response?.data?.detail || e?.message || '重打包失败')
+      toastApiError(e, '重打包失败')
     }
   } finally {
     busy.value = ''
@@ -1109,7 +1108,7 @@ async function onQa() {
       recoverAlign.value = true
       message.error(timeoutAlignMsg('质量摘要'))
     } else {
-      message.error(e?.response?.data?.detail || e?.message || '质量摘要失败')
+      toastApiError(e, '质量摘要失败')
     }
   } finally {
     busy.value = ''
@@ -1131,9 +1130,8 @@ async function onClose() {
     message.success('已结束交付复审')
     wroteOk = true
   } catch (e) {
-    message.error(
-      isTimeoutErr(e) ? timeoutAlignMsg('结束复审') : e?.response?.data?.detail || e?.message || '结束复审失败',
-    )
+    if (isTimeoutErr(e)) message.error(timeoutAlignMsg('结束复审'))
+    else toastApiError(e, '结束复审失败')
   } finally {
     busy.value = ''
   }
@@ -1163,9 +1161,8 @@ async function onCloseAndRebake() {
     message.success('已结束复审 · 请确认选项后重新生成')
     wroteOk = true
   } catch (e) {
-    message.error(
-      isTimeoutErr(e) ? timeoutAlignMsg('结束复审') : e?.response?.data?.detail || e?.message || '结束复审失败',
-    )
+    if (isTimeoutErr(e)) message.error(timeoutAlignMsg('结束复审'))
+    else toastApiError(e, '结束复审失败')
   } finally {
     busy.value = ''
   }
@@ -1205,9 +1202,8 @@ async function onAddNote() {
     message.success('已登记偏差')
     wroteOk = true
   } catch (e) {
-    message.error(
-      isTimeoutErr(e) ? timeoutAlignMsg('登记偏差') : e?.response?.data?.detail || e?.message || '登记失败',
-    )
+    if (isTimeoutErr(e)) message.error(timeoutAlignMsg('登记偏差'))
+    else toastApiError(e, '登记失败')
   } finally {
     busy.value = ''
   }
@@ -1234,9 +1230,8 @@ async function onResolveNote(noteId, done) {
     message.success(done ? '已结案' : '已重开')
     wroteOk = true
   } catch (e) {
-    message.error(
-      isTimeoutErr(e) ? timeoutAlignMsg('结案') : e?.response?.data?.detail || e?.message || '操作失败',
-    )
+    if (isTimeoutErr(e)) message.error(timeoutAlignMsg('结案'))
+    else toastApiError(e, '操作失败')
   } finally {
     busy.value = ''
   }

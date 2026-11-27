@@ -149,7 +149,7 @@
       :mask-closable="!sampleLoading"
     >
       <p class="small muted" style="margin:0 0 12px">
-        随机覆盖常见毕设方向；厚稿按角色写模块。每次生成会从该域「扫词开」能力矩阵里随机抽几项写入（功能有差异但不出范围）；勾选「真单压力」则写全本域扫词开触发词，便于空窗模拟真开题挂载。约三分之一会抽到 AI 挂件表述。可选 LLM 润色。下载 txt 后拖到上方上传即可。
+        按域生成测试开题；可勾「真单压力」写全扫词触发词。可选 LLM 润色。下载后上传建项。
       </p>
       <div class="stack" style="gap:10px">
         <div class="row" style="gap:8px;flex-wrap:wrap">
@@ -195,42 +195,30 @@
       </template>
     </n-modal>
 
-    <div v-if="uploadJobs.length" class="panel mb-16">
-      <div class="panel-hd">
-        <h3>上传任务</h3>
-        <span class="small muted">{{ uploadQueueHint }}</span>
-      </div>
-      <div class="panel-bd stack" style="gap:14px">
-        <div v-for="job in uploadJobs" :key="job.id" class="upload-job">
-          <div class="row" style="justify-content:space-between;margin-bottom:6px;gap:8px">
-            <div style="min-width:0">
-              <div style="font-weight:600;line-height:1.35">{{ job.name }}</div>
-              <div class="small muted">{{ job.fileCount }} 份材料 · {{ jobPhaseLabel(job) }}</div>
-            </div>
-            <div class="row" style="gap:6px;flex-shrink:0">
-              <n-button
-                v-if="job.status === 'planned' && job.plan"
-                size="tiny"
-                @click="reopenPlan(job)"
-              >查看分堆</n-button>
-              <n-button
-                v-if="job.status === 'done' && job.projectId"
-                size="tiny"
-                @click="router.push(`/projects/${job.projectId}`)"
-              >查看</n-button>
-              <n-button
-                v-if="job.status === 'done' || job.status === 'error' || job.status === 'planned'"
-                text
-                size="tiny"
-                @click="dismissJob(job.id)"
-              >移除</n-button>
-            </div>
-          </div>
-          <div class="progress"><i :style="{ width: job.pct + '%', background: jobBarColor(job) }" /></div>
-          <div v-if="job.error" class="small warn" style="margin-top:6px">{{ job.error }}</div>
-        </div>
-      </div>
-    </div>
+    <UploadJobPanel
+      :jobs="uploadJobs"
+      :hint="uploadQueueHint"
+      :meta-fn="projectJobMeta"
+    >
+      <template #actions="{ job }">
+        <n-button
+          v-if="job.status === 'planned' && job.plan"
+          size="tiny"
+          @click="reopenPlan(job)"
+        >查看分堆</n-button>
+        <n-button
+          v-if="job.status === 'done' && job.projectId"
+          size="tiny"
+          @click="openDoneJob(job)"
+        >查看</n-button>
+        <n-button
+          v-if="job.status === 'done' || job.status === 'error' || job.status === 'planned'"
+          text
+          size="tiny"
+          @click="dismissJob(job.id)"
+        >移除</n-button>
+      </template>
+    </UploadJobPanel>
 
     <PageSkeleton v-if="!booted" variant="dashboard" />
     <template v-else>
@@ -351,7 +339,7 @@
           <template #empty>
             <div class="empty-hint">
               <div class="empty-title">暂无项目</div>
-              <div class="empty-desc">上传材料后确认分堆即可创建。第一次可先「生成测试开题」，再拖回上方上传区。</div>
+              <div class="empty-desc">上传材料后确认分堆。可用「生成测试开题」再上传。</div>
             </div>
           </template>
         </n-data-table>
@@ -365,9 +353,15 @@
 import { computed, h, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton } from 'naive-ui'
-import { api, confirm, message } from '../api'
+import { api, confirm, message, toastApiError } from '../api'
 import { collectUploadMaterials, MAX_UPLOAD_MATERIALS } from '../uploadMaterials'
+import {
+  cancelUploadJobAutoDismiss,
+  scheduleUploadJobAutoDismiss,
+} from '../utils/uploadJobDismiss'
+import { projectUploadJobPhaseLabel } from '../utils/uploadJobUi'
 import PageSkeleton from '../components/PageSkeleton.vue'
+import UploadJobPanel from '../components/UploadJobPanel.vue'
 import ContentLoading from '../components/ContentLoading.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
 import {
@@ -587,11 +581,10 @@ async function dismissEmptyPlan() {
   const job = uploadJobs.value.find((j) => j.id === planJobId.value)
   const planId = planData.value?.plan_id || job?.plan?.plan_id
   if (job) {
-    job.status = 'done'
-    job.pct = 100
     job.plan = null
     job.deferred = false
     job.name = '已跳过 · 无项目可创建'
+    markJobDoneAndFade(job)
     const n = (planData.value?.discard || []).length
     message.info(n ? `已跳过，剔除 ${n} 份无关材料` : '已跳过（无项目可创建）')
   }
@@ -728,8 +721,7 @@ async function appendMaterialsToPlan(source) {
       `已追加并重新分堆：${n} 个项目` + (discarded ? `，剔除 ${discarded} 份` : ''),
     )
   } catch (err) {
-    const detail = err?.response?.data?.detail || err?.message || '追加失败'
-    message.error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+    toastApiError(err, '追加失败')
   } finally {
     planAppending.value = false
   }
@@ -790,6 +782,7 @@ async function confirmPlan() {
     if (res?.discarded?.length) {
       message.info(`已剔除 ${res.discarded.length} 份无关材料`)
     }
+    markJobDoneAndFade(job)
     // 多项目时追加可点进详情的条目
     if (projects.length > 1) {
       const extras = projects.slice(1).map((p) => ({
@@ -805,6 +798,7 @@ async function confirmPlan() {
         tick: null,
       }))
       uploadJobs.value = [...uploadJobs.value, ...extras]
+      for (const ex of extras) markJobDoneAndFade(ex)
     }
     const goDetail = projects.length === 1 && projects[0].id
     planCloseFromConfirm = true
@@ -815,6 +809,7 @@ async function confirmPlan() {
     planDiscardOverride.value = null
     await load()
     if (goDetail) {
+      dismissJob(job.id)
       router.push(`/projects/${projects[0].id}`)
     } else {
       queueMicrotask(() => openNextPendingPlan())
@@ -1252,38 +1247,34 @@ async function refresh() {
   await load()
 }
 
-function jobPhaseLabel(job) {
-  if (job.status === 'queued') return '待处理'
-  if (job.status === 'uploading') return job.pct < 70 ? `上传中 ${job.pct}%` : '上传中'
-  if (job.status === 'parsing') {
-    return job.plan || job.name?.includes('确认') ? '正在创建项目' : '正在解析并分堆'
-  }
-  if (job.status === 'planned') {
-    const n = job.plan?.clusters?.length
-    const base = n != null ? `待确认分堆（${n} 个项目）` : '待确认分堆'
-    return job.deferred ? `${base} · 已搁置` : base
-  }
-  if (job.status === 'done') return job.projectId ? '项目已创建' : (job.name?.includes('跳过') ? '已跳过' : '已完成')
-  if (job.status === 'error') return '上传失败'
-  return ''
-}
-
-function jobBarColor(job) {
-  if (job.status === 'error') return 'var(--danger, #c45c5c)'
-  if (job.status === 'done') return 'var(--green)'
-  if (job.status === 'planned') return 'var(--teal, #2a9d8f)'
-  if (job.status === 'queued') return 'var(--line-soft)'
-  return ''
+function projectJobMeta(job) {
+  return `${job.fileCount} 份材料 · ${projectUploadJobPhaseLabel(job)}`
 }
 
 function dismissJob(id) {
   const job = uploadJobs.value.find((j) => j.id === id)
+  cancelUploadJobAutoDismiss(job)
   if (job?.tick) clearInterval(job.tick)
   const planId = job?.plan?.plan_id
+  const wasPlanned = job?.status === 'planned'
   uploadJobs.value = uploadJobs.value.filter((j) => j.id !== id)
-  if (job?.status === 'planned' && planId) {
+  if (wasPlanned && planId) {
     discardPlanOnServer(planId)
   }
+}
+
+function openDoneJob(job) {
+  if (!job?.projectId) return
+  const pid = job.projectId
+  dismissJob(job.id)
+  router.push(`/projects/${pid}`)
+}
+
+function markJobDoneAndFade(job) {
+  if (!job) return
+  job.status = 'done'
+  job.pct = 100
+  scheduleUploadJobAutoDismiss(job, dismissJob)
 }
 
 async function enqueueUpload(source) {
@@ -1421,6 +1412,7 @@ watch(
 onUnmounted(() => {
   onSearch.cancel()
   for (const job of uploadJobs.value) {
+    cancelUploadJobAutoDismiss(job)
     if (job.tick) clearInterval(job.tick)
   }
 })

@@ -178,7 +178,7 @@
             <div class="empty-desc">
               {{
                 gapsScanned
-                  ? '当前词表已覆盖扫到的列；有新域模板后再检查一次。'
+                  ? '当前词表已覆盖扫到的列。'
                   : '点顶栏「检查待补」，对照各域建表 SQL 找出缺中文的列。'
               }}
             </div>
@@ -327,7 +327,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { api, message } from '../api'
+import { api, message, toastApiError } from '../api'
 import { gapStatDisplay } from '../utils/assetDesk'
 import { confirm } from '../ui'
 import PageSkeleton from '../components/PageSkeleton.vue'
@@ -635,7 +635,7 @@ async function loadMeta() {
     meta.skins_by_domain = res.skins_by_domain || {}
     meta.tables_by_domain = res.tables_by_domain || {}
   } catch (e) {
-    message.error(e?.message || '加载域/皮选项失败')
+    toastApiError(e, '加载域/皮选项失败')
   }
 }
 
@@ -662,7 +662,7 @@ async function load() {
     const maxPage = Math.max(1, Math.ceil((total.value || 0) / pageSize.value) || 1)
     if (page.value > maxPage) page.value = maxPage
   } catch (e) {
-    message.error(e?.message || '加载词表失败')
+    toastApiError(e, '加载词表失败')
   } finally {
     loading.value = false
     booted.value = true
@@ -680,7 +680,7 @@ async function migrate() {
     await loadColumnCorpus()
     mainTab.value = 'entries'
   } catch (e) {
-    message.error(e?.message || '导入失败')
+    toastApiError(e, '导入失败')
   } finally {
     migrating.value = false
   }
@@ -707,7 +707,7 @@ async function scanGaps() {
       message.success('没有待补项')
     }
   } catch (e) {
-    message.error(e?.message || '检查失败')
+    toastApiError(e, '检查失败')
   } finally {
     gapLoading.value = false
   }
@@ -731,7 +731,7 @@ async function applySuggestDrafts() {
     gaps.value = gapRes.gaps || []
     gapCount.value = gapRes.gap_count ?? gaps.value.length
   } catch (e) {
-    message.error(e?.message || '生成草稿失败')
+    toastApiError(e, '生成草稿失败')
   } finally {
     draftLoading.value = false
   }
@@ -775,7 +775,7 @@ async function save() {
       gapCount.value = gapRes.gap_count ?? gaps.value.length
     }
   } catch (e) {
-    message.error(e?.message || '保存失败')
+    toastApiError(e, '保存失败')
   } finally {
     saving.value = false
   }
@@ -796,7 +796,7 @@ async function remove(row) {
     await load()
     await loadColumnCorpus()
   } catch (e) {
-    message.error(e?.message || '删除失败')
+    toastApiError(e, '删除失败')
   } finally {
     deletingId.value = 0
   }

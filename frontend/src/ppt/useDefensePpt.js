@@ -363,7 +363,7 @@ export function useDefensePpt({ p, canDownload, tab, artifactView, goArtifacts }
   async function exportPptx() {
     if (!p.value?.id) return
     if (pptBizDirty.value) {
-      message.warning('业务内容可能不一致，请先按工程更新业务页')
+      message.warning('业务内容可能不一致 · 按工程更新业务页')
       return
     }
     if (!canDownload.value) {

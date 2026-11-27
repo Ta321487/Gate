@@ -9,9 +9,10 @@
         <li v-for="(b, i) in ready.blockers" :key="i">{{ b.text }}</li>
       </ul>
       <p v-if="ready.recoveryHint" class="small muted delivery-ready-ok">{{ ready.recoveryHint }}</p>
-      <p v-else-if="!ready.blockers.length" class="small muted delivery-ready-ok">
-        {{ sameStageAsPrimary ? sameStageHint : '按右侧主操作即可完成当前步骤。' }}
-      </p>
+      <p
+        v-else-if="!ready.blockers.length && sameStageAsPrimary && sameStageHint"
+        class="small muted delivery-ready-ok"
+      >{{ sameStageHint }}</p>
     </div>
     <div class="delivery-ready-actions">
       <!-- 人已在目标阶段：不放同义 primary，避免与页内主 CTA 打架；下载仍只在质检强调 -->

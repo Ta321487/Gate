@@ -68,7 +68,7 @@ export function canEnterDetailTab(p, tabName) {
   }
   if (name === 'generate') {
     if (p?.match_confirmed) return { ok: true, reason: '' }
-    return { ok: false, reason: '请先完成匹配确认，再进入生成' }
+    return { ok: false, reason: '待匹配确认' }
   }
   if (name === 'artifacts' || name === 'runtime' || name === 'thesis' || name === 'ppt') {
     if (hasBakedWorkspace(p)) return { ok: true, reason: '' }
@@ -84,16 +84,16 @@ export function canEnterDetailTab(p, tabName) {
       }
     }
     if (!p?.match_confirmed) {
-      return { ok: false, reason: '请先完成匹配并生成，再进入本步' }
+      return { ok: false, reason: '待匹配并生成' }
     }
     return {
       ok: false,
       reason:
         name === 'thesis'
-          ? '请先一键生成工程，再进入论文材料'
+          ? '待生成工程 · 论文材料'
           : name === 'ppt'
-            ? '请先一键生成工程，再进入答辩 PPT'
-            : '请先一键生成工程，再进入质检交付或预览',
+            ? '待生成工程 · 答辩 PPT'
+            : '待生成工程 · 质检交付或预览',
     }
   }
   return { ok: true, reason: '' }
@@ -142,8 +142,8 @@ export function buildDeliveryStages(p, activeTab = '') {
   if (!matched) {
     states.match = 'current'
     states.generate = 'locked'
-    locks.generate = '请先完成匹配确认'
-    lockPostBake('请先完成匹配并生成')
+    locks.generate = '待匹配确认'
+    lockPostBake('待匹配并生成')
   } else if (generating) {
     states.match = 'done'
     states.generate = 'current'
@@ -191,7 +191,7 @@ export function buildDeliveryStages(p, activeTab = '') {
       states.match = 'current'
       states.generate = 'todo'
     }
-    lockPostBake('请先一键生成工程')
+    lockPostBake('待生成工程')
   }
 
   return DELIVERY_STAGE_DEFS.map((d) => ({

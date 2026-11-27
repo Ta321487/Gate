@@ -33,6 +33,13 @@ FORBIDDEN_MAIN = [
     "请升级工程",
     "工单流转",
     "SLA",
+    # 教人盯页面 / 教人操作腔
+    "可离开本页",
+    "勿重复点",
+    "回来看进度",
+    "你可以先",
+    "不要指望再点一次",
+    "按右侧主操作即可",
 ]
 
 
@@ -49,11 +56,20 @@ class ConsoleNewhireCopyContractTest(unittest.TestCase):
             chunk = _template_chunks(path.read_text(encoding="utf-8"))
             # deliveryReadiness.js 可读「合卷」作 reason 兼容匹配，不算 UI 按钮文案
             if path.name == "deliveryReadiness.js":
-                for bad in ("填岛", "工厂清洗文案", "本岗可处理", "请升级工程", "工单流转"):
+                for bad in (
+                    "填岛",
+                    "工厂清洗文案",
+                    "本岗可处理",
+                    "请升级工程",
+                    "工单流转",
+                    "你可以先",
+                    "不要指望再点一次",
+                    "不要假装再下载就能过",
+                ):
                     self.assertNotIn(bad, chunk, f"{path.name} 含禁用词 {bad}")
-                self.assertIn("你可以先", chunk)
                 self.assertIn("需要改程序", chunk)
                 self.assertIn("清洗文案", chunk)
+                self.assertIn("从失败步骤重试", chunk)
                 continue
             for bad in FORBIDDEN_MAIN:
                 self.assertNotIn(bad, chunk, f"{path.name} 主路径含禁用词 {bad}")

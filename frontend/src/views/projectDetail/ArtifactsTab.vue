@@ -251,7 +251,7 @@
                     title="正在对账论文图…"
                     :phases="thesisAuditPhases"
                     :phase-seconds="[20, 45, 30]"
-                    hint="仍在运行：规则闸与可选假宣称扫描。可离开本页；完成后结果会出现在下方。"
+                    hint="规则闸与假宣称扫描进行中"
                   />
                 </div>
               </div>
@@ -269,11 +269,11 @@
                 </h4>
                 <p class="small">{{ thesisAuditReport.summary }}</p>
                 <p v-if="!thesisAuditReport.llm_used && thesisAuditReport.llm_skip_reason" class="small muted">
-                  {{ thesisAuditReport.llm_skip_reason }} · 规则闸仍有效；配好 Key 后再点可补 LLM 扫描（结果进「待核」，不自动当老师）。
+                  {{ thesisAuditReport.llm_skip_reason }} · 规则闸仍有效；配 Key 后可补 LLM 扫描。
                 </p>
                 <p class="small muted" style="margin:4px 0 0">
-                  <strong>须改</strong>＝规则闸铁证，该处理；
-                  <strong>待核</strong>＝LLM/规则留意，打开材料卡核对后再决定。点「去处理」会进手调并尽量定位到对应图/检索词。
+                  <strong>须改</strong>＝规则闸须处理；
+                  <strong>待核</strong>＝打开材料卡核对。「去处理」进手调。
                 </p>
                 <div v-if="thesisAuditMustFix.length" style="margin-top:10px">
                   <h4 style="margin:0 0 6px;font-size:13px">须改 · {{ thesisAuditMustFix.length }}</h4>
@@ -426,7 +426,7 @@
               <div class="small muted">
                 按工作区 Controller 源码列出实有接口（不是 Swagger 运行时文档），便于对照主流程验收；仅供运营端查看，不含于交付包。
                 复制为「方法 + 路径」；联调请用「运行」页的后端地址（需先登录预览）。
-                「全量冒烟」按本域 flow_api 模拟页面主路径点击（可多链：借+约、收藏等），只探测已启动预览，不会自动启停；启停请到「运行」页。
+                「全量冒烟」按本域主路径探测已启动预览（不启停进程；启停在「运行」）。
                 全量表「可达」= 打到学生后端；业务成败看上方「主流程」。
               </div>
               <div v-if="apiSmokeFactoryHint" class="banner fail" style="margin:0">

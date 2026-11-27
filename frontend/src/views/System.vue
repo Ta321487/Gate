@@ -204,7 +204,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { api, confirm, message } from '../api'
+import { api, confirm, message, toastApiError } from '../api'
 import PageSkeleton from '../components/PageSkeleton.vue'
 import ErrorPage from './ErrorPage.vue'
 import CopyIconButton from '../components/CopyIconButton.vue'
@@ -311,7 +311,7 @@ async function purgeCache() {
     else message.warning(res?.message || '未能清理')
     await loadCache()
   } catch (e) {
-    message.error(e?.message || '清理失败')
+    toastApiError(e, '清理失败')
   } finally {
     purging.value = false
   }

@@ -165,7 +165,7 @@ export function buildDeliveryDiagnosis(input) {
       bucketLabel: BUCKET_LABEL.review,
       name: `未结案偏差 ${openNotes} 条`,
       one: '偏差未结案前不能重打包',
-      detail: '在下方偏差登记结案或处理后再验收重打包。',
+      detail: '偏差结案后验收重打包。',
       code: '',
       locus: '',
     })
@@ -198,7 +198,7 @@ export function buildDeliveryDiagnosis(input) {
   } else if (gates.length && !zipStale) {
     verdict = `${gates.length} 道门禁未过；清单是否齐不代表可交。`
   } else if (zipStale && !gates.length && !regressions.length) {
-    verdict = '内容与门禁已齐，只是工程又动过：验收通过后重打包即可。'
+    verdict = '内容与门禁已齐 · 工程已变更 · 验收后重打包'
   }
 
   let phaseLabel = '质检交付'

@@ -3,7 +3,7 @@
     <div class="banner">
       <h4>出包微调</h4>
       <p class="small muted">
-        此处只改展示文字与材料勾选。结构大改请回匹配并重 bake；重 bake 后本页补丁会自动叠回。
+        改展示文字与材料勾选。结构大改回匹配并重 bake；补丁会叠回。
       </p>
     </div>
 
@@ -345,7 +345,7 @@
               <span>{{ c.name || c.stable_id }}</span>
             </label>
           </div>
-          <n-empty v-else-if="!ucLoading" description="暂无候选，请先生成工程" size="small" />
+          <n-empty v-else-if="!ucLoading" description="暂无候选 · 待生成工程" size="small" />
           <div class="table-tools" style="margin-top:12px">
             <n-input
               v-model:value="ucCellQuery"

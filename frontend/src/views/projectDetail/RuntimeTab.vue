@@ -3,7 +3,7 @@
     <div v-if="rtSettling || rtAnyBusy" class="panel panel-quiet mb-16">
       <div class="panel-bd">
         <LongOpWait
-          :title="rtWaitCopy.title"
+          :title="rtWaitCopy.title || '启停进行中'"
           :phases="rtWaitCopy.phases"
           :phase-seconds="[8, 20, 30]"
           :hint="rtWaitCopy.hint"
@@ -33,7 +33,7 @@
           size="small"
           secondary
           :disabled="!rtCanRestartAll"
-          :title="rtGenerating ? '生成中 · 请等待完成后再重启' : undefined"
+          :title="rtGenerating ? '生成中' : undefined"
           :loading="rtPendingAll==='restart'"
           @click="rtAction('all','restart')"
         >全部重启</n-button>

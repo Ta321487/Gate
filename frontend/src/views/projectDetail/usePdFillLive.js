@@ -2,7 +2,7 @@
  * 填岛计划预览 + SSE 快照（挂入 useProjectDetail）。
  */
 import { computed, ref } from 'vue'
-import { api, message } from '../../api'
+import { api, message, toastApiError } from '../../api'
 import { statusPillNode } from '../../opsShared'
 import { FILL_UNIT_KIND_ZH, FILL_UNIT_STATUS_ZH } from './pdLabels'
 
@@ -137,7 +137,7 @@ export function usePdFillLive({ p }) {
       }))
       showFillPlan.value = true
     } catch (e) {
-      message.error(e?.response?.data?.detail || e?.message || '无法加载填岛计划')
+      toastApiError(e, '无法加载填岛计划')
     } finally {
       fillPlanLoading.value = false
     }
