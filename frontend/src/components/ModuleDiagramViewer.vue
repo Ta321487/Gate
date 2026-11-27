@@ -84,7 +84,7 @@
         }}
       </p>
       <p v-if="layoutMismatch" class="small mod-hint mb-8 mod-warn">
-        界面选的是「按身份」，但图数据仍是「按业务」——请重启工厂后端后再点重新加载。
+        界面为「按身份」，图数据仍是「按业务」· 重启后端后重新加载。
       </p>
       <p
         v-if="sourceNote"
@@ -161,11 +161,21 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
+import {
+  PNG_SCALE_DEFAULT,
+  copyMermaidUrl,
+  copyPngFromSvgDom,
+  downloadDrawioUrl,
+  downloadMermaidUrl,
+  downloadPngFromSvgDom,
+  downloadSvgText,
+} from '../utils/diagramExport'
 import { message } from '../api'
 import { isDark } from '../theme'
 import ContentLoading from './ContentLoading.vue'
 import DiagramRubricBanner from './DiagramRubricBanner.vue'
 import { useDiagramFrameResize } from './useDiagramFrameResize'
+import { watchFrameHeightFit } from '../utils/diagramFitDebounce'
 
 const props = defineProps({
   svgSource: { type: String, default: '' },
@@ -247,7 +257,7 @@ const findingRows = computed(() => {
   }))
 })
 
-const PNG_SCALE = 2.5
+const PNG_SCALE = PNG_SCALE_DEFAULT
 const frameRef = ref(null)
 const svgHtml = ref('')
 const scale = ref(1)
@@ -272,10 +282,7 @@ const {
   onResizeUp,
 } = useDiagramFrameResize()
 
-watch(frameHeight, async () => {
-  await nextTick()
-  fitToFrame()
-})
+watchFrameHeightFit(frameHeight, fitToFrame)
 
 const SCALE_MIN = 0.25
 const SCALE_MAX = 4
@@ -394,55 +401,14 @@ function onPointerUp() {
   panning.value = false
 }
 
-function triggerDownload(blob, filename) {
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(a.href)
-}
-
-async function svgToCanvas() {
-  const svg = getSvg()
-  if (!svg) throw new Error('无图')
-  const clone = svg.cloneNode(true)
-  const vb = svg.viewBox?.baseVal
-  const w = vb?.width || Number(svg.getAttribute('width')) || 800
-  const h = vb?.height || Number(svg.getAttribute('height')) || 600
-  clone.setAttribute('width', String(w))
-  clone.setAttribute('height', String(h))
-  const xml = new XMLSerializer().serializeToString(clone)
-  const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }))
-  try {
-    const img = new Image()
-    await new Promise((resolve, reject) => {
-      img.onload = resolve
-      img.onerror = reject
-      img.src = url
-    })
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.round(w * PNG_SCALE)
-    canvas.height = Math.round(h * PNG_SCALE)
-    const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-    return canvas
-  } finally {
-    URL.revokeObjectURL(url)
-  }
-}
-
 async function copyPng() {
   busy.value = true
   try {
-    const canvas = await svgToCanvas()
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
-    if (!blob) throw new Error('png')
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-    message.success('已复制图片')
-  } catch {
-    message.error('复制失败，可改下 PNG')
+    await copyPngFromSvgDom(getSvg, {
+      scale: PNG_SCALE,
+      okText: '已复制图片',
+      failText: '复制失败，可改下 PNG',
+    })
   } finally {
     busy.value = false
   }
@@ -451,24 +417,17 @@ async function copyPng() {
 async function downloadPng() {
   busy.value = true
   try {
-    const canvas = await svgToCanvas()
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
-    if (!blob) throw new Error('png')
-    triggerDownload(blob, `${fileBase.value}.png`)
-  } catch {
-    message.error('下载 PNG 失败')
+    await downloadPngFromSvgDom(getSvg, `${fileBase.value}.png`, {
+      scale: PNG_SCALE,
+      failText: '下载 PNG 失败',
+    })
   } finally {
     busy.value = false
   }
 }
 
 function downloadSvg() {
-  const raw = props.svgSource || ''
-  if (!raw) {
-    message.error('无矢量源')
-    return
-  }
-  triggerDownload(new Blob([raw], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
+  downloadSvgText(props.svgSource || '', `${fileBase.value}.svg`)
 }
 
 async function downloadDrawio() {
@@ -476,33 +435,12 @@ async function downloadDrawio() {
     message.error(exportBlockTitle.value || '不可导出')
     return
   }
-  const url = props.drawioUrl
-  if (!url) {
-    message.error('无 Draw.io 下载地址')
-    return
-  }
   drawioBusy.value = true
   try {
-    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
-    if (!res.ok) throw new Error('drawio')
-    const text = await res.text()
-    triggerDownload(
-      new Blob([text], { type: 'application/xml;charset=utf-8' }),
-      `${fileBase.value}.drawio`,
-    )
-  } catch {
-    message.error('下载 Draw.io 失败')
+    await downloadDrawioUrl(props.drawioUrl, `${fileBase.value}.drawio`)
   } finally {
     drawioBusy.value = false
   }
-}
-
-async function fetchMermaidText() {
-  const url = props.mermaidUrl
-  if (!url) throw new Error('no mermaid url')
-  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
-  if (!res.ok) throw new Error('mmd')
-  return await res.text()
 }
 
 async function copyMermaid() {
@@ -512,11 +450,11 @@ async function copyMermaid() {
   }
   mmdBusy.value = true
   try {
-    const text = await fetchMermaidText()
-    await navigator.clipboard.writeText(text)
-    message.success('已复制 Mermaid（可贴 diagrams.net）')
-  } catch {
-    message.error('复制 Mermaid 失败')
+    await copyMermaidUrl(props.mermaidUrl, {
+      okText: '已复制 Mermaid（可贴 diagrams.net）',
+      failText: '复制 Mermaid 失败',
+      
+    })
   } finally {
     mmdBusy.value = false
   }
@@ -529,14 +467,15 @@ async function downloadMermaid() {
   }
   mmdBusy.value = true
   try {
-    const text = await fetchMermaidText()
-    triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${fileBase.value}.mmd`)
-  } catch {
-    message.error('下载 Mermaid 失败')
+    await downloadMermaidUrl(props.mermaidUrl, `${fileBase.value}.mmd`, {
+      failText: '下载 Mermaid 失败',
+      
+    })
   } finally {
     mmdBusy.value = false
   }
 }
+
 </script>
 
 <style scoped>

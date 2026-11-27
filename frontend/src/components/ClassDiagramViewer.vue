@@ -65,10 +65,20 @@
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { message } from '../api'
+import {
+  copyMermaidUrl,
+  copyPngBlob,
+  downloadDrawioUrl,
+  downloadMermaidUrl,
+  downloadPngBlob,
+  downloadSvgText,
+  svgXmlToPngBlob,
+} from '../utils/diagramExport'
 import { isDark } from '../theme'
 import ContentLoading from './ContentLoading.vue'
 import DiagramRubricBanner from './DiagramRubricBanner.vue'
 import { useDiagramFrameResize } from './useDiagramFrameResize'
+import { debounce } from '../opsShared'
 
 const props = defineProps({
   svgSource: { type: String, default: '' },
@@ -94,7 +104,7 @@ function onDisplayMode(v) {
   emit('update:displayMode', v)
 }
 
-const PNG_SCALE = 3
+const PNG_SCALE = 3 // class denser than default 2.5
 const CANVAS_PAD = 64
 const CANVAS_MAX_W = 6000
 const CANVAS_MAX_H = 4500
@@ -873,6 +883,8 @@ function scheduleFitToFrame(force = false) {
   nextTick(() => requestAnimationFrame(() => requestAnimationFrame(run)))
 }
 
+const fitToFrameDebounced = debounce(() => fitToFrame(), 120)
+
 onMounted(() => {
   const frame = frameRef.value
   if (!frame || typeof ResizeObserver === 'undefined') return
@@ -895,7 +907,7 @@ onMounted(() => {
     const crossedFloor =
       (frameLastW < 120 && w >= 120) || (frameLastH < 200 && h >= 200)
     if (grew || crossedFloor) {
-      fitToFrame()
+      fitToFrameDebounced()
     }
     frameLastW = w
     frameLastH = h
@@ -904,6 +916,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  fitToFrameDebounced.cancel?.()
   resizeObs?.disconnect()
   resizeObs = null
 })
@@ -1103,14 +1116,6 @@ function onReload() {
   emit('reset-layout')
 }
 
-function triggerDownload(blob, filename) {
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(a.href)
-}
-
 function serializeSvg() {
   const svg = getSvg()
   if (!svg) return ''
@@ -1125,48 +1130,22 @@ function serializeSvg() {
   return `<?xml version="1.0" encoding="UTF-8"?>\n${xml}`
 }
 
-function rasterizePng(pixelRatio = PNG_SCALE) {
+async function rasterizePng(pixelRatio = PNG_SCALE) {
   const xml = serializeSvg()
-  if (!xml) return Promise.reject(new Error('empty svg'))
+  if (!xml) throw new Error('empty svg')
   const svg = getSvg()
   const { w, h } = svgSize(svg)
-  const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas')
-        canvas.width = Math.round(w * pixelRatio)
-        canvas.height = Math.round(h * pixelRatio)
-        const ctx = canvas.getContext('2d')
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        canvas.toBlob((b) => {
-          URL.revokeObjectURL(url)
-          if (b) resolve(b)
-          else reject(new Error('png'))
-        }, 'image/png')
-      } catch (err) {
-        URL.revokeObjectURL(url)
-        reject(err)
-      }
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('img'))
-    }
-    img.src = url
-  })
+  return svgXmlToPngBlob(xml, w, h, { scale: pixelRatio, useSetTransform: false })
 }
 
 async function copyPng() {
   busy.value = true
   try {
     const blob = await rasterizePng()
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-    message.success('已复制图片（当前布局）')
+    await copyPngBlob(blob, {
+      okText: '已复制图片（当前布局）',
+      failText: '复制失败，可改下 PNG',
+    })
   } catch {
     message.error('复制失败，可改下 PNG')
   } finally {
@@ -1178,7 +1157,7 @@ async function downloadPng() {
   busy.value = true
   try {
     const blob = await rasterizePng()
-    triggerDownload(blob, `${fileBase.value}.png`)
+    await downloadPngBlob(blob, `${fileBase.value}.png`)
   } catch {
     message.error('下载 PNG 失败')
   } finally {
@@ -1187,52 +1166,22 @@ async function downloadPng() {
 }
 
 function downloadSvg() {
-  const raw = serializeSvg()
-  if (!raw) {
-    message.error('无矢量源')
-    return
-  }
-  triggerDownload(new Blob([raw], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
+  downloadSvgText(serializeSvg(), `${fileBase.value}.svg`)
 }
 
 async function downloadDrawio() {
-  const url = props.drawioUrl
-  if (!url) {
-    message.error('无 Draw.io 下载地址')
-    return
-  }
   drawioBusy.value = true
   try {
-    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
-    if (!res.ok) throw new Error('drawio')
-    const text = await res.text()
-    triggerDownload(
-      new Blob([text], { type: 'application/xml;charset=utf-8' }),
-      `${fileBase.value}.drawio`,
-    )
-  } catch {
-    message.error('下载 Draw.io 失败')
+    await downloadDrawioUrl(props.drawioUrl, `${fileBase.value}.drawio`)
   } finally {
     drawioBusy.value = false
   }
 }
 
-async function fetchMermaidText() {
-  const url = props.mermaidUrl
-  if (!url) throw new Error('no mermaid url')
-  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
-  if (!res.ok) throw new Error('mmd')
-  return await res.text()
-}
-
 async function copyMermaid() {
   mmdBusy.value = true
   try {
-    const text = await fetchMermaidText()
-    await navigator.clipboard.writeText(text)
-    message.success('已复制 Mermaid（可贴 diagrams.net）')
-  } catch {
-    message.error('复制 Mermaid 失败')
+    await copyMermaidUrl(props.mermaidUrl)
   } finally {
     mmdBusy.value = false
   }
@@ -1241,14 +1190,12 @@ async function copyMermaid() {
 async function downloadMermaid() {
   mmdBusy.value = true
   try {
-    const text = await fetchMermaidText()
-    triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${fileBase.value}.mmd`)
-  } catch {
-    message.error('下载 Mermaid 失败')
+    await downloadMermaidUrl(props.mermaidUrl, `${fileBase.value}.mmd`)
   } finally {
     mmdBusy.value = false
   }
 }
+
 
 defineExpose({ serializeSvg, downloadSvg, downloadPng, copyPng, resetView })
 </script>

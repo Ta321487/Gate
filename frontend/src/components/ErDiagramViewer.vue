@@ -111,10 +111,21 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { message } from '../api'
+import {
+  PNG_SCALE_DEFAULT,
+  copyMermaidUrl,
+  copyPngBlob,
+  downloadDrawioUrl,
+  downloadMermaidUrl,
+  downloadPngBlob,
+  downloadSvgText,
+  svgXmlToPngBlob,
+} from '../utils/diagramExport'
 import { isDark } from '../theme'
 import ContentLoading from './ContentLoading.vue'
 import DiagramRubricBanner from './DiagramRubricBanner.vue'
 import { useDiagramFrameResize } from './useDiagramFrameResize'
+import { watchFrameHeightFit } from '../utils/diagramFitDebounce'
 
 const props = defineProps({
   /** 后端初始 SVG（可含 xml 声明） */
@@ -153,7 +164,7 @@ const emit = defineEmits([
   'reset-layout',
 ])
 
-const PNG_SCALE = 2.5
+const PNG_SCALE = PNG_SCALE_DEFAULT
 
 const strokeOptions = [
   { label: '线宽 · 细', value: 'thin' },
@@ -179,10 +190,7 @@ const {
   onResizeUp,
 } = useDiagramFrameResize()
 
-watch(frameHeight, async () => {
-  await nextTick()
-  fitToFrame()
-})
+watchFrameHeightFit(frameHeight, fitToFrame)
 const dragNode = ref(null)
 const strokePreset = ref('normal')
 const showGrid = ref(true)
@@ -1296,102 +1304,31 @@ function svgSize(svg) {
   return { w: w || 800, h: h || 600 }
 }
 
-function rasterizePng(pixelRatio = PNG_SCALE) {
+async function rasterizePng(pixelRatio = PNG_SCALE) {
   const xml = serializeSvg()
-  if (!xml) return Promise.reject(new Error('empty svg'))
+  if (!xml) throw new Error('empty svg')
   const svg = getSvg()
   const { w, h } = svgSize(svg)
-  const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas')
-        canvas.width = Math.max(1, Math.round(w * pixelRatio))
-        canvas.height = Math.max(1, Math.round(h * pixelRatio))
-        const ctx = canvas.getContext('2d')
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
-        ctx.drawImage(img, 0, 0, w, h)
-        canvas.toBlob(
-          (png) => {
-            URL.revokeObjectURL(url)
-            if (!png) reject(new Error('toBlob failed'))
-            else resolve(png)
-          },
-          'image/png',
-        )
-      } catch (err) {
-        URL.revokeObjectURL(url)
-        reject(err)
-      }
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('svg load failed'))
-    }
-    img.src = url
-  })
-}
-
-function triggerDownload(blob, name) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  a.click()
-  URL.revokeObjectURL(url)
+  return svgXmlToPngBlob(xml, w, h, { scale: pixelRatio, useSetTransform: true })
 }
 
 function downloadSvg() {
-  const xml = serializeSvg()
-  if (!xml) {
-    message.error('无法导出矢量图')
-    return
-  }
-  triggerDownload(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }), `${fileBase.value}.svg`)
+  downloadSvgText(serializeSvg(), `${fileBase.value}.svg`, { emptyText: '无法导出矢量图' })
 }
 
 async function downloadDrawio() {
-  const url = props.drawioUrl
-  if (!url) {
-    message.error('无 Draw.io 下载地址')
-    return
-  }
   drawioBusy.value = true
   try {
-    const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
-    if (!res.ok) throw new Error('drawio')
-    const text = await res.text()
-    triggerDownload(
-      new Blob([text], { type: 'application/xml;charset=utf-8' }),
-      `${fileBase.value}.drawio`,
-    )
-  } catch {
-    message.error('下载 Draw.io 失败')
+    await downloadDrawioUrl(props.drawioUrl, `${fileBase.value}.drawio`)
   } finally {
     drawioBusy.value = false
   }
 }
 
-async function fetchMermaidText() {
-  const url = props.mermaidUrl
-  if (!url) throw new Error('no mermaid url')
-  const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
-  if (!res.ok) throw new Error('mmd')
-  return await res.text()
-}
-
 async function copyMermaid() {
   mmdBusy.value = true
   try {
-    const text = await fetchMermaidText()
-    await navigator.clipboard.writeText(text)
-    message.success('已复制 Mermaid（可贴 diagrams.net）')
-  } catch {
-    message.error('复制 Mermaid 失败')
+    await copyMermaidUrl(props.mermaidUrl)
   } finally {
     mmdBusy.value = false
   }
@@ -1400,10 +1337,7 @@ async function copyMermaid() {
 async function downloadMermaid() {
   mmdBusy.value = true
   try {
-    const text = await fetchMermaidText()
-    triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${fileBase.value}.mmd`)
-  } catch {
-    message.error('下载 Mermaid 失败')
+    await downloadMermaidUrl(props.mermaidUrl, `${fileBase.value}.mmd`)
   } finally {
     mmdBusy.value = false
   }
@@ -1414,8 +1348,10 @@ async function downloadPng() {
   busy.value = true
   try {
     const png = await rasterizePng()
-    triggerDownload(png, `${fileBase.value}.png`)
-    message.success('已下载 PNG，可直接插入 Word')
+    await downloadPngBlob(png, `${fileBase.value}.png`, {
+      failText: '导出 PNG 失败',
+      okText: '已下载 PNG，可直接插入 Word',
+    })
   } catch {
     message.error('导出 PNG 失败')
   } finally {
@@ -1428,26 +1364,18 @@ async function copyPng() {
   busy.value = true
   try {
     const png = await rasterizePng()
-    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-      triggerDownload(png, `${fileBase.value}.png`)
-      message.warning('当前环境不支持复制图片，已改为下载 PNG')
-      return
-    }
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': Promise.resolve(png) }),
-      ])
-      message.success('已复制图片，可在 Word 中粘贴')
-    } catch {
-      triggerDownload(png, `${fileBase.value}.png`)
-      message.warning('复制失败，已改为下载 PNG')
-    }
+    await copyPngBlob(png, {
+      okText: '已复制图片，可在 Word 中粘贴',
+      failText: '复制图片失败',
+      fallbackFilename: `${fileBase.value}.png`,
+    })
   } catch {
     message.error('复制图片失败')
   } finally {
     busy.value = false
   }
 }
+
 
 defineExpose({ serializeSvg, downloadSvg, downloadPng, copyPng, resetView })
 </script>

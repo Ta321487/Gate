@@ -1,4 +1,5 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { debounce } from '../opsShared'
 
 /** 预览区最小高度（px） */
 const FRAME_MIN = 160
@@ -71,6 +72,9 @@ export function useDiagramFrameResize() {
     frameHeight.value = preferredFrameHeight()
   }
 
+  // ResizeObserver 高频；debounce 后写 frameHeight，下游 fit 一并减负（P7）
+  const applyPreferredDebounced = debounce(applyPreferred, 120)
+
   function detachWindowListeners() {
     if (moveBound) {
       window.removeEventListener('pointermove', moveBound)
@@ -128,7 +132,7 @@ export function useDiagramFrameResize() {
     applyPreferred()
     const viewer = viewerRef.value
     if (viewer && typeof ResizeObserver !== 'undefined') {
-      resizeObs = new ResizeObserver(() => applyPreferred())
+      resizeObs = new ResizeObserver(() => applyPreferredDebounced())
       resizeObs.observe(viewer)
       const chrome = viewer.querySelector('.diagram-chrome')
       if (chrome) resizeObs.observe(chrome)
@@ -143,6 +147,7 @@ export function useDiagramFrameResize() {
   onBeforeUnmount(() => {
     detachWindowListeners()
     clearLayoutTimers()
+    applyPreferredDebounced.cancel?.()
     if (resizeObs) {
       resizeObs.disconnect()
       resizeObs = null
