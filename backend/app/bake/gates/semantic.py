@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from app.bake.gates.source_scan import strip_vue_comments as _strip_vue_comments
+
 # 学生可见 Vue/JS 扫描范围（不含注释里的工厂说明）
 _STUDENT_SCAN_DIRS = (
     "frontend/src/views",
@@ -32,13 +34,6 @@ def _read_text(path: Path, limit: int = 120_000) -> str:
         return path.read_text(encoding="utf-8", errors="ignore")[:limit]
     except OSError:
         return ""
-
-
-def _strip_vue_comments(text: str) -> str:
-    text = re.sub(r"<!--[\s\S]*?-->", "", text)
-    text = re.sub(r"//.*?$", "", text, flags=re.MULTILINE)
-    text = re.sub(r"/\*[\s\S]*?\*/", "", text)
-    return text
 
 
 def _scan_demo_wording(workspace: Path) -> list[dict[str, str]]:

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
 from app.bake.engine import TABLE_COUNT_HARD, TABLE_COUNT_MAX, TABLE_COUNT_MIN, count_create_tables
 from app.bake.engine_sql import evaluate_table_budget
+from app.bake.gates.source_scan import strip_js_comments as _strip_js_comments
+from app.bake.gates.source_scan import strip_vue_comments as _strip_vue_comments
 
 
 def _read(path: Path) -> str:
@@ -18,26 +19,6 @@ def _read(path: Path) -> str:
     except OSError:
         return ""
     return ""
-
-
-_VUE_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.S)
-_VUE_LINE_COMMENT_RE = re.compile(r"(?<!:)//.*?$", re.M)
-_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
-
-
-def _strip_vue_comments(text: str) -> str:
-    """门禁扫展示文案时去掉注释，避免『由 bake』等实现注记误伤。"""
-    t = _VUE_BLOCK_COMMENT_RE.sub(" ", text)
-    t = _HTML_COMMENT_RE.sub(" ", t)
-    t = _VUE_LINE_COMMENT_RE.sub(" ", t)
-    return t
-
-
-def _strip_js_comments(text: str) -> str:
-    """扫 JS 展示字符串前去掉注释（portalShellNav 等把文案放在字面量里）。"""
-    t = _VUE_BLOCK_COMMENT_RE.sub(" ", text)
-    t = _VUE_LINE_COMMENT_RE.sub(" ", t)
-    return t
 
 
 def _has_files(workspace: Path, rels: list[str]) -> tuple[bool, list[str]]:
