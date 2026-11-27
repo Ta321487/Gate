@@ -78,6 +78,7 @@
 | [delivery-diagnosis-orchestration.md](./delivery-diagnosis-orchestration.md) | 质检交付**诊断编排**：三层叠挡小卡、厂 LLM 只诊断、D0～D3 | 活表 · D0 已立 |
 | [preview-capacity-and-batch-ops.md](./preview-capacity-and-batch-ops.md) | 预览吃多少内存/进程、为什么多开卡死、批量启停的分期与闸门 | 活表 |
 | [background-reconcile-cost.md](./background-reconcile-cost.md) | 后台对账一轮花在哪、签名跳过与每轮额度怎么调、怎么复测 | 活表 |
+| [factory-perf-ledger.md](./factory-perf-ledger.md) | 控制台单机卡顿账本（P1–P7：轮询/启停/Jobs/列表/overlaps/对账/图 debounce） | 活表 |
 
 ---
 

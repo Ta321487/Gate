@@ -36,6 +36,68 @@
 **本批提交主题**（2026-11-16 拆推）：文案口径 → 资产台册 → 词表+Stripe+主题色 → 论文图材料 → 等待态 I2 → 手调/对账 UX → 本交接。轨迹以 `git log` 为准。  
 **勿提交**：根目录学生 `.docx`、`er-*.drawio` 草稿、`backend/` 下短随机名临时文件。
 
+### 本会话（2026-11-27）· 工厂性能账本 P1–P7 一次勾销 ✅
+
+- **站队**：**修工厂**。单机卡 = 请求路径重活，不加机器。
+- **真源**：[docs/factory-perf-ledger.md](./docs/factory-perf-ledger.md)
+- **已齐**：P1 `/poll` 轻量轮询 · P2 启停 `to_thread` · P3 Jobs 去 N+1 · P4 列表 defer gates · P5 overlaps `load_only` · P6 对账默认 8s/每轮 1 扫 · P7 图 viewer debounce。
+- **测**：`test_factory_perf_ledger` + `test_reconcile_scan_budget`。
+- **未提交**：要提交再说。
+
+### 本会话（2026-11-27）· 终稿吸收少人工（质量闸，不开新域皮）✅
+
+- **站队**：**修工厂**。目标：换题仍少人手擦三栏/覆盖；**不开**新 DOM/皮。
+- **已齐**（extractor **v55** + `ta-drafts-v8`）：
+  - 实体：掐菜单/配置文件/系统日志/权限/角色/裸信息；有表证「关于我们」仍留。
+  - 功能：设计采矿可留个人中心；**三栏草稿**丢掉 RBAC/端壳；挂件后置。
+  - 覆盖 hints：主候选 `primary` + 弱同分收窄；brief 写清采信规则。
+  - 摘录拒设计蓝图/模块枚举墙；题名去「论文题目：」+ NFKC；打开详情再洗三栏。
+  - 列表空态：搜无 ≠ 库空。
+- **测**：`test_thesis_absorb` 79 绿。
+- **余**：本届旧稿打开详情可洗壳；要 LLM 覆盖预选也更新 → **重抽**。
+- **未提交**：要提交再说。
+
+### 本会话（2026-11-26）· 力大砖飞收口（终稿 OCR / 开工台 / Swagger / 资产台缓存） ✅
+
+- **站队**：**修工厂**。
+- **已齐**：
+  - 终稿：OCR 90s 预算早退；同步超时降级纯文字；轮询 light + 单条续跑/墙钟超时；禁止抽取中误标要点偏少。
+  - 开工台：布局/控件闸改 `loadGates` 不挡首屏。
+  - Swagger：tags 挂在各 `APIRouter`（项目子模块 + 资产台），去掉 OpenAPI 事后改写。
+  - 资产台：`asset_desk_cache`（缓存/筛/域下拉）；`error_copy`/`cap_cards` 已迁；字典/状态话术 API 用共享筛。
+- **余**：其余资产台服务仍可迁 `_cache`；`*_thicken` `_hit`、双端 `zh_copy` 仍勿混本单。
+- **测**：openapi tags / asset_desk_cache / ops_home / thesis async 契约绿。
+- **未提交**：要提交再说。
+
+### 本会话（2026-11-26）· 控制台全文案去教人腔 + 终稿后台抽取 ✅
+
+- **站队**：**修工厂**（两人用 · 自然产品句；全 `frontend/src` 可见句扫一遍）。
+- **已齐**：等待/就绪条/匹配/生成/质检/终稿/帮助/空态等去掉「你可以先 / 可离开本页 / 勿重复点 / 不会当成…」教人腔；门禁改短述（待匹配确认 / 待生成工程）。终稿落盘后台抽取 + 轮询恢复。契约扩禁词。
+- **测**：wait / newhire / delivery_readiness / thesis UI / product_form 相关绿。
+- **未提交**：要提交再说。
+
+### 本会话（2026-11-26）· fragments 委托收口（vote 死正文清掉）✅
+
+- **站队**：**修工厂**（capability-home：`sql/fragments` 只转发，正文在 `features/*`）。
+- **已齐**：46 个与 features 重叠的 `ensure_*` 改薄委托；清掉委托后死 DDL/列（含 `_VOTE_*` / `VOTE_*_COLUMNS` 等 66 块）；`fragments` ~3956→1821 行；`test_grade_scores` 改从 `features.exam` 读种子；契约钉「fragments 无 vote 死正文 + I-10 列注入」。
+- **测**：`test_logic_dedupe_contract` + soft_fail/grade/order_extras/er_labels/loyalty **48 绿**。
+- **仍勿合**：资产台 CRUD 薄基类；`system_*` 同构；`*_thicken` 的 `_hit`；双端 `zh_copy`。共享列/`TICKET_*`/`ensure_shared_*` 仍住 fragments（未搬家）。
+- **未提交**：与本批去重一并；要提交再说。
+
+### 本会话（2026-11-26）· 工厂控制台去重（多套收一处） ✅
+
+- **站队**：**修工厂**（控制台 FE 共用；不揉资产台同构服务、不动双端 `thesis_table_html`/`zh_copy`）。
+- **已齐**：`diagramExport.js` ← 7 个 `*DiagramViewer`；`toastApiError`/`apiErrorMessage` 消接口双弹；`UploadJobPanel` + `uploadJobUi.js`；终稿 `copyMaterialText`。
+- **测**：`test_console_product_form_contract` 11 绿（含 diagram/upload/toast 契约）。
+- **未做**：资产台 CRUD 薄基类；未提交。
+
+### 本会话（2026-11-26）· 后端论文图小工具去重 ✅
+
+- **站队**：**修工厂**（bake schema；资产台 API/服务同构仍不揉）。
+- **已齐**：`diagram_svg_util.py`（`svg_esc`/`fmt1`/`read_json_dict`/`text_w_cjk`）← sequence/architecture/activity/class/modules/er/usecases/测例/用例描述；`er_svg` 去掉重复 `_svg_wrap`。
+- **测**：`test_diagram_svg_util` + sequence/architecture/modules/usecases 对口绿。
+- **仍勿合**：资产台 `system_*`/`services/*` 同构；`features/*_thicken` 的 `_hit`；双端 `zh_copy`。
+
 ### 本会话（2026-11-26）· 用例端名跟材料 ✅
 
 - **站队**：**修工厂**（材料写了用户/主办方商家/平台管理员就别皮盖成观众/商家）。
