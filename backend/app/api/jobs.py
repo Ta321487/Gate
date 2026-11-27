@@ -65,11 +65,22 @@ async def list_jobs(
         for j in result.scalars().all()
         if str(getattr(j, "kind", None) or "bake") == "bake"
     ][:100]
-    out = []
-    for j in jobs:
-        p = await db.get(Project, j.project_id)
-        out.append(_job_out(j, p.title if p else None, include_gate_report=False))
-    return out
+    # 一次取出标题，禁止逐条 db.get（P3）
+    pids = sorted({str(j.project_id) for j in jobs if j.project_id})
+    titles: dict[str, str] = {}
+    if pids:
+        title_rows = await db.execute(
+            select(Project.id, Project.title).where(Project.id.in_(pids))
+        )
+        titles = {str(pid): (title or "") for pid, title in title_rows.all()}
+    return [
+        _job_out(
+            j,
+            titles.get(str(j.project_id)) or None,
+            include_gate_report=False,
+        )
+        for j in jobs
+    ]
 
 
 @router.get("/{job_id}/gate-report", summary="任务门禁快照")

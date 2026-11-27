@@ -133,6 +133,7 @@ async def stats(db: AsyncSession) -> dict:
         select(Project).options(
             defer(Project.spec),
             defer(Project.checklist),
+            defer(Project.gates),
         )
     )
     items = list(result.scalars().all())

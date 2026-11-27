@@ -474,9 +474,9 @@ def reconcile_list_items(
         )
         if changed:
             dirty = True
-        # 「合卷后工程是否变更」要在后台线程里重算好，列表/统计只读缓存；
-        # 生成中的项目跳过 checklist 扫描，这里也要补一次，否则列表没有投影值。
+        # 「合卷后工程是否变更」：本轮真扫过 checklist 的才重算哈希；
+        # 其余只读缓存（compute=False），避免每轮对全表做 50~80ms 扫盘（P6）。
         if getattr(p, "workspace_path", ""):
-            is_zip_stale_cached(p)
+            is_zip_stale_cached(p, compute=bool(scanned) or budget <= 0)
     return dirty
 

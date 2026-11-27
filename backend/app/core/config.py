@@ -68,9 +68,11 @@ class Settings(BaseSettings):
     # SQL 慢查询日志阈值（毫秒）；logger=gf.sql
     gf_sql_slow_ms: float = Field(default=50.0, alias="GF_SQL_SLOW_MS")
     # 运行态/checklist 后台投影间隔（秒）；<=0 关闭。列表 GET 只读库。
-    gf_runtime_reconcile_sec: float = Field(default=5.0, alias="GF_RUNTIME_RECONCILE_SEC")
+    # P6：默认 8s，减轻与 UI 轮询叠尖刺（原 5s）
+    gf_runtime_reconcile_sec: float = Field(default=8.0, alias="GF_RUNTIME_RECONCILE_SEC")
     # 每轮后台对账最多重算几个 checklist 投影（按「最久未扫」轮转）；<=0 不限
-    gf_reconcile_scan_per_pass: int = Field(default=2, alias="GF_RECONCILE_SCAN_PER_PASS")
+    # P6：默认 1，尖刺摊到多轮（原 2）
+    gf_reconcile_scan_per_pass: int = Field(default=1, alias="GF_RECONCILE_SCAN_PER_PASS")
     # 每轮后台顺带清理几个孤儿工程目录（库中已无对应项）；<=0 关闭自动清盘
     gf_orphan_purge_per_pass: int = Field(default=1, alias="GF_ORPHAN_PURGE_PER_PASS")
     # 预览并发上限（内存闸门）：批量启动只启动到额度，其余返回 deferred，不硬起

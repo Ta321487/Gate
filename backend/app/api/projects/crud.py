@@ -31,6 +31,7 @@ from app.schemas import (
     FixNoteResolve,
     MatchUpdate,
     ProjectDetail,
+    ProjectPollOut,
     ProjectSummary,
     ProposalDiffOut,
     RuntimeBatchIn,
@@ -45,13 +46,16 @@ from app.services import runtime as rt
 from app.services.jobs import start_job
 from app.services.student_db import drop_student_database
 
+from fastapi import APIRouter
+
 from app.api.projects.common import (
     MAX_UPLOAD_MATERIALS,
     _detail,
     _workspace_or_400,
     logger,
-    router,
 )
+
+router = APIRouter(tags=["项目"])
 
 @router.get("/stats", response_model=StatsOut, summary="项目统计")
 async def project_stats(db: AsyncSession = Depends(get_db)):
@@ -106,7 +110,7 @@ async def purge_orphan_disk_status():
     return ApiOk(message=data.get("message") or "", data=data)
 
 
-@router.get("", response_model=list[ProjectSummary], summary="项目列表")
+@router.get("/", response_model=list[ProjectSummary], summary="项目列表")
 async def list_projects(
     q: str = Query("", description="标题或 ID 关键字"),
     filter: str = Query(
@@ -126,10 +130,14 @@ async def list_projects(
     select_ms = -1.0
     try:
         t_sel = time.perf_counter()
-        # 摘要不需 spec/checklist；gates/delivery_review 过滤与 download_blocked_reason 仍要
+        # 摘要不需 spec/checklist/gates 大 JSON；download_blocked_reason 在 gates 未加载时信 zip_ready
         result = await db.execute(
             select(Project)
-            .options(defer(Project.spec), defer(Project.checklist))
+            .options(
+                defer(Project.spec),
+                defer(Project.checklist),
+                defer(Project.gates),
+            )
             .order_by(Project.updated_at.desc())
         )
         items = list(result.scalars().all())
@@ -584,6 +592,59 @@ def datetime_stamp() -> str:
     from datetime import datetime
 
     return datetime.now().strftime("%Y%m%d%H%M%S")
+
+
+@router.get("/{project_id}/poll", response_model=ProjectPollOut, summary="项目详情轮询（轻量）")
+async def get_project_poll(project_id: str, db: AsyncSession = Depends(get_db)):
+    """生成中 1.5s 轮询专用：只读库投影，禁止扫盘哈希 / 复审载荷 / 大 JSON。"""
+    from sqlalchemy.orm import load_only
+
+    result = await db.execute(
+        select(Project)
+        .where(Project.id == project_id)
+        .options(
+            load_only(
+                Project.id,
+                Project.title,
+                Project.status,
+                Project.backend_running,
+                Project.frontend_running,
+                Project.backend_port,
+                Project.frontend_port,
+                Project.zip_ready,
+                Project.delivery_mark,
+                Project.match_confirmed,
+                Project.match_locked,
+                Project.workspace_path,
+                Project.updated_at,
+                Project.zip_path,
+                Project.delivery_review,
+            )
+        )
+    )
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(404, "项目不存在")
+    return ProjectPollOut(
+        id=p.id,
+        title=p.title or "",
+        status=p.status or "",
+        backend_running=bool(p.backend_running),
+        frontend_running=bool(p.frontend_running),
+        backend_port=int(p.backend_port or 0),
+        frontend_port=int(p.frontend_port or 0),
+        zip_ready=bool(p.zip_ready),
+        download_blocked_reason=project_svc.delivery_block_reason(
+            p, verify_stale=False
+        ),
+        delivery_mark=project_svc.normalize_delivery_mark(
+            getattr(p, "delivery_mark", None)
+        ),
+        match_confirmed=bool(getattr(p, "match_confirmed", False)),
+        match_locked=bool(getattr(p, "match_locked", False)),
+        workspace_path=getattr(p, "workspace_path", None) or None,
+        updated_at=getattr(p, "updated_at", None),
+    )
 
 
 @router.get("/{project_id}", response_model=ProjectDetail, summary="项目详情")

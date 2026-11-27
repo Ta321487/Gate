@@ -9,7 +9,7 @@
 
 ## 1. 谁在跑、每轮做什么
 
-`backend/app/services/runtime_reconcile.py::_reconcile_loop` 每 `GF_RUNTIME_RECONCILE_SEC`（默认 5 s）跑一轮：
+`backend/app/services/runtime_reconcile.py::_reconcile_loop` 每 `GF_RUNTIME_RECONCILE_SEC`（默认 **8 s**，原 5；见 [factory-perf-ledger.md](./factory-perf-ledger.md) P6）跑一轮：
 
 1. 拿 `projects.reconcile_lock`，`select(Project)` 全表；
 2. `release_read_transaction(db)` 先放掉读事务（否则随后的扫盘会占着读锁，与 `/projects`、`/stats` 互相 busy）；
@@ -56,7 +56,7 @@ TTL 到期后先算签名：与上次重算时记下的**相同就跳过** `eval
 
 ### 3.2 每轮重算额度：把长突发摊到多轮
 
-`reconcile_list_items(..., max_scans=None)`：不传就取 `GF_RECONCILE_SCAN_PER_PASS`（默认 2；`<=0` 不限）。
+`reconcile_list_items(..., max_scans=None)`：不传就取 `GF_RECONCILE_SCAN_PER_PASS`（默认 **1**；`<=0` 不限）。
 
 - 项目按 **`_checklist_list_at` 升序**（最久未扫优先）排序后再处理 → 额度小时不会总停在同一批项目上；
 - 没排到的项目**不刷新 TTL**，下一轮仍是最久未扫 → 不会被额度饿死；
@@ -80,8 +80,8 @@ TTL 到期后先算签名：与上次重算时记下的**相同就跳过** `eval
 
 | 环境变量 | 默认 | 作用 |
 |----------|------|------|
-| `GF_RUNTIME_RECONCILE_SEC` | 5 | 后台对账间隔（秒）；`<=0` 关闭对账 |
-| `GF_RECONCILE_SCAN_PER_PASS` | 2 | 每轮最多重算几个项目投影；`<=0` 不限（本文件 §3.2） |
+| `GF_RUNTIME_RECONCILE_SEC` | 8 | 后台对账间隔（秒）；`<=0` 关闭（P6 自 5→8） |
+| `GF_RECONCILE_SCAN_PER_PASS` | 1 | 每轮最多重算几个项目投影；`<=0` 不限（P6 自 2→1） |
 | `GF_ORPHAN_PURGE_PER_PASS` | 1 | 每轮顺带清理几个孤儿工程目录；`<=0` 关闭；与「清理失效项目残留」全量受理互斥 |
 
 投影 TTL 目前是代码常量：`_CHECKLIST_LIST_TTL_SEC`（`services/projects.py`）与 `_ZIP_STALE_TTL_SEC`（`services/delivery_review.py`），都是 20 s，与对账间隔同量级。
@@ -94,7 +94,7 @@ TTL 到期后先算签名：与上次重算时记下的**相同就跳过** `eval
    下载/详情等写路径仍走现场核验（`is_zip_stale`），不会把过期包放行。
 2. **签名缓存是进程内的**：多 worker / 重启后各自重建，首个周期会有一次全量重算（受额度分摊）。
 3. **不是"工作区变了就一定立刻反映"**：列表现状依赖 TTL（20 s）+ 额度，最坏延迟 = TTL + ⌈N/K⌉ × 对账间隔。
-4. 额度只限**重算**（gates）；zip-stale 预热仍每 TTL 周期做一次，因为列表/统计读它（冷缓存按"未过期"处理）。
+4. 额度只限**重算**（gates）；zip-stale 仅对本轮真扫过 checklist 的项目 `compute=True`，其余 `compute=False` 只读缓存（P6；冷缓存按「未过期」处理）。
 
 ---
 

@@ -134,7 +134,20 @@ def delivery_block_reason(project: Project, *, verify_stale: bool = True) -> str
         )
         if stale:
             return MSG_DOWNLOAD_ZIP_STALE
-    zip_ok = bool(project.zip_ready and gates_allow_delivery(project.gates))
+    # 列表/stats 可 defer gates：未加载时信任 zip_ready 投影，避免 N+1 懒加载大 JSON
+    gates_loaded = True
+    if not verify_stale:
+        try:
+            from sqlalchemy import inspect as sa_inspect
+
+            insp = sa_inspect(project)
+            gates_loaded = "gates" not in getattr(insp, "unloaded", set())
+        except Exception:  # noqa: BLE001
+            gates_loaded = True
+    if gates_loaded:
+        zip_ok = bool(project.zip_ready and gates_allow_delivery(project.gates))
+    else:
+        zip_ok = bool(project.zip_ready)
     zip_exists = bool(project.zip_path and Path(str(project.zip_path)).exists())
     if zip_ok and zip_exists:
         return None

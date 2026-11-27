@@ -44,13 +44,16 @@ from app.services import runtime as rt
 from app.services.jobs import start_job
 from app.services.student_db import drop_student_database
 
+from fastapi import APIRouter
+
 from app.api.projects.common import (
     MAX_UPLOAD_MATERIALS,
     _detail,
     _workspace_or_400,
     logger,
-    router,
 )
+
+router = APIRouter(tags=["预览运行"])
 
 @router.get("/{project_id}/runtime", response_model=RuntimeState, summary="预览运行状态")
 async def get_runtime(project_id: str, db: AsyncSession = Depends(get_db)):
@@ -352,7 +355,10 @@ async def runtime_action(
     action: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """side：all / backend / frontend；action：start / stop / restart。"""
+    """side：all / backend / frontend；action：start / stop / restart。
+
+    同步启停与 sleep 整段进 to_thread，避免冻住工厂 API 事件循环（P2）。
+    """
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(404, "项目不存在")
@@ -366,55 +372,62 @@ async def runtime_action(
         if action in ("start", "restart"):
             await project_svc.ensure_project_ports(db, p)
 
-        if side == "all":
-            if action == "start":
-                rt.start_backend(project_id, ws, p.backend_port, p.db_name or "")
-                rt.start_frontend(project_id, ws, p.frontend_port, p.backend_port)
-                p.status = ProjectStatus.running.value
-            elif action == "stop":
-                rt.stop_all(
-                    project_id, p.backend_port, p.frontend_port, workspace=ws
-                )
-                if p.status == ProjectStatus.running.value:
-                    p.status = ProjectStatus.generated.value
-            elif action == "restart":
-                rt.stop_all(
-                    project_id, p.backend_port, p.frontend_port, workspace=ws
-                )
-                rt.start_backend(project_id, ws, p.backend_port, p.db_name or "")
-                rt.start_frontend(project_id, ws, p.frontend_port, p.backend_port)
-                p.status = ProjectStatus.running.value
+        be_port = int(p.backend_port or 0)
+        fe_port = int(p.frontend_port or 0)
+        db_name = p.db_name or ""
+        cur_status = p.status
+
+        def _blocking_runtime() -> str:
+            """返回写回库的 status；阻塞启停不得跑在事件循环里。"""
+            new_status = cur_status
+            if side == "all":
+                if action == "start":
+                    rt.start_backend(project_id, ws, be_port, db_name)
+                    rt.start_frontend(project_id, ws, fe_port, be_port)
+                    new_status = ProjectStatus.running.value
+                elif action == "stop":
+                    rt.stop_all(project_id, be_port, fe_port, workspace=ws)
+                    if cur_status == ProjectStatus.running.value:
+                        new_status = ProjectStatus.generated.value
+                elif action == "restart":
+                    rt.stop_all(project_id, be_port, fe_port, workspace=ws)
+                    rt.start_backend(project_id, ws, be_port, db_name)
+                    rt.start_frontend(project_id, ws, fe_port, be_port)
+                    new_status = ProjectStatus.running.value
+                else:
+                    raise RuntimeError("未知动作")
+            elif side == "backend":
+                if action == "start":
+                    rt.start_backend(project_id, ws, be_port, db_name)
+                elif action == "stop":
+                    rt.stop_backend(project_id, be_port, workspace=ws)
+                elif action == "restart":
+                    rt.stop_backend(project_id, be_port, workspace=ws)
+                    rt.start_backend(project_id, ws, be_port, db_name)
+                else:
+                    raise RuntimeError("未知动作")
+            elif side == "frontend":
+                if action == "start":
+                    rt.start_frontend(project_id, ws, fe_port, be_port)
+                elif action == "stop":
+                    rt.stop_frontend(project_id, fe_port, workspace=ws)
+                elif action == "restart":
+                    rt.stop_frontend(project_id, fe_port, workspace=ws)
+                    rt.start_frontend(project_id, ws, fe_port, be_port)
+                else:
+                    raise RuntimeError("未知动作")
             else:
-                raise HTTPException(400, "未知动作")
-        elif side == "backend":
-            if action == "start":
-                rt.start_backend(project_id, ws, p.backend_port, p.db_name or "")
-            elif action == "stop":
-                rt.stop_backend(project_id, p.backend_port, workspace=ws)
-            elif action == "restart":
-                rt.stop_backend(project_id, p.backend_port, workspace=ws)
-                rt.start_backend(project_id, ws, p.backend_port, p.db_name or "")
-            else:
-                raise HTTPException(400, "未知动作")
-        elif side == "frontend":
-            if action == "start":
-                rt.start_frontend(project_id, ws, p.frontend_port, p.backend_port)
-            elif action == "stop":
-                rt.stop_frontend(project_id, p.frontend_port, workspace=ws)
-            elif action == "restart":
-                rt.stop_frontend(project_id, p.frontend_port, workspace=ws)
-                rt.start_frontend(project_id, ws, p.frontend_port, p.backend_port)
-            else:
-                raise HTTPException(400, "未知动作")
-        else:
-            raise HTTPException(400, "未知侧别")
+                raise RuntimeError("未知侧别")
+            if action == "stop":
+                time.sleep(0.6)
+            return new_status
+
+        new_status = await asyncio.to_thread(_blocking_runtime)
+        p.status = new_status
+        project_svc.sync_project_runtime(p)
     except RuntimeError as e:
         raise HTTPException(400, str(e)) from e
 
-    # 停完稍等端口释放，再读 status
-    if action == "stop":
-        time.sleep(0.6)
-    project_svc.sync_project_runtime(p)
     await db.commit()
     return ApiOk(
         message=f"{side}/{action} 完成",
