@@ -352,151 +352,22 @@ CREATE TABLE IF NOT EXISTS `{table}` (
 );
 """
 
-
-_GUESTBOOK_DDL = """
-CREATE TABLE IF NOT EXISTS sys_guestbook (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  nickname VARCHAR(64) DEFAULT '',
-  body VARCHAR(500) NOT NULL,
-  reply VARCHAR(500) DEFAULT '',
-  reply_username VARCHAR(64) DEFAULT '',
-  replied_at DATETIME NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_gb_created (id),
-  KEY idx_gb_user (username)
-);
-"""
-
-_DM_DDL = """
-CREATE TABLE IF NOT EXISTS sys_dm_message (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  from_username VARCHAR(64) NOT NULL,
-  to_username VARCHAR(64) NOT NULL,
-  body VARCHAR(500) NOT NULL,
-  read_at DATETIME NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_dm_from (from_username, id),
-  KEY idx_dm_to (to_username, id),
-  KEY idx_dm_pair (from_username, to_username, id),
-  KEY idx_dm_unread (to_username, read_at, id)
-);
-"""
-
-# 私信演示：补第二用户 + 几条互发（幂等；依赖已有 user 账号）
-_DM_SEED = """
-INSERT INTO sys_user (username, password, role, nickname, phone, profile_json, super_admin, profile_editable, enabled)
-SELECT 'user2', 'user123', 'user', '用户乙', '13800000003', '{}', 0, 1, 1
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_user WHERE username='user2');
-INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
-SELECT 'user', 'user2', '你好，方便私信问下帖子细节吗？', DATE_SUB(NOW(), INTERVAL 10 MINUTE)
-FROM DUAL
-WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
-  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
-  AND NOT EXISTS (SELECT 1 FROM sys_dm_message LIMIT 1);
-INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
-SELECT 'user2', 'user', '可以，你说。', DATE_SUB(NOW(), INTERVAL 8 MINUTE)
-FROM DUAL
-WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
-  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
-  AND (SELECT COUNT(*) FROM sys_dm_message) < 2;
-INSERT INTO sys_dm_message (from_username, to_username, body, created_at)
-SELECT 'user', 'user2', '谢谢，本期用两个浏览器窗口就能互发。', DATE_SUB(NOW(), INTERVAL 5 MINUTE)
-FROM DUAL
-WHERE EXISTS (SELECT 1 FROM sys_user WHERE username='user')
-  AND EXISTS (SELECT 1 FROM sys_user WHERE username='user2')
-  AND (SELECT COUNT(*) FROM sys_dm_message) < 3;
-"""
-
-
-GUESTBOOK_CHANNEL_COLUMNS: list[tuple[str, str]] = [
-    ("channel", "VARCHAR(16) DEFAULT 'user'"),
-]
-
-
 def ensure_guestbook_sql(
     sql: str,
     *,
     enabled: bool,
     with_channel: bool = False,
 ) -> str:
-    """能力开启时幂等补留言表；多店再补 channel 列（走 inject，勿平行 regex）。"""
-    if not enabled:
-        return sql
-    out = sql
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_guestbook`?\b", out):
-        out = out.rstrip() + "\n" + _GUESTBOOK_DDL
-    if not with_channel:
-        return out
+    """委托 features.guestbook.ensure_guestbook_sql（正文只在 features）。"""
+    from app.bake.features.guestbook import ensure_guestbook_sql as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "sys_guestbook":
-            return m.group(0)
-        body = _inject_missing_columns(body, GUESTBOOK_CHANNEL_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    return _CREATE_TABLE_RE.sub(repl, out)
-
-
-_ITEM_COMMENT_DDL = """
-CREATE TABLE IF NOT EXISTS item_comment (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  item_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  nickname VARCHAR(64) DEFAULT '',
-  body VARCHAR(500) NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ic_item (item_id, id),
-  KEY idx_ic_user (username)
-);
-"""
-
+    return _ensure(sql, enabled=enabled, with_channel=with_channel)
 
 def ensure_item_comment_sql(sql: str, *, enabled: bool) -> str:
-    """能力开启时幂等补档案条下评论表（≠ sys_guestbook）。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?item_comment`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _ITEM_COMMENT_DDL
+    """委托 features.item_comment.ensure_item_comment_sql（正文只在 features）。"""
+    from app.bake.features.item_comment import ensure_item_comment_sql as _ensure
 
-
-_AI_KNOWLEDGE_DDL = """
-CREATE TABLE IF NOT EXISTS sys_ai_knowledge (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  category VARCHAR(64) NOT NULL DEFAULT '通用',
-  title VARCHAR(128) NOT NULL,
-  content VARCHAR(2000) NOT NULL,
-  keywords VARCHAR(255) DEFAULT '',
-  hit_count INT NOT NULL DEFAULT 0,
-  enabled TINYINT NOT NULL DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  KEY idx_ai_kb_cat (category, enabled),
-  KEY idx_ai_kb_hit (hit_count, id)
-);
-CREATE TABLE IF NOT EXISTS sys_ai_message (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  role VARCHAR(16) NOT NULL,
-  content VARCHAR(4000) NOT NULL,
-  source VARCHAR(32) DEFAULT 'faq',
-  category VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ai_msg_user (username, id)
-);
-CREATE TABLE IF NOT EXISTS sys_ai_feedback (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  message_id BIGINT NULL,
-  satisfied TINYINT NOT NULL,
-  comment VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_ai_fb_user (username, id)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_ai_assistant_sql(
     sql: str,
@@ -519,549 +390,93 @@ def ensure_ai_assistant_sql(
         capabilities=capabilities,
     )
 
-
-_EXAM_WRONGBOOK_DDL = """
-CREATE TABLE IF NOT EXISTS exam_wrongbook (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  question_id BIGINT NOT NULL,
-  last_answer VARCHAR(2000) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_wb_user_q (username, question_id),
-  KEY idx_wb_user (username, id)
-);
-"""
-
-_EXAM_CORE_DDL = """
-CREATE TABLE IF NOT EXISTS exam_question (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  subject_id BIGINT NULL,
-  type VARCHAR(16) NOT NULL,
-  stem VARCHAR(2000) NOT NULL,
-  answer_key VARCHAR(500) NOT NULL,
-  score INT NOT NULL DEFAULT 5,
-  explain_text VARCHAR(2000) NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS exam_paper (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  title VARCHAR(200) NOT NULL,
-  duration_min INT NOT NULL DEFAULT 0,
-  status VARCHAR(16) NOT NULL DEFAULT 'draft',
-  subject_id BIGINT NULL,
-  max_attempts INT NOT NULL DEFAULT 0,
-  gate_ticket TINYINT NOT NULL DEFAULT 0,
-  pass_score INT NOT NULL DEFAULT 60,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS exam_paper_question (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  paper_id BIGINT NOT NULL,
-  question_id BIGINT NOT NULL,
-  sort_no INT NOT NULL DEFAULT 0,
-  UNIQUE KEY uk_paper_q (paper_id, question_id)
-);
-
-CREATE TABLE IF NOT EXISTS exam_attempt (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  paper_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  mode VARCHAR(16) NOT NULL DEFAULT 'exam',
-  status VARCHAR(16) NOT NULL DEFAULT 'in_progress',
-  score INT NOT NULL DEFAULT 0,
-  total_score INT NOT NULL DEFAULT 0,
-  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  submitted_at DATETIME NULL,
-  timed_out TINYINT NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS exam_answer (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  attempt_id BIGINT NOT NULL,
-  question_id BIGINT NOT NULL,
-  answer_text VARCHAR(2000) DEFAULT '',
-  is_correct TINYINT NOT NULL DEFAULT 0,
-  score INT NOT NULL DEFAULT 0,
-  UNIQUE KEY uk_attempt_q (attempt_id, question_id)
-);
-
-CREATE TABLE IF NOT EXISTS exam_option (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  question_id BIGINT NOT NULL,
-  sort_no INT NOT NULL,
-  label VARCHAR(8) NOT NULL,
-  content VARCHAR(500) NOT NULL,
-  UNIQUE KEY uk_exam_option (question_id, sort_no),
-  KEY idx_exam_option_q (question_id)
-);
-"""
-
-_EXAM_LABSAFE_GATE_SEED = """
-INSERT IGNORE INTO exam_question (id, subject_id, type, stem, answer_key, score, explain_text) VALUES
-(9001, NULL, 'single', '进入实验室前应首先确认什么？',
- 'B', 20, '须先完成安全培训与防护准备。'),
-(9002, NULL, 'judge', '未通过安全准入考试也可直接申请入室。',
- '错误', 20, '须先考试通过再申请准入。'),
-(9003, NULL, 'multi', '实验室常见防护措施包括哪些？',
- 'A,B,C', 30, '废液须按规定回收。'),
-(9004, NULL, 'subjective', '简述发现火情时的正确做法。',
- '参考：报警、撤离、使用灭火器，勿用水扑灭电器火。', 30, '参考答案供教务主管阅卷，不自动匹配。');
-
-INSERT IGNORE INTO exam_option (question_id, sort_no, label, content) VALUES
-(9001, 1, 'A', '实验目的'),
-(9001, 2, 'B', '安全须知与防护用品'),
-(9001, 3, 'C', '午餐菜单'),
-(9001, 4, 'D', '课程成绩'),
-(9002, 1, 'A', '正确'),
-(9002, 2, 'B', '错误'),
-(9003, 1, 'A', '穿实验服'),
-(9003, 2, 'B', '戴护目镜'),
-(9003, 3, 'C', '禁止饮食'),
-(9003, 4, 'D', '随意倾倒废液');
-
-INSERT IGNORE INTO exam_paper (id, title, duration_min, status, subject_id, max_attempts, gate_ticket, pass_score) VALUES
-(9001, '实验室安全准入考试卷', 30, 'published', NULL, 0, 1, 60);
-
-INSERT IGNORE INTO exam_paper_question (id, paper_id, question_id, sort_no) VALUES
-(9001, 9001, 9001, 1), (9002, 9001, 9002, 2), (9003, 9001, 9003, 3), (9004, 9001, 9004, 4);
-"""
-
-
 def ensure_exam_wrongbook_sql(sql: str, *, enabled: bool) -> str:
-    """开题写到错题本时幂等补表；未开启不注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?exam_wrongbook`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _EXAM_WRONGBOOK_DDL
+    """委托 features.exam.ensure_exam_wrongbook_sql（正文只在 features）。"""
+    from app.bake.features.exam import ensure_exam_wrongbook_sql as _ensure
 
-
-_VOTE_CORE_DDL = """
-CREATE TABLE IF NOT EXISTS vote_campaign (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  title VARCHAR(200) NOT NULL,
-  author VARCHAR(100),
-  isbn VARCHAR(256),
-  category_id BIGINT,
-  stock INT DEFAULT 1,
-  status VARCHAR(32) DEFAULT 'available',
-  cover_url VARCHAR(255),
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS vote_candidate (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  campaign_id BIGINT NOT NULL,
-  name VARCHAR(128) NOT NULL,
-  intro VARCHAR(1000) DEFAULT '',
-  sort_no INT NOT NULL DEFAULT 0,
-  status VARCHAR(32) DEFAULT 'available',
-  avatar_url VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_vote_cand_camp (campaign_id)
-);
-
-CREATE TABLE IF NOT EXISTS vote_ballot (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  campaign_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  candidate_id BIGINT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_vote_user_cand (campaign_id, username, candidate_id),
-  KEY idx_vote_ball_user (campaign_id, username)
-);
-"""
-
-_VOTE_ACTIVITY_SEED = """
-INSERT IGNORE INTO vote_campaign (id, title, author, isbn, category_id, stock, status) VALUES
-(1, '活动优秀个人评选', '主办方', '每人限投 1 票；与活动报名并行', 1, 1, 'available');
-INSERT IGNORE INTO vote_candidate (id, campaign_id, name, intro, sort_no, status) VALUES
-(1, 1, '候选人甲', '活动积极分子', 1, 'available'),
-(2, 1, '候选人乙', '志愿服务突出', 2, 'available'),
-(3, 1, '候选人丙', '组织协调得力', 3, 'available');
-"""
-
-
-VOTE_CANDIDATE_COLUMNS: list[tuple[str, str]] = [
-    ("avatar_url", "VARCHAR(255) DEFAULT ''"),
-    ("slogan", "VARCHAR(255) NOT NULL DEFAULT ''"),
-]
-
-VOTE_CAMPAIGN_COLUMNS: list[tuple[str, str]] = [
-    ("anonymous", "TINYINT NOT NULL DEFAULT 0"),
-    ("daily_vote_limit", "INT NOT NULL DEFAULT 0"),
-    ("results_publish_at", "DATETIME NULL"),
-    ("allow_abstain", "TINYINT NOT NULL DEFAULT 0"),
-    ("require_real_name", "TINYINT NOT NULL DEFAULT 0"),
-    ("poll_seconds", "INT NOT NULL DEFAULT 0"),
-    ("ip_hint_enabled", "TINYINT NOT NULL DEFAULT 1"),
-]
-
-VOTE_BALLOT_COLUMNS: list[tuple[str, str]] = [
-    ("client_ip", "VARCHAR(64) NOT NULL DEFAULT ''"),
-    ("abstain", "TINYINT NOT NULL DEFAULT 0"),
-]
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_vote_sql(sql: str, *, enabled: bool, seed_activity: bool = False) -> str:
-    """vote 能力开启时幂等补评选表；表已存在时仍补 I-10 列（DOM-VOTE 模板曾漏列）。"""
-    if not enabled:
-        return sql
-    out = sql
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?vote_ballot`?\b", out):
-        out = out.rstrip() + "\n" + _VOTE_CORE_DDL
+    """委托 features.vote.ensure_vote_sql（正文只在 features）。"""
+    from app.bake.features.vote import ensure_vote_sql as _ensure
 
-    def repl_cand(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "vote_candidate":
-            return m.group(0)
-        body = _inject_missing_columns(body, VOTE_CANDIDATE_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    def repl_camp(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "vote_campaign":
-            return m.group(0)
-        body = _inject_missing_columns(body, VOTE_CAMPAIGN_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    def repl_ballot(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "vote_ballot":
-            return m.group(0)
-        body = _inject_missing_columns(body, VOTE_BALLOT_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(repl_cand, out)
-    out = _CREATE_TABLE_RE.sub(repl_camp, out)
-    out = _CREATE_TABLE_RE.sub(repl_ballot, out)
-    if seed_activity and "活动优秀个人评选" not in out:
-        out = out.rstrip() + "\n" + _VOTE_ACTIVITY_SEED
-    return out
+    return _ensure(sql, enabled=enabled, seed_activity=seed_activity)
 
 
 def ensure_exam_core_sql(sql: str, *, enabled: bool, gate_ticket: bool = False) -> str:
-    """exam 能力开启时幂等补考试核心表；LABSAFE 闸门再补准入卷种子。"""
-    if not enabled:
-        return sql
-    out = sql
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?exam_question`?\b", out):
-        out = out.rstrip() + "\n" + _EXAM_CORE_DDL
-    elif "gate_ticket" not in out:
-        out = out.replace(
-            "max_attempts INT NOT NULL DEFAULT 0,\n  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE IF NOT EXISTS exam_paper_question",
-            "max_attempts INT NOT NULL DEFAULT 0,\n"
-            "  gate_ticket TINYINT NOT NULL DEFAULT 0,\n"
-            "  pass_score INT NOT NULL DEFAULT 60,\n"
-            "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE TABLE IF NOT EXISTS exam_paper_question",
-        )
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?exam_option`?\b", out):
-        out = out.rstrip() + "\n" + (
-            "CREATE TABLE IF NOT EXISTS exam_option (\n"
-            "  id BIGINT PRIMARY KEY AUTO_INCREMENT,\n"
-            "  question_id BIGINT NOT NULL,\n"
-            "  sort_no INT NOT NULL,\n"
-            "  label VARCHAR(8) NOT NULL,\n"
-            "  content VARCHAR(500) NOT NULL,\n"
-            "  UNIQUE KEY uk_exam_option (question_id, sort_no),\n"
-            "  KEY idx_exam_option_q (question_id)\n"
-            ");\n"
-        )
-    if gate_ticket and "实验室安全准入考试卷" not in out:
-        out = out.rstrip() + "\n" + _EXAM_LABSAFE_GATE_SEED
-    return out
+    """委托 features.exam.ensure_exam_core_sql（正文只在 features）。"""
+    from app.bake.features.exam import ensure_exam_core_sql as _ensure
+
+    return _ensure(sql, enabled=enabled, gate_ticket=gate_ticket)
 
 
 def ensure_dm_sql(sql: str, *, enabled: bool) -> str:
-    """能力开启时幂等补私信表与演示种子；未开启不注入。"""
-    if not enabled:
-        return sql
-    out = sql
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_dm_message`?\b", out):
-        out = out.rstrip() + "\n" + _DM_DDL
-    if "sys_dm_message" in out and "用户乙" not in out:
-        out = out.rstrip() + "\n" + _DM_SEED
-    return out
+    """委托 features.dm.ensure_dm_sql（正文只在 features）。"""
+    from app.bake.features.dm import ensure_dm_sql as _ensure
 
-
-_FAVORITE_DDL = """
-CREATE TABLE IF NOT EXISTS user_favorite (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  item_id BIGINT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_fav_user_item (username, item_id),
-  KEY idx_fav_user (username, id)
-);
-"""
-
-_POST_LIKE_DDL = """
-CREATE TABLE IF NOT EXISTS user_post_like (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  item_id BIGINT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_like_user_item (username, item_id),
-  KEY idx_like_item (item_id)
-);
-"""
-
-_CONTENT_REPORT_DDL = """
-CREATE TABLE IF NOT EXISTS content_report (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  target_type VARCHAR(32) NOT NULL DEFAULT 'archive',
-  target_id BIGINT NOT NULL,
-  reason VARCHAR(512) NOT NULL,
-  status VARCHAR(32) NOT NULL DEFAULT 'pending',
-  handler VARCHAR(64) DEFAULT '',
-  handle_note VARCHAR(512) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  handled_at DATETIME NULL,
-  handle_deadline_at DATETIME NULL,
-  KEY idx_creport_status (status, id),
-  KEY idx_creport_target (target_type, target_id)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_favorites_sql(sql: str, *, enabled: bool) -> str:
-    """交易收藏表；未开启不注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?user_favorite`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _FAVORITE_DDL
+    """委托 features.favorites.ensure_favorites_sql（正文只在 features）。"""
+    from app.bake.features.favorites import ensure_favorites_sql as _ensure
+
+    return _ensure(sql, enabled=enabled)
 
 
 def ensure_post_like_sql(sql: str, *, enabled: bool, item_table: str | None = None) -> str:
-    """点赞表；开题挂 post_like 才注入。like_count 列由 FavoriteStore 运行时 ensure。"""
-    del item_table  # 列由运行时补，避免各 MySQL 版本 ALTER 方言差异
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?user_post_like`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _POST_LIKE_DDL
+    """委托 features.favorites.ensure_post_like_sql（正文只在 features）。"""
+    from app.bake.features.favorites import ensure_post_like_sql as _ensure
+
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 
 def ensure_content_report_sql(sql: str, *, enabled: bool) -> str:
-    """内容举报表；开题挂 content_report 才注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?content_report`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _CONTENT_REPORT_DDL
+    """委托 features.favorites.ensure_content_report_sql（正文只在 features）。"""
+    from app.bake.features.favorites import ensure_content_report_sql as _ensure
 
-
-
-
-_STAFF_ROSTER_DDL = """
-CREATE TABLE IF NOT EXISTS staff_roster (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  work_date DATE NOT NULL,
-  shift_label VARCHAR(64) NOT NULL DEFAULT '全天',
-  note VARCHAR(256) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_roster_user_day (username, work_date),
-  KEY idx_roster_date (work_date)
-);
-"""
-
-_STAFF_ROSTER_SEED = """
-INSERT INTO staff_roster (username, work_date, shift_label, note)
-SELECT 'subadmin', CURDATE(), '全天', '当日值班'
-FROM DUAL WHERE NOT EXISTS (
-  SELECT 1 FROM staff_roster WHERE username='subadmin' AND work_date=CURDATE()
-);
-INSERT INTO staff_roster (username, work_date, shift_label, note)
-SELECT 'subadmin', DATE_ADD(CURDATE(), INTERVAL 1 DAY), '全天', '次日值班'
-FROM DUAL WHERE NOT EXISTS (
-  SELECT 1 FROM staff_roster WHERE username='subadmin' AND work_date=DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_staff_roster_sql(sql: str, *, enabled: bool) -> str:
-    """周排班表+种子；开题挂 staff_roster 才注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?staff_roster`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _STAFF_ROSTER_DDL + "\n" + _STAFF_ROSTER_SEED
+    """委托 features.staff_roster.ensure_staff_roster_sql（正文只在 features）。"""
+    from app.bake.features.staff_roster import ensure_staff_roster_sql as _ensure
 
-
-_MESSAGE_TEMPLATE_DDL = """
-CREATE TABLE IF NOT EXISTS sys_message_template (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  code VARCHAR(64) NOT NULL,
-  title VARCHAR(128) NOT NULL,
-  body VARCHAR(512) NOT NULL,
-  enabled TINYINT NOT NULL DEFAULT 1,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_msg_tpl_code (code)
-);
-"""
-
-_MESSAGE_TEMPLATE_SEED = """
-INSERT INTO sys_message_template (code, title, body, enabled)
-SELECT 'ticket_approved', '审核已通过', '「{{subject}}」已通过{{note_suffix}}', 1
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_message_template WHERE code='ticket_approved');
-INSERT INTO sys_message_template (code, title, body, enabled)
-SELECT 'ticket_rejected', '审核未通过', '「{{subject}}」已驳回{{note_suffix}}', 1
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_message_template WHERE code='ticket_rejected');
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_message_template_sql(sql: str, *, enabled: bool) -> str:
-    """消息模板表+种子；开题挂 message_template 才注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_message_template`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _MESSAGE_TEMPLATE_DDL + "\n" + _MESSAGE_TEMPLATE_SEED
+    """委托 features.message_template.ensure_message_template_sql（正文只在 features）。"""
+    from app.bake.features.message_template import ensure_message_template_sql as _ensure
 
-
-_BOOK_SUGGEST_DDL = """
-CREATE TABLE IF NOT EXISTS book_suggest (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  title VARCHAR(200) NOT NULL,
-  isbn VARCHAR(32) DEFAULT '',
-  author VARCHAR(100) DEFAULT '',
-  reason VARCHAR(512) DEFAULT '',
-  status VARCHAR(16) NOT NULL DEFAULT 'pending',
-  handler VARCHAR(64) DEFAULT '',
-  handle_note VARCHAR(512) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  handled_at DATETIME NULL,
-  KEY idx_bs_user (username, id),
-  KEY idx_bs_status (status, id)
-);
-"""
-
-_BOOK_SUGGEST_SEED = """
-INSERT INTO book_suggest (username, title, isbn, author, reason, status)
-SELECT 'user', '数据结构与算法分析', '9787111213826', 'Weiss', '课程参考书', 'pending'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM book_suggest WHERE username='user' AND title='数据结构与算法分析');
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_book_suggest_sql(sql: str, *, enabled: bool) -> str:
-    """图书荐购表+种子；开题挂 book_suggest 才注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?book_suggest`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _BOOK_SUGGEST_DDL + "\n" + _BOOK_SUGGEST_SEED
+    """委托 features.book_suggest.ensure_book_suggest_sql（正文只在 features）。"""
+    from app.bake.features.book_suggest import ensure_book_suggest_sql as _ensure
 
-
-_PARCEL_SHIP_DDL = """
-CREATE TABLE IF NOT EXISTS parcel_ship (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  receiver_name VARCHAR(64) NOT NULL DEFAULT '',
-  receiver_phone VARCHAR(32) NOT NULL DEFAULT '',
-  dest_address VARCHAR(255) NOT NULL DEFAULT '',
-  item_desc VARCHAR(255) NOT NULL DEFAULT '',
-  status VARCHAR(16) NOT NULL DEFAULT 'pending',
-  tracking_no VARCHAR(64) DEFAULT '',
-  handler VARCHAR(64) DEFAULT '',
-  handle_note VARCHAR(512) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  handled_at DATETIME NULL,
-  KEY idx_ps_user (username, id),
-  KEY idx_ps_status (status, id)
-);
-"""
-
-_PARCEL_SHIP_SEED = """
-INSERT INTO parcel_ship (username, receiver_name, receiver_phone, dest_address, item_desc, status)
-SELECT 'user', '张三', '13800001111', '本市某小区 3 栋', '文件资料', 'pending'
-FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM parcel_ship WHERE username='user' AND item_desc='文件资料');
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_parcel_ship_sql(sql: str, *, enabled: bool) -> str:
-    """寄件登记表+种子；开题挂 parcel_ship 才注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?parcel_ship`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _PARCEL_SHIP_DDL + "\n" + _PARCEL_SHIP_SEED
+    """委托 features.parcel_ship.ensure_parcel_ship_sql（正文只在 features）。"""
+    from app.bake.features.parcel_ship import ensure_parcel_ship_sql as _ensure
 
-
-_AUDIT_LOG_DDL = """
-CREATE TABLE IF NOT EXISTS sys_audit_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  action VARCHAR(64) NOT NULL,
-  target_type VARCHAR(32) DEFAULT '',
-  target_id VARCHAR(64) DEFAULT '',
-  detail VARCHAR(512) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_audit_created (created_at, id),
-  KEY idx_audit_user (username)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_audit_log_sql(sql: str, *, enabled: bool) -> str:
-    """操作审计表；开题挂 audit_log 才注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?sys_audit_log`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _AUDIT_LOG_DDL
+    """委托 features.audit_log.ensure_audit_log_sql（正文只在 features）。"""
+    from app.bake.features.audit_log import ensure_audit_log_sql as _ensure
 
-_BROWSE_HISTORY_DDL = """
-CREATE TABLE IF NOT EXISTS user_browse_history (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  item_id BIGINT NOT NULL,
-  viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_browse_user_item (username, item_id),
-  KEY idx_browse_user_time (username, viewed_at)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_browse_history_sql(sql: str, *, enabled: bool) -> str:
-    """浏览足迹表；仅开题挂 browse_history 时注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?user_browse_history`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _BROWSE_HISTORY_DDL
+    """委托 features.favorites.ensure_browse_history_sql（正文只在 features）。"""
+    from app.bake.features.favorites import ensure_browse_history_sql as _ensure
 
-
-_ARCHIVE_LOG_DDL = """
-CREATE TABLE IF NOT EXISTS archive_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  item_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  log_date DATE NOT NULL,
-  log_type VARCHAR(32) NOT NULL DEFAULT 'checkin',
-  payload_json TEXT,
-  abnormal TINYINT DEFAULT 0,
-  remark VARCHAR(512) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_alog_item_date (item_id, log_date),
-  KEY idx_alog_date_type (log_date, log_type),
-  KEY idx_alog_user (username, id)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_archive_log_sql(sql: str, *, enabled: bool) -> str:
-    """档案打卡/随访表；archive_log 能力开启时注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?archive_log`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _ARCHIVE_LOG_DDL
+    """委托 features.archive_log.ensure_archive_log_sql（正文只在 features）。"""
+    from app.bake.features.archive_log import ensure_archive_log_sql as _ensure
+
+    return _ensure(sql, enabled=enabled)
 
 
 SOFT_DELETE_COLUMNS: list[tuple[str, str]] = [
@@ -1112,12 +527,6 @@ def ensure_notice_pinned_column(sql: str, *, enabled: bool = True) -> str:
         return f"{head}{body}{tail}"
 
     return _CREATE_TABLE_RE.sub(repl, sql)
-
-
-GALLERY_COLUMNS: list[tuple[str, str]] = [
-    ("gallery_json", "TEXT NULL"),
-]
-
 # 借用组浅档案列（馆藏/货架/批次/床位约束等）
 BORROW_ARCHIVE_COLUMNS: list[tuple[str, str]] = [
     ("holding_loc", "VARCHAR(128) DEFAULT ''"),
@@ -1312,54 +721,24 @@ def ensure_detail_attrs_sql(
     attr_fields: list[dict[str, str]] | list[str] | None = None,
     attr_keys: list[str] | None = None,
 ) -> str:
-    """详情属性：开题字段按语义落档案表真列。无字段时不加列。
+    """委托 features.detail_attrs.ensure_detail_attrs_sql（正文只在 features）。"""
+    from app.bake.features.detail_attrs import ensure_detail_attrs_sql as _ensure
 
-    工厂侧仍用 detailAttrKeys 列表收集；学生包不再依赖 detail_json 装业务字段。
-    旧包若仍有 detail_json，Store 读路径可回退。
-    """
-    if not enabled:
-        return sql
-    t = (item_table or "").strip()
-    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        return sql
-    from app.bake.features.detail_attrs import detail_attr_sql_columns
-
-    cols = detail_attr_sql_columns(attr_fields if attr_fields is not None else attr_keys)
-    if not cols:
-        return sql
-
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != t.lower():
-            return m.group(0)
-        body = _inject_missing_columns(body, cols)
-        return f"{head}{body}{tail}"
-
-    return _CREATE_TABLE_RE.sub(repl, sql)
+    return _ensure(sql, enabled=enabled, item_table=item_table, attr_fields=attr_fields, attr_keys=attr_keys)
 
 
 def ensure_gallery_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """档案主表补 gallery_json；仅 gallery 能力开启时注入。"""
-    if not enabled:
-        return sql
-    t = (item_table or "").strip()
-    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        return sql
+    """委托 features.detail_attrs.ensure_gallery_sql（正文只在 features）。"""
+    from app.bake.features.detail_attrs import ensure_gallery_sql as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != t.lower():
-            return m.group(0)
-        body = _inject_missing_columns(body, GALLERY_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    return _CREATE_TABLE_RE.sub(repl, sql)
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 
 def ensure_room_equipment_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    from app.bake.features.room_equipment import ensure_room_equipment_sql as _impl
+    """委托 features.room_equipment.ensure_room_equipment_sql（正文只在 features）。"""
+    from app.bake.features.room_equipment import ensure_room_equipment_sql as _ensure
 
-    return _impl(sql, enabled=enabled, item_table=item_table)
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 
 CHECKIN_CODE_COLUMNS: list[tuple[str, str]] = [
@@ -1384,60 +763,17 @@ SCHEDULE_COLUMNS: list[tuple[str, str]] = [
     ("end_at", "DATETIME NULL"),
 ]
 
-
-
-FLASH_PRICE_COLUMNS: list[tuple[str, str]] = [
-    ("promo_price", "DECIMAL(10,2) NULL"),
-    ("promo_start", "DATETIME NULL"),
-    ("promo_end", "DATETIME NULL"),
-]
-
-
 def ensure_flash_price_columns(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """限时购列；开题挂 flash_price 才注入档案表。"""
-    if not enabled:
-        return sql
-    t = (item_table or "").strip()
-    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        return sql
+    """委托 features.order_extras.ensure_flash_price_columns（正文只在 features）。"""
+    from app.bake.features.order_extras import ensure_flash_price_columns as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != t.lower():
-            return m.group(0)
-        body = _inject_missing_columns(body, FLASH_PRICE_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    return _CREATE_TABLE_RE.sub(repl, sql)
-
-
-PRODUCT_SPEC_COLUMNS: list[tuple[str, str]] = [
-    ("spec_note", "VARCHAR(128) DEFAULT ''"),
-]
-
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 def ensure_product_spec_columns(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """商品规格说明列；挂 product_spec 时注入（FOOD 语义列已是 spec_note 则跳过）。"""
-    if not enabled:
-        return sql
-    t = (item_table or "").strip()
-    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        return sql
+    """委托 features.product_spec.ensure_product_spec_columns（正文只在 features）。"""
+    from app.bake.features.product_spec import ensure_product_spec_columns as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != t.lower():
-            return m.group(0)
-        body = _inject_missing_columns(body, PRODUCT_SPEC_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    return _CREATE_TABLE_RE.sub(repl, sql)
-
-
-CATEGORY_DIMENSION_COLUMNS: list[tuple[str, str]] = [
-    ("dimension", "VARCHAR(64) NOT NULL DEFAULT ''"),
-]
-
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 def ensure_multi_category_sql(
     sql: str,
@@ -1447,751 +783,97 @@ def ensure_multi_category_sql(
     junction_table: str = "product_category",
     axis_seed_sql: str = "",
 ) -> str:
-    """多维分类：category.dimension + 条目-分类关联表。未开不加。"""
-    if not enabled:
-        return sql
-    t = (item_table or "product").strip()
-    junc = (junction_table or "product_category").strip()
-    if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", junc):
-        junc = "product_category"
+    """委托 features.multi_category.ensure_multi_category_sql（正文只在 features）。"""
+    from app.bake.features.multi_category import ensure_multi_category_sql as _ensure
 
-    def cat_repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "category":
-            return m.group(0)
-        body = _inject_missing_columns(body, CATEGORY_DIMENSION_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(cat_repl, sql)
-    if not re.search(
-        rf"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?{re.escape(junc)}`?\b", out
-    ):
-        ddl = f"""
-CREATE TABLE IF NOT EXISTS {junc} (
-  item_id BIGINT NOT NULL,
-  category_id BIGINT NOT NULL,
-  PRIMARY KEY (item_id, category_id),
-  KEY idx_{junc}_cat (category_id)
-);
-"""
-        out = out.rstrip() + "\n" + ddl
-    # 种子：开题解析出维度取值时换掉默认分类名；否则补通用维度演示行
-    if (axis_seed_sql or "").strip():
-        seed = axis_seed_sql if axis_seed_sql.endswith("\n") else axis_seed_sql + "\n"
-    else:
-        seed = """
-UPDATE category SET dimension='品类' WHERE (dimension IS NULL OR dimension='') AND id IN (1,2,3);
-INSERT IGNORE INTO category (id, name, dimension) VALUES
-(10, '自用', '用途'), (11, '练手', '用途'),
-(12, '入门', '目标'), (13, '进阶', '目标');
-"""
-        if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-            seed += f"""
-INSERT IGNORE INTO {junc} (item_id, category_id)
-SELECT id, category_id FROM {t} WHERE category_id IS NOT NULL AND category_id > 0;
-INSERT IGNORE INTO {junc} (item_id, category_id) VALUES (1, 10), (1, 12), (2, 11), (2, 13);
-"""
-    out = out.rstrip() + "\n" + seed
-    return out
+    return _ensure(sql, enabled=enabled, item_table=item_table, junction_table=junction_table, axis_seed_sql=axis_seed_sql)
 
 
 def ensure_product_tags_sql(sql: str, *, enabled: bool) -> str:
-    """商城标签表 + 商品-标签关联。未开不加。论坛自有 tag/post_tag，勿对本岛调用。"""
-    if not enabled:
-        return sql
-    out = sql
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?tag`?\b", out):
-        out = out.rstrip() + """
-CREATE TABLE IF NOT EXISTS tag (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE
-);
-"""
-    if not re.search(
-        r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?product_tag`?\b", out
-    ):
-        out = out.rstrip() + """
-CREATE TABLE IF NOT EXISTS product_tag (
-  item_id BIGINT NOT NULL,
-  tag_id BIGINT NOT NULL,
-  PRIMARY KEY (item_id, tag_id)
-);
-"""
-    seed = """
-INSERT IGNORE INTO tag (id, name) VALUES
-(1, '热门'), (2, '新品'), (3, '包邮'), (4, '自营');
-INSERT IGNORE INTO product_tag (item_id, tag_id) VALUES
-(1, 1), (1, 3), (2, 2), (2, 4), (3, 1);
-"""
-    out = out.rstrip() + "\n" + seed
-    return out
+    """委托 features.product_tags.ensure_product_tags_sql（正文只在 features）。"""
+    from app.bake.features.product_tags import ensure_product_tags_sql as _ensure
 
-
-ORDER_LINE_CUSTOM_COLUMNS: list[tuple[str, str]] = [
-    ("custom_text", "VARCHAR(200) DEFAULT ''"),
-    ("spec_choice", "VARCHAR(120) DEFAULT ''"),
-    ("attach_url", "VARCHAR(255) DEFAULT ''"),
-]
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_order_line_custom_columns(sql: str, *, enabled: bool, with_spec: bool = False) -> str:
-    """订单明细快照列。未开则不加。有规格时再加选项表，刻字仍是手填。"""
-    if not enabled:
-        return sql
+    """委托 features.line_custom.ensure_order_line_custom_columns（正文只在 features）。"""
+    from app.bake.features.line_custom import ensure_order_line_custom_columns as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "order_line":
-            return m.group(0)
-        body = _inject_missing_columns(body, ORDER_LINE_CUSTOM_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(repl, sql)
-    if not with_spec:
-        return out
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?line_spec_option`?\b", out):
-        return out
-    ddl = """\
-CREATE TABLE IF NOT EXISTS line_spec_option (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  label VARCHAR(64) NOT NULL,
-  enabled TINYINT NOT NULL DEFAULT 1,
-  sort_no INT NOT NULL DEFAULT 0
-);
-INSERT INTO line_spec_option (id, label, enabled, sort_no)
-SELECT 1, '宋体', 1, 10 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM line_spec_option WHERE id=1);
-INSERT INTO line_spec_option (id, label, enabled, sort_no)
-SELECT 2, '红色', 1, 20 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM line_spec_option WHERE id=2);
-INSERT INTO line_spec_option (id, label, enabled, sort_no)
-SELECT 3, '大号', 1, 30 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM line_spec_option WHERE id=3);
-"""
-    return out.rstrip() + "\n" + ddl
-
-
-ORDER_WINDOW_COLUMNS: list[tuple[str, str]] = [
-    ("fulfill_mode", "VARCHAR(16) DEFAULT ''"),
-    ("delivery_on", "DATE NULL"),
-    ("slot_id", "BIGINT NULL"),
-    ("slot_label", "VARCHAR(64) DEFAULT ''"),
-    ("price_rate", "DECIMAL(6,2) NOT NULL DEFAULT 1.00"),
-]
-
-_DELIVERY_WINDOW_DDL = """
-CREATE TABLE IF NOT EXISTS delivery_slot (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  label VARCHAR(64) NOT NULL,
-  start_hm VARCHAR(8) NOT NULL DEFAULT '',
-  end_hm VARCHAR(8) NOT NULL DEFAULT '',
-  capacity INT NOT NULL DEFAULT 1,
-  fulfill_mode VARCHAR(16) NOT NULL DEFAULT 'preorder',
-  cutoff_hm VARCHAR(8) NOT NULL DEFAULT '',
-  enabled TINYINT NOT NULL DEFAULT 1,
-  sort_no INT NOT NULL DEFAULT 0,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS price_span (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL,
-  date_from DATE NOT NULL,
-  date_to DATE NOT NULL,
-  rate DECIMAL(6,2) NOT NULL DEFAULT 1.00,
-  enabled TINYINT NOT NULL DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
-_DELIVERY_WINDOW_SEED = """
-INSERT INTO delivery_slot (id, label, start_hm, end_hm, capacity, fulfill_mode, cutoff_hm, enabled, sort_no)
-SELECT 1, '上午档', '09:00', '12:00', 8, 'same_day', '11:00', 1, 10 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM delivery_slot WHERE id=1);
-INSERT INTO delivery_slot (id, label, start_hm, end_hm, capacity, fulfill_mode, cutoff_hm, enabled, sort_no)
-SELECT 2, '下午档', '14:00', '18:00', 8, 'preorder', '', 1, 20 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM delivery_slot WHERE id=2);
-INSERT INTO price_span (id, name, date_from, date_to, rate, enabled)
-SELECT 1, '情人节', '2026-02-10', '2026-02-14', 1.50, 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM price_span WHERE id=1);
-UPDATE biz_order
-SET fulfill_mode='preorder', delivery_on='2026-09-26', slot_id=2, slot_label='下午档', price_rate=1.00
-WHERE id=1 AND (slot_id IS NULL OR slot_id=0);
-"""
-
+    return _ensure(sql, enabled=enabled, with_spec=with_spec)
 
 def ensure_delivery_window_sql(sql: str, *, enabled: bool) -> str:
-    """配送时段表、节日加价表、订单头快照列。未开不加。"""
-    if not enabled:
-        return sql
+    """委托 features.delivery_window.ensure_delivery_window_sql（正文只在 features）。"""
+    from app.bake.features.delivery_window import ensure_delivery_window_sql as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "biz_order":
-            return m.group(0)
-        body = _inject_missing_columns(body, ORDER_WINDOW_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(repl, sql)
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?delivery_slot`?\b", out):
-        out = out.rstrip() + "\n" + _DELIVERY_WINDOW_DDL + "\n" + _DELIVERY_WINDOW_SEED
-    return out
-
-
-PRODUCT_GATE_COLUMNS: list[tuple[str, str]] = [
-    ("need_permit", "TINYINT NOT NULL DEFAULT 0"),
-    ("month_limit", "INT NOT NULL DEFAULT 0"),
-]
-
-_PURCHASE_GATE_DDL = """\
-CREATE TABLE IF NOT EXISTS purchase_permit (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  item_id BIGINT NULL,
-  category_id BIGINT NULL,
-  image_url VARCHAR(255) NOT NULL DEFAULT '',
-  status VARCHAR(16) NOT NULL DEFAULT 'pending',
-  reviewer VARCHAR(64) DEFAULT '',
-  reject_reason VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  reviewed_at DATETIME NULL,
-  KEY idx_permit_user_item (username, item_id),
-  KEY idx_permit_user_cat (username, category_id)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_purchase_gate_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """购买审核表与商品上的开关、月限。未开不加列。"""
-    if not enabled:
-        return sql
-    t = (item_table or "").strip()
-    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        return sql
+    """委托 features.purchase_gate.ensure_purchase_gate_sql（正文只在 features）。"""
+    from app.bake.features.purchase_gate import ensure_purchase_gate_sql as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != t.lower():
-            return m.group(0)
-        body = _inject_missing_columns(body, PRODUCT_GATE_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(repl, sql)
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?purchase_permit`?\b", out):
-        return out
-    seed = (
-        f"UPDATE {t} SET need_permit=1, month_limit=2 WHERE id=1;\n"
-        f"UPDATE {t} SET need_permit=0, month_limit=0 WHERE id=2;\n"
-        "INSERT INTO purchase_permit (username, item_id, image_url, status)\n"
-        "SELECT 'user', 1, '/uploads/seed-permit.png', 'pending' FROM DUAL\n"
-        "WHERE NOT EXISTS (SELECT 1 FROM purchase_permit WHERE username='user' AND item_id=1 AND status='pending');\n"
-    )
-    return out.rstrip() + "\n" + _PURCHASE_GATE_DDL + "\n" + seed
-
-
-_GROUP_BUY_DDL = """\
-CREATE TABLE IF NOT EXISTS group_campaign (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  item_id BIGINT NOT NULL,
-  target_size INT NOT NULL,
-  deadline DATETIME NOT NULL,
-  status VARCHAR(16) NOT NULL DEFAULT 'open',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_group_item (item_id, status)
-);
-CREATE TABLE IF NOT EXISTS group_member (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  campaign_id BIGINT NOT NULL,
-  order_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  UNIQUE KEY uk_group_user (campaign_id, username),
-  KEY idx_group_order (order_id)
-);
-"""
-
-_GROUP_BUY_SEED = """\
-INSERT INTO group_campaign (item_id, target_size, deadline, status)
-SELECT 1, 3, DATE_ADD(NOW(), INTERVAL 2 DAY), 'open' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM group_campaign WHERE item_id=1 AND status='open');
-INSERT INTO group_member (campaign_id, order_id, username)
-SELECT c.id, 1, 'demo_joiner' FROM group_campaign c
-WHERE c.item_id=1 AND c.status='open'
-AND NOT EXISTS (SELECT 1 FROM group_member m WHERE m.campaign_id=c.id AND m.username='demo_joiner')
-LIMIT 1;
-INSERT INTO group_campaign (item_id, target_size, deadline, status)
-SELECT 2, 3, DATE_SUB(NOW(), INTERVAL 1 DAY), 'failed' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM group_campaign WHERE status='failed');
-"""
-
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 def ensure_group_buy_sql(sql: str, *, enabled: bool) -> str:
-    """拼团两张表。未开不加，活动报名和拼车也不会走到这里。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?group_campaign`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _GROUP_BUY_DDL + "\n" + _GROUP_BUY_SEED
+    """委托 features.group_buy.ensure_group_buy_sql（正文只在 features）。"""
+    from app.bake.features.group_buy import ensure_group_buy_sql as _ensure
 
-
-PRODUCT_PITY_COLUMNS: list[tuple[str, str]] = [
-    ("pity_n", "INT NOT NULL DEFAULT 0"),
-]
-
-ORDER_LINE_DRAW_COLUMNS: list[tuple[str, str]] = [
-    ("draw_title", "VARCHAR(500) NOT NULL DEFAULT ''"),
-    ("draw_hidden", "TINYINT NOT NULL DEFAULT 0"),
-]
-
-_BLIND_BOX_DDL = """\
-CREATE TABLE IF NOT EXISTS blind_pool (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  box_id BIGINT NOT NULL,
-  prize_id BIGINT NOT NULL,
-  weight INT NOT NULL,
-  hidden TINYINT NOT NULL DEFAULT 0,
-  enabled TINYINT NOT NULL DEFAULT 1,
-  UNIQUE KEY uk_box_prize (box_id, prize_id)
-);
-CREATE TABLE IF NOT EXISTS blind_pity (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  box_id BIGINT NOT NULL,
-  draws INT NOT NULL DEFAULT 0,
-  hidden_got TINYINT NOT NULL DEFAULT 0,
-  UNIQUE KEY uk_user_box (username, box_id)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_blind_box_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """盲盒奖池、保底计数、盒子上的保底次数。未开不加。"""
-    if not enabled:
-        return sql
-    t = (item_table or "").strip()
-    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        return sql
+    """委托 features.blind_box.ensure_blind_box_sql（正文只在 features）。"""
+    from app.bake.features.blind_box import ensure_blind_box_sql as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        low = table.lower()
-        if low == t.lower():
-            body = _inject_missing_columns(body, PRODUCT_PITY_COLUMNS)
-        elif low == "order_line":
-            body = _inject_missing_columns(body, ORDER_LINE_DRAW_COLUMNS)
-        else:
-            return m.group(0)
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(repl, sql)
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?blind_pool`?\b", out):
-        return out
-    seed = (
-        f"UPDATE {t} SET pity_n=3 WHERE id=1;\n"
-        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled)\n"
-        "SELECT 1, 2, 70, 0, 1 FROM DUAL\n"
-        "WHERE NOT EXISTS (SELECT 1 FROM blind_pool WHERE box_id=1 AND prize_id=2);\n"
-        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled)\n"
-        "SELECT 1, 3, 25, 0, 1 FROM DUAL\n"
-        "WHERE NOT EXISTS (SELECT 1 FROM blind_pool WHERE box_id=1 AND prize_id=3);\n"
-        "INSERT INTO blind_pool (box_id, prize_id, weight, hidden, enabled)\n"
-        "SELECT 1, 4, 5, 1, 1 FROM DUAL\n"
-        "WHERE NOT EXISTS (SELECT 1 FROM blind_pool WHERE box_id=1 AND prize_id=4);\n"
-    )
-    return out.rstrip() + "\n" + _BLIND_BOX_DDL + "\n" + seed
-
-
-_CONSIGN_DDL = """
-CREATE TABLE IF NOT EXISTS consign_item (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  title VARCHAR(200) NOT NULL DEFAULT '',
-  expect_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  condition_note VARCHAR(64) NOT NULL DEFAULT '',
-  status VARCHAR(16) NOT NULL DEFAULT 'pending',
-  reject_reason VARCHAR(255) NOT NULL DEFAULT '',
-  product_id BIGINT NULL,
-  fee_rate DECIMAL(6,4) NOT NULL DEFAULT 0.1000,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS consign_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  consign_id BIGINT NOT NULL,
-  order_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  gross_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  fee_rate DECIMAL(6,4) NOT NULL DEFAULT 0,
-  payout_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  withdraw_status VARCHAR(16) NOT NULL DEFAULT 'ready',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_consign_order (consign_id, order_id)
-);
-"""
-
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 def ensure_consign_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """寄卖单、成交账。未开不加。成色列不在这里注入。"""
-    if not enabled:
-        return sql
-    t = (item_table or "").strip()
-    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?consign_item`?\b", sql):
-        return sql
-    seed = f"""INSERT INTO consign_item (id, username, title, expect_yuan, condition_note, status, fee_rate)
-SELECT 9, '', '', 0, '', 'rate', 0.1000 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM consign_item WHERE status='rate');
-INSERT INTO consign_item (id, username, title, expect_yuan, condition_note, status, fee_rate)
-SELECT 1, 'user', '耳机', 80.00, '九成新', 'pending', 0.1000 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM consign_item WHERE id=1);
-INSERT IGNORE INTO {t} (id, title, author, isbn, category_id, stock, status) VALUES
-(5, '台灯', '45.00', 'CS-05', 2, 1, 'available');
-INSERT INTO consign_item (id, username, title, expect_yuan, condition_note, status, product_id, fee_rate)
-SELECT 2, 'user', '台灯', 45.00, '八成新', 'on_sale', 5, 0.1000 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM consign_item WHERE id=2);
-INSERT IGNORE INTO {t} (id, title, author, isbn, category_id, stock, status) VALUES
-(6, '键盘', '100.00', 'CS-06', 2, 0, 'unavailable');
-INSERT INTO consign_item (id, username, title, expect_yuan, condition_note, status, product_id, fee_rate)
-SELECT 3, 'user', '键盘', 100.00, '九成新', 'sold', 6, 0.1000 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM consign_item WHERE id=3);
-INSERT IGNORE INTO biz_order (id, username, status, total_yuan, remark, receiver_name, receiver_phone, address_line, delivery_type) VALUES
-(2, 'user', 'completed', 100.00, '', '王先生', '13800000002', '示例小区 3 栋 1201', '配送到家');
-INSERT IGNORE INTO order_line (id, order_id, item_id, title, price_yuan, qty) VALUES
-(2, 2, 6, '键盘', 100.00, 1);
-INSERT INTO consign_ledger (id, consign_id, order_id, username, gross_yuan, fee_rate, payout_yuan, withdraw_status)
-SELECT 1, 3, 2, 'user', 100.00, 0.1000, 90.00, 'ready' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM consign_ledger WHERE id=1);
-"""
-    return sql.rstrip() + "\n" + _CONSIGN_DDL + "\n" + seed
+    """委托 features.consign.ensure_consign_sql（正文只在 features）。"""
+    from app.bake.features.consign import ensure_consign_sql as _ensure
 
-
-PRODUCT_WEIGH_COLUMNS: list[tuple[str, str]] = [
-    ("sell_by_weight", "TINYINT NOT NULL DEFAULT 0"),
-    ("weight_unit", "VARCHAR(8) NOT NULL DEFAULT ''"),
-]
-
-ORDER_LINE_WEIGHT_COLUMNS: list[tuple[str, str]] = [
-    ("weight_qty", "DECIMAL(10,3) NULL"),
-]
-
-_WEIGH_SALE_DDL = """
-CREATE TABLE IF NOT EXISTS loss_policy (
-  id BIGINT PRIMARY KEY,
-  enabled TINYINT NOT NULL DEFAULT 0,
-  cap_yuan DECIMAL(10,2) NOT NULL DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS loss_claim (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  order_id BIGINT NOT NULL,
-  amount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  reason VARCHAR(255) NOT NULL DEFAULT '',
-  status VARCHAR(16) NOT NULL DEFAULT 'pending',
-  paid_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 def ensure_weigh_sale_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """重量列、次日达时段、损耗赔付。未开不加。"""
-    if not enabled:
-        return sql
-    t = (item_table or "").strip()
-    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        return sql
+    """委托 features.weigh_sale.ensure_weigh_sale_sql（正文只在 features）。"""
+    from app.bake.features.weigh_sale import ensure_weigh_sale_sql as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        low = table.lower()
-        if low == t.lower():
-            body = _inject_missing_columns(body, PRODUCT_WEIGH_COLUMNS)
-        elif low == "order_line":
-            body = _inject_missing_columns(body, ORDER_LINE_WEIGHT_COLUMNS)
-        elif low == "sys_user":
-            body = _inject_missing_columns(body, [("balance_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0")])
-        else:
-            return m.group(0)
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(repl, sql)
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?loss_policy`?\b", out):
-        return out
-    seed = f"""UPDATE {t} SET sell_by_weight=1, weight_unit='斤' WHERE id=1;
-INSERT INTO delivery_slot (id, label, start_hm, end_hm, capacity, fulfill_mode, cutoff_hm, enabled, sort_no)
-SELECT 3, '次日达', '09:00', '18:00', 20, 'next_day', '', 1, 30 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM delivery_slot WHERE id=3);
-INSERT INTO loss_policy (id, enabled, cap_yuan)
-SELECT 1, 1, 20.00 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM loss_policy WHERE id=1);
-"""
-    return out.rstrip() + "\n" + _WEIGH_SALE_DDL + "\n" + seed
-
-
-_SHOOT_DDL = """
-CREATE TABLE IF NOT EXISTS service_bundle (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL,
-  price_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  detail VARCHAR(255) NOT NULL DEFAULT '',
-  enabled TINYINT NOT NULL DEFAULT 1
-);
-CREATE TABLE IF NOT EXISTS deliverable (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  reservation_id BIGINT NOT NULL,
-  file_url VARCHAR(255) NOT NULL DEFAULT '',
-  delivered TINYINT NOT NULL DEFAULT 0,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 def ensure_shoot_sql(sql: str, *, enabled: bool) -> str:
-    """套餐与交片。未开不加。摄影师占用仍用 resource_slot。"""
-    if not enabled:
-        return sql
+    """委托 features.shoot.ensure_shoot_sql（正文只在 features）。"""
+    from app.bake.features.shoot import ensure_shoot_sql as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "reservation":
-            return m.group(0)
-        body = _inject_missing_columns(
-            body,
-            [
-                ("bundle_id", "BIGINT NULL"),
-                ("bundle_yuan", "DECIMAL(10,2) NULL"),
-            ],
-        )
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(repl, sql)
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?service_bundle`?\b", out):
-        return out
-    seed = """INSERT INTO service_bundle (id, name, price_yuan, detail, enabled)
-SELECT 1, '证件照', 199.00, '含精修 2 张', 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM service_bundle WHERE id=1);
-INSERT INTO service_bundle (id, name, price_yuan, detail, enabled)
-SELECT 2, '写真', 599.00, '含精修 8 张', 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM service_bundle WHERE id=2);
-INSERT INTO deliverable (id, reservation_id, file_url, delivered)
-SELECT 1, 1, '/files/photo-1.jpg', 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM deliverable WHERE id=1);
-INSERT INTO deliverable (id, reservation_id, file_url, delivered)
-SELECT 2, 2, '/files/photo-2.jpg', 0 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM deliverable WHERE id=2);
-"""
-    return out.rstrip() + "\n" + _SHOOT_DDL + "\n" + seed
-
-
-_BOARDING_DDL = """
-CREATE TABLE IF NOT EXISTS stay_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  reservation_id BIGINT NULL,
-  option_name VARCHAR(64) DEFAULT '',
-  enabled TINYINT DEFAULT 1,
-  day_key DATE NULL,
-  note VARCHAR(255) DEFAULT '',
-  photo_url VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_boarding_sql(sql: str, *, enabled: bool) -> str:
-    """寄养日期与日志。未开不加。特殊要求与每日记录共用 stay_log。"""
-    if not enabled:
-        return sql
+    """委托 features.boarding.ensure_boarding_sql（正文只在 features）。"""
+    from app.bake.features.boarding import ensure_boarding_sql as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "reservation":
-            return m.group(0)
-        body = _inject_missing_columns(
-            body,
-            [
-                ("stay_from", "DATE NULL"),
-                ("stay_to", "DATE NULL"),
-                ("care_ids", "VARCHAR(128) NULL"),
-            ],
-        )
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(repl, sql)
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?stay_log`?\b", out):
-        return out
-    seed = """INSERT INTO stay_log (id, option_name, enabled)
-SELECT 1, '喂药', 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=1);
-INSERT INTO stay_log (id, option_name, enabled)
-SELECT 2, '遛弯', 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=2);
-INSERT INTO stay_log (id, reservation_id, day_key, note, photo_url)
-SELECT 3, 1, '2026-09-21', '已喂食，精神好', '/files/pet-1.jpg' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM stay_log WHERE id=3);
-"""
-    return out.rstrip() + "\n" + _BOARDING_DDL + "\n" + seed
-
-
-_ROOM_BOARD_DDL = """
-CREATE TABLE IF NOT EXISTS room_instance (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  room_type_id BIGINT NOT NULL,
-  room_no VARCHAR(32) NOT NULL DEFAULT '',
-  status VARCHAR(16) NOT NULL DEFAULT '空房',
-  order_id BIGINT NULL,
-  checkin_id BIGINT NULL,
-  note VARCHAR(255) DEFAULT '',
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS room_status_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  room_id BIGINT NOT NULL,
-  old_status VARCHAR(16) DEFAULT '',
-  new_status VARCHAR(16) NOT NULL DEFAULT '',
-  operator_username VARCHAR(64) DEFAULT '',
-  note VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
-_FRONT_DESK_DDL = """
-CREATE TABLE IF NOT EXISTS checkin (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  order_id BIGINT NULL,
-  reservation_id BIGINT NULL,
-  room_id BIGINT NULL,
-  guest_name VARCHAR(64) DEFAULT '',
-  id_no VARCHAR(64) DEFAULT '',
-  deposit_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  status VARCHAR(16) NOT NULL DEFAULT 'checked_in',
-  checked_in_at DATETIME NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS checkout (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  checkin_id BIGINT NOT NULL,
-  order_id BIGINT NULL,
-  room_id BIGINT NULL,
-  settle_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  deposit_back_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  note VARCHAR(255) DEFAULT '',
-  checked_out_at DATETIME NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS consumption (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  checkin_id BIGINT NOT NULL,
-  order_id BIGINT NULL,
-  title VARCHAR(128) NOT NULL DEFAULT '',
-  amount_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
-
-_VENUE_CLEAN_COLUMNS = (
-    ("clean_status", "VARCHAR(16) NOT NULL DEFAULT ''"),
-)
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_venue_clean_sql(sql: str, *, enabled: bool, item_table: str | None) -> str:
-    """档案/场地表补 clean_status。未开不加列；不新建表。"""
-    if not enabled:
-        return sql
-    t = (item_table or "").strip()
-    if not t or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-        return sql
+    """委托 features.venue_clean.ensure_venue_clean_sql（正文只在 features）。"""
+    from app.bake.features.venue_clean import ensure_venue_clean_sql as _ensure
 
-    def repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != t.lower():
-            return m.group(0)
-        body = _inject_missing_columns(body, _VENUE_CLEAN_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    return _CREATE_TABLE_RE.sub(repl, sql)
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 
 def ensure_room_board_sql(sql: str, *, enabled: bool) -> str:
-    """房间实例 + 房态日志。未开不加。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?room_instance`?\b", sql):
-        return sql
-    seed = """INSERT INTO room_instance (id, room_type_id, room_no, status)
-SELECT 1, 1, '101', '空房' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM room_instance WHERE id=1);
-INSERT INTO room_instance (id, room_type_id, room_no, status)
-SELECT 2, 1, '102', '空房' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM room_instance WHERE id=2);
-INSERT INTO room_instance (id, room_type_id, room_no, status)
-SELECT 3, 2, '201', '待打扫' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM room_instance WHERE id=3);
-INSERT INTO room_status_log (id, room_id, old_status, new_status, operator_username, note)
-SELECT 1, 3, '入住中', '待打扫', 'admin', '退房后待打扫' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM room_status_log WHERE id=1);
-"""
-    return sql.rstrip() + "\n" + _ROOM_BOARD_DDL + "\n" + seed
+    """委托 features.room_board.ensure_room_board_sql（正文只在 features）。"""
+    from app.bake.features.room_board import ensure_room_board_sql as _ensure
+
+    return _ensure(sql, enabled=enabled)
 
 
 def ensure_front_desk_sql(sql: str, *, enabled: bool) -> str:
-    """入住登记 / 退房结算 / 消费挂账。未开不加。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?checkin`?\b", sql):
-        return sql
-    seed = """INSERT INTO checkin (id, order_id, room_id, guest_name, id_no, deposit_yuan, status, checked_in_at)
-SELECT 1, 1, 1, '张三', '110101199001011234', 200.00, 'checked_in', '2026-09-20 14:00:00' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM checkin WHERE id=1);
-INSERT INTO consumption (id, checkin_id, order_id, title, amount_yuan)
-SELECT 1, 1, 1, '迷你吧', 36.00 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM consumption WHERE id=1);
-"""
-    return sql.rstrip() + "\n" + _FRONT_DESK_DDL + "\n" + seed
+    """委托 features.front_desk.ensure_front_desk_sql（正文只在 features）。"""
+    from app.bake.features.front_desk import ensure_front_desk_sql as _ensure
 
-
-ORDER_RENTAL_BOND_COLUMNS: list[tuple[str, str]] = [
-    ("deposit_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
-    ("rent_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
-    ("late_fee_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
-    ("deposit_status", "VARCHAR(16) NOT NULL DEFAULT ''"),
-    ("damage_note", "VARCHAR(255) DEFAULT ''"),
-    ("damage_deduct_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
-]
-
-VEHICLE_RENTAL_BOND_COLUMNS: list[tuple[str, str]] = [
-    ("deposit_yuan", "DECIMAL(10,2) NOT NULL DEFAULT 0"),
-    ("rent_stage", "VARCHAR(16) NOT NULL DEFAULT 'available'"),
-]
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_rental_bond_sql(sql: str, *, enabled: bool, item_table: str | None = "vehicle") -> str:
-    """订单三笔钱 + 验损列；档案押金与可租/已租/维修。未开不加。"""
-    if not enabled:
-        return sql
+    """委托 features.rental_bond.ensure_rental_bond_sql（正文只在 features）。"""
+    from app.bake.features.rental_bond import ensure_rental_bond_sql as _ensure
 
-    def order_repl(m: re.Match[str]) -> str:
-        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-        if table.lower() != "biz_order":
-            return m.group(0)
-        body = _inject_missing_columns(body, ORDER_RENTAL_BOND_COLUMNS)
-        return f"{head}{body}{tail}"
-
-    out = _CREATE_TABLE_RE.sub(order_repl, sql)
-    t = (item_table or "vehicle").strip()
-    if t and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", t):
-
-        def item_repl(m: re.Match[str]) -> str:
-            head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
-            if table.lower() != t.lower():
-                return m.group(0)
-            body = _inject_missing_columns(body, VEHICLE_RENTAL_BOND_COLUMNS)
-            return f"{head}{body}{tail}"
-
-        out = _CREATE_TABLE_RE.sub(item_repl, out)
-        seed = (
-            f"UPDATE {t} SET deposit_yuan=500.00, rent_stage='available' WHERE id=1 AND (deposit_yuan IS NULL OR deposit_yuan=0);\n"
-            f"UPDATE {t} SET deposit_yuan=800.00, rent_stage='available' WHERE id=2 AND (deposit_yuan IS NULL OR deposit_yuan=0);\n"
-            "UPDATE biz_order SET deposit_yuan=500.00, rent_yuan=total_yuan, deposit_status='held' "
-            "WHERE id=1 AND (deposit_status IS NULL OR deposit_status='');\n"
-        )
-        out = out.rstrip() + "\n" + seed
-    return out
+    return _ensure(sql, enabled=enabled, item_table=item_table)
 
 
 # 正文在 features/digital_goods.py；此处只转发，避免双份 ensure。
@@ -2200,95 +882,17 @@ from app.bake.features.digital_goods import (  # noqa: E402
     ensure_digital_goods_sql,
 )
 
-
-_BUYBACK_DDL = """
-CREATE TABLE IF NOT EXISTS buyback_slot (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL,
-  enabled TINYINT DEFAULT 1
-);
-CREATE TABLE IF NOT EXISTS buyback_order (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  book_title VARCHAR(200) NOT NULL,
-  condition_note VARCHAR(255) DEFAULT '',
-  slot_id BIGINT NULL,
-  quote_yuan DECIMAL(10,2) NULL,
-  status VARCHAR(32) NOT NULL DEFAULT 'pending',
-  product_id BIGINT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
-
 def ensure_buyback_sql(sql: str, *, enabled: bool) -> str:
-    """回收单与上门时段。未开不加。上架仍用商品表。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?buyback_order`?\b", sql):
-        return sql
-    grade_col = ", condition_grade" if re.search(r"\bcondition_grade\b", sql, re.I) else ""
-    grade_val = ", '八成新'" if grade_col else ""
-    seed = f"""INSERT INTO buyback_slot (id, name, enabled)
-SELECT 1, '上午上门', 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM buyback_slot WHERE id=1);
-INSERT INTO buyback_slot (id, name, enabled)
-SELECT 2, '下午上门', 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM buyback_slot WHERE id=2);
-INSERT INTO product (id, title, author, isbn, category_id, stock, status{grade_col})
-SELECT 9, '操作系统', '28.00', 'BOOK-OS', 1, 1, 'available'{grade_val} FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM product WHERE id=9);
-INSERT INTO buyback_order (id, username, book_title, condition_note, slot_id, status)
-SELECT 1, 'user', '线性代数', '有笔记', 1, 'pending' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM buyback_order WHERE id=1);
-INSERT INTO buyback_order (id, username, book_title, condition_note, slot_id, quote_yuan, status, product_id)
-SELECT 2, 'user', '操作系统', '书页干净', 2, 28.00, 'listed', 9 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM buyback_order WHERE id=2);
-"""
-    return sql.rstrip() + "\n" + _BUYBACK_DDL + "\n" + seed
+    """委托 features.buyback.ensure_buyback_sql（正文只在 features）。"""
+    from app.bake.features.buyback import ensure_buyback_sql as _ensure
 
-
-_LESSON_PACK_DDL = """
-CREATE TABLE IF NOT EXISTS lesson_pack (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL,
-  sessions INT NOT NULL,
-  price_yuan DECIMAL(10,2) NOT NULL,
-  valid_days INT NOT NULL,
-  enabled TINYINT DEFAULT 1
-);
-CREATE TABLE IF NOT EXISTS lesson_wallet (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  total_sessions INT DEFAULT 0,
-  remain_sessions INT DEFAULT 0,
-  expire_at DATE NULL,
-  reservation_id BIGINT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_lesson_pack_sql(sql: str, *, enabled: bool) -> str:
-    """课时包与剩余节数。未开不加。约课仍用 reservation。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?lesson_pack`?\b", sql):
-        return sql
-    seed = """INSERT INTO lesson_pack (id, name, sessions, price_yuan, valid_days, enabled)
-SELECT 1, '体验包', 4, 199.00, 30, 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM lesson_pack WHERE id=1);
-INSERT INTO lesson_pack (id, name, sessions, price_yuan, valid_days, enabled)
-SELECT 2, '季度包', 12, 499.00, 90, 1 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM lesson_pack WHERE id=2);
-INSERT INTO lesson_wallet (id, username, total_sessions, remain_sessions, expire_at)
-SELECT 1, 'user', 4, 3, '2026-12-31' FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM lesson_wallet WHERE id=1);
-INSERT INTO lesson_wallet (id, username, reservation_id, total_sessions, remain_sessions)
-SELECT 2, 'user', 1, 0, 0 FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM lesson_wallet WHERE id=2);
-"""
-    return sql.rstrip() + "\n" + _LESSON_PACK_DDL + "\n" + seed
+    """委托 features.lesson_pack.ensure_lesson_pack_sql（正文只在 features）。"""
+    from app.bake.features.lesson_pack import ensure_lesson_pack_sql as _ensure
+
+    return _ensure(sql, enabled=enabled)
 
 
 def ensure_archive_flag_columns(
@@ -2331,62 +935,11 @@ def ensure_archive_flag_columns(
 
     return _CREATE_TABLE_RE.sub(repl, sql)
 
-
-_PROMO_COUPON_DDL = """
-CREATE TABLE IF NOT EXISTS promo_coupon (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  code VARCHAR(32) NOT NULL,
-  label VARCHAR(64) DEFAULT '',
-  min_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  off_yuan DECIMAL(10,2) NOT NULL DEFAULT 0,
-  total_quota INT NOT NULL DEFAULT 0,
-  claimed INT NOT NULL DEFAULT 0,
-  expire_at DATETIME NULL,
-  status VARCHAR(16) NOT NULL DEFAULT 'active',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_promo_code (code)
-);
-"""
-
-_USER_COUPON_DDL = """
-CREATE TABLE IF NOT EXISTS user_coupon (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  coupon_id BIGINT NOT NULL,
-  status VARCHAR(16) NOT NULL DEFAULT 'unused',
-  claimed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  used_at DATETIME NULL,
-  order_id BIGINT NULL,
-  UNIQUE KEY uk_user_coupon (username, coupon_id),
-  KEY idx_user_coupon_user (username, status, id)
-);
-"""
-
-_ORDER_REVIEW_DDL = """
-CREATE TABLE IF NOT EXISTS order_review (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  order_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  rating INT NOT NULL,
-  body VARCHAR(500) DEFAULT '',
-  reply VARCHAR(500) DEFAULT '',
-  replied_at DATETIME NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_order_review (order_id),
-  KEY idx_review_user (username, id)
-);
-"""
-
-
 def ensure_coupon_lifecycle_sql(sql: str, *, enabled: bool) -> str:
-    if not enabled:
-        return sql
-    out = sql
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?promo_coupon`?\b", out):
-        out = out.rstrip() + "\n" + _PROMO_COUPON_DDL
-    if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?user_coupon`?\b", out):
-        out = out.rstrip() + "\n" + _USER_COUPON_DDL
-    return out
+    """委托 features.order_extras.ensure_coupon_lifecycle_sql（正文只在 features）。"""
+    from app.bake.features.order_extras import ensure_coupon_lifecycle_sql as _ensure
+
+    return _ensure(sql, enabled=enabled)
 
 
 def _ensure_create_table_ddl(sql: str, *, table: str, ddl: str) -> str:
@@ -2407,142 +960,34 @@ def _ensure_create_table_ddl(sql: str, *, table: str, ddl: str) -> str:
 
 
 def ensure_order_review_sql(sql: str, *, enabled: bool) -> str:
-    if not enabled:
-        return sql
-    return _ensure_create_table_ddl(sql, table="order_review", ddl=_ORDER_REVIEW_DDL)
+    """委托 features.order_extras.ensure_order_review_sql（正文只在 features）。"""
+    from app.bake.features.order_extras import ensure_order_review_sql as _ensure
 
-
-_STOCK_IO_DDL = """
-CREATE TABLE IF NOT EXISTS stock_move (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  move_type VARCHAR(16) NOT NULL,
-  item_id BIGINT NOT NULL,
-  item_title VARCHAR(200) DEFAULT '',
-  qty INT NOT NULL,
-  remark VARCHAR(255) DEFAULT '',
-  operator VARCHAR(64) NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_stock_move_item (item_id, id),
-  KEY idx_stock_move_type (move_type, id)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_stock_io_sql(sql: str, *, enabled: bool) -> str:
-    """能力开启时幂等补入出库流水表。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?stock_move`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _STOCK_IO_DDL
+    """委托 features.stock_io.ensure_stock_io_sql（正文只在 features）。"""
+    from app.bake.features.stock_io import ensure_stock_io_sql as _ensure
 
-
-_SCRAP_REQUEST_DDL = """
-CREATE TABLE IF NOT EXISTS scrap_request (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  item_id BIGINT NOT NULL,
-  item_title VARCHAR(200) DEFAULT '',
-  qty INT NOT NULL,
-  reason VARCHAR(255) NOT NULL DEFAULT '',
-  status VARCHAR(16) NOT NULL DEFAULT 'pending',
-  applicant VARCHAR(64) NOT NULL DEFAULT '',
-  handler VARCHAR(64) DEFAULT '',
-  handle_note VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  handled_at DATETIME NULL,
-  KEY idx_scrap_req_status (status, id),
-  KEY idx_scrap_req_item (item_id, id)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_scrap_request_sql(sql: str, *, enabled: bool) -> str:
-    """报废审批单表：开 stock_scrap 且走审批流时注入。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?scrap_request`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _SCRAP_REQUEST_DDL
+    """委托 features.stock_scrap.ensure_scrap_request_sql（正文只在 features）。"""
+    from app.bake.features.stock_scrap import ensure_scrap_request_sql as _ensure
 
-
-_E_SIGN_DDL = """
-CREATE TABLE IF NOT EXISTS e_sign_record (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  title VARCHAR(200) NOT NULL,
-  ticket_id BIGINT NULL,
-  sign_image_url VARCHAR(255) NOT NULL DEFAULT '',
-  agreed TINYINT NOT NULL DEFAULT 0,
-  remark VARCHAR(255) DEFAULT '',
-  signed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_e_sign_user (username, id)
-);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_e_sign_sql(sql: str, *, enabled: bool) -> str:
-    """能力开启时幂等补签署留痕表。"""
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?e_sign_record`?\b", sql):
-        return sql
-    return sql.rstrip() + "\n" + _E_SIGN_DDL
+    """委托 features.e_sign.ensure_e_sign_sql（正文只在 features）。"""
+    from app.bake.features.e_sign import ensure_e_sign_sql as _ensure
 
-
-_BALANCE_LEDGER_DDL = """
-CREATE TABLE IF NOT EXISTS balance_subject (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  title VARCHAR(100) NOT NULL,
-  unit_label VARCHAR(32) DEFAULT '次',
-  status VARCHAR(32) DEFAULT 'available',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS balance_account (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  subject_id BIGINT NOT NULL DEFAULT 1,
-  balance INT NOT NULL DEFAULT 0,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_balance_user_subject (username, subject_id),
-  KEY idx_balance_account_user (username)
-);
-
-CREATE TABLE IF NOT EXISTS balance_ledger (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  subject_id BIGINT NOT NULL DEFAULT 1,
-  delta_qty INT NOT NULL,
-  reason VARCHAR(255) DEFAULT '',
-  ref_type VARCHAR(32) DEFAULT '',
-  ref_id BIGINT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_balance_ledger_user (username, id)
-);
-
-INSERT IGNORE INTO balance_subject (id, title, unit_label, status) VALUES
-(1, '默认额度', '次', 'available');
-INSERT IGNORE INTO balance_account (username, subject_id, balance) VALUES
-('student', 1, 2),
-('admin', 1, 100);
-"""
-
+    return _ensure(sql, enabled=enabled)
 
 def ensure_balance_ledger_sql(sql: str, *, enabled: bool, domain: str = "") -> str:
-    if not enabled:
-        return sql
-    if re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?balance_account`?\b", sql):
-        return sql
-    from app.bake.features.timebank import ledger_subject
+    """委托 features.timebank.ensure_balance_ledger_sql（正文只在 features）。"""
+    from app.bake.features.timebank import ensure_balance_ledger_sql as _ensure
 
-    title, unit = ledger_subject(domain)
-    title = title.replace("'", "")
-    unit = unit.replace("'", "")
-    ddl = _BALANCE_LEDGER_DDL.replace(
-        "(1, '默认额度', '次', 'available')",
-        f"(1, '{title}', '{unit}', 'available')",
-    )
-    return sql.rstrip() + "\n" + ddl
+    return _ensure(sql, enabled=enabled, domain=domain)
 
 
 _OCCUPY_SPAN_DDL = """
@@ -2650,459 +1095,6 @@ def ensure_apply_blacklist_sql(sql: str, *, enabled: bool) -> str:
         return sql
     return sql.rstrip() + "\n" + _APPLY_BLACKLIST_DDL
 
-
-# 亮点域结构补表：只补 ER 缺实体，规则仍走已有 cap
-_STRUCTURAL_DDL: dict[str, str] = {
-    "loan_renew_log": """
-CREATE TABLE IF NOT EXISTS renew_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  old_due_at DATETIME NULL,
-  new_due_at DATETIME NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_renew_ticket (ticket_id)
-);
-""",
-    "fine_record": """
-CREATE TABLE IF NOT EXISTS fine_record (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-  status VARCHAR(32) DEFAULT 'open',
-  remark VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_fine_ticket (ticket_id)
-);
-""",
-    "doclib_extra": """
-CREATE TABLE IF NOT EXISTS doc_folder (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(100) NOT NULL,
-  parent_id BIGINT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS doc_version (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  doc_id BIGINT NOT NULL,
-  version_no INT NOT NULL DEFAULT 1,
-  file_url VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_doc_version_doc (doc_id)
-);
-CREATE TABLE IF NOT EXISTS download_grant (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  doc_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  status VARCHAR(32) DEFAULT 'allowed',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_download_grant (doc_id, username)
-);
-CREATE TABLE IF NOT EXISTS doc_tag (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE
-);
-""",
-    "stock_location": """
-CREATE TABLE IF NOT EXISTS stock_location (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(100) NOT NULL,
-  remark VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-INSERT IGNORE INTO stock_location (id, name, remark) VALUES (1, '主仓', '单仓演示');
-""",
-    "stock_bin": """
-CREATE TABLE IF NOT EXISTS stock_bin (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  location_id BIGINT NOT NULL DEFAULT 1,
-  name VARCHAR(64) NOT NULL,
-  remark VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_stock_bin_loc (location_id)
-);
-INSERT IGNORE INTO stock_bin (id, location_id, name, remark) VALUES (1, 1, '默认货位', '单仓演示');
-""",
-    "bed_building": """
-CREATE TABLE IF NOT EXISTS dorm_building (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS dorm_room_ref (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  building_id BIGINT NOT NULL,
-  room_no VARCHAR(32) NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_dorm_room_ref (building_id, room_no)
-);
-CREATE TABLE IF NOT EXISTS bed_occupy_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  bed_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  action VARCHAR(32) NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-""",
-    "checkin_extra": """
-CREATE TABLE IF NOT EXISTS dorm_building (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS checkin_absence (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  room_id BIGINT NULL,
-  day_key VARCHAR(16) NOT NULL,
-  reason VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_absence_user (username, day_key)
-);
-CREATE TABLE IF NOT EXISTS checkin_code_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  apply_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  code_used VARCHAR(32) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-""",
-    "pass_code_log": """
-CREATE TABLE IF NOT EXISTS pass_code_issue (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  pass_code VARCHAR(64) NOT NULL,
-  issued_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_pass_issue_ticket (ticket_id)
-);
-CREATE TABLE IF NOT EXISTS pass_code_show_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  shown_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS pass_site (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(100) NOT NULL,
-  remark VARCHAR(255) DEFAULT ''
-);
-""",
-    "mutual_wish": """
-CREATE TABLE IF NOT EXISTS wish_rank (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  archive_id BIGINT NOT NULL,
-  rank_no INT NOT NULL DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_wish_ticket (ticket_id)
-);
-CREATE TABLE IF NOT EXISTS match_adjust_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  operator VARCHAR(64) NOT NULL,
-  remark VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS match_quota_day (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  day_key VARCHAR(16) NOT NULL,
-  matched_count INT NOT NULL DEFAULT 0,
-  UNIQUE KEY uk_match_quota_day (day_key)
-);
-""",
-    "intern_extra": """
-CREATE TABLE IF NOT EXISTS intern_org (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(120) NOT NULL,
-  contact VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS intern_week_attach (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  file_url VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-""",
-    "parcel_extra": """
-CREATE TABLE IF NOT EXISTS parcel_shelf (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  code VARCHAR(32) NOT NULL UNIQUE,
-  remark VARCHAR(255) DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS parcel_pickup_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  code_used VARCHAR(32) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS parcel_station (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(100) NOT NULL,
-  address VARCHAR(255) DEFAULT ''
-);
-""",
-    "grade_extra": """
-CREATE TABLE IF NOT EXISTS grade_term (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE
-);
-CREATE TABLE IF NOT EXISTS grade_score (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  course_id BIGINT NOT NULL,
-  term_id BIGINT NOT NULL,
-  score DECIMAL(5,2) NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_grade_user (username)
-);
-CREATE TABLE IF NOT EXISTS grade_apply_attach (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  file_url VARCHAR(255) DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS grade_score_history (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  score_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL DEFAULT '',
-  course_id BIGINT NULL,
-  term_id BIGINT NULL,
-  old_score DECIMAL(5,2) NULL,
-  new_score DECIMAL(5,2) NULL,
-  action VARCHAR(16) NOT NULL DEFAULT 'update',
-  operator VARCHAR(64) NOT NULL DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_grade_history_score (score_id)
-);
-INSERT IGNORE INTO grade_term (id, name) VALUES (1, '2025-2026-1');
-INSERT IGNORE INTO grade_score (id, username, course_id, term_id, score) VALUES
-(1, 'user', 1, 1, 86.00),
-(2, 'user', 3, 1, 91.50),
-(3, 'peer', 1, 1, 92.00);
-""",
-    # 资助域旁路岛：审核通过后「公示」→「发放」；挂在申请之后，不扩 ticket 状态机
-    "fund_extra": """
-CREATE TABLE IF NOT EXISTS fund_publicity (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  title VARCHAR(128) NOT NULL DEFAULT '',
-  start_at DATE NULL,
-  end_at DATE NULL,
-  status VARCHAR(16) NOT NULL DEFAULT 'publicizing',
-  operator VARCHAR(64) NOT NULL DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_fund_publicity_ticket (ticket_id)
-);
-CREATE TABLE IF NOT EXISTS fund_disburse (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-  paid_at DATE NULL,
-  operator VARCHAR(64) NOT NULL DEFAULT '',
-  remark VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_fund_disburse_ticket (ticket_id)
-);
-""",
-    # 房源成交台账：带看跟进办结后登记成交，不把房源做成交易系统
-    "listing_deal": """
-CREATE TABLE IF NOT EXISTS listing_deal (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  deal_price DECIMAL(12,2) NOT NULL DEFAULT 0,
-  deal_at DATE NULL,
-  operator VARCHAR(64) NOT NULL DEFAULT '',
-  remark VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_listing_deal_ticket (ticket_id)
-);
-""",
-    "procure_extra": """
-CREATE TABLE IF NOT EXISTS procure_vendor (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(120) NOT NULL,
-  contact VARCHAR(64) DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS procure_line (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  item_title VARCHAR(200) NOT NULL,
-  qty INT NOT NULL DEFAULT 1,
-  unit_price DECIMAL(10,2) DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS procure_budget (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  title VARCHAR(120) NOT NULL,
-  amount DECIMAL(12,2) NOT NULL DEFAULT 0
-);
-""",
-    "carpool_extra": """
-CREATE TABLE IF NOT EXISTS trip_stop (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  route_id BIGINT NOT NULL,
-  stop_name VARCHAR(120) NOT NULL,
-  sort_order INT NOT NULL DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS carpool_member (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  seat_no INT DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS carpool_chat_note (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  body VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-""",
-    "crm_listing": """
-CREATE TABLE IF NOT EXISTS follow_contact (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  archive_id BIGINT NOT NULL,
-  name VARCHAR(64) NOT NULL,
-  phone VARCHAR(32) DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS follow_org (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(120) NOT NULL,
-  remark VARCHAR(255) DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS follow_stage (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE
-);
-""",
-    "eval_dims": """
-CREATE TABLE IF NOT EXISTS eval_dimension (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL,
-  weight INT NOT NULL DEFAULT 1,
-  sort_order INT NOT NULL DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS eval_score_line (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  dimension_id BIGINT NOT NULL,
-  score INT NOT NULL DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS eval_term (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE
-);
-""",
-    "survey_extra": """
-CREATE TABLE IF NOT EXISTS survey_option (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  question_id BIGINT NOT NULL,
-  label VARCHAR(200) NOT NULL,
-  sort_order INT NOT NULL DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS survey_audience (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  form_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  UNIQUE KEY uk_survey_audience (form_id, username)
-);
-""",
-    "vote_limit": """
-CREATE TABLE IF NOT EXISTS vote_limit (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  vote_id BIGINT NOT NULL,
-  max_ballots INT NOT NULL DEFAULT 1
-);
-""",
-    "vote_round": """
-CREATE TABLE IF NOT EXISTS vote_round (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  title VARCHAR(120) NOT NULL,
-  status VARCHAR(32) DEFAULT 'open'
-);
-""",
-    "vote_stat": """
-CREATE TABLE IF NOT EXISTS vote_stat (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  vote_id BIGINT NOT NULL,
-  candidate_id BIGINT NOT NULL,
-  ballot_count INT NOT NULL DEFAULT 0,
-  UNIQUE KEY uk_vote_stat (vote_id, candidate_id)
-);
-""",
-    "timebank_org": """
-CREATE TABLE IF NOT EXISTS tb_org (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(120) NOT NULL,
-  contact VARCHAR(64) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-""",
-    "instrument_renew": """
-CREATE TABLE IF NOT EXISTS renew_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  username VARCHAR(64) NOT NULL,
-  old_due_at DATETIME NULL,
-  new_due_at DATETIME NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_renew_ticket (ticket_id)
-);
-""",
-    "event_extra": """
-CREATE TABLE IF NOT EXISTS event_org_unit (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(120) NOT NULL,
-  remark VARCHAR(255) DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS event_contact (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  case_id BIGINT NOT NULL,
-  name VARCHAR(64) NOT NULL,
-  phone VARCHAR(32) DEFAULT ''
-);
-""",
-    "dating_extra": """
-CREATE TABLE IF NOT EXISTS dating_tag (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(64) NOT NULL UNIQUE
-);
-CREATE TABLE IF NOT EXISTS dating_pref (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  tag_id BIGINT NOT NULL,
-  UNIQUE KEY uk_dating_pref (username, tag_id)
-);
-CREATE TABLE IF NOT EXISTS dating_match_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  peer VARCHAR(64) NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-""",
-    "oa_org": """
-CREATE TABLE IF NOT EXISTS biz_org_unit (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(120) NOT NULL,
-  remark VARCHAR(255) DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS biz_staff_ref (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(64) NOT NULL,
-  org_id BIGINT NULL,
-  title VARCHAR(64) DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS biz_apply_attach (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  ticket_id BIGINT NOT NULL,
-  file_url VARCHAR(255) DEFAULT '',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-""",
-}
-
-
 def _append_ddl_if_missing(sql: str, table: str, ddl: str) -> str:
     if re.search(
         rf"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?{re.escape(table)}`?\b",
@@ -3118,130 +1110,10 @@ def ensure_borrow_structural_sql(
     domain: str,
     capabilities: list[str] | None = None,
 ) -> str:
-    """按域/已有能力补 ER 缺表，凑齐借用族 ≥10；不发明平行规则。"""
-    from app.bake.domains import is_borrow_family_domain
+    """委托 features.borrow_structural.ensure_borrow_structural_sql（正文只在 features）。"""
+    from app.bake.features.borrow_structural import ensure_borrow_structural_sql as _ensure
 
-    if not is_borrow_family_domain(domain):
-        return sql
-    caps = set(capabilities or [])
-    out = sql
-    d = domain or ""
-
-    # 借用/占用族下限 BORROW_TABLE_MIN=10 是无条件的：续借/罚金是「常见好做默认实现」，
-    # 材料没写也补表（否则窄材料只剩 8 张，与本函数 docstring 和门禁下限自相矛盾）。
-    if d in ("DOM-LIBRARY", "DOM-EQUIP", "DOM-INSTRUMENT"):
-        out = _append_ddl_if_missing(out, "renew_log", _STRUCTURAL_DDL["loan_renew_log"])
-    if d in ("DOM-LIBRARY", "DOM-EQUIP"):
-        out = _append_ddl_if_missing(out, "fine_record", _STRUCTURAL_DDL["fine_record"])
-    if d == "DOM-DOCLIB":
-        out = _append_ddl_if_missing(out, "doc_folder", _STRUCTURAL_DDL["doclib_extra"])
-    if d == "DOM-ASSET" and "stock_io" in caps:
-        out = _append_ddl_if_missing(out, "stock_location", _STRUCTURAL_DDL["stock_location"])
-        out = _append_ddl_if_missing(out, "stock_bin", _STRUCTURAL_DDL["stock_bin"])
-    if d == "DOM-BED":
-        out = _append_ddl_if_missing(out, "dorm_building", _STRUCTURAL_DDL["bed_building"])
-    if d == "DOM-CHECKIN":
-        out = _append_ddl_if_missing(out, "checkin_absence", _STRUCTURAL_DDL["checkin_extra"])
-    if d in ("DOM-VISITOR", "DOM-CARPASS"):
-        out = _append_ddl_if_missing(out, "pass_code_issue", _STRUCTURAL_DDL["pass_code_log"])
-    if d in ("DOM-MUTUAL-TUTOR", "DOM-MUTUAL-TOPIC", "DOM-MUTUAL-TEAM"):
-        out = _append_ddl_if_missing(out, "wish_rank", _STRUCTURAL_DDL["mutual_wish"])
-    if d == "DOM-INTERN":
-        out = _append_ddl_if_missing(out, "intern_org", _STRUCTURAL_DDL["intern_extra"])
-        if "e_sign" in caps:
-            out = ensure_e_sign_sql(out, enabled=True)
-    if d == "DOM-PARCEL":
-        out = _append_ddl_if_missing(out, "parcel_shelf", _STRUCTURAL_DDL["parcel_extra"])
-    if d == "DOM-GRADE":
-        out = _append_ddl_if_missing(out, "grade_term", _STRUCTURAL_DDL["grade_extra"])
-    if d == "DOM-FUND":
-        out = _append_ddl_if_missing(out, "fund_publicity", _STRUCTURAL_DDL["fund_extra"])
-    if d == "DOM-LISTING":
-        out = _append_ddl_if_missing(out, "listing_deal", _STRUCTURAL_DDL["listing_deal"])
-    if d == "DOM-PROCURE":
-        out = _append_ddl_if_missing(out, "procure_vendor", _STRUCTURAL_DDL["procure_extra"])
-    if d == "DOM-CARPOOL":
-        out = _append_ddl_if_missing(out, "trip_stop", _STRUCTURAL_DDL["carpool_extra"])
-    if d in ("DOM-CRM", "DOM-LISTING"):
-        out = _append_ddl_if_missing(out, "follow_contact", _STRUCTURAL_DDL["crm_listing"])
-    if d == "DOM-EVAL":
-        out = _append_ddl_if_missing(out, "eval_dimension", _STRUCTURAL_DDL["eval_dims"])
-    if d == "DOM-SURVEY":
-        out = _append_ddl_if_missing(out, "survey_option", _STRUCTURAL_DDL["survey_extra"])
-    if d == "DOM-VOTE":
-        # 模板已有 vote_ballot：逐表补限票/轮次/统计，避免整块因哨兵表跳过
-        out = _append_ddl_if_missing(out, "vote_limit", _STRUCTURAL_DDL["vote_limit"])
-        out = _append_ddl_if_missing(out, "vote_round", _STRUCTURAL_DDL["vote_round"])
-        out = _append_ddl_if_missing(out, "vote_stat", _STRUCTURAL_DDL["vote_stat"])
-    if d == "DOM-TIMEBANK":
-        out = _append_ddl_if_missing(out, "tb_org", _STRUCTURAL_DDL["timebank_org"])
-    if d == "DOM-INSTRUMENT" and "loan_renew" in caps:
-        out = _append_ddl_if_missing(out, "renew_log", _STRUCTURAL_DDL["instrument_renew"])
-    if d == "DOM-EVENT":
-        out = _append_ddl_if_missing(out, "event_org_unit", _STRUCTURAL_DDL["event_extra"])
-    if d == "DOM-DATING":
-        out = _append_ddl_if_missing(out, "dating_tag", _STRUCTURAL_DDL["dating_extra"])
-    # 其余薄 OA / 无专属结构：补通用组织三表
-    if d in (
-        "DOM-SEAL",
-        "DOM-CERT",
-        "DOM-PROMO",
-        "DOM-FITOUT",
-        "DOM-ACAD",
-        "DOM-TRIP",
-        "DOM-FUND",
-        "DOM-EXPENSE",
-        "DOM-CREDIT",
-        "DOM-LABOR",
-        "DOM-MORAL",
-        "DOM-AWARD",
-        "DOM-RECRUIT",
-        "DOM-ATTEND",
-        "DOM-FLEET",
-        "DOM-CLUB",
-        "DOM-PROJ",
-        "DOM-ETHIC",
-        "DOM-PARTY",
-        "DOM-CONTRACT",
-        "DOM-LABSAFE",
-    ):
-        # 有三套补丁时可能已够 10；仍缺则补组织表
-        if len(re.findall(r"(?i)create\s+table\b", out)) < 10:
-            out = _append_ddl_if_missing(out, "biz_org_unit", _STRUCTURAL_DDL["oa_org"])
-    # 图书/设备再保底
-    if d in ("DOM-LIBRARY", "DOM-EQUIP") and len(re.findall(r"(?i)create\s+table\b", out)) < 10:
-        out = _append_ddl_if_missing(out, "biz_org_unit", _STRUCTURAL_DDL["oa_org"])
-    # 族内最终保底：仍 <10 则逐表补 oa_org（避免整块因哨兵表已存在被跳过）
-    _floor_tables = (
-        ("biz_org_unit", "CREATE TABLE IF NOT EXISTS biz_org_unit (\n"
-         "  id BIGINT PRIMARY KEY AUTO_INCREMENT,\n"
-         "  name VARCHAR(120) NOT NULL,\n"
-         "  remark VARCHAR(255) DEFAULT ''\n"
-         ");\n"),
-        ("biz_staff_ref", "CREATE TABLE IF NOT EXISTS biz_staff_ref (\n"
-         "  id BIGINT PRIMARY KEY AUTO_INCREMENT,\n"
-         "  username VARCHAR(64) NOT NULL,\n"
-         "  org_id BIGINT NULL,\n"
-         "  title VARCHAR(64) DEFAULT ''\n"
-         ");\n"),
-        ("biz_apply_attach", "CREATE TABLE IF NOT EXISTS biz_apply_attach (\n"
-         "  id BIGINT PRIMARY KEY AUTO_INCREMENT,\n"
-         "  ticket_id BIGINT NOT NULL,\n"
-         "  file_url VARCHAR(255) DEFAULT '',\n"
-         "  created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n"
-         ");\n"),
-    )
-    while len(re.findall(r"(?i)create\s+table\b", out)) < 10:
-        progressed = False
-        for tname, tddl in _floor_tables:
-            before = out
-            out = _append_ddl_if_missing(out, tname, tddl)
-            if out != before:
-                progressed = True
-                break
-        if not progressed:
-            break
-    return out
+    return _ensure(sql, domain=domain, capabilities=capabilities)
 
 
 # 单据可选扩展列全集（剔除名单）；注入按域 + schema.ticket 能力
@@ -3420,8 +1292,6 @@ TICKET_OPTIONAL_COLUMNS: list[tuple[str, str]] = [
 ]
 
 _TICKET_OPTIONAL_NAMES = {n.lower() for n, _ in TICKET_OPTIONAL_COLUMNS}
-_TICKET_COL_DDL = {n.lower(): ddl for n, ddl in TICKET_OPTIONAL_COLUMNS}
-
 # 域固有业务列（不含 attach/rating 等能力开关列）
 TICKET_DOMAIN_COLUMNS: dict[str, list[str]] = {
     "DOM-LIBRARY": ["fine_status", "due_soon_notified_at", "ever_overdue", "notice_ack"],
@@ -3896,11 +1766,6 @@ CREATE TABLE IF NOT EXISTS credit_ledger (
   KEY idx_credit_user (username, id)
 );
 """
-
-SYS_USER_CREDIT_COLUMNS: list[tuple[str, str]] = [
-    ("credit_score", "INT NOT NULL DEFAULT 100"),
-]
-
 
 def ensure_borrow_credit_sql(
     sql: str,

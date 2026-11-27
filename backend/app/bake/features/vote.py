@@ -208,24 +208,57 @@ INSERT IGNORE INTO vote_candidate (id, campaign_id, name, intro, sort_no, status
 
 VOTE_CANDIDATE_COLUMNS: list[tuple[str, str]] = [
     ("avatar_url", "VARCHAR(255) DEFAULT ''"),
+    ("slogan", "VARCHAR(255) NOT NULL DEFAULT ''"),
 ]
 
+VOTE_CAMPAIGN_COLUMNS: list[tuple[str, str]] = [
+    ("anonymous", "TINYINT NOT NULL DEFAULT 0"),
+    ("daily_vote_limit", "INT NOT NULL DEFAULT 0"),
+    ("results_publish_at", "DATETIME NULL"),
+    ("allow_abstain", "TINYINT NOT NULL DEFAULT 0"),
+    ("require_real_name", "TINYINT NOT NULL DEFAULT 0"),
+    ("poll_seconds", "INT NOT NULL DEFAULT 0"),
+    ("ip_hint_enabled", "TINYINT NOT NULL DEFAULT 1"),
+]
+
+VOTE_BALLOT_COLUMNS: list[tuple[str, str]] = [
+    ("client_ip", "VARCHAR(64) NOT NULL DEFAULT ''"),
+    ("abstain", "TINYINT NOT NULL DEFAULT 0"),
+]
+
+
 def ensure_vote_sql(sql: str, *, enabled: bool, seed_activity: bool = False) -> str:
-    """vote 能力开启时幂等补评选表；表已存在时仍补 avatar_url（DOM-VOTE 模板曾漏列）。"""
+    """vote 能力开启时幂等补评选表；表已存在时仍补 I-10 列（DOM-VOTE 模板曾漏列）。"""
     if not enabled:
         return sql
     out = sql
     if not re.search(r"(?i)CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?vote_ballot`?\b", out):
         out = out.rstrip() + "\n" + _VOTE_CORE_DDL
 
-    def repl(m: re.Match[str]) -> str:
+    def repl_cand(m: re.Match[str]) -> str:
         head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
         if table.lower() != "vote_candidate":
             return m.group(0)
         body = _inject_missing_columns(body, VOTE_CANDIDATE_COLUMNS)
         return f"{head}{body}{tail}"
 
-    out = _CREATE_TABLE_RE.sub(repl, out)
+    def repl_camp(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "vote_campaign":
+            return m.group(0)
+        body = _inject_missing_columns(body, VOTE_CAMPAIGN_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    def repl_ballot(m: re.Match[str]) -> str:
+        head, table, body, tail = m.group(1), m.group(2), m.group(3), m.group(4)
+        if table.lower() != "vote_ballot":
+            return m.group(0)
+        body = _inject_missing_columns(body, VOTE_BALLOT_COLUMNS)
+        return f"{head}{body}{tail}"
+
+    out = _CREATE_TABLE_RE.sub(repl_cand, out)
+    out = _CREATE_TABLE_RE.sub(repl_camp, out)
+    out = _CREATE_TABLE_RE.sub(repl_ballot, out)
     if seed_activity and "活动优秀个人评选" not in out:
         out = out.rstrip() + "\n" + _VOTE_ACTIVITY_SEED
     return out

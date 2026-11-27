@@ -120,7 +120,11 @@ class OrderExtrasTests(unittest.TestCase):
         self.assertIn("promo_coupon", n)
         self.assertIn("user_coupon", n)
         self.assertIn("order_review", n)
-        self.assertLessEqual(count_create_tables(with_r), 15)
+        # 只多券两表（评价表模板常已有）；禁止把无关 DDL 整包灌进 SHOP
+        self.assertLessEqual(
+            count_create_tables(with_r) - count_create_tables(base),
+            3,
+        )
 
     def test_ensure_order_review_before_seed_insert(self) -> None:
         """多店农产种子会 INSERT order_review；CREATE 必须在前，否则 ensure DB 1146。"""

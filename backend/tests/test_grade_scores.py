@@ -71,7 +71,7 @@ class GradeScoreTests(unittest.TestCase):
         self.assertIn("JpaSupport", jpa)
 
     def test_labsafe_subjective_is_not_keyword_grade(self) -> None:
-        from app.bake.sql.fragments import _EXAM_LABSAFE_GATE_SEED
+        from app.bake.features.exam import _EXAM_LABSAFE_GATE_SEED
 
         self.assertNotIn("报警|撤离|灭火器", _EXAM_LABSAFE_GATE_SEED)
         self.assertNotIn("自动判分", _EXAM_LABSAFE_GATE_SEED)
