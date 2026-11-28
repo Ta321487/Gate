@@ -1096,6 +1096,26 @@ class ThesisAbsorbUiContract(unittest.TestCase):
         self.assertIn("换关键词或清空搜索", vue)
         self.assertIn("还没有终稿", vue)
         self.assertIn("拖入上方上传区", vue)
+        self.assertIn("doBatchReextract", vue)
+        self.assertIn("batchReextractLabel", vue)
+        self.assertIn("checkedRowKeys", vue)
+        self.assertIn("重抽已选", vue)
+        self.assertIn("重抽规则落后", vue)
+        self.assertIn("type: 'selection'", vue)
+        self.assertIn("maybeFinishAbsorbBatch", vue)
+        self.assertIn("applyPollItemToList", vue)
+        self.assertIn("absorbBatchSession", vue)
+        self.assertIn("absorbBatchTotal", vue)
+        self.assertIn("批量抽取完成", vue)
+        panel = (root / "frontend/src/components/UploadJobPanel.vue").read_text(encoding="utf-8")
+        self.assertIn("batchTotal", panel)
+        self.assertIn("settledCount", panel)
+        # 数量只在 overview 出现一次，头 pill 不写「进度 N/M」
+        self.assertNotIn("进度 ${settledCount", panel)
+        self.assertNotIn("进度 ·", panel)
+        api_js = (root / "frontend/src/api.js").read_text(encoding="utf-8")
+        self.assertIn("thesisAbsorbReextractBatch", api_js)
+        self.assertIn("/system/thesis-absorb/reextract-batch", api_js)
         self.assertIn("n-data-table", vue)
         self.assertIn("surface-detail", vue)
         self.assertIn("proj-head", vue)
@@ -1108,6 +1128,7 @@ class ThesisAbsorbUiContract(unittest.TestCase):
         self.assertIn("machineUnlocked", vue)
         self.assertIn(':disabled="!machineUnlocked"', vue)
         self.assertIn("needs_reextract", vue)
+        self.assertIn("reextractAlertTitle", vue)
         self.assertIn("抽取规则已更新", vue)
         self.assertIn("反推成开题", vue)
         self.assertIn("spec-preview", vue)
@@ -1164,6 +1185,8 @@ class ThesisAbsorbUiContract(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         svc = (root / "backend/app/services/thesis_absorb.py").read_text(encoding="utf-8")
         self.assertIn("schedule_absorb_extract", svc)
+        self.assertIn("reextract_batch", svc)
+        self.assertIn("_EXTRACT_CONCURRENCY", svc)
         self.assertIn("kick_stale_extracts", svc)
         self.assertIn("_KICK_STALE_MIN_INTERVAL_S", svc)
         self.assertIn("_apply_llm_drafts_to_row", svc)
@@ -1173,6 +1196,8 @@ class ThesisAbsorbUiContract(unittest.TestCase):
         self.assertIn("_job_text_only", svc)
         api = (root / "backend/app/api/system_thesis_absorb.py").read_text(encoding="utf-8")
         self.assertIn("已接收，抽取中", api)
+        self.assertIn("/system/thesis-absorb/reextract-batch", api)
+        self.assertIn("ThesisAbsorbBatchReextract", api)
         self.assertNotIn("可离开本页", api)
         # 详情轮询禁止 kick；light/poll 减负
         self.assertIn("poll: bool", api)
@@ -2291,6 +2316,262 @@ class ThesisAbsorbCoverageHints(unittest.TestCase):
         # 不得把一长串 score=1 全摊开（收窄后应明显少于全目录）
         self.assertLessEqual(len(hints), 4)
 
+    def test_shop_with_forum_addon_not_primary_forum(self) -> None:
+        """订单/购物车主路径时，「论坛管理」挂件不得拐成 DOM-FORUM 主候选。"""
+        from app.services.thesis_absorb import coverage_domain_hints
+
+        # 功能行有订单+论坛、实体有购物车（真实吸收常见）
+        prop = {
+            "feature_lines": [
+                "订单管理",
+                "地址管理",
+                "车辆管理",
+                "分类管理",
+                "论坛管理",
+                "退换货管理",
+            ],
+            "entity_hints": ["购物车", "订单", "汽车商品", "车辆规格", "地址"],
+            "role_hints": ["管理员", "用户"],
+        }
+        hints = coverage_domain_hints(prop, top_n=6)
+        self.assertTrue(hints)
+        self.assertEqual(hints[0]["domain_id"], "DOM-SHOP")
+        self.assertTrue(hints[0].get("primary"))
+        self.assertNotEqual(hints[0]["domain_id"], "DOM-FORUM")
+        # 仅功能行：订单硬词在、商城词表未点名商品时，也不得把论坛推成唯一主候选
+        bare = coverage_domain_hints(
+            {
+                "feature_lines": ["订单管理", "论坛管理", "用户管理"],
+                "role_hints": ["用户"],
+            },
+            top_n=6,
+        )
+        if bare:
+            self.assertNotEqual(bare[0]["domain_id"], "DOM-FORUM")
+
+    def test_ambient_addon_not_steal_primary_across_groups(self) -> None:
+        """彻查：主路径+论坛/收藏挂件时，不得被内容环境音字典序抢走。"""
+        from app.services.thesis_absorb import coverage_domain_hints
+
+        content = frozenset(
+            {"DOM-FORUM", "DOM-BLOG", "DOM-MEDIA", "DOM-MUSIC", "DOM-DOCLIB"}
+        )
+        cases = [
+            (
+                "DOM-SHOP",
+                {
+                    "feature_lines": ["商品管理", "库存管理", "论坛管理", "收藏管理"],
+                    "entity_hints": ["商品", "购物车"],
+                },
+            ),
+            (
+                "DOM-LIBRARY",
+                {
+                    "feature_lines": ["图书管理", "借阅管理", "论坛管理", "公告管理"],
+                    "entity_hints": ["图书", "读者"],
+                },
+            ),
+            (
+                "DOM-DORM",
+                {
+                    "feature_lines": ["宿舍管理", "报修管理", "论坛管理"],
+                    "entity_hints": ["宿舍", "报修单"],
+                },
+            ),
+            (
+                "DOM-HOSPITAL",
+                {
+                    "feature_lines": ["挂号管理", "科室管理", "论坛管理"],
+                    "entity_hints": ["号源"],
+                },
+            ),
+            (
+                "DOM-SEAL",
+                {
+                    "feature_lines": ["用章申请管理", "审批管理", "论坛管理"],
+                    "entity_hints": ["用章申请"],
+                },
+            ),
+            (
+                "DOM-SURVEY",
+                {
+                    "feature_lines": ["问卷管理", "题目管理", "论坛管理"],
+                    "entity_hints": ["问卷"],
+                },
+            ),
+            (
+                "DOM-VOTE",
+                {
+                    "feature_lines": ["投票管理", "选项管理", "论坛管理"],
+                    "entity_hints": ["投票"],
+                },
+            ),
+            (
+                "DOM-CINEMA",
+                {
+                    "feature_lines": ["场次管理", "选座管理", "论坛管理"],
+                    "entity_hints": ["场次"],
+                },
+            ),
+            (
+                "DOM-MEDIA",
+                {
+                    "feature_lines": ["视频管理", "点播管理", "论坛管理", "收藏管理"],
+                    "entity_hints": ["视频"],
+                },
+            ),
+            (
+                "DOM-FORUM",
+                {
+                    "feature_lines": ["论坛管理", "回帖管理", "板块管理", "收藏管理"],
+                    "entity_hints": ["帖子", "板块"],
+                },
+            ),
+        ]
+        for expect, prop in cases:
+            prop = {**prop, "role_hints": ["用户", "管理员"]}
+            hints = coverage_domain_hints(prop, top_n=4)
+            self.assertTrue(hints, msg=expect)
+            self.assertEqual(
+                hints[0]["domain_id"],
+                expect,
+                msg=f"{expect} got {hints[0]['domain_id']} hits={hints[0].get('hits')}",
+            )
+            if expect not in content:
+                self.assertNotIn(hints[0]["domain_id"], content)
+
+        # 弱主路径只有硬词+挂件：宁空，不假主推论坛/新闻
+        for feats in (
+            ["订单管理", "论坛管理"],
+            ["订单管理", "新闻管理"],
+            ["预约管理", "论坛管理"],
+            ["报修管理", "论坛管理"],
+        ):
+            hints = coverage_domain_hints(
+                {"feature_lines": feats, "role_hints": ["用户"]},
+                top_n=4,
+            )
+            if hints:
+                self.assertNotIn(hints[0]["domain_id"], content, msg=str(feats))
+
+    def test_stem_overlap_on_current_version_not_batch_target(self) -> None:
+        """现行规则下实体≈功能词干属常态，不得假亮需重抽 / 批量死循环。"""
+        from types import SimpleNamespace
+
+        from app.services.thesis_absorb import (
+            EXTRACTOR_VERSION,
+            _entities_look_like_feature_stems,
+            _row_needs_rule_reextract,
+        )
+
+        ents = ["用户", "购物车", "订单", "地址", "材料类型"]
+        feats = [
+            "用户管理",
+            "购物车管理",
+            "订单管理",
+            "地址管理",
+            "材料类型管理",
+        ]
+        self.assertTrue(_entities_look_like_feature_stems(ents, feats))
+        cur = SimpleNamespace(
+            extractor_version=EXTRACTOR_VERSION,
+            proposal_json={
+                "feature_lines": feats,
+                "tech_stack_lines": ["Spring Boot"],
+                "role_hints": ["用户"],
+            },
+            draft_roles=["用户"],
+            draft_entities=ents,
+            draft_features=feats,
+        )
+        self.assertFalse(_row_needs_rule_reextract(cur))
+        old = SimpleNamespace(
+            extractor_version="40",
+            proposal_json=cur.proposal_json,
+            draft_roles=cur.draft_roles,
+            draft_entities=ents,
+            draft_features=feats,
+        )
+        self.assertTrue(_row_needs_rule_reextract(old))
+
+    def test_llm_drafts_upgrade_review_and_keep_feats_on_skip(self) -> None:
+        """同步薄→review 后 LLM 抽厚应升 stored；模型失败不得清空清单。"""
+        from types import SimpleNamespace
+
+        from app.services.thesis_absorb import _apply_llm_drafts_to_row
+
+        thick = [
+            "订单管理",
+            "购物车管理",
+            "商品管理",
+            "用户管理",
+            "地址管理",
+        ]
+        row = SimpleNamespace(
+            proposal_json={"feature_lines": ["订单管理"], "title": "x"},
+            warnings_json=["缺实现/结构图交叉，功能仅按设计清单弱抽"],
+            draft_roles=[],
+            draft_entities=[],
+            draft_features=[],
+            feature_line_count=1,
+            status="review",
+            coverage="unknown",
+            coverage_machine="",
+            coverage_note="",
+            coverage_review_json=[],
+            schema_extract_meta={},
+        )
+        _apply_llm_drafts_to_row(
+            row,
+            {
+                "draft_roles": ["用户", "管理员"],
+                "draft_entities": ["订单", "购物车"],
+                "draft_features": thick,
+                "coverage": "skin_gap",
+                "coverage_note": "差皮",
+                "warnings": [],
+                "used_llm": True,
+                "skip_reason": "",
+            },
+        )
+        self.assertEqual(row.status, "stored")
+        self.assertEqual(row.feature_line_count, len(thick))
+        self.assertEqual(row.proposal_json.get("feature_lines"), thick)
+        self.assertEqual(row.coverage, "skin_gap")
+
+        # 模型失败：保留同步清单，勿清空制造假待核对
+        row2 = SimpleNamespace(
+            proposal_json={"feature_lines": thick},
+            warnings_json=[],
+            draft_roles=["用户"],
+            draft_entities=["订单"],
+            draft_features=thick,
+            feature_line_count=len(thick),
+            status="stored",
+            coverage="unknown",
+            coverage_machine="",
+            coverage_note="",
+            coverage_review_json=[],
+            schema_extract_meta={},
+        )
+        _apply_llm_drafts_to_row(
+            row2,
+            {
+                "draft_roles": [],
+                "draft_entities": [],
+                "draft_features": [],
+                "coverage": "unknown",
+                "coverage_note": "",
+                "warnings": ["未配置可用大模型 Key（运行环境 → LLM）"],
+                "used_llm": False,
+                "skip_reason": "llm_no_key",
+            },
+        )
+        self.assertEqual(row2.proposal_json.get("feature_lines"), thick)
+        self.assertEqual(row2.feature_line_count, len(thick))
+        self.assertEqual(row2.status, "stored")
+        self.assertTrue(row2.proposal_json.get("absorb_llm_skip"))
+
     def test_gate_weak_covered_to_unknown(self) -> None:
         from app.services.thesis_absorb import gate_coverage_by_hints
 
@@ -2323,6 +2604,103 @@ class ThesisAbsorbCoverageHints(unittest.TestCase):
         brief = coverage_hints_brief([])
         self.assertIn("unknown", brief)
         self.assertIn("禁止 covered", brief)
+
+    def test_coverage_copy_skin_gap_is_not_covered(self) -> None:
+        """行业皮盖不住 / 栈形态交不了 ≠ 已齐：提示词/简报/控制台同口径。"""
+        from pathlib import Path
+
+        from app.llm import agents_thesis_absorb as agent
+        from app.services.thesis_absorb import (
+            absorb_stack_coverage_blockers,
+            coverage_domain_hints,
+            coverage_hints_brief,
+            gate_coverage_by_stack,
+        )
+
+        self.assertIn("皮盖不住", agent._SYSTEM)
+        self.assertIn("形态交不了", agent._SYSTEM)
+        self.assertIn("不是 covered", agent._SYSTEM)
+        self.assertEqual(agent.PROMPT_ID, "ta-drafts-v11")
+
+        brief = coverage_hints_brief(
+            coverage_domain_hints(
+                {"feature_lines": ["图书管理", "借阅管理"], "role_hints": ["读者"]},
+                top_n=3,
+            )
+            or [{"domain_id": "DOM-X", "label": "x", "score": 2, "hits": [], "flows": [], "caps": [], "primary": True}]
+        )
+        self.assertIn("skin_gap", brief)
+        self.assertIn("不是 covered", brief)
+        self.assertIn("技术栈", brief)
+
+        self.assertTrue(absorb_stack_coverage_blockers(["Spring Boot", "微信小程序"]))
+        self.assertEqual(
+            gate_coverage_by_stack("covered", ["Django", "MySQL"]),
+            "domain_gap",
+        )
+        self.assertEqual(
+            gate_coverage_by_stack("covered", ["Spring Boot", "Vue 3", "MySQL"]),
+            "covered",
+        )
+        self.assertEqual(
+            gate_coverage_by_stack("covered", ["Vue 3", "Redis"]),
+            "domain_gap",
+        )
+
+        vue = (Path(__file__).resolve().parents[2] / "frontend/src/views/ThesisAbsorb.vue").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("差皮", vue)
+        self.assertNotIn("差说法", vue)
+        self.assertIn("栈交不了都不是已齐", vue)
+        self.assertIn("coverage_stack_blockers", vue)
+        self.assertIn("coverage_machine", vue)
+        self.assertIn("filterMode = ref('unknown')", vue)
+
+    def test_resolve_machine_coverage_hard_cases(self) -> None:
+        from app.services.thesis_absorb import resolve_machine_coverage
+
+        # 栈冲突：任意预选 → 差能力
+        for prop in ("unknown", "covered", "skin_gap"):
+            cov, reason = resolve_machine_coverage(
+                prop,
+                [{"domain_id": "DOM-LIBRARY", "score": 5}],
+                ["Django", "MySQL"],
+            )
+            self.assertEqual(cov, "domain_gap", prop)
+            self.assertTrue(reason.startswith("栈冲突"), reason)
+
+        # 弱证 covered → unknown
+        cov, _ = resolve_machine_coverage(
+            "covered",
+            [{"domain_id": "DOM-GENERIC", "score": 1}],
+            ["Spring Boot", "Vue 3", "MySQL"],
+        )
+        self.assertEqual(cov, "unknown")
+
+        # 并列弱证 covered → unknown
+        cov, reason = resolve_machine_coverage(
+            "covered",
+            [
+                {"domain_id": "DOM-A", "score": 3},
+                {"domain_id": "DOM-B", "score": 3},
+            ],
+            ["Spring Boot", "Vue 3"],
+        )
+        self.assertEqual(cov, "unknown")
+        self.assertIn("并列", reason)
+
+        # 强主候选 covered → covered
+        cov, reason = resolve_machine_coverage(
+            "covered",
+            [
+                {"domain_id": "DOM-LIBRARY", "score": 4},
+                {"domain_id": "DOM-OTHER", "score": 1},
+            ],
+            ["Spring Boot", "Vue 3", "MySQL"],
+        )
+        self.assertEqual(cov, "covered")
+        self.assertEqual(reason, "")
 
     def test_llm_agent_gates_weak_covered(self) -> None:
         import asyncio

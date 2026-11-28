@@ -61,7 +61,8 @@ from app.services.thesis_absorb_tech import (
 # v53：短摘录/背景拼到句末；禁半截首行；硬上限落在句号
 # v54：按章节摘句掐可行性散文/图题/半截起句/实现走读；只留功能·模块线索
 # v55：少人工——实体壳/RBAC 功能降权、摘录拒设计蓝图串、覆盖主候选排序（换题同形）
-EXTRACTOR_VERSION = "55"
+# v56：机审终裁——栈冲突任意预选直判差能力；并列弱证禁假绿；记下机审原值供人改回灌
+EXTRACTOR_VERSION = "56"
 
 THIN_FEATURE_THRESHOLD = 3
 

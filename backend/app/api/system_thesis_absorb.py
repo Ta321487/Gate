@@ -28,6 +28,15 @@ class ThesisAbsorbPatch(BaseModel):
     mark_fed: bool = False
 
 
+class ThesisAbsorbBatchReextract(BaseModel):
+    """批量重抽：默认只抽规则落后；mode=all 抽全部有源文件的。"""
+
+    mode: str = Field(default="outdated", description="outdated | all")
+    ids: Optional[list[int]] = Field(
+        default=None, description="可选：只处理这些数字 id"
+    )
+
+
 async def _resolve_id(db: AsyncSession, record_key: str) -> int:
     rid = await ta.resolve_record_key(db, record_key)
     if rid is None:
@@ -45,7 +54,7 @@ async def thesis_absorb_meta(db: AsyncSession = Depends(get_db)):
         "coverages": [
             {"value": "unknown", "label": "待判断"},
             {"value": "covered", "label": "已齐"},
-            {"value": "skin_gap", "label": "差说法"},
+            {"value": "skin_gap", "label": "差皮"},
             {"value": "domain_gap", "label": "差能力"},
         ],
         "statuses": list(ta.STATUS_VALUES),
@@ -109,6 +118,24 @@ async def upload_thesis_absorb(
         "message": "已接收，抽取中",
         "extract_queued": True,
     }
+
+
+@router.post(
+    "/system/thesis-absorb/reextract-batch",
+    summary="批量重抽（默认规则落后）",
+)
+async def reextract_thesis_absorb_batch(
+    body: ThesisAbsorbBatchReextract | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    payload = body or ThesisAbsorbBatchReextract()
+    try:
+        out = await ta.reextract_batch(
+            db, mode=payload.mode, ids=payload.ids
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": True, **out}
 
 
 @router.post("/system/thesis-absorb/{record_key}/reextract", summary="重新抽取")

@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -50,6 +50,16 @@ logger = logging.getLogger("gf.thesis_absorb")
 # 后台抽取任务：离开页面不中断；进程内去重，重启后由 kick_stale_extracts 续跑
 _extract_tasks: dict[int, asyncio.Task] = {}
 _extract_started_mono: dict[int, float] = {}
+# 批量/并发抽取串行：OCR+LLM 同开会打爆 Key/磁盘；换题同形仍可排队
+_EXTRACT_SEM: asyncio.Semaphore | None = None
+_EXTRACT_CONCURRENCY = 1
+
+
+def _extract_sem() -> asyncio.Semaphore:
+    global _EXTRACT_SEM
+    if _EXTRACT_SEM is None:
+        _EXTRACT_SEM = asyncio.Semaphore(max(1, int(_EXTRACT_CONCURRENCY)))
+    return _EXTRACT_SEM
 # 列表/元信息续跑节流，避免与轮询叠成扫库风暴
 _kick_stale_mono: float = 0.0
 _KICK_STALE_MIN_INTERVAL_S = 15.0
@@ -67,38 +77,136 @@ MIN_COVERED_HINT_SCORE = 2
 COVERAGE_HINTS_TOP_N = 6
 
 
+# 内容域：挂件环境音不得压过借阅/报修/交易/预约等主路径（对齐 catalog）
+_COVERAGE_CONTENT_DOMAINS = frozenset(
+    {"DOM-FORUM", "DOM-BLOG", "DOM-MEDIA", "DOM-MUSIC", "DOM-DOCLIB"}
+)
+# 商城旁路「库存管理」易被资产域字面命中抢走
+_COVERAGE_STOCK_SIDE = frozenset({"库存管理", "库存", "进销存", "仓库管理", "盘点"})
+_COVERAGE_SHOP_ANCHORS = frozenset({"商品", "商城", "购物车", "下单", "电商", "二手"})
+_COVERAGE_MAIN_ARCH = frozenset(
+    {"ARCH-TRADE", "ARCH-FLOW", "ARCH-RESERVE", "ARCH-STOCK"}
+)
+
+
+def _coverage_hint_text(
+    proposal: dict[str, Any],
+    *,
+    draft_roles: list[str] | None,
+    draft_entities: list[str] | None,
+    draft_features: list[str] | None,
+) -> str:
+    parts: list[str] = []
+    for key in ("feature_lines", "entity_hints", "role_hints", "roles"):
+        for x in list(proposal.get(key) or []):
+            if isinstance(x, str) and x.strip():
+                parts.append(x.strip())
+    for bag in (draft_roles, draft_entities, draft_features):
+        for x in list(bag or []):
+            if isinstance(x, str) and x.strip():
+                parts.append(x.strip())
+    return "\n".join(parts)
+
+
+def _refine_coverage_domain_scores(
+    text: str,
+    scored: list[tuple[str, int, list[str]]],
+) -> list[tuple[str, int, list[str]]]:
+    """剥内容环境音、压库存旁路抢商城、主路径原型在时不让内容挂件独占。"""
+    from app.bake.catalog import _CONTENT_AMBIENT, score_all_archetypes
+    from app.bake.domains import ARCH_PATH_ORDER, DOMAIN_GROUPS
+
+    archs = score_all_archetypes(text)
+    arch_set = set(archs)
+    primary_arch = next((a for a in ARCH_PATH_ORDER if a in arch_set), None)
+    has_main_arch = any(a in arch_set for a in _COVERAGE_MAIN_ARCH)
+
+    trade_domain_ids = next(
+        (set(doms) for gid, _lab, doms in DOMAIN_GROUPS if gid == "trade"),
+        {"DOM-SHOP", "DOM-FOOD", "DOM-CINEMA"},
+    )
+    has_non_content = any(
+        k not in _COVERAGE_CONTENT_DOMAINS and int(s) > 0 for k, s, _ in scored
+    )
+    has_trade_domain = any(
+        k in trade_domain_ids and int(s) > 0 for k, s, _ in scored
+    )
+    # 交易/单据/预约/进销存主原型压过内容挂件；纯内容题保留论坛/博客
+    drop_content = primary_arch in _COVERAGE_MAIN_ARCH
+    strip_ambient = (
+        has_non_content or has_main_arch or has_trade_domain or drop_content
+    )
+
+    cleaned: list[tuple[str, int, list[str]]] = []
+    for key, score, hits in scored:
+        hit_list = [str(h) for h in (hits or []) if h]
+        if key in _COVERAGE_CONTENT_DOMAINS:
+            if drop_content:
+                continue
+            if strip_ambient:
+                hard = [h for h in hit_list if h not in _CONTENT_AMBIENT]
+                if not hard:
+                    continue
+                cleaned.append((key, len(hard), hard))
+            else:
+                cleaned.append((key, int(score), hit_list))
+            continue
+        cleaned.append((key, int(score), hit_list))
+
+    # 商品/商城在时：资产域仅命中库存旁路 → 丢掉，避免 DOM-ASSET 字典序压 DOM-SHOP
+    shop_hit = any(
+        k in trade_domain_ids and int(s) > 0 and any(h in _COVERAGE_SHOP_ANCHORS for h in hits)
+        for k, s, hits in cleaned
+    )
+    if shop_hit:
+        narrowed: list[tuple[str, int, list[str]]] = []
+        for key, score, hits in cleaned:
+            if key == "DOM-ASSET" and hits and set(hits) <= _COVERAGE_STOCK_SIDE:
+                continue
+            narrowed.append((key, score, hits))
+        cleaned = narrowed
+
+    def _sort_key(t: tuple[str, int, list[str]]) -> tuple:
+        key, score, hits = t
+        non_amb = sum(1 for h in hits if h not in _CONTENT_AMBIENT)
+        amb = sum(1 for h in hits if h in _CONTENT_AMBIENT)
+        # 同分：非环境音命中多的优先，避免 DOM-FORUM 字典序压挂号/问卷/投票
+        return (-int(score), -non_amb, amb, -len(hits), -sum(len(h) for h in hits), key)
+
+    cleaned.sort(key=_sort_key)
+    return cleaned
+
+
 def coverage_domain_hints(
     proposal: dict[str, Any] | None,
     *,
     draft_roles: list[str] | None = None,
+    draft_entities: list[str] | None = None,
+    draft_features: list[str] | None = None,
     top_n: int = COVERAGE_HINTS_TOP_N,
 ) -> list[dict[str, Any]]:
-    """功能清单 → 现厂挂靠候选（确定性，同材同果）。
+    """功能/实体清单 → 现厂挂靠候选（确定性，同材同果）。
 
-    复用目录关键词打分；不写库、不算出包 hits。文本用 feature_lines + 角色，不用题名/届次。
+    复用目录关键词打分；不写库、不算出包 hits。
+    文本用功能行 + 实体线索 + 角色，不用题名/届次。
     """
     from app.bake.capabilities import CAPABILITIES
     from app.bake.catalog import _catalog_scores
     from app.bake.domains import DOMAIN_CAPABILITIES, DOMAINS
 
     prop = proposal if isinstance(proposal, dict) else {}
-    parts: list[str] = []
-    for key in ("feature_lines", "role_hints", "roles"):
-        for x in list(prop.get(key) or []):
-            if isinstance(x, str) and x.strip():
-                parts.append(x.strip())
-    for x in list(draft_roles or []):
-        if isinstance(x, str) and x.strip():
-            parts.append(x.strip())
-    text = "\n".join(parts)
+    text = _coverage_hint_text(
+        prop,
+        draft_roles=draft_roles,
+        draft_entities=draft_entities,
+        draft_features=draft_features,
+    )
     if not text.strip():
         return []
 
     scored = _catalog_scores(text, DOMAINS)
-    scored.sort(
-        key=lambda t: (-t[1], -len(t[2]), -sum(len(h) for h in t[2]), t[0]),
-    )
-    positive = [(k, s, h) for k, s, h in scored if s > 0]
+    cleaned = _refine_coverage_domain_scores(text, scored)
+    positive = [(k, s, h) for k, s, h in cleaned if s > 0]
     if not positive:
         return []
     top_score = int(positive[0][1])
@@ -155,7 +263,9 @@ def coverage_hints_brief(hints: list[dict[str, Any]] | None) -> str:
             f"命中:{hits} 流程:{flows} 默认能力:{caps}"
         )
     lines.append(
-        "采信规则：优先【主候选】；仅主候选分≥2 才可考虑 covered；"
+        "采信规则：优先【主候选】；仅主候选分≥2 且现皮也盖得住才可考虑 covered；"
+        "行业皮盖不住 → skin_gap（不是 covered）；"
+        "技术栈形态/主线交不了 → domain_gap（不是 covered）；"
         "多条同分弱证 → skin_gap/domain_gap/unknown，禁止 covered。"
     )
     return "\n".join(lines)
@@ -178,6 +288,156 @@ def gate_coverage_by_hints(
     if not rows or top < int(min_score):
         return "unknown"
     return "covered"
+
+
+# 现厂可交主线外的前端/后端点名（stack_scan 未列全时补；禁止静默标已齐）
+_ABSORB_SHAPE_EXTRA: tuple[tuple[str, str], ...] = (
+    ("React", "React"),
+    ("Angular", "Angular"),
+    ("Flask", "Flask"),
+    ("FastAPI", "FastAPI"),
+)
+
+
+def absorb_stack_coverage_blockers(
+    tech_stack_lines: list[str] | None,
+) -> list[str]:
+    """文中技术栈与现厂可交形态冲突 → 短因列表（同材同果；复用 stack_scan 针）。"""
+    from app.bake.stack_scan import UNDELIVERED_STACK_HINTS, UNSUPPORTED_HINTS
+
+    lines = [
+        str(x).strip()
+        for x in (tech_stack_lines or [])
+        if isinstance(x, str) and str(x).strip()
+    ]
+    if not lines:
+        return []
+    text = "\n".join(lines)
+    text_l = text.lower()
+    out: list[str] = []
+
+    def _hit(needle: str) -> bool:
+        if not needle:
+            return False
+        if needle.isascii():
+            return needle.lower() in text_l
+        return needle in text
+
+    for needle, label in UNSUPPORTED_HINTS:
+        if _hit(needle) or _hit(str(label)):
+            tag = f"不支持主线·{label}"
+            if tag not in out:
+                out.append(tag)
+    for needle, _tip in UNDELIVERED_STACK_HINTS:
+        if _hit(needle):
+            tag = f"未落地主线·{needle}"
+            if tag not in out:
+                out.append(tag)
+    for needle, label in _ABSORB_SHAPE_EXTRA:
+        if _hit(needle):
+            tag = f"形态不符·{label}"
+            if tag not in out:
+                out.append(tag)
+    return out
+
+
+def gate_coverage_by_stack(
+    coverage: str,
+    tech_stack_lines: list[str] | None,
+) -> str:
+    """交付形态交不了 → 禁止假已齐：covered → domain_gap。
+
+    硬案终裁见 resolve_machine_coverage（任意预选遇栈冲突都直判差能力）。
+    """
+    cov = str(coverage or "").strip()
+    if cov not in COVERAGE_VALUES:
+        return "unknown"
+    if cov != "covered":
+        return cov
+    if absorb_stack_coverage_blockers(tech_stack_lines):
+        return "domain_gap"
+    return "covered"
+
+
+def resolve_machine_coverage(
+    proposed: str,
+    hints: list[dict[str, Any]] | None,
+    tech_stack_lines: list[str] | None,
+    *,
+    min_score: int = MIN_COVERED_HINT_SCORE,
+) -> tuple[str, str]:
+    """机审终裁（确定性·同材同果）。
+
+    硬案直接定死；灰区留给人：
+    - 技术栈形态/主线交不了 → domain_gap（不论模型预选）
+    - 已齐但挂靠弱/空/并列 → unknown
+    - 其余保留预选（covered / skin_gap / domain_gap / unknown）
+    """
+    cov = str(proposed or "unknown").strip()
+    if cov not in COVERAGE_VALUES:
+        cov = "unknown"
+
+    blockers = absorb_stack_coverage_blockers(tech_stack_lines)
+    if blockers:
+        return "domain_gap", f"栈冲突·{blockers[0]}"
+
+    cov = gate_coverage_by_hints(cov, hints, min_score=min_score)
+    if cov != "covered":
+        return cov, ""
+
+    rows = [h for h in (hints or []) if isinstance(h, dict)]
+    if not rows:
+        return "unknown", "无挂靠候选"
+    top = int(rows[0].get("score") or 0)
+    if len(rows) >= 2 and int(rows[1].get("score") or 0) == top:
+        return "unknown", "挂靠并列弱证"
+    return "covered", ""
+
+
+def _append_coverage_review(
+    row: Any,
+    *,
+    before: str,
+    after: str,
+    note: str = "",
+) -> None:
+    """人改覆盖 ≠ 机审原值时记账（回灌样本，不另开旁路表）。"""
+    if before == after:
+        return
+    machine = str(getattr(row, "coverage_machine", None) or "").strip()
+    log = getattr(row, "coverage_review_json", None)
+    if not isinstance(log, list):
+        log = []
+    entry = {
+        "from": before,
+        "to": after,
+        "machine": machine,
+        "note": (note or "")[:80],
+        "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    row.coverage_review_json = [*log[-19:], entry]
+
+
+def coverage_stack_brief(tech_stack_lines: list[str] | None) -> str:
+    """给 LLM 的技术栈对照短句。"""
+    lines = [
+        str(x).strip()
+        for x in (tech_stack_lines or [])
+        if isinstance(x, str) and str(x).strip()
+    ]
+    named = "、".join(lines[:16]) if lines else "（文中未抽出技术栈点名）"
+    blockers = absorb_stack_coverage_blockers(lines)
+    if blockers:
+        return (
+            f"文中点名：{named}。冲突：{'；'.join(blockers[:6])}。"
+            "现厂默认可交：Boot + Vue3 + Element + MySQL + jdbc/mybatis/jpa；"
+            "形态/主线交不了 → 禁止 covered，标 domain_gap。"
+        )
+    return (
+        f"文中点名：{named}。"
+        "现厂默认可交：Boot + Vue3 + Element + MySQL + jdbc/mybatis/jpa；"
+        "点名不支持或未落地主线（小程序/SSR/Redis 等）→ 禁止 covered。"
+    )
 
 
 def _absorb_dir() -> Path:
@@ -426,6 +686,17 @@ def _row_to_dict(
         "status": row.status,
         "coverage": row.coverage,
         "coverage_note": row.coverage_note or "",
+        "coverage_machine": str(getattr(row, "coverage_machine", None) or ""),
+        "coverage_review": (
+            list(row.coverage_review_json)
+            if isinstance(getattr(row, "coverage_review_json", None), list)
+            else []
+        ),
+        "coverage_overridden": bool(
+            str(getattr(row, "coverage_machine", None) or "").strip()
+            and str(getattr(row, "coverage_machine", None) or "").strip()
+            != str(row.coverage or "").strip()
+        ),
         "extract_round": row.extract_round,
         "content_sha256": row.content_sha256,
         "extractor_version": row.extractor_version,
@@ -585,12 +856,13 @@ async def get_record(
     if not row:
         return None
     await ensure_row_public_id(db, row)
-    # 抽取进行中：草稿必空，完整诊断无意义且拖轮询；禁止误标「要点偏少」
+    # 轻量轮询：跳过重叠/喂稿；仅抽取中禁止误标「要点偏少」
     if light or str(row.status or "") == "extracting":
         item = _row_to_dict(row)
-        item["thin_features"] = False
-        item["ok_to_feed"] = False
-        item["extract_warning"] = None
+        if str(row.status or "") == "extracting":
+            item["thin_features"] = False
+            item["ok_to_feed"] = False
+            item["extract_warning"] = None
         item["overlaps"] = []
         item["feed_markdown"] = ""
         item["opening_draft"] = ""
@@ -612,9 +884,9 @@ async def get_record(
         _clean_draft_list(row.draft_features)
         or [x for x in list(prop0.get("feature_lines") or []) if isinstance(x, str)],
     )
-    need_reextract = bool(
-        outdated or missing_hints or stem_entity_drafts or empty_drafts
-    )
+    # 词干重合在现行规则下很常见（购物车/订单既是表也是「××管理」词干），
+    # 只在规则落后时当作旧草稿信号；否则会假亮「需重抽」且批量永远消不掉
+    need_reextract = bool(outdated or missing_hints or empty_drafts)
     item = _row_to_dict(row)
     prop = item["proposal"]
     item["overlaps"] = await find_overlaps(db, record_id, prop)
@@ -643,14 +915,20 @@ async def get_record(
             reasons.append("尚未抽取文中技术栈")
         else:
             reasons.append("结构线索不完整")
-    if stem_entity_drafts:
+    if stem_entity_drafts and outdated:
         reasons.append("实体栏仍像功能词干")
     item["reextract_reasons"] = reasons
     # 现厂速查：确定性短表，同材同果；不写库、不算出包 hits
     item["coverage_hints"] = coverage_domain_hints(
         prop,
         draft_roles=item.get("draft_roles"),
+        draft_entities=item.get("draft_entities"),
+        draft_features=item.get("draft_features"),
     )
+    tech_lines = (
+        list(prop.get("tech_stack_lines") or []) if isinstance(prop, dict) else []
+    )
+    item["coverage_stack_blockers"] = absorb_stack_coverage_blockers(tech_lines)
     return item
 
 
@@ -880,6 +1158,34 @@ def _apply_extract_data(row: Any, data: dict[str, Any]) -> None:
         row.coverage_note = str(data.get("coverage_note") or "")[:500]
 
 
+def _settle_absorb_status_after_drafts(
+    row: Any,
+    *,
+    used_llm: bool,
+    coverage: str,
+) -> None:
+    """按最终功能条数落 status：够厚 → stored；已齐且够厚 → covered；偏少 → review。
+
+    禁止：同步阶段因薄清单写成 review 后，LLM 已抽厚却永不升格；
+    禁止：仅靠 status==extracting 才升 stored（后台路径此时已是 review/stored）。
+    """
+    from app.services.thesis_absorb_extract import THIN_FEATURE_THRESHOLD
+
+    feat_n = int(getattr(row, "feature_line_count", 0) or 0)
+    thin = feat_n < int(THIN_FEATURE_THRESHOLD)
+    cov = str(coverage or "").strip()
+    cur = str(getattr(row, "status", None) or "").strip()
+    if used_llm and cov == "covered" and not thin:
+        row.status = "covered"
+        return
+    if thin:
+        row.status = "review"
+        return
+    # 够厚：工作态升/保持 stored；终端标签 covered/patched/fed 不降
+    if cur in ("", "extracting", "review", "stored"):
+        row.status = "stored"
+
+
 def _apply_llm_drafts_to_row(
     row: Any,
     out: dict[str, Any],
@@ -896,11 +1202,18 @@ def _apply_llm_drafts_to_row(
     cov = str(out.get("coverage") or "unknown")
     if cov in COVERAGE_VALUES:
         row.coverage = cov
+        row.coverage_machine = cov
     note = str(out.get("coverage_note") or "").strip()
     if note:
         row.coverage_note = note[:500]
-    # 功能主清单：LLM 跑过就整表替换（含空），禁止残留正则假清单
+    # 机审重写：清空旧人改分歧，避免旧账绑新抽
+    row.coverage_review_json = []
     pj = dict(row.proposal_json) if isinstance(row.proposal_json, dict) else {}
+    prev_feats = [
+        str(x).strip()
+        for x in list(pj.get("feature_lines") or [])
+        if isinstance(x, str) and str(x).strip()
+    ]
     pj["absorb_used_llm"] = bool(out.get("used_llm"))
     skip = str(out.get("skip_reason") or "").strip()
     if skip:
@@ -908,12 +1221,14 @@ def _apply_llm_drafts_to_row(
     elif "absorb_llm_skip" in pj:
         pj.pop("absorb_llm_skip", None)
     if out.get("used_llm"):
+        # 模型跑通：以三栏功能为准（可空），禁止残留正则假清单
         pj["feature_lines"] = list(row.draft_features or [])
         row.feature_line_count = len(pj["feature_lines"])
         row.proposal_json = pj
     else:
-        pj["feature_lines"] = []
-        row.feature_line_count = 0
+        # 模型未跑通：保留同步抽取清单，禁止清空制造假「待核对 / 要点偏少」
+        pj["feature_lines"] = prev_feats
+        row.feature_line_count = len(prev_feats)
         row.proposal_json = pj
     llm_warns = [w for w in list(out.get("warnings") or []) if isinstance(w, str) and w]
     _feat_cross = (
@@ -964,10 +1279,11 @@ def _apply_llm_drafts_to_row(
             ],
         )
     row.warnings_json = base
-    if out.get("used_llm") and cov == "covered":
-        row.status = "covered"
-    elif row.status in ("extracting",):
-        row.status = "stored"
+    _settle_absorb_status_after_drafts(
+        row,
+        used_llm=bool(out.get("used_llm")),
+        coverage=cov,
+    )
 
 
 async def _enrich_with_llm_drafts(
@@ -1168,6 +1484,11 @@ async def run_absorb_extract(record_id: int) -> None:
 
     OCR/LLM 期间不占着 ORM 会话，避免与详情轮询抢库。
     """
+    async with _extract_sem():
+        await _run_absorb_extract_body(record_id)
+
+
+async def _run_absorb_extract_body(record_id: int) -> None:
     from app.core.database import SessionLocal
     from app.models import FactoryThesisAbsorb
 
@@ -1303,6 +1624,8 @@ async def create_from_upload(
         status="extracting",
         coverage="unknown",
         coverage_note="",
+        coverage_machine="",
+        coverage_review_json=[],
         extract_round=1,
         content_sha256=digest,
         extractor_version=EXTRACTOR_VERSION,
@@ -1336,6 +1659,8 @@ async def reextract(db: AsyncSession, record_id: int) -> dict[str, Any]:
     prev_ver = row.extractor_version
     row.extract_round = int(row.extract_round or 1) + 1
     row.coverage = "unknown"
+    row.coverage_machine = ""
+    row.coverage_review_json = []
     row.status = "extracting"
     await db.commit()
     await db.refresh(row)
@@ -1348,6 +1673,96 @@ async def reextract(db: AsyncSession, record_id: int) -> dict[str, Any]:
     out["prev_content_sha256"] = prev_sha or ""
     out["figures_reused"] = False
     return out
+
+
+def _row_needs_rule_reextract(row: Any) -> bool:
+    """规则落后 / 结构缺键 / 三栏空 → 批量默认证件。
+
+    实体与「××管理」词干重合 alone 不进队：现行规则下属常态，否则批量抽完条还在、越抽越冤。
+    """
+    outdated = _ver_int(getattr(row, "extractor_version", None)) < _ver_int(
+        EXTRACTOR_VERSION
+    )
+    if outdated:
+        return True
+    if _proposal_missing_structure_hints(getattr(row, "proposal_json", None)):
+        return True
+    empty_drafts = (
+        not _clean_draft_list(getattr(row, "draft_roles", None))
+        and not _clean_draft_list(getattr(row, "draft_entities", None))
+        and not _clean_draft_list(getattr(row, "draft_features", None))
+    )
+    return bool(empty_drafts)
+
+
+async def reextract_batch(
+    db: AsyncSession,
+    *,
+    mode: str = "outdated",
+    ids: list[int] | None = None,
+) -> dict[str, Any]:
+    """批量排队重抽：默认只抽规则落后/结构残缺；串行执行防打爆。
+
+    mode=outdated|all；ids 非空时只处理这些 id（仍受 mode 过滤，除非 mode=all）。
+    """
+    from app.models import FactoryThesisAbsorb
+
+    mode_s = str(mode or "outdated").strip().lower()
+    if mode_s not in ("outdated", "all"):
+        raise ValueError("mode 须为 outdated 或 all")
+
+    stmt = select(FactoryThesisAbsorb).order_by(FactoryThesisAbsorb.id.asc())
+    rows = list((await db.execute(stmt)).scalars().all())
+    id_set = {int(x) for x in (ids or []) if str(x).isdigit() or isinstance(x, int)}
+    if id_set:
+        rows = [r for r in rows if int(r.id) in id_set]
+
+    queued: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for row in rows:
+        rid = int(row.id)
+        path = Path(row.source_path or "")
+        if not path.is_file():
+            skipped.append({"id": rid, "reason": "源文件不在"})
+            continue
+        if mode_s == "outdated" and not _row_needs_rule_reextract(row):
+            skipped.append({"id": rid, "reason": "已是现行规则"})
+            continue
+        old = _extract_tasks.get(rid)
+        if old is not None and not old.done():
+            skipped.append({"id": rid, "reason": "已在抽取中"})
+            continue
+        prev_ver = row.extractor_version
+        row.extract_round = int(row.extract_round or 1) + 1
+        row.coverage = "unknown"
+        row.coverage_machine = ""
+        row.coverage_review_json = []
+        row.status = "extracting"
+        queued.append(
+            {
+                "id": rid,
+                "public_id": str(getattr(row, "public_id", None) or ""),
+                "from_version": str(prev_ver or ""),
+                "to_version": EXTRACTOR_VERSION,
+            }
+        )
+    if queued:
+        await db.commit()
+        for item in queued:
+            schedule_absorb_extract(int(item["id"]))
+    return {
+        "mode": mode_s,
+        "queued": queued,
+        "skipped": skipped,
+        "queued_count": len(queued),
+        "skipped_count": len(skipped),
+        "extractor_version": EXTRACTOR_VERSION,
+        "message": (
+            f"已排队 {len(queued)} 条重抽（现行 v{EXTRACTOR_VERSION}，串行）"
+            if queued
+            else "没有需要重抽的记录"
+        ),
+    }
 
 
 async def update_record(
@@ -1372,7 +1787,19 @@ async def update_record(
     if coverage is not None:
         if coverage not in COVERAGE_VALUES:
             raise ValueError(f"coverage 无效：{coverage}")
+        before = str(row.coverage or "unknown")
         row.coverage = coverage
+        if coverage != before:
+            _append_coverage_review(
+                row,
+                before=before,
+                after=coverage,
+                note=(
+                    coverage_note
+                    if coverage_note is not None
+                    else (row.coverage_note or "")
+                ),
+            )
         if coverage == "covered":
             row.status = "covered"
         elif row.status == "covered" and coverage != "covered":
@@ -1394,6 +1821,9 @@ async def update_record(
             row.status = "stored"
         # 改结构后回退覆盖确认
         if row.coverage == "covered":
+            _append_coverage_review(
+                row, before="covered", after="unknown", note="改结构回退"
+            )
             row.coverage = "unknown"
         if row.status in ("covered", "patched", "fed"):
             row.status = "stored"

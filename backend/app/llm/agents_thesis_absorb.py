@@ -16,9 +16,11 @@ from app.llm.client import (
 from app.llm.runtime import LlmRuntime
 from app.llm.temperature import temperature_for
 from app.services.thesis_absorb import (
+    absorb_stack_coverage_blockers,
     coverage_domain_hints,
     coverage_hints_brief,
-    gate_coverage_by_hints,
+    coverage_stack_brief,
+    resolve_machine_coverage,
 )
 from app.services.thesis_absorb_extract import (
     _impl_confirm_labels,
@@ -30,7 +32,7 @@ from app.services.thesis_absorb_extract import (
 )
 
 STAGE = "thesis_absorb_drafts"
-PROMPT_ID = "ta-drafts-v8"
+PROMPT_ID = "ta-drafts-v11"
 _PID = "gf-thesis-absorb"
 
 _SYSTEM = (
@@ -65,9 +67,13 @@ _SYSTEM = (
     "覆盖预选（对照「现厂覆盖候选」，不是出包匹配；同材同果优先）：\n"
     "- 只根据下方候选短表判断；禁止臆造未列出的域。\n"
     "- 优先采信标了【主候选】且分≥2 的一条；多条弱同分 → 勿 covered。\n"
-    "- covered：主候选明确且主流程壳已能盖住论文主路径；候选空或过弱禁止 covered。\n"
-    "- skin_gap：壳大致有，差行业词/种子/眉标/分类轴。\n"
-    "- domain_gap：主流程盖不住或缺必备能力。\n"
+    "- covered：主候选明确且领先（勿并列弱证），且主流程壳+行业皮都盖住，"
+    "且文中技术栈与现厂可交形态一致"
+    "（默认可交 Boot+Vue3+Element+MySQL+jdbc/mybatis/jpa）；"
+    "候选空/过弱/并列、皮盖不住、或技术栈形态/主线交不了 → 禁止 covered。\n"
+    "- skin_gap：壳大致有，差行业词/种子/眉标/分类轴——行业皮盖不住就是 skin_gap，不是 covered。\n"
+    "- domain_gap：主流程盖不住，或缺必备能力，或技术栈点名不支持/未落地"
+    "（小程序/SSR/Redis/Django/React 等）——形态交不了必须 domain_gap，不是 covered/unknown。\n"
     "- unknown：证据不足或吃不准——宁可 unknown，禁止硬标 covered。\n"
     "- coverage_note：≤40 字，写清主路径像哪条、缺哪截（勿堆域 ID）。\n"
     "\n"
@@ -96,7 +102,7 @@ def _trim(s: str, n: int) -> str:
     return t if len(t) <= n else t[: n - 1] + "…"
 
 
-def _user_payload(evidence: dict[str, Any], catalog: str) -> str:
+def _user_payload(evidence: dict[str, Any], catalog: str, stack_brief: str) -> str:
     packs = {p["grade"]: p for p in evidence.get("packs") or [] if isinstance(p, dict)}
     caps = "、".join(evidence.get("table_captions") or []) or "（无）"
     p2 = packs.get("P2", {})
@@ -113,6 +119,7 @@ def _user_payload(evidence: dict[str, Any], catalog: str) -> str:
         f"【P3·实现测试·仅佐证】\n{_trim(str(p3.get('text') or '（无）'), 1500)}\n\n"
         f"【P4·图标签·可选】\n{_trim(str(p4.get('text') or '（无）'), 800)}\n\n"
         f"【现厂覆盖候选·仅供覆盖预选·同材同果】\n{catalog}\n\n"
+        f"【技术栈对照·同材同果】\n{stack_brief}\n\n"
         "请按 System 规则输出 JSON。"
     )
 
@@ -147,6 +154,13 @@ async def run_thesis_absorb_drafts_agent(
         base_warns.append(_WARN["llm_thin_evidence"])
 
     pid = f"{_PID}-{record_id}" if record_id else _PID
+    prop0 = proposal if isinstance(proposal, dict) else {}
+    tech_lines = [
+        str(x).strip()
+        for x in list(prop0.get("tech_stack_lines") or [])
+        if isinstance(x, str) and str(x).strip()
+    ]
+    cov_hints = coverage_domain_hints(prop0)
 
     def _fail(code: str, detail: str = "") -> dict[str, Any]:
         msg = _WARN.get(code, code)
@@ -155,10 +169,16 @@ async def run_thesis_absorb_drafts_agent(
         warns = list(base_warns)
         if msg not in warns:
             warns.append(msg)
+        # 无 LLM 也跑机审硬案（栈冲突直判差能力）
+        cov, reason = resolve_machine_coverage("unknown", cov_hints, tech_lines)
+        note = reason[:40] if reason else ""
+        for b in absorb_stack_coverage_blockers(tech_lines)[:3]:
+            if b not in warns:
+                warns.append(b[:120])
         return {
             **fb,
-            "coverage": "unknown",
-            "coverage_note": "",
+            "coverage": cov,
+            "coverage_note": note,
             "warnings": warns,
             "used_llm": False,
             "skip_reason": code,
@@ -175,10 +195,9 @@ async def run_thesis_absorb_drafts_agent(
         append_deepseek_log(pid, f"{STAGE} skip · monthly budget")
         return _fail("llm_budget")
 
-    prop0 = proposal if isinstance(proposal, dict) else {}
-    cov_hints = coverage_domain_hints(prop0)
     catalog = coverage_hints_brief(cov_hints)
-    user1 = _user_payload(evidence, catalog)
+    stack_brief = coverage_stack_brief(tech_lines)
+    user1 = _user_payload(evidence, catalog, stack_brief)
     messages = [
         {"role": "system", "content": _SYSTEM},
         {"role": "user", "content": user1},
@@ -286,10 +305,22 @@ async def run_thesis_absorb_drafts_agent(
     cov = str(data.get("coverage") or "unknown").strip()
     if cov not in {"unknown", "covered", "skin_gap", "domain_gap"}:
         cov = "unknown"
-    # 弱证禁假绿：无/弱候选时 covered → unknown（确定性闸，同材同果）
-    cov = gate_coverage_by_hints(cov, cov_hints)
+    # 机审终裁：硬案直判，弱证/并列禁假绿（同材同果）
+    cov_before, reason = resolve_machine_coverage(cov, cov_hints, tech_lines)
+    cov = cov_before
     note = str(data.get("coverage_note") or "").strip()[:80]
+    blockers = absorb_stack_coverage_blockers(tech_lines)
+    if reason and (not note or cov == "domain_gap"):
+        if cov == "domain_gap" and blockers and not note:
+            note = blockers[0][:40]
+        elif reason and not note:
+            note = reason[:40]
     warns = list(base_warns)
+    for b in blockers[:3]:
+        if b not in warns:
+            warns.append(b[:120])
+    if reason and reason.startswith("挂靠") and reason not in warns:
+        warns.append(reason[:120])
     extra = str(data.get("notes") or "").strip()
     if extra and extra not in warns:
         warns.append(extra[:120])

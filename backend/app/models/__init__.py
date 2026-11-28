@@ -526,6 +526,9 @@ class FactoryThesisAbsorb(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="stored")
     coverage: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown")
     coverage_note: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    # 机审终裁原值；人改 coverage 后可对照（回灌样本）
+    coverage_machine: Mapped[str] = mapped_column(String(16), nullable=False, default="")
+    coverage_review_json: Mapped[Any] = mapped_column(JSON, nullable=False, default=list)
     extract_round: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="", index=True)
     extractor_version: Mapped[str] = mapped_column(String(16), nullable=False, default="1")

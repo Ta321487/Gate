@@ -332,3 +332,31 @@ def _migrate_project_columns(sync_conn) -> None:
             )
         except Exception:  # noqa: BLE001
             pass
+    if absorb_cols and "coverage_machine" not in absorb_cols:
+        try:
+            sync_conn.execute(
+                text(
+                    "ALTER TABLE factory_thesis_absorb "
+                    "ADD COLUMN coverage_machine VARCHAR(16) NOT NULL DEFAULT ''"
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    if absorb_cols and "coverage_review_json" not in absorb_cols:
+        try:
+            if dialect == "sqlite":
+                sync_conn.execute(
+                    text(
+                        "ALTER TABLE factory_thesis_absorb "
+                        "ADD COLUMN coverage_review_json JSON DEFAULT '[]'"
+                    )
+                )
+            else:
+                sync_conn.execute(
+                    text(
+                        "ALTER TABLE factory_thesis_absorb "
+                        "ADD COLUMN coverage_review_json JSON"
+                    )
+                )
+        except Exception:  # noqa: BLE001
+            pass
