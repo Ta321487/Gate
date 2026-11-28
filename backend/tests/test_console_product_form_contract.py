@@ -114,6 +114,8 @@ class ConsoleProductFormContractTest(unittest.TestCase):
         self.assertIn("uploadJobBarColor", ui)
         panel = (FE / "components" / "UploadJobPanel.vue").read_text(encoding="utf-8")
         self.assertIn("upload-job", panel)
+        self.assertIn("uj-overview", panel)
+        self.assertIn("compactAt", panel)
         for rel in ("views/Projects.vue", "views/ThesisAbsorb.vue"):
             src = (FE / rel).read_text(encoding="utf-8")
             with self.subTest(view=rel):

@@ -497,6 +497,11 @@ export const api = {
   // 与上传同档：大 PDF OCR + LLM（含重试）常超过 2 分钟
   thesisAbsorbReextract: (id) =>
     http.post(`/system/thesis-absorb/${id}/reextract`, null, { ...HEAVY_OPTS }),
+  /** 批量重抽：默认 mode=outdated（规则落后）；mode=all 全抽 */
+  thesisAbsorbReextractBatch: (body) =>
+    http.post('/system/thesis-absorb/reextract-batch', body || { mode: 'outdated' }, {
+      ...HEAVY_OPTS,
+    }),
   thesisAbsorbPatch: (id, body) => http.patch(`/system/thesis-absorb/${id}`, body),
   thesisAbsorbFeed: (id) => http.post(`/system/thesis-absorb/${id}/feed`),
   thesisAbsorbDelete: (id) => http.delete(`/system/thesis-absorb/${id}`),

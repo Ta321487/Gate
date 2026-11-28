@@ -29,9 +29,14 @@
     </div>
 
     <UploadJobPanel
+      title="任务进度"
       :jobs="uploadJobList"
       :hint="uploadQueueHint"
       :meta-fn="absorbJobMeta"
+      :compact-at="3"
+      :batch-total="absorbBatchTotal"
+      :batch-done="absorbBatchDone"
+      :batch-fail="absorbBatchFail"
     >
       <template #actions="{ job }">
         <n-button
@@ -124,6 +129,19 @@
             <n-button size="small" quaternary @click="maskTitles = !maskTitles">
               {{ maskTitles ? '显示题名' : '打码题名' }}
             </n-button>
+            <n-button
+              size="small"
+              :loading="batchReextracting"
+              :disabled="loading"
+              @click="doBatchReextract"
+            >{{ batchReextractLabel }}</n-button>
+            <n-button
+              v-if="checkedRowKeys.length"
+              size="small"
+              quaternary
+              :disabled="batchReextracting"
+              @click="clearListSelection"
+            >清空勾选</n-button>
             <n-button size="small" :loading="loading" @click="reload">刷新</n-button>
           </div>
         </div>
@@ -152,6 +170,7 @@
         </div>
         <template v-else>
           <n-data-table
+            v-model:checked-row-keys="checkedRowKeys"
             :columns="listColumns"
             :data="pagedItems"
             :row-key="(r) => r.id"
@@ -160,7 +179,10 @@
             :loading="loading"
           />
           <div class="small muted mt-12" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
-            <span>{{ filteredItems.length }} 条</span>
+            <span>
+              {{ filteredItems.length }} 条
+              <template v-if="checkedRowKeys.length"> · 已选 {{ checkedRowKeys.length }}</template>
+            </span>
             <n-pagination
               v-model:page="page"
               v-model:page-size="pageSize"
@@ -240,9 +262,9 @@
       <div v-if="detail.needs_reextract" class="ta-alert mb-12">
         <div class="row" style="justify-content:space-between;gap:12px;align-items:flex-start">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;margin-bottom:4px">抽取规则已更新</div>
+            <div style="font-weight:600;margin-bottom:4px">{{ reextractAlertTitle }}</div>
             <div class="small muted">
-              当前仍是上次结果 · 需重新抽取。
+              {{ reextractAlertLead }}
               <span v-if="(detail.reextract_reasons || []).length">
                 {{ (detail.reextract_reasons || []).join('；') }}
               </span>
@@ -434,7 +456,7 @@
         <div class="panel panel-quiet mb-12">
           <div class="panel-hd">
             <h3>覆盖情况</h3>
-            <span class="small muted">{{ machineUnlocked ? '可改预选' : '模型预选已锁定 · 上方解锁后可改' }}</span>
+            <span class="small muted">{{ machineUnlocked ? '可改机审结论' : '机审已锁定 · 上方解锁后可改' }}</span>
           </div>
           <div class="panel-bd" :class="{ 'ta-locked': !machineUnlocked, locked: !machineUnlocked }">
             <n-radio-group
@@ -444,20 +466,37 @@
             >
               <n-radio-button value="unknown">待判断</n-radio-button>
               <n-radio-button value="covered">已齐</n-radio-button>
-              <n-radio-button value="skin_gap">差说法</n-radio-button>
+              <n-radio-button value="skin_gap">差皮</n-radio-button>
               <n-radio-button value="domain_gap">差能力</n-radio-button>
             </n-radio-group>
+            <p
+              v-if="detail.coverage_machine"
+              class="small muted mt-8"
+              style="margin-bottom:0"
+            >
+              机审：{{ coverageLabel(detail.coverage_machine) }}
+              <template v-if="detail.coverage_overridden">
+                · 已改成 {{ coverageLabel(detail.coverage) }}（下次规则应对齐这次）
+              </template>
+            </p>
             <p v-if="detail.coverage === 'covered'" class="small muted mt-8" style="margin-bottom:0">
-              现有能力已盖住主流程，一般不用新开能力。
+              域、行业皮、技术栈形态都盖住才算已齐；皮盖不住或栈交不了都不是已齐。
             </p>
             <p v-else-if="detail.coverage === 'skin_gap'" class="small muted mt-8" style="margin-bottom:0">
-              流程在，文案或演示数据不对 → 复制给助手时按「只补皮」。
+              流程壳在，行业词/种子/眉标不对 → 只补皮；这不是已齐。
             </p>
             <p v-else-if="detail.coverage === 'domain_gap'" class="small muted mt-8" style="margin-bottom:0">
-              主流程盖不住 → 复制给助手时按「补能力」。
+              主流程盖不住，或技术栈点名不支持/未落地 → 按「补能力」；形态交不了不是已齐。
             </p>
             <p v-else class="small muted mt-8" style="margin-bottom:0">
-              未跑大模型或吃不准时停在待判断；有预选可直接复制，拿不准就改一项。
+              机审吃不准才停在待判断；硬案（如栈冲突）会直接判差能力。
+            </p>
+            <p
+              v-if="(detail.coverage_stack_blockers || []).length"
+              class="small warn mt-8"
+              style="margin-bottom:0"
+            >
+              文中技术栈与现厂可交形态冲突：{{ (detail.coverage_stack_blockers || []).join('；') }}。勿标已齐。
             </p>
             <div
               v-if="(detail.coverage_hints || []).length"
@@ -808,8 +847,8 @@ const loading = ref(false)
 const dragover = ref(false)
 const items = ref([])
 const q = ref('')
-/** all | unknown | covered | skin_gap | domain_gap | thin */
-const filterMode = ref('all')
+/** all | unknown | covered | skin_gap | domain_gap | thin · 默认灰区待判断 */
+const filterMode = ref('unknown')
 const maskTitles = ref(true)
 const page = ref(1)
 const pageSize = ref(20)
@@ -839,7 +878,7 @@ const filters = [
   { id: 'all', label: '全部', pill: 'pill-neutral' },
   { id: 'unknown', label: '待判断', pill: 'pill-amber' },
   { id: 'covered', label: '已齐', pill: 'pill-green' },
-  { id: 'skin_gap', label: '差说法', pill: 'pill-amber' },
+  { id: 'skin_gap', label: '差皮', pill: 'pill-amber' },
   { id: 'domain_gap', label: '差能力', pill: 'pill-red' },
   { id: 'thin', label: '要点偏少', pill: 'pill-amber' },
 ]
@@ -869,6 +908,22 @@ const detailExtractStartedAt = computed(() => {
   return Number.isFinite(t) ? t : 0
 })
 const reextracting = ref(false)
+const batchReextracting = ref(false)
+const checkedRowKeys = ref([])
+/** 批量会话：完成时一条总提示，禁止逐条 toast / 逐条打开详情 */
+const absorbBatchSession = ref(false)
+const absorbBatchTotal = ref(0)
+const absorbBatchDone = ref(0)
+const absorbBatchFail = ref(0)
+let absorbBatchSummaryShown = false
+
+function resetAbsorbBatchCounters() {
+  absorbBatchSession.value = false
+  absorbBatchTotal.value = 0
+  absorbBatchDone.value = 0
+  absorbBatchFail.value = 0
+  absorbBatchSummaryShown = false
+}
 const saving = ref(false)
 const feedBusy = ref(null)
 /** 匹配页同款：机器结果默认锁；解锁后要点/覆盖/补齐的文本框与按钮才可改 */
@@ -921,6 +976,21 @@ const pagedItems = computed(() => {
 })
 
 const knife2Open = computed(() => detail.value?.coverage === 'covered')
+
+/** 重抽条：按真实原因标题，禁止规则已齐仍写「抽取规则已更新」 */
+const reextractAlertTitle = computed(() => {
+  if (detail.value?.extractor_outdated) return '抽取规则已更新'
+  const rs = detail.value?.reextract_reasons || []
+  if (rs.some((r) => String(r).includes('三栏'))) return '补齐建议仍空'
+  if (rs.some((r) => String(r).includes('技术栈') || String(r).includes('结构'))) {
+    return '结构线索不完整'
+  }
+  return '建议重新抽取'
+})
+const reextractAlertLead = computed(() => {
+  if (detail.value?.extractor_outdated) return '当前仍是上次结果 · 需重新抽取。'
+  return '按现行规则再抽一次更稳。'
+})
 
 const detailOverlaps = computed(() =>
   Array.isArray(detail.value?.overlaps) ? detail.value.overlaps : [],
@@ -1017,7 +1087,7 @@ const detailSections = computed(() => {
 })
 
 function coverageLabel(v) {
-  return ({ unknown: '待判断', covered: '已齐', skin_gap: '差说法', domain_gap: '差能力' })[v] || v
+  return ({ unknown: '待判断', covered: '已齐', skin_gap: '差皮', domain_gap: '差能力' })[v] || v
 }
 
 /** 覆盖状态 → 全局 pill 色类（勿删旧名 coverageClass，模板/热更新都靠它） */
@@ -1036,7 +1106,22 @@ function coveragePillNode(v) {
   return h('span', { class: ['pill', coverageClass(v)] }, coverageLabel(v))
 }
 
+const batchReextractLabel = computed(() => {
+  const n = checkedRowKeys.value.length
+  return n ? `重抽已选（${n}）` : '重抽规则落后'
+})
+
+function clearListSelection() {
+  checkedRowKeys.value = []
+}
+
 const listColumns = computed(() => [
+  {
+    type: 'selection',
+    disabled(row) {
+      return row?.status === 'extracting'
+    },
+  },
   {
     title: '编号',
     key: 'display_no',
@@ -1328,6 +1413,7 @@ async function reload() {
 function setFilter(mode) {
   filterMode.value = mode || 'all'
   page.value = 1
+  // 换筛不强制清勾选：跨页勾选保留；仅提示条会反映已选数
 }
 
 const onSearch = debounce(() => {
@@ -1336,7 +1422,7 @@ const onSearch = debounce(() => {
 }, 280)
 
 function absorbJobMeta(job) {
-  return `1 份终稿 · ${absorbUploadJobPhaseLabel(job)}`
+  return absorbUploadJobPhaseLabel(job) || '处理中'
 }
 
 const jobBarColor = uploadJobBarColor
@@ -1413,6 +1499,87 @@ function hydrateExtractingJobs(list) {
   }
 }
 
+function absorbJobsBusy() {
+  return uploadJobList.value.filter((j) =>
+    ['uploading', 'extracting', 'queued', 'parsing'].includes(j?.status),
+  )
+}
+
+function absorbJobsBatchMode() {
+  return (
+    absorbBatchSession.value
+    || uploadJobList.value.length >= 2
+    || absorbJobsBusy().length + uploadJobList.value.filter((j) => j?.status === 'done' || j?.status === 'error').length >= 2
+  )
+}
+
+function noteAbsorbBatchJobSettled(ok) {
+  if (!absorbBatchSession.value && absorbBatchTotal.value <= 0) return
+  if (ok) absorbBatchDone.value += 1
+  else absorbBatchFail.value += 1
+}
+
+/** 批量全部落定后一条总提示；单条仍走逐条成功体验 */
+function maybeFinishAbsorbBatch() {
+  if (!absorbJobsBatchMode()) return false
+  const total = absorbBatchTotal.value
+  const settled = absorbBatchDone.value + absorbBatchFail.value
+  // 有整批总数时：以计数为准（完成条会收起，不能靠面板 busy）
+  if (total > 0) {
+    if (settled < total) return false
+  } else if (absorbJobsBusy().length) {
+    return false
+  }
+  const doneN = total > 0 ? absorbBatchDone.value : uploadJobList.value.filter((j) => j?.status === 'done').length
+  const errN = total > 0 ? absorbBatchFail.value : uploadJobList.value.filter((j) => j?.status === 'error').length
+  if (doneN + errN < 1) return false
+  if (absorbBatchSummaryShown) return true
+  absorbBatchSummaryShown = true
+  if (errN && doneN) message.warning(`批量抽取完成 · 成功 ${doneN} · 失败 ${errN}`)
+  else if (errN) message.error(`批量抽取结束 · ${errN} 条失败`)
+  else message.success(`批量抽取完成 · ${doneN} 条`)
+  for (const j of uploadJobList.value) {
+    if (j?.status === 'done') scheduleUploadJobAutoDismiss(j, dismissJob)
+  }
+  resetAbsorbBatchCounters()
+  reload().catch(() => {})
+  return true
+}
+
+/** 单条抽完立刻回写列表行（批量时也要动；筛「待判断」才不会卡死「抽取中」） */
+function applyPollItemToList(item) {
+  if (!item || (item.id == null && !item.public_id)) return
+  const list = Array.isArray(items.value) ? items.value : []
+  const idx = list.findIndex(
+    (r) =>
+      (item.id != null && r.id === item.id)
+      || (item.public_id && String(r.public_id) === String(item.public_id)),
+  )
+  if (idx < 0) return
+  const prev = list[idx]
+  const next = {
+    ...prev,
+    status: item.status ?? prev.status,
+    coverage: item.coverage ?? prev.coverage,
+    coverage_note: item.coverage_note ?? prev.coverage_note,
+    feature_line_count: item.feature_line_count ?? prev.feature_line_count,
+    thin_features: item.thin_features ?? prev.thin_features,
+    ok_to_feed: item.ok_to_feed ?? prev.ok_to_feed,
+    extract_warning: item.extract_warning,
+    has_figure_text: item.has_figure_text ?? prev.has_figure_text,
+    extractor_version: item.extractor_version ?? prev.extractor_version,
+    extract_round: item.extract_round ?? prev.extract_round,
+    warnings: Array.isArray(item.warnings) ? item.warnings : prev.warnings,
+    updated_at: item.updated_at ?? prev.updated_at,
+    draft_roles: item.draft_roles ?? prev.draft_roles,
+    draft_entities: item.draft_entities ?? prev.draft_entities,
+    draft_features: item.draft_features ?? prev.draft_features,
+  }
+  const copy = list.slice()
+  copy[idx] = next
+  items.value = copy
+}
+
 async function pollAbsorbExtract(jobId) {
   const job = findUploadJob(jobId)
   if (!job?.recordId) return
@@ -1429,17 +1596,34 @@ async function pollAbsorbExtract(jobId) {
       return
     }
     clearJobTimers(job)
+    applyPollItemToList(item)
     const failed = Array.isArray(item.warnings)
       && item.warnings.some((w) => String(w).startsWith('extract_fail:'))
     if (failed && item.status === 'review' && !(item.feature_line_count > 0)) {
       job.status = 'error'
       job.pct = 100
       job.error = '抽取失败'
+      noteAbsorbBatchJobSettled(false)
+      if (maybeFinishAbsorbBatch()) return
       await reload()
       return
     }
     job.status = 'done'
     job.pct = 100
+    const batch = absorbJobsBatchMode()
+    if (batch) {
+      // 成熟产品：批处理不逐条弹、不抢开详情；列表行已在上方回写
+      noteAbsorbBatchJobSettled(true)
+      if (detailId.value
+        && (String(detailId.value) === String(job.recordId)
+          || String(detail.value?.id) === String(item.id))) {
+        detail.value = item
+        syncEditors()
+      }
+      scheduleUploadJobAutoDismiss(job, dismissJob)
+      maybeFinishAbsorbBatch()
+      return
+    }
     message.success('已抽取')
     try {
       await reload()
@@ -1656,7 +1840,8 @@ function scheduleDetailExtractPoll() {
       }
       // 抽完再拉完整详情（重叠/喂稿）
       await loadDetail()
-      message.success('已抽取')
+      // 批量会话：总提示留给任务条结算；单条详情仍说一声
+      if (!absorbBatchSession.value) message.success('已抽取')
       await reload()
     } catch {
       scheduleDetailExtractPoll()
@@ -1747,6 +1932,40 @@ async function doReextract() {
     )
   } finally {
     reextracting.value = false
+  }
+}
+
+async function doBatchReextract() {
+  batchReextracting.value = true
+  try {
+    const ids = checkedRowKeys.value
+      .map((x) => Number(x))
+      .filter((x) => Number.isFinite(x) && x > 0)
+    const body = ids.length
+      ? { mode: 'all', ids }
+      : { mode: 'outdated' }
+    const res = await api.thesisAbsorbReextractBatch(body)
+    const n = Number(res?.queued_count || 0)
+    if (n >= 2) {
+      absorbBatchSession.value = true
+      absorbBatchSummaryShown = false
+      absorbBatchTotal.value = n
+      absorbBatchDone.value = 0
+      absorbBatchFail.value = 0
+    } else {
+      resetAbsorbBatchCounters()
+    }
+    if (ids.length) clearListSelection()
+    message.success(res?.message || (n ? `已排队 ${n} 条` : '没有需要重抽的'))
+    // 列表 hydrate 会按真文件名盯进度，禁止再塞 20 条假名墙
+    await reload()
+  } catch (e) {
+    const detail = e?.response?.data?.detail
+    message.error(
+      (typeof detail === 'string' && detail) || e?.message || '批量重抽失败',
+    )
+  } finally {
+    batchReextracting.value = false
   }
 }
 
